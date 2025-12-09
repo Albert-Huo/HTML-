@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>种子中的自由水与结合水</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f0f4c3 0%, #aed581 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-top: 20px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #33691e;
+            margin-bottom: 20px;
+            font-size: 2.2rem;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #689f38;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+        }
+        
+        .animation-area {
+            position: relative;
+            height: 450px;
+            background: linear-gradient(180deg, #87ceeb 0%, #e0f7fa 100%);
+            border-radius: 10px;
+            margin: 30px 0;
+            overflow: hidden;
+            border: 2px solid #81c784;
+        }
+        
+        .seed-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 200px;
+        }
+        
+        .seed {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: all 2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        
+        .fresh-seed {
+            background: radial-gradient(ellipse at 30% 40%, #8bc34a, #4caf50);
+            border-radius: 40% 60% 60% 40%;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            border: 3px solid #689f38;
+        }
+        
+        .dry-seed {
+            background: radial-gradient(ellipse at 30% 40%, #d4b16a, #b38b59);
+            border-radius: 40% 60% 60% 40%;
+            transform: translate(-50%, -50%) scale(0.8);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.2);
+            border: 2px solid #a1887f;
+        }
+        
+        .dead-seed {
+            background: radial-gradient(ellipse at 30% 40%, #5d4037, #3e2723);
+            border-radius: 40% 60% 60% 40%;
+            transform: translate(-50%, -50%) scale(0.6);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+            border: 1px solid #4e342e;
+        }
+        
+        .water-molecule {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            transition: all 1s ease;
+        }
+        
+        .free-water {
+            background: rgba(33, 150, 243, 0.9);
+            border: 1px solid #2196f3;
+            box-shadow: 0 0 5px rgba(33, 150, 243, 0.5);
+        }
+        
+        .bound-water {
+            background: rgba(3, 169, 244, 0.7);
+            border: 1px solid #03a9f4;
+            box-shadow: 0 0 5px rgba(3, 169, 244, 0.4);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        #sun-dry {
+            background: linear-gradient(135deg, #ffb300, #ff8f00);
+            color: white;
+        }
+        
+        #bake {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+        }
+        
+        #reset {
+            background: linear-gradient(135deg, #78909c, #546e7a);
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        .explanation {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 10px;
+            border-left: 5px solid #4caf50;
+        }
+        
+        .explanation h2 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+        }
+        
+        .explanation p {
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        
+        .status {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 15px 0;
+            height: 30px;
+            color: #33691e;
+        }
+        
+        .water-legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+        }
+        
+        .free-legend {
+            background: rgba(33, 150, 243, 0.9);
+            border: 1px solid #2196f3;
+        }
+        
+        .bound-legend {
+            background: rgba(3, 169, 244, 0.7);
+            border: 1px solid #03a9f4;
+        }
+        
+        .evaporation {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        .bubble {
+            position: absolute;
+            bottom: 0;
+            width: 6px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            animation: rise 2s linear infinite;
+        }
+        
+        @keyframes rise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(-150px) scale(2);
+                opacity: 0;
+            }
+        }
+        
+        .heat-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 100, 0, 0.2) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+        
+        .sun-rays {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(255, 235, 59, 0.3) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+        }
+        
+        .seed-details {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            border-radius: 40% 60% 60% 40%;
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            top: 10%;
+            left: 10%;
+            opacity: 0.2;
+        }
+        
+        .sun {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            width: 80px;
+            height: 80px;
+            font-size: 60px;
+            text-align: center;
+            line-height: 80px;
+            opacity: 0;
+            transition: opacity 1s ease;
+            z-index: 10;
+            filter: drop-shadow(0 0 10px #ffeb3b);
+        }
+        
+        .fire {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 80px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: 5;
+        }
+        
+        .flame {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 40px;
+            background: linear-gradient(to top, #ff5722, #ff9800, #ffeb3b);
+            border-radius: 50% 50% 20% 20%;
+            animation: flicker 0.5s ease-in-out infinite alternate;
+        }
+        
+        .flame::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 5px;
+            width: 20px;
+            height: 25px;
+            background: linear-gradient(to top, #ff9800, #ffeb3b);
+            border-radius: 50% 50% 20% 20%;
+            filter: blur(2px);
+        }
+        
+        .flame::after {
+            content: '';
+            position: absolute;
+            top: -5px;
+            right: 5px;
+            width: 15px;
+            height: 20px;
+            background: linear-gradient(to top, #ff9800, #ffeb3b);
+            border-radius: 50% 50% 20% 20%;
+            filter: blur(1px);
+        }
+        
+        .spark {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: #ffeb3b;
+            border-radius: 50%;
+            animation: spark-rise 1s ease-out infinite;
+        }
+        
+        @keyframes flicker {
+            0% {
+                transform: translateX(-50%) scaleY(1) scaleX(1);
+            }
+            100% {
+                transform: translateX(-50%) scaleY(1.1) scaleX(0.9);
+            }
+        }
+        
+        @keyframes spark-rise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-30px) scale(0.5);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>种子中的自由水与结合水</h1>
+    <p class="subtitle">通过种子晒干与烘烤过程演示水分的不同存在形式</p>
+    
+    <div class="container">
+        <div class="status" id="status">当前状态: 新鲜种子 (含有自由水和结合水)</div>
+        
+        <div class="animation-area">
+            <div class="evaporation" id="evaporation"></div>
+            <div class="heat-effect" id="heat-effect"></div>
+            <div class="sun-rays" id="sun-rays"></div>
+            <div class="sun" id="sun">☀️</div>
+            <div class="fire" id="fire">
+                <div class="flame"></div>
+                <!-- 火花将通过JavaScript动态添加 -->
+            </div>
+            
+            <div class="seed-container">
+                <div class="seed-details"></div>
+                <div class="seed fresh-seed" id="seed">
+                    <!-- 水分子将通过JavaScript动态添加 -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="water-legend">
+            <div class="legend-item">
+                <div class="legend-color free-legend"></div>
+                <span>自由水 (易蒸发)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color bound-legend"></div>
+                <span>结合水 (不易蒸发)</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button id="sun-dry">晒太阳</button>
+            <button id="bake">烘烤</button>
+            <button id="reset">重置</button>
+        </div>
+        
+        <div class="explanation">
+            <h2>科学原理解读</h2>
+            <p><strong>自由水</strong>：以游离形式存在，可以自由流动，容易蒸发散失。在晒干过程中，种子主要丢失的是自由水。</p>
+            <p><strong>结合水</strong>：与种子细胞内其他物质（如蛋白质、淀粉）相结合，不可以自由流动，不容易蒸发散失。只有在高温烘烤等强烈条件下才会丢失。</p>
+            <p>本动画展示了新鲜种子经过晒干变成干种子（丢失自由水），再经过烘烤变成死种子（丢失结合水）的过程。这一过程直观反映了种子中两种水分的存在形式和特性差异。</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const seed = document.getElementById('seed');
+            const sunDryBtn = document.getElementById('sun-dry');
+            const bakeBtn = document.getElementById('bake');
+            const resetBtn = document.getElementById('reset');
+            const status = document.getElementById('status');
+            const evaporation = document.getElementById('evaporation');
+            const heatEffect = document.getElementById('heat-effect');
+            const sunRays = document.getElementById('sun-rays');
+            const sun = document.getElementById('sun');
+            const fire = document.getElementById('fire');
+            
+            let currentState = 'fresh'; // fresh, dry, dead
+            let freeWaterMolecules = [];
+            let boundWaterMolecules = [];
+            
+            // 创建火花效果
+            function createSparks() {
+                fire.innerHTML = '<div class="flame"></div>';
+                for (let i = 0; i < 8; i++) {
+                    const spark = document.createElement('div');
+                    spark.className = 'spark';
+                    spark.style.left = Math.random() * 100 + 'px';
+                    spark.style.animationDelay = Math.random() * 0.5 + 's';
+                    fire.appendChild(spark);
+                }
+            }
+            
+            // 初始化水分子
+            function initializeWaterMolecules() {
+                // 清空现有水分子
+                seed.innerHTML = '';
+                freeWaterMolecules = [];
+                boundWaterMolecules = [];
+                
+                // 创建自由水分子（外部，可自由移动）
+                for (let i = 0; i < 20; i++) {
+                    const water = document.createElement('div');
+                    water.className = 'water-molecule free-water';
+                    
+                    // 随机位置（在种子外部区域）
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = 60 + Math.random() * 40; // 距离种子中心的距离
+                    const x = 75 + Math.cos(angle) * distance;
+                    const y = 100 + Math.sin(angle) * distance;
+                    
+                    water.style.left = x + 'px';
+                    water.style.top = y + 'px';
+                    
+                    seed.appendChild(water);
+                    freeWaterMolecules.push(water);
+                }
+                
+                // 创建结合水分子（内部，固定位置）
+                for (let i = 0; i < 15; i++) {
+                    const water = document.createElement('div');
+                    water.className = 'water-molecule bound-water';
+                    
+                    // 随机位置（在种子内部）
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * 40; // 距离种子中心的距离
+                    const x = 75 + Math.cos(angle) * distance;
+                    const y = 100 + Math.sin(angle) * distance;
+                    
+                    water.style.left = x + 'px';
+                    water.style.top = y + 'px';
+                    
+                    seed.appendChild(water);
+                    boundWaterMolecules.push(water);
+                }
+            }
+            
+            // 晒干过程 - 丢失自由水
+            function sunDry() {
+                if (currentState === 'dead') return;
+                
+                status.textContent = '晒干中... 丢失自由水';
+                
+                // 显示太阳，隐藏火焰
+                sun.style.opacity = '1';
+                sunRays.style.opacity = '1';
+                fire.style.opacity = '0';
+                
+                // 添加蒸发效果气泡
+                for (let i = 0; i < 15; i++) {
+                    setTimeout(() => {
+                        const bubble = document.createElement('div');
+                        bubble.className = 'bubble';
+                        bubble.style.left = Math.random() * 100 + '%';
+                        evaporation.appendChild(bubble);
+                        
+                        setTimeout(() => {
+                            bubble.remove();
+                        }, 2000);
+                    }, i * 200);
+                }
+                
+                // 自由水分子蒸发（向上移动并消失）
+                freeWaterMolecules.forEach((water, index) => {
+                    setTimeout(() => {
+                        water.style.transition = 'all 1.5s ease';
+                        water.style.transform = 'translateY(-80px) scale(1.5)';
+                        water.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            water.style.display = 'none';
+                        }, 1500);
+                    }, index * 150);
+                });
+                
+                // 种子变化
+                setTimeout(() => {
+                    seed.classList.remove('fresh-seed');
+                    seed.classList.add('dry-seed');
+                    currentState = 'dry';
+                    status.textContent = '当前状态: 干种子 (仅含结合水)';
+                    sun.style.opacity = '0';
+                    sunRays.style.opacity = '0';
+                }, 1200);
+            }
+            
+            // 烘烤过程 - 丢失结合水
+            function bake() {
+                if (currentState === 'dead') return;
+                
+                // 如果当前是新鲜种子，直接进行烘烤（不显示太阳）
+                if (currentState === 'fresh') {
+                    status.textContent = '烘烤中... 丢失自由水和结合水';
+                    
+                    // 直接显示火焰，不显示太阳
+                    sun.style.opacity = '0';
+                    sunRays.style.opacity = '0';
+                    fire.style.opacity = '1';
+                    
+                    // 显示加热效果
+                    heatEffect.style.opacity = '1';
+                    
+                    // 同时蒸发自由水和结合水
+                    freeWaterMolecules.forEach((water, index) => {
+                        setTimeout(() => {
+                            water.style.transition = 'all 1.5s ease';
+                            water.style.transform = 'translateY(-80px) scale(1.5)';
+                            water.style.opacity = '0';
+                            
+                            setTimeout(() => {
+                                water.style.display = 'none';
+                            }, 1500);
+                        }, index * 100);
+                    });
+                    
+                    boundWaterMolecules.forEach((water, index) => {
+                        setTimeout(() => {
+                            water.style.transition = 'all 2s ease';
+                            water.style.transform = 'scale(2) rotate(180deg)';
+                            water.style.opacity = '0';
+                            
+                            setTimeout(() => {
+                                water.style.display = 'none';
+                            }, 2000);
+                        }, index * 150 + 500);
+                    });
+                    
+                    // 种子变化
+                    setTimeout(() => {
+                        seed.classList.remove('fresh-seed');
+                        seed.classList.add('dead-seed');
+                        currentState = 'dead';
+                        status.textContent = '当前状态: 死种子 (水分完全丢失)';
+                        heatEffect.style.opacity = '0';
+                        fire.style.opacity = '0';
+                    }, 2000);
+                } else {
+                    // 如果是干种子，只丢失结合水
+                    performBaking();
+                }
+            }
+            
+            // 执行烘烤操作（针对干种子）
+            function performBaking() {
+                status.textContent = '烘烤中... 丢失结合水';
+                
+                // 直接显示火焰，不显示太阳
+                sun.style.opacity = '0';
+                sunRays.style.opacity = '0';
+                fire.style.opacity = '1';
+                
+                // 显示加热效果
+                heatEffect.style.opacity = '1';
+                
+                // 结合水分子释放（需要更长时间和更高温度）
+                boundWaterMolecules.forEach((water, index) => {
+                    setTimeout(() => {
+                        water.style.transition = 'all 2s ease';
+                        water.style.transform = 'scale(2) rotate(180deg)';
+                        water.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            water.style.display = 'none';
+                        }, 2000);
+                    }, index * 200);
+                });
+                
+                // 种子变化
+                setTimeout(() => {
+                    seed.classList.remove('dry-seed');
+                    seed.classList.add('dead-seed');
+                    currentState = 'dead';
+                    status.textContent = '当前状态: 死种子 (水分完全丢失)';
+                    heatEffect.style.opacity = '0';
+                    fire.style.opacity = '0';
+                }, 1500);
+            }
+            
+            // 重置到初始状态
+            function reset() {
+                // 移除所有样式
+                seed.classList.remove('fresh-seed', 'dry-seed', 'dead-seed');
+                seed.classList.add('fresh-seed');
+                
+                // 重置状态
+                currentState = 'fresh';
+                status.textContent = '当前状态: 新鲜种子 (含有自由水和结合水)';
+                
+                // 重新初始化水分子
+                initializeWaterMolecules();
+                
+                // 隐藏所有效果
+                heatEffect.style.opacity = '0';
+                sunRays.style.opacity = '0';
+                sun.style.opacity = '0';
+                fire.style.opacity = '0';
+            }
+            
+            // 事件监听
+            sunDryBtn.addEventListener('click', sunDry);
+            bakeBtn.addEventListener('click', bake);
+            resetBtn.addEventListener('click', reset);
+            
+            // 初始化
+            createSparks();
+            initializeWaterMolecules();
+        });
+    </script>
+</body>
+</html>
