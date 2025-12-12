@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>斜率游乐场：小学生互动模拟</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f0f9ff;
+            user-select: none; /* 防止拖动时选中文本 */
+        }
+        .canvas-container {
+            background-image: linear-gradient(#e5e7eb 1px, transparent 1px),
+                              linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: -1px -1px;
+        }
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -10px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center min-h-screen p-4">
+
+    <!-- 标题区 -->
+    <header class="text-center mb-6">
+        <h1 class="text-3xl md:text-4xl font-bold text-blue-600 mb-2">🏔️ 斜率游乐场</h1>
+        <p class="text-gray-600">拖动滑块，看看坡度怎么变！</p>
+    </header>
+
+    <!-- 主交互区 -->
+    <div class="bg-white rounded-3xl shadow-xl p-6 w-full max-w-2xl border-4 border-blue-100">
+        
+        <!-- 画布显示区 -->
+        <div class="relative w-full h-64 md:h-80 bg-white border-2 border-gray-200 rounded-xl overflow-hidden canvas-container mb-6 flex justify-center items-center">
+            <canvas id="slopeCanvas"></canvas>
+            
+            <!-- 覆盖在画布上的标签 -->
+            <div id="riseLabel" class="absolute text-red-500 font-bold text-lg bg-white bg-opacity-80 px-1 rounded transition-all duration-200">升高: 0</div>
+            <div id="runLabel" class="absolute text-green-600 font-bold text-lg bg-white bg-opacity-80 px-1 rounded transition-all duration-200">前进: 0</div>
+        </div>
+
+        <!-- 结果展示区 -->
+        <div class="bg-blue-50 rounded-xl p-4 mb-6 text-center">
+            <div class="text-lg text-gray-700 mb-1">魔法公式：斜率 = <span class="text-red-500 font-bold">升高</span> ÷ <span class="text-green-600 font-bold">前进</span></div>
+            <div class="flex justify-center items-baseline space-x-2">
+                <span class="text-3xl font-bold text-gray-800">Slope = </span>
+                <span id="mathDisplay" class="text-3xl font-bold text-blue-600">0 ÷ 5 = 0</span>
+            </div>
+            <div id="commentDisplay" class="mt-2 text-xl font-bold text-orange-500">平平的路，真好走！</div>
+        </div>
+
+        <!-- 控制滑块区 -->
+        <div class="space-y-6">
+            <!-- 升高滑块 -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="font-bold text-red-500 flex items-center">
+                        ↕️ 升高 (Rise)
+                    </label>
+                    <span id="riseValue" class="bg-red-100 text-red-600 px-2 py-1 rounded-lg font-mono font-bold">0</span>
+                </div>
+                <input type="range" id="riseSlider" min="-10" max="10" value="0" step="1" class="w-full">
+                <div class="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>下坡 (-10)</span>
+                    <span>平 (0)</span>
+                    <span>上坡 (10)</span>
+                </div>
+            </div>
+
+            <!-- 前进滑块 -->
+            <div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="font-bold text-green-600 flex items-center">
+                        ➡️ 前进 (Run)
+                    </label>
+                    <span id="runValue" class="bg-green-100 text-green-700 px-2 py-1 rounded-lg font-mono font-bold">5</span>
+                </div>
+                <input type="range" id="runSlider" min="1" max="10" value="5" step="1" class="w-full">
+                <div class="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>1</span>
+                    <span>10</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部说明 -->
+    <div class="mt-6 text-center text-sm text-gray-500 max-w-md">
+        <p>💡 试一试：把“前进”变小，看看坡度会不会突然变得很陡？</p>
+    </div>
+
+    <script>
+        // 获取元素
+        const canvas = document.getElementById('slopeCanvas');
+        const ctx = canvas.getContext('2d');
+        const riseSlider = document.getElementById('riseSlider');
+        const runSlider = document.getElementById('runSlider');
+        const riseValue = document.getElementById('riseValue');
+        const runValue = document.getElementById('runValue');
+        const mathDisplay = document.getElementById('mathDisplay');
+        const commentDisplay = document.getElementById('commentDisplay');
+        const riseLabel = document.getElementById('riseLabel');
+        const runLabel = document.getElementById('runLabel');
+
+        // 格子大小
+        const GRID_SIZE = 40;
+        let width, height, centerX, centerY;
+
+        // 初始化画布大小
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            width = canvas.width;
+            height = canvas.height;
+            // 设置原点在左侧偏下，为了显示负数，稍微往上提一点
+            centerX = 60; 
+            centerY = height / 2 + 60; // 稍微偏下一点作为0点
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        // 绘制主函数
+        function draw() {
+            // 清空画布
+            ctx.clearRect(0, 0, width, height);
+
+            // 获取当前值
+            const rise = parseInt(riseSlider.value);
+            const run = parseInt(runSlider.value);
+
+            // 更新文本显示
+            riseValue.textContent = rise;
+            runValue.textContent = run;
+
+            // 计算斜率 (保留2位小数)
+            const slope = run === 0 ? "无限大" : (rise / run);
+            const slopeText = typeof slope === 'number' ? parseFloat(slope.toFixed(2)) : slope;
+            
+            mathDisplay.textContent = `${rise} ÷ ${run} = ${slopeText}`;
+            updateComment(slope);
+
+            // 坐标计算
+            const startX = centerX;
+            const startY = centerY;
+            const endX = startX + run * GRID_SIZE;
+            const endY = startY - rise * GRID_SIZE; // Canvas Y轴向下是正，所以减去rise
+
+            // 1. 绘制坐标轴 (简单的)
+            ctx.beginPath();
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            // X轴
+            ctx.moveTo(20, startY);
+            ctx.lineTo(width - 20, startY);
+            // Y轴 (在起点处)
+            ctx.moveTo(startX, 20);
+            ctx.lineTo(startX, height - 20);
+            ctx.stroke();
+
+            // 2. 绘制三角形 "升高" 和 "前进" 辅助线
+            // 只有当不是是一个点的时候才画
+            if (run !== 0 || rise !== 0) {
+                // 绘制 "前进" 线 (绿色)
+                ctx.beginPath();
+                ctx.strokeStyle = '#16a34a'; // green-600
+                ctx.lineWidth = 4;
+                ctx.setLineDash([5, 5]); // 虚线
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, startY);
+                ctx.stroke();
+                
+                // 绘制 "升高" 线 (红色)
+                ctx.beginPath();
+                ctx.strokeStyle = '#ef4444'; // red-500
+                ctx.setLineDash([5, 5]); // 虚线
+                ctx.moveTo(endX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                ctx.setLineDash([]); // 恢复实线
+            }
+
+            // 3. 绘制斜坡主线 (蓝色粗线)
+            ctx.beginPath();
+            ctx.strokeStyle = '#2563eb'; // blue-600
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.moveTo(startX, startY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // 4. 画起点和终点圆点
+            drawDot(startX, startY, '#64748b'); // 起点
+            drawDot(endX, endY, '#2563eb');     // 终点
+
+            // 5. 画一个小人或者是球在坡上
+            drawCharacter(endX, endY, rise);
+
+            // 6. 更新标签位置
+            // 前进标签位置：X轴中点下方
+            runLabel.style.left = `${startX + (run * GRID_SIZE)/2 - 20}px`;
+            runLabel.style.top = `${startY + 10}px`;
+            
+            // 升高标签位置：垂直线中点右侧
+            riseLabel.style.left = `${endX + 10}px`;
+            riseLabel.style.top = `${startY - (rise * GRID_SIZE)/2 - 15}px`;
+        }
+
+        function drawDot(x, y, color) {
+            ctx.beginPath();
+            ctx.fillStyle = color;
+            ctx.arc(x, y, 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawCharacter(x, y, rise) {
+            // 画一个简单的小表情在终点
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            let emoji = '😐'; // 默认
+            if (rise > 5) emoji = '🥵'; // 太陡了累
+            else if (rise > 2) emoji = '🙂'; // 爬山
+            else if (rise > 0) emoji = '🚶'; // 散步
+            else if (rise === 0) emoji = '🏃'; // 跑步
+            else if (rise > -3) emoji = '🏂'; // 滑雪缓坡
+            else emoji = '🎢'; // 刺激下坡
+
+            // 在终点稍微上方一点画表情
+            ctx.fillText(emoji, x, y - 20);
+        }
+
+        function updateComment(slope) {
+            let text = "";
+            let color = "text-gray-600";
+
+            if (slope === 0) {
+                text = "平平的地面，完全不累！(斜率 = 0)";
+                color = "text-blue-500";
+            } else if (slope > 0 && slope < 0.5) {
+                text = "小缓坡，散步很舒服。";
+                color = "text-green-500";
+            } else if (slope >= 0.5 && slope < 1.5) {
+                text = "这像是一座小山，要出汗了！";
+                color = "text-yellow-600";
+            } else if (slope >= 1.5) {
+                text = "太陡了！简直是在攀岩！😱";
+                color = "text-red-600";
+            } else if (slope < 0 && slope > -0.5) {
+                text = "微微的下坡，小心脚下。";
+                color = "text-green-500";
+            } else if (slope <= -0.5) {
+                text = "哇！这是滑滑梯或者是过山车！🎢";
+                color = "text-purple-600";
+            }
+
+            commentDisplay.textContent = text;
+            commentDisplay.className = `mt-2 text-xl font-bold ${color}`;
+        }
+
+        // 事件监听
+        riseSlider.addEventListener('input', draw);
+        runSlider.addEventListener('input', draw);
+
+        // 初始化
+        resizeCanvas();
+
+    </script>
+</body>
+</html>
