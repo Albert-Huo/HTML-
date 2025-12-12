@@ -58,12 +58,12 @@
             
             <!-- 覆盖在画布上的标签 -->
             <div id="riseLabel" class="absolute text-red-500 font-bold text-lg bg-white bg-opacity-80 px-1 rounded transition-all duration-200">升高: 0</div>
-            <div id="runLabel" class="absolute text-green-600 font-bold text-lg bg-white bg-opacity-80 px-1 rounded transition-all duration-200">前进: 0</div>
+            <div id="runLabel" class="absolute text-green-600 font-bold text-lg bg-white bg-opacity-80 px-1 rounded transition-all duration-200">前进: 5</div>
         </div>
 
         <!-- 结果展示区 -->
         <div class="bg-blue-50 rounded-xl p-4 mb-6 text-center">
-            <div class="text-lg text-gray-700 mb-1">魔法公式：斜率 = <span class="text-red-500 font-bold">升高</span> ÷ <span class="text-green-600 font-bold">前进</span></div>
+            <div class="text-lg text-gray-700 mb-1">魔法公式：斜率 = <span id="formulaRiseText" class="text-red-500 font-bold">升高</span> ÷ <span class="text-green-600 font-bold">前进</span></div>
             <div class="flex justify-center items-baseline space-x-2">
                 <span class="text-3xl font-bold text-gray-800">Slope = </span>
                 <span id="mathDisplay" class="text-3xl font-bold text-blue-600">0 ÷ 5 = 0</span>
@@ -123,6 +123,7 @@
         const commentDisplay = document.getElementById('commentDisplay');
         const riseLabel = document.getElementById('riseLabel');
         const runLabel = document.getElementById('runLabel');
+        const formulaRiseText = document.getElementById('formulaRiseText');
 
         // 格子大小
         const GRID_SIZE = 40;
@@ -152,9 +153,28 @@
             const rise = parseInt(riseSlider.value);
             const run = parseInt(runSlider.value);
 
-            // 更新文本显示
+            // 更新文本显示 (滑块旁边的数字)
             riseValue.textContent = rise;
             runValue.textContent = run;
+
+            // 更新画布上的标签文本 (修复：之前忘记更新这里了)
+            runLabel.textContent = `前进: ${run}`;
+            
+            // 智能更新"升高/下降"的文字
+            if (rise > 0) {
+                riseLabel.textContent = `升高: ${rise}`;
+                riseLabel.className = "absolute text-red-500 font-bold text-lg bg-white bg-opacity-80 px-1 rounded transition-all duration-200";
+                formulaRiseText.textContent = "升高";
+            } else if (rise < 0) {
+                // 如果是负数，显示"下降"，并显示正数的距离（绝对值），这样更符合直觉
+                riseLabel.textContent = `下降: ${Math.abs(rise)}`;
+                riseLabel.className = "absolute text-purple-600 font-bold text-lg bg-white bg-opacity-80 px-1 rounded transition-all duration-200";
+                formulaRiseText.textContent = "下降"; // 公式文字也变一下
+            } else {
+                riseLabel.textContent = `平路: 0`;
+                riseLabel.className = "absolute text-gray-500 font-bold text-lg bg-white bg-opacity-80 px-1 rounded transition-all duration-200";
+                formulaRiseText.textContent = "高度差";
+            }
 
             // 计算斜率 (保留2位小数)
             const slope = run === 0 ? "无限大" : (rise / run);
@@ -193,9 +213,9 @@
                 ctx.lineTo(endX, startY);
                 ctx.stroke();
                 
-                // 绘制 "升高" 线 (红色)
+                // 绘制 "升高" 线 (红色或紫色)
                 ctx.beginPath();
-                ctx.strokeStyle = '#ef4444'; // red-500
+                ctx.strokeStyle = rise < 0 ? '#9333ea' : '#ef4444'; // 负数用紫色，正数用红色
                 ctx.setLineDash([5, 5]); // 虚线
                 ctx.moveTo(endX, startY);
                 ctx.lineTo(endX, endY);
