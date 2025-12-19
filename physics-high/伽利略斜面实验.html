@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>伽利略的理想斜面实验</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --ink:#e9f2ff;
+  }
+  body{ background:#1a1a1a; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center; overflow-x: hidden;}
+
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.2); background: transparent; margin: 12px 0 8px; flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(90deg,#ff0000 0%,#ffff00 16.66%,#00ff00 33.33%,#00ffff 50%,#0000ff 66.66%,#ff00ff 83.33%,#ff0000 100%);
+    animation: hueSpin 20s linear infinite;
+  }
+  @keyframes hueSpin{ from{filter:hue-rotate(0deg)} to{filter:hue-rotate(360deg)} }
+
+  /* 任务卡片 */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s; margin-bottom: 10px; flex-shrink: 0;}
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 画布区域 */
+  #canvasWrap{ 
+    width:100%; max-width:900px; 
+    height: 55vh; min-height: 300px; max-height: 600px;
+    position:relative; overflow: hidden; border-radius:12px; 
+    box-shadow:0 8px 24px rgba(0,0,0,.3);
+    background: #000;
+  }
+  canvas{ width:100%; height:100%; display:block; touch-action:none; }
+
+  /* 实验控制层 - 右上角 */
+  .controls-overlay {
+    position: absolute; top: 12px; right: 12px; 
+    display: flex; flex-direction: column; gap: 8px; 
+    align-items: flex-end; z-index: 10;
+  }
+  .control-group {
+    background: rgba(15,15,15,0.85); 
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 8px; padding: 8px 12px; 
+    backdrop-filter: blur(4px);
+    display: flex; flex-direction: column; gap: 4px; 
+    width: 160px;
+  }
+  .control-group label { font-size: 12px; color: #bbb; display: flex; justify-content: space-between;}
+  .control-group input[type=range] { width: 100%; cursor: pointer; accent-color: var(--accent); margin: 4px 0 0;}
+  
+  /* 按钮样式 */
+  #runBtn { 
+    height: 40px; width: 160px;
+    font-weight: bold; font-size: 14px; border:none; border-radius: 6px;
+    background: var(--accent); color: #082415; 
+    box-shadow: 0 4px 12px rgba(61,220,151,0.3); 
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; user-select: none;
+  }
+  #runBtn:active { transform: scale(0.96); }
+  #runBtn.reset-mode { background: #ffb74d; color: #3e2700; box-shadow: 0 4px 12px rgba(255,183,77,0.3); }
+
+  /* 底部按钮栏 */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  .toolbar button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s; user-select:none;}
+  .toolbar button:hover{ background:#5a5a5a;} 
+  .toolbar button:disabled{ opacity:.5; cursor:not-allowed;}
+
+  /* HUD & Feedback */
+  .hud-label {
+    position: absolute; color: rgba(255,255,255,0.9); font-size: 14px; pointer-events: none;
+    transition: opacity 0.3s; background: rgba(0,50,0,0.6); padding: 4px 10px; border-radius: 99px;
+    border: 1px solid var(--accent);
+  }
+  
+  .checkmark{ position:absolute; z-index:50; left:50%; top:40%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25); animation:pop .55s ease-out;}
+  .checkmark.active{ display:flex;} .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)} }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.8); color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.35);
+    font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200;}
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5);}
+  .modal h3{ margin:8px 0 6px; font-size:20px;} .modal p{ color:#cfd8dc; margin-top:0;} .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;}
+
+  .explanation{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink);}
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em;} .explanation ul{ margin:.2em 0 .2em 1.1em;}
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">保持<strong>粗糙表面</strong>和<strong>陡峭角度</strong>，释放小球。</div>
+      <div class="task-hint" id="taskHint">提示：将“接触面”拉大，坡度>30°，看看小球能滚多高？</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="simCanvas"></canvas>
+    <div class="checkmark" id="checkmark"><div></div></div>
+    
+    <div class="controls-overlay">
+      <div class="control-group">
+        <label><span>接触面</span> <span id="fricVal">粗糙</span></label>
+        <input type="range" id="fricSlider" min="0" max="100" value="80">
+      </div>
+      <div class="control-group">
+        <label><span>右侧坡度</span> <span id="angleVal">45°</span></label>
+        <input type="range" id="angleSlider" min="0" max="60" value="45">
+      </div>
+      <button id="runBtn">释放小球</button>
+    </div>
+
+    <div id="infiniteTag" class="hud-label" style="display:none; top:30%; left:50%; transform:translateX(-50%);">
+      ∞ 永恒运动（惯性）
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetStepBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">再试一试：请按步骤提示调整参数</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog">
+    <div class="modal">
+      <h3 id="doneTitle">探索完成！🎉</h3>
+      <p>伽利略发现：如果没有摩擦力，物体将在水平面上永远运动下去（牛顿第一定律）。</p>
+      <button class="ok" id="okBtn">明白</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>伽利略的革命性发现</h2>
+    <ul>
+      <li><strong>理想实验</strong>：伽利略设想，如果没有摩擦，小球为了滚回原来的高度，会一直运动下去。</li>
+      <li><strong>牛顿第一定律</strong>：这为后来牛顿提出的“惯性”概念奠定了基础。</li>
+    </ul>
+  </div>
+
+<script>
+// 等待DOM加载，防止脚本错误
+document.addEventListener('DOMContentLoaded', function() {
+  
+  /* ------------ 状态管理 ------------ */
+  const state = {
+    friction: 0.8, 
+    angle: 45,     
+    ball: { x:0, y:0, vx:0, vy:0, rolling:false, stopped:false, section:'left' }, 
+    cameraX: 0,
+    completed: false, // 全部完成
+    freeMode: false,
+    currentTask: 0,
+    autoLock: false,
+    isInfinite: false,
+    successPending: false // 【重要】防止重复触发的锁
+  };
+
+  /* ------------ DOM 引用 ------------ */
+  const cvs = document.getElementById('simCanvas');
+  const ctx = cvs ? cvs.getContext('2d') : null;
+  const fricSlider = document.getElementById('fricSlider');
+  const angleSlider = document.getElementById('angleSlider');
+  const fricVal = document.getElementById('fricVal');
+  const angleVal = document.getElementById('angleVal');
+  const runBtn = document.getElementById('runBtn');
+  const resetStepBtn = document.getElementById('resetStepBtn');
+  const autoBtn = document.getElementById('autoDemoBtn');
+  const freeBtn = document.getElementById('freeBtn');
+  const infiniteTag = document.getElementById('infiniteTag');
+
+  const taskStepEl = document.getElementById('taskStep');
+  const taskTextEl = document.getElementById('taskText');
+  const taskHintEl = document.getElementById('taskHint');
+  const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+  
+  const checkmark = document.getElementById('checkmark');
+  const toast = document.getElementById('toast');
+  const doneMask = document.getElementById('doneMask');
+  const okBtn = document.getElementById('okBtn');
+
+  if (!ctx) return; // 安全检查
+
+  /* ------------ 常量与物理参数 ------------ */
+  let animationId;
+  const PI = Math.PI;
+  const G = 0.5;
+  const LEFT_SLOPE_W = 200;
+  const LEFT_SLOPE_H = 150;
+  const FLAT_W = 300; 
+
+  /* ------------ 任务定义 ------------ */
+  const tasks = [
+    { 
+      // 步骤1：验证摩擦力
+      check: (s) => s.friction > 0.3 && s.angle > 30,
+      text: '保持<strong>粗糙表面</strong>和<strong>陡峭角度</strong>，释放小球。',
+      hint: '提示：将“接触面”调大，坡度>30°，观察摩擦力造成的能量损耗。',
+      successMsg: '由于摩擦力，小球无法滚回原来的高度。'
+    },
+    { 
+      // 步骤2：验证理想光滑
+      check: (s) => s.friction < 0.01 && s.angle < 25 && s.angle > 0,
+      text: '将表面设为<strong>光滑</strong>，并<strong>减小</strong>右侧坡度。',
+      hint: '提示：摩擦力调为0 (理想状态)，坡度调低(10°~20°)。',
+      successMsg: '没有摩擦力，小球为了回到原高度，滚得更远了！'
+    },
+    { 
+      // 步骤3：惯性
+      check: (s) => s.friction < 0.01 && s.angle === 0,
+      text: '终极实验：<strong>光滑表面</strong> + <strong>完全水平</strong> (0°)。',
+      hint: '提示：将坡度拉到底(0°)，摩擦力为0。',
+      successMsg: '因为永远无法到达那个高度，它将永远运动下去！'
+    }
+  ];
+
+  /* ------------ 核心逻辑 ------------ */
+
+  function resetBall(){
+    if(!cvs) return;
+    const h = cvs.height || 300;
+    
+    state.ball.x = 50; 
+    state.ball.y = h - 50 - LEFT_SLOPE_H;
+    state.ball.vx = 0; 
+    state.ball.vy = 0;
+    state.ball.rolling = false;
+    state.ball.stopped = false;
+    state.ball.section = 'left';
+    state.cameraX = 0;
+    state.isInfinite = false;
+    
+    // 【重要】重置成功锁，允许下一次检测
+    state.successPending = false; 
+
+    infiniteTag.style.display = 'none';
+    if(animationId) cancelAnimationFrame(animationId);
+    
+    updateRunBtnState('start');
+    draw();
+  }
+
+  function updateRunBtnState(mode) {
+    if(mode === 'reset') {
+      runBtn.textContent = '小球复位';
+      runBtn.classList.add('reset-mode');
+    } else {
+      runBtn.textContent = '释放小球';
+      runBtn.classList.remove('reset-mode');
+    }
+  }
+
+  function resize(){
+    const parent = cvs.parentElement;
+    if(parent){
+      const rect = parent.getBoundingClientRect();
+      cvs.width = rect.width;
+      cvs.height = rect.height;
+      resetBall();
+    }
+  }
+
+  /* ------------ 物理计算 (修正版) ------------ */
+  function updatePhysics(){
+    if(!state.ball.rolling) return;
+
+    const groundY = cvs.height - 50;
+    const startY = groundY - LEFT_SLOPE_H; 
+    const flatStartX = 50 + LEFT_SLOPE_W;
+    const flatEndX = flatStartX + FLAT_W;
+
+    // 1. 左坡下落
+    if(state.ball.section === 'left'){
+      const progress = (state.ball.x - 50) / LEFT_SLOPE_W;
+      if(progress >= 1){
+        state.ball.section = 'flat';
+        state.ball.x = flatStartX;
+        state.ball.y = groundY;
+        // 能量守恒公式 v = sqrt(2gh)
+        state.ball.vx = Math.sqrt(2 * G * LEFT_SLOPE_H); 
+      } else {
+        state.ball.vx += 0.3; // 视觉加速
+        state.ball.x += state.ball.vx;
+        state.ball.y = startY + progress * LEFT_SLOPE_H;
+      }
+    }
+    // 2. 平面运动
+    else if(state.ball.section === 'flat'){
+      let frictionCoef = state.friction * 0.1; 
+      // 【修正】光滑模式下完全无摩擦
+      if(state.friction < 0.01) frictionCoef = 0;
+
+      state.ball.vx -= frictionCoef;
+      state.ball.x += state.ball.vx;
+      state.ball.y = groundY; 
+
+      // 边界检测
+      if(state.angle === 0 && state.ball.x > flatEndX){
+        if(state.friction < 0.01) state.isInfinite = true;
+      } else if(state.ball.x >= flatEndX){
+        state.ball.section = 'right';
+        state.ball.x = flatEndX; 
+      }
+
+      if(state.ball.vx <= 0) stopBall();
+    }
+    // 3. 右坡上升
+    else if(state.ball.section === 'right'){
+      const rad = state.angle * PI / 180;
+      const gForce = G * Math.sin(rad); 
+      let fForce = state.friction * 0.05;
+      if(state.friction < 0.01) fForce = 0;
+
+      state.ball.vx -= (gForce + fForce);
+
+      if(state.ball.vx <= 0){ 
+        // 速度减为0，停止
+        stopBall(); 
+      } else {
+        state.ball.x += state.ball.vx * Math.cos(rad);
+        state.ball.y -= state.ball.vx * Math.sin(rad);
+      }
+    }
+
+    // 镜头跟随
+    if(state.ball.x - state.cameraX > cvs.width * 0.5){
+      state.cameraX = state.ball.x - cvs.width * 0.5;
+    }
+    
+    // 无限运动状态下的任务检测
+    if(state.isInfinite && state.ball.rolling && state.ball.vx > 0){
+      infiniteTag.style.display = 'block';
+      // 只有当前没在处理成功逻辑时才检测
+      if(!state.successPending) {
+        // 延迟一点检测，避免刚进入无限状态就弹窗，视觉上不好看
+        if(!state._infiniteCheckTimer) {
+            state._infiniteCheckTimer = setTimeout(() => {
+                checkTaskSuccess();
+                state._infiniteCheckTimer = null;
+            }, 800);
+        }
+      }
+    }
+  }
+
+  function stopBall(){
+    state.ball.vx = 0;
+    state.ball.rolling = false;
+    state.ball.stopped = true;
+    checkTaskSuccess();
+  }
+
+  /* ------------ 绘图逻辑 (修正水平面缺失) ------------ */
+  function draw(){
+    if(!ctx) return;
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+    
+    ctx.save();
+    ctx.translate(-state.cameraX, 0);
+
+    const groundY = cvs.height - 50;
+    const startX = 50;
+    const flatStartX = startX + LEFT_SLOPE_W;
+    const flatEndX = flatStartX + FLAT_W;
+
+    // -- 轨道绘制 --
+    ctx.beginPath();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    
+    // 左坡
+    ctx.moveTo(startX, groundY - LEFT_SLOPE_H);
+    ctx.lineTo(flatStartX, groundY);
+    
+    // 【修正】动态水平面绘制
+    // 计算视觉需要的绘制终点：至少画到 flatEndX，如果镜头移动了，画到屏幕外
+    const viewRight = state.cameraX + cvs.width; 
+    const drawLimit = Math.max(flatEndX, viewRight + 200);
+
+    if (state.angle > 0) {
+       // 有角度：画到转折点，然后画斜坡
+       ctx.lineTo(flatEndX, groundY);
+       const rad = state.angle * PI / 180;
+       const slopeLen = 1200; // 足够长
+       const endX = flatEndX + slopeLen * Math.cos(rad);
+       const endY = groundY - slopeLen * Math.sin(rad);
+       ctx.lineTo(endX, endY);
+    } else {
+       // 无角度（水平）：一直画下去
+       ctx.lineTo(drawLimit, groundY);
+    }
+
+    // 填充地面
+    const fillRightX = (state.angle > 0) ? (flatEndX + 1000) : drawLimit;
+    ctx.lineTo(fillRightX, cvs.height + 200);
+    ctx.lineTo(startX, cvs.height + 200);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    ctx.fill();
+    ctx.stroke();
+
+    // -- 高度虚线 --
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(61,220,151,0.4)';
+    ctx.setLineDash([5,5]);
+    ctx.moveTo(startX - 20, groundY - LEFT_SLOPE_H);
+    // 虚线也要跟随无限延伸
+    const dashLimit = Math.max(flatEndX + 600, viewRight + 200);
+    ctx.lineTo(dashLimit, groundY - LEFT_SLOPE_H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // -- 小球 --
+    ctx.beginPath();
+    ctx.fillStyle = '#ffb74d';
+    ctx.shadowColor = '#ffb74d';
+    ctx.shadowBlur = 12;
+    ctx.arc(state.ball.x, state.ball.y - 10, 10, 0, PI*2); 
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+
+    if(state.ball.rolling){
+      updatePhysics();
+      animationId = requestAnimationFrame(draw);
+    }
+  }
+
+  /* ------------ 核心：任务检测 (防Script Error版) ------------ */
+  function checkTaskSuccess(){
+    // 1. 如果自由模式、已全部完成、或正在处理成功动画，直接退出
+    if(state.freeMode || state.completed || state.successPending) return;
+    
+    // 2. 安全获取当前任务 【防 Script Error 关键】
+    // 如果 currentTask 索引超出了数组范围，说明已经结束了，直接退出
+    if(state.currentTask >= tasks.length) return;
+
+    const task = tasks[state.currentTask];
+    
+    // 3. 检查条件
+    if(task && task.check(state)){
+      // 锁定状态，防止重复触发
+      state.successPending = true; 
+      
+      showCheck();
+      showToast(task.successMsg); 
+      
+      // 延迟切换
+      setTimeout(()=>{
+        dots[state.currentTask].classList.remove('active');
+        dots[state.currentTask].classList.add('done');
+        state.currentTask++;
+        
+        if(state.currentTask >= tasks.length){
+          state.completed = true;
+          showDone();
+        } else {
+          setStepUI(state.currentTask);
+          // 如果是无限模式，自动重置一下球的位置，方便用户开始下一步
+          if(state.isInfinite) {
+             // 给予一点缓冲时间再重置
+             setTimeout(resetBall, 1000);
+          }
+        }
+        // 任务切换完毕，解除锁 (注意：如果是 resetBall 会在内部解除锁，这里无需重复)
+      }, 1800);
+
+    } else if (!state.ball.rolling && !state.isInfinite) {
+       // 失败反馈（只有停下时才反馈）
+       const isCrash = state.angle > 0 && state.friction > 0.1 && state.ball.section === 'flat';
+       showToast(isCrash ? "摩擦力太大，能量耗尽。" : "请按提示调整参数再试。");
+    }
+  }
+
+  /* ------------ UI 逻辑 ------------ */
+  function setStepUI(idx){
+    if(idx >= tasks.length) return;
+    state.currentTask = idx;
+    dots.forEach((d,i)=>{ d.className = 'dot' + (i<idx ? ' done' : i===idx ? ' active' : ''); });
+    taskStepEl.textContent = `步骤 ${idx+1} / ${tasks.length}`;
+    taskTextEl.innerHTML   = tasks[idx].text;
+    taskHintEl.textContent = tasks[idx].hint;
+  }
+
+  fricSlider.oninput = (e) => {
+    const v = +e.target.value;
+    state.friction = v / 100;
+    if(v === 0) fricVal.textContent = '光滑(理想)';
+    else if(v < 30) fricVal.textContent = '光滑';
+    else if(v > 70) fricVal.textContent = '粗糙';
+    else fricVal.textContent = '普通';
+    if(!state.ball.rolling) draw();
+  };
+
+  angleSlider.oninput = (e) => {
+    const v = +e.target.value;
+    state.angle = v;
+    angleVal.textContent = v + '°';
+    if(!state.ball.rolling) draw();
+  };
+
+  runBtn.onclick = () => {
+    if(state.ball.rolling || state.ball.stopped || state.isInfinite){
+      resetBall();
+    } else {
+      state.ball.rolling = true;
+      state.ball.stopped = false;
+      updateRunBtnState('reset');
+      draw();
+    }
+  };
+
+  resetStepBtn.onclick = () => {
+    if(state.autoLock) return;
+    state.completed = false;
+    state.currentTask = 0;
+    state.isInfinite = false;
+    setStepUI(0);
+    fricSlider.value = 80; fricSlider.oninput({target:fricSlider});
+    angleSlider.value = 45; angleSlider.oninput({target:angleSlider});
+    resetBall();
+    showToast("场景已重置");
+  };
+
+  function setFreeMode(on){
+    state.freeMode = on;
+    freeBtn.textContent = on? '退出自由模式':'自由模式';
+    const card = document.getElementById('taskCard');
+    card.style.opacity = on? .25:1; 
+    card.style.filter  = on? 'grayscale(.6)':'none';
+    autoBtn.disabled = on;
+    resetStepBtn.disabled = on;
+    // 自由模式下也要重置球，防止状态错乱
+    resetBall();
+  }
+  freeBtn.onclick = () => setFreeMode(!state.freeMode);
+
+  /* ------------ 自动演示 ------------ */
+  function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+  async function autoDemo(){
+    if(state.freeMode || state.autoLock) return;
+    state.autoLock = true;
+    freeBtn.disabled = true;
+
+    try {
+      // 强制重置
+      state.completed = false;
+      state.currentTask = 0;
+      resetBall();
+      
+      // Step 1
+      setStepUI(0);
+      fricSlider.value = 80; fricSlider.oninput({target:fricSlider});
+      angleSlider.value = 45; angleSlider.oninput({target:angleSlider});
+      runBtn.click(); 
+      await wait(3000); // 等待运动
+      // 这里的 checkTaskSuccess 会被自动触发，我们只需要等待它完成
+      // 但为了演示流畅，我们手动等待足够的时间
+      await wait(2000); 
+      resetBall(); await wait(500);
+
+      // Step 2
+      setStepUI(1);
+      fricSlider.value = 0; fricSlider.oninput({target:fricSlider});
+      angleSlider.value = 15; angleSlider.oninput({target:angleSlider});
+      runBtn.click(); 
+      await wait(5000); 
+      await wait(2000);
+      resetBall(); await wait(500);
+
+      // Step 3
+      setStepUI(2);
+      angleSlider.value = 0; angleSlider.oninput({target:angleSlider});
+      runBtn.click(); 
+      await wait(3000); 
+      await wait(2000);
+      
+      state.completed = true;
+      showDone();
+    } finally {
+      state.autoLock = false;
+      freeBtn.disabled = false;
+      resetBall();
+    }
+  }
+  autoBtn.onclick = autoDemo;
+
+  /* ------------ 提示工具 ------------ */
+  function showToast(msg){ 
+    toast.textContent = msg; 
+    toast.classList.add('show'); 
+    clearTimeout(showToast.t); 
+    showToast.t=setTimeout(()=>toast.classList.remove('show'),2000); 
+  }
+  function showCheck(){ 
+    checkmark.classList.add('active'); 
+    setTimeout(()=>checkmark.classList.remove('active'),520); 
+  }
+  function showDone(){ doneMask.style.display='flex'; } 
+  okBtn.onclick=()=> doneMask.style.display='none';
+
+  // 初始化
+  window.addEventListener('resize', resize);
+  resize();
+});
+</script>
+</body>
+</html>
