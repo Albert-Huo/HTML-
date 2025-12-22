@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>牛顿第三定律：150N极限挑战</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --ink:#e9f2ff;
+    --panel-bg: rgba(20,20,20,0.85);
+  }
+  body{ background:#1a1a1a; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center; user-select: none; overflow-x: hidden;}
+
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    margin: 0 0 12px; flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 任务卡 */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s;}
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 画布区域 */
+  #canvasWrap{ width:100%; max-width:900px; height:55vh; max-height:480px; margin-top:10px; }
+  #canvas{ width:100%; height:100%; background:#2c2c2c; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.3); position:relative; overflow:hidden; touch-action:none; cursor: default;
+    background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  
+  /* 墙壁 */
+  .wall-mount {
+    position: absolute; right: 0; top: 0; bottom: 0; width: 30px; 
+    background: repeating-linear-gradient(45deg, #444, #444 10px, #333 10px, #333 20px);
+    border-left: 4px solid #111; box-shadow: -5px 0 15px rgba(0,0,0,0.6); z-index: 5;
+  }
+  .mount-loop {
+    position: absolute; top: 50%; right: 10px; width: 20px; height: 16px; border: 4px solid #888; border-right: none; border-radius: 50% 0 0 50%; transform: translateY(-50%);
+  }
+
+  /* --- 测力计组件 --- */
+  .scale-wrapper {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 260px; /* 稍微加宽一点 */
+    height: 90px;
+    display: flex; flex-direction: column; 
+    transition: transform 0.05s linear;
+  }
+
+  .scale-casing {
+    width: 100%; height: 100%; border-radius: 8px;
+    border: 3px solid #333;
+    display: flex; flex-direction: column;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+    position: relative; z-index: 2;
+    background: #333; 
+  }
+
+  .readout-panel {
+    height: 36px; width: 100%;
+    border-bottom: 2px solid rgba(0,0,0,0.1);
+    display: flex; align-items: center; justify-content: flex-end;
+    padding: 0 10px; box-sizing: border-box;
+  }
+  .lcd-screen {
+    background: #000; color: #0f0; font-family: 'Courier New', monospace; font-weight: bold; font-size: 18px;
+    padding: 2px 8px; border-radius: 4px; border: 1px solid #555; box-shadow: inset 0 0 4px rgba(0,255,0,0.2);
+    min-width: 70px; text-align: right; letter-spacing: 1px;
+  }
+  .scale-label { margin-right: auto; font-size: 10px; font-weight: bold; text-transform: uppercase; color: rgba(0,0,0,0.5); letter-spacing: 1px; }
+
+  .spring-window {
+    flex: 1; position: relative; overflow: hidden;
+    background: rgba(0,0,0,0.05); border-radius: 0 0 6px 6px;
+  }
+  
+  .spring-coil {
+    position: absolute; top: 50%; left: 0; height: 14px; transform: translateY(-50%);
+    background: repeating-linear-gradient(90deg, transparent, transparent 3px, #555 3px, #555 5px);
+    width: 20px; transform-origin: left center;
+  }
+
+  /* 拉杆加长以适应更大拉力 */
+  .internal-rod {
+    position: absolute; top: 50%; height: 4px; background: #666; transform: translateY(-50%);
+    left: 20px; width: 300px; /* 加长 */
+  }
+
+  /* 挂钩系统 */
+  .hook-assembly { position: absolute; top: 50%; transform: translateY(-50%); width: 30px; height: 20px; z-index: 1; }
+  .metal-hook {
+    width: 16px; height: 16px; border: 4px solid #aaa; border-radius: 50%;
+    position: absolute; background: linear-gradient(135deg, #ccc 0%, #888 100%);
+    box-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    mask: radial-gradient(transparent 55%, black 60%); -webkit-mask: radial-gradient(transparent 55%, black 60%);
+  }
+  .metal-hook::after { content:''; position: absolute; width: 10px; height: 10px; background: #2c2c2c; }
+
+  /* 右测力计 */
+  #scaleRight { right: 32px; transform-origin: right center; pointer-events: none; }
+  #scaleRight .scale-casing { background: #ffebee; border-color: #ef5350; }
+  #scaleRight .lcd-screen { color: #ff5252; box-shadow: inset 0 0 4px rgba(255,0,0,0.2); }
+  #scaleRight .spring-coil { right: 10px; left: auto; transform-origin: right center; }
+  #scaleRight .internal-rod { right: 30px; left: auto; }
+  #scaleRight .hook-assembly { left: -14px; } 
+  #scaleRight .metal-hook { transform: rotate(45deg); border-color: #888; }
+  #scaleRight .metal-hook::after { top: 20%; left: -50%; transform: rotate(0deg); }
+
+  /* 左测力计 (可拖动) */
+  #scaleLeft { right: 302px; z-index: 10; cursor: grab; } /* 初始位置右移适应更宽的组件 */
+  #scaleLeft:active { cursor: grabbing; }
+  #scaleLeft .scale-casing { background: #e3f2fd; border-color: #42a5f5; transition: border-color 0.2s, box-shadow 0.2s;}
+  #scaleLeft.highlight .scale-casing { border-color: #fff; box-shadow: 0 0 15px rgba(66, 165, 245, 0.6); }
+  
+  #scaleLeft .lcd-screen { color: #448aff; }
+  #scaleLeft .spring-coil { left: 10px; transform-origin: left center; }
+  #scaleLeft .internal-rod { left: 30px; }
+  #scaleLeft .hook-assembly { right: -14px; }
+  #scaleLeft .metal-hook { transform: rotate(225deg); border-color: #888; }
+  #scaleLeft .metal-hook::after { top: 20%; left: -50%; }
+
+  /* 手 */
+  .hand-grip {
+    position: absolute; left: -50px; top: 50%; transform: translateY(-50%);
+    font-size: 54px; filter: drop-shadow(-4px 4px 4px rgba(0,0,0,0.4));
+    pointer-events: none; /* 让点击穿透到 scaleLeft 容器 */
+    transition: transform 0.1s;
+  }
+  #scaleLeft:active .hand-grip { transform: translateY(-50%) scale(0.9); }
+  
+  /* 交互提示指引 */
+  .drag-hint {
+    position: absolute; left: 10%; top: 65%; color: rgba(255,255,255,0.5); font-size: 14px;
+    display: flex; align-items: center; gap: 8px; pointer-events: none;
+    animation: fadePulse 2s infinite;
+  }
+  .drag-arrow { width: 40px; height: 2px; background: rgba(255,255,255,0.3); position: relative; }
+  .drag-arrow::before { content:''; position: absolute; left: 0; top: -4px; border-right: 8px solid rgba(255,255,255,0.3); border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
+  @keyframes fadePulse { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
+
+  /* 钩子咬合微调 */
+  #hookRight { top: 0; left: 0; }
+  #hookLeft  { top: 2px; left: 2px; }
+
+  /* 状态 (复用) */
+  .checkmark{ position:absolute; z-index:50; left:50%; top:40%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25); animation:pop .55s ease-out;}
+  .checkmark.active{ display:flex;} .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)} }
+  
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  .toolbar button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s, transform .05s, opacity .2s; user-select:none;}
+  .toolbar button:hover{ background:#5a5a5a;} .toolbar button:active{ transform:scale(.98);} .toolbar button:disabled{ opacity:.5; cursor:not-allowed;}
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.8); color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.35);
+    font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200;}
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5);}
+  .modal h3{ margin:8px 0 6px; font-size:20px;} .modal p{ color:#cfd8dc; margin-top:0;} .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;}
+
+  .explanation{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink);}
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em;} 
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">按住左边的手柄<strong>向左拖动</strong>，达到 <strong>50N</strong> 左右。</div>
+      <div class="task-hint" id="taskHint">提示：新的弹簧更长，需要拖动更远的距离。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="canvas">
+      
+      <div class="wall-mount">
+        <div class="mount-loop"></div>
+      </div>
+
+      <div class="scale-wrapper" id="scaleRight">
+        <div class="hook-assembly" id="hookAssyRight">
+          <div class="metal-hook" id="hookRight"></div>
+        </div>
+        <div class="scale-casing">
+          <div class="readout-panel">
+            <span class="scale-label">WALL FORCE</span>
+            <div class="lcd-screen" id="readoutRight">0.0</div>
+          </div>
+          <div class="spring-window">
+            <div class="spring-coil" id="coilRight"></div>
+            <div class="internal-rod" id="rodRight"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="scale-wrapper" id="scaleLeft">
+        <div class="hand-grip">👈</div> <div class="scale-casing">
+          <div class="readout-panel">
+            <span class="scale-label">YOUR FORCE</span>
+            <div class="lcd-screen" id="readoutLeft">0.0</div>
+          </div>
+          <div class="spring-window">
+            <div class="spring-coil" id="coilLeft"></div>
+            <div class="internal-rod" id="rodLeft"></div>
+          </div>
+        </div>
+        <div class="hook-assembly" id="hookAssyLeft">
+          <div class="metal-hook" id="hookLeft"></div>
+        </div>
+      </div>
+
+      <div class="drag-hint">
+        <div class="drag-arrow"></div>
+        <span>按住向左拉</span>
+      </div>
+      
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">请按住左边的手柄向左拉</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3 id="doneTitle">极限挑战成功！🎉</h3>
+      <p>即使达到150N的极限拉力，<br>墙壁对你的拉力依然和你拉墙壁的力<strong>分毫不差</strong>。</p>
+      <button class="ok" id="okBtn">明白</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>150N 的弹簧告诉我们什么？</h2>
+    <ul>
+      <li><strong>胡克定律 (F=kx)</strong>：力越大，弹簧伸得越长。在150N时，你能明显看到弹簧的巨大形变。</li>
+      <li><strong>恒等关系</strong>：无论是在 10N 还是 150N，两个屏幕的数字总是同步的。这说明作用力与反作用力的相等关系与力的大小无关。</li>
+    </ul>
+  </div>
+
+<script>
+/* ====== 常量定义 ====== */
+const MAX_FORCE = 150;      // 新的极限值
+const MAX_EXTENSION = 140;  // 视觉上的最大伸长量 (px)
+const SCALE_LEFT_START = 302; // 左测力计初始 right 值
+
+/* ====== 状态管理 ====== */
+const state = {
+  force: 0,
+  step: 0,
+  freeMode: false,
+  autoMode: false,
+  completed: false,
+  isDragging: false,
+  dragStartX: 0,
+  initialDisplacement: 0,
+};
+
+/* ====== DOM 元素 ====== */
+const UI = {
+  // Left Scale (Active)
+  scaleLeft: document.getElementById('scaleLeft'),
+  coilLeft: document.getElementById('coilLeft'),
+  rodLeft: document.getElementById('rodLeft'),
+  hookAssyLeft: document.getElementById('hookAssyLeft'),
+  readoutLeft: document.getElementById('readoutLeft'),
+  
+  // Right Scale (Passive)
+  scaleRight: document.getElementById('scaleRight'),
+  coilRight: document.getElementById('coilRight'),
+  rodRight: document.getElementById('rodRight'),
+  hookAssyRight: document.getElementById('hookAssyRight'),
+  readoutRight: document.getElementById('readoutRight'),
+  
+  dragHint: document.querySelector('.drag-hint'),
+  
+  dots: [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')],
+  taskText: document.getElementById('taskText'),
+  taskHint: document.getElementById('taskHint'),
+  stepCount: document.getElementById('taskStep'),
+  
+  toast: document.getElementById('toast'),
+  check: document.getElementById('checkmark'),
+  modal: document.getElementById('doneMask')
+};
+
+/* ====== 任务定义 ====== */
+const tasks = [
+  {
+    text: "尝试拉动弹簧，将拉力控制在 <strong>50N</strong> 左右 (±5N)。",
+    hint: "慢慢向左拖动，感受弹簧的阻力。",
+    check: (f) => f >= 45 && f <= 55,
+    duration: 600
+  },
+  {
+    text: "极限挑战！用力拉到 <strong>150N (最大值)</strong>。",
+    hint: "看！弹簧被拉得非常长，挂钩依然紧紧咬合。",
+    check: (f) => f >= 148,
+    duration: 800
+  },
+  {
+    text: "精细回弹：慢慢松手，让读数回到 <strong>30N</strong> (±3N)。",
+    hint: "这需要很好的控制力，观察两个读数是否依然相等。",
+    check: (f) => f >= 27 && f <= 33,
+    duration: 1000
+  }
+];
+
+/* ====== 物理渲染核心 ====== */
+function updatePhysics(newForce) {
+  // 限制力在 0 - MAX_FORCE 之间
+  state.force = Math.max(0, Math.min(MAX_FORCE, newForce));
+  
+  // 1. 数值显示
+  const valStr = state.force.toFixed(1);
+  UI.readoutLeft.textContent = valStr;
+  UI.readoutRight.textContent = valStr;
+
+  // 2. 物理位移计算
+  // 当前伸长量 (px) = (当前力 / 最大力) * 最大伸长量
+  const currentExt = (state.force / MAX_FORCE) * MAX_EXTENSION;
+  
+  // --- 右测力计 (固定侧) ---
+  // 弹簧伸长
+  UI.coilRight.style.width = (20 + currentExt) + "px"; 
+  UI.rodRight.style.right = (30 + currentExt) + "px";
+  // 挂钩向左伸出
+  UI.hookAssyRight.style.left = (-14 - currentExt) + "px";
+
+  // --- 左测力计 (拖动侧) ---
+  // 外壳位置 = 初始 + (右弹簧伸长 + 左弹簧伸长)
+  // 因为 F 相同，k 相同，所以两边伸长量相同。总位移 = 2 * currentExt
+  UI.scaleLeft.style.right = (SCALE_LEFT_START + currentExt * 2) + "px";
+
+  // 内部构件
+  UI.coilLeft.style.width = (20 + currentExt) + "px";
+  UI.rodLeft.style.left = (30 + currentExt) + "px";
+  UI.hookAssyLeft.style.right = (-14 - currentExt) + "px";
+  
+  // 3. 任务检查 (不在自动演示且未完成时检查)
+  if (!state.freeMode && !state.autoMode && !state.completed) {
+    checkTask();
+  }
+}
+
+/* ====== 拖拽交互逻辑 ====== */
+function startDrag(e) {
+  if (state.autoMode) return;
+  state.isDragging = true;
+  state.dragStartX = getClientX(e);
+  
+  // 反算出当前的力对应的“虚拟”位移，保证连续性
+  // 位移比例：150N 对应的总屏幕拖动距离为 (MAX_EXTENSION * 2) = 280px
+  // 也就是说用户需要拖动 280px 才能达到满量程，手感比较真实
+  const totalPixels = MAX_EXTENSION * 2;
+  const currentDisplacement = (state.force / MAX_FORCE) * totalPixels;
+  state.initialDisplacement = currentDisplacement;
+  
+  UI.scaleLeft.classList.add('highlight');
+  UI.dragHint.style.opacity = 0; 
+}
+
+function onDrag(e) {
+  if (!state.isDragging) return;
+  e.preventDefault(); 
+  
+  const currentX = getClientX(e);
+  const deltaX = state.dragStartX - currentX; // 向左拉，deltaX > 0
+  
+  // 计算新的总位移
+  let totalDisplacement = state.initialDisplacement + deltaX;
+  totalDisplacement = Math.max(0, totalDisplacement); 
+  
+  // 映射回力
+  const totalPixels = MAX_EXTENSION * 2;
+  const newForce = (totalDisplacement / totalPixels) * MAX_FORCE;
+  
+  updatePhysics(newForce);
+}
+
+function stopDrag() {
+  if (!state.isDragging) return;
+  state.isDragging = false;
+  UI.scaleLeft.classList.remove('highlight');
+  
+  // 自动回弹
+  if (!state.autoMode) {
+     snapBack();
+  }
+}
+
+function snapBack() {
+  // 简单的回弹动画
+  if (state.force > 0) {
+    const startF = state.force;
+    const startTime = performance.now();
+    const duration = 400; // ms
+    
+    function animateSnap(time) {
+      if (state.isDragging || state.autoMode) return; // 被打断
+      const elapsed = time - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      // Ease Out
+      const ease = 1 - Math.pow(1 - progress, 3);
+      
+      const currentF = startF * (1 - ease);
+      updatePhysics(currentF);
+      
+      if (progress < 1) requestAnimationFrame(animateSnap);
+    }
+    requestAnimationFrame(animateSnap);
+  }
+}
+
+function getClientX(e) {
+  return e.touches ? e.touches[0].clientX : e.clientX;
+}
+
+// 绑定事件
+const target = UI.scaleLeft;
+target.addEventListener('mousedown', startDrag);
+target.addEventListener('touchstart', startDrag, {passive: false});
+window.addEventListener('mousemove', onDrag, {passive: false});
+window.addEventListener('touchmove', onDrag, {passive: false});
+window.addEventListener('mouseup', stopDrag);
+window.addEventListener('touchend', stopDrag);
+
+
+/* ====== 任务判定 ====== */
+let checkTimer = null;
+function checkTask() {
+  // 安全检查：防止 step 超出范围
+  if (state.step >= tasks.length) return;
+
+  const current = tasks[state.step];
+  if (current.check(state.force)) {
+    if (!checkTimer) {
+      checkTimer = setTimeout(() => {
+        completeStep();
+        checkTimer = null;
+      }, current.duration);
+    }
+  } else {
+    if (checkTimer) {
+      clearTimeout(checkTimer);
+      checkTimer = null;
+    }
+  }
+}
+
+function completeStep() {
+  // 防止重复完成
+  if (state.step >= tasks.length) return;
+
+  showCheck();
+  
+  // 关键修复：如果在非自动模式，为了防止 check 完成的瞬间因为 snapBack 导致力跳变，
+  // 我们暂时假装正在拖动，延迟回弹
+  if (!state.autoMode) {
+    state.isDragging = true; 
+    setTimeout(()=>{ state.isDragging = false; snapBack(); }, 600);
+  }
+
+  setTimeout(() => {
+    // UI 更新
+    UI.dots[state.step].classList.remove('active');
+    UI.dots[state.step].classList.add('done');
+    
+    state.step++;
+    if (state.step >= tasks.length) {
+      state.completed = true;
+      showDone();
+    } else {
+      UI.dots[state.step].classList.add('active');
+      const t = tasks[state.step];
+      UI.stepCount.textContent = `步骤 ${state.step + 1} / ${tasks.length}`;
+      UI.taskText.innerHTML = t.text;
+      UI.taskHint.textContent = t.hint;
+    }
+  }, 600);
+}
+
+/* ====== 按钮功能 ====== */
+function resetAll() {
+  state.force = 0;
+  state.step = 0;
+  state.completed = false;
+  state.autoMode = false;
+  state.isDragging = false;
+  
+  updatePhysics(0);
+  
+  UI.dots.forEach(d => d.className = 'dot');
+  UI.dots[0].classList.add('active');
+  UI.stepCount.textContent = "步骤 1 / 3";
+  UI.taskText.innerHTML = tasks[0].text;
+  UI.taskHint.textContent = tasks[0].hint;
+  UI.modal.style.display = 'none';
+  UI.dragHint.style.opacity = 1;
+  
+  if(!state.freeMode) showToast("实验已重置");
+}
+
+/* ====== 自动演示 (Script Error 修复版) ====== */
+async function autoDemo() {
+  if (state.autoMode) return;
+  state.autoMode = true;
+  document.getElementById('freeBtn').disabled = true;
+  
+  resetAll();
+  
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const animateTo = async (targetVal, duration) => {
+    const startVal = state.force;
+    const steps = 60;
+    const dt = duration / steps;
+    for (let i=1; i<=steps; i++) {
+      if (!state.autoMode) break; // 中断保护
+      const v = startVal + (targetVal - startVal) * (i/steps);
+      updatePhysics(v);
+      await sleep(dt);
+    }
+  };
+
+  UI.scaleLeft.classList.add('highlight');
+
+  // Task 1: 50N
+  await sleep(500);
+  await animateTo(50, 1000);
+  await sleep(800);
+  // 手动触发步骤完成，不依赖 physics check，防止竞态
+  completeStepAuto(); 
+  await sleep(800); 
+
+  // Task 2: 150N
+  await animateTo(150, 1200);
+  await sleep(1000);
+  completeStepAuto();
+  await sleep(800);
+
+  // Task 3: 30N
+  await animateTo(30, 1500);
+  await sleep(1200);
+  completeStepAuto();
+  
+  await sleep(500);
+  await animateTo(0, 500); // 松手
+  
+  UI.scaleLeft.classList.remove('highlight');
+  state.autoMode = false;
+  document.getElementById('freeBtn').disabled = false;
+}
+
+// 专门为自动演示设计的步骤完成函数，无副作用
+function completeStepAuto() {
+  if (state.step >= tasks.length) return;
+  showCheck();
+  UI.dots[state.step].classList.remove('active');
+  UI.dots[state.step].classList.add('done');
+  state.step++;
+  
+  if (state.step >= tasks.length) {
+    state.completed = true;
+    showDone();
+  } else {
+    UI.dots[state.step].classList.add('active');
+    const t = tasks[state.step];
+    UI.stepCount.textContent = `步骤 ${state.step + 1} / ${tasks.length}`;
+    UI.taskText.innerHTML = t.text;
+    UI.taskHint.textContent = t.hint;
+  }
+}
+
+/* ====== 辅助UI ====== */
+function showToast(msg) {
+  UI.toast.textContent = msg;
+  UI.toast.classList.add('show');
+  setTimeout(() => UI.toast.classList.remove('show'), 1500);
+}
+function showCheck() {
+  UI.check.classList.add('active');
+  setTimeout(() => UI.check.classList.remove('active'), 600);
+}
+function showDone() { UI.modal.style.display = 'flex'; }
+
+document.getElementById('resetBtn').onclick = resetAll;
+document.getElementById('autoDemoBtn').onclick = autoDemo;
+document.getElementById('okBtn').onclick = () => UI.modal.style.display = 'none';
+document.getElementById('freeBtn').onclick = () => {
+  state.freeMode = !state.freeMode;
+  const btn = document.getElementById('freeBtn');
+  const card = document.getElementById('taskCard');
+  if (state.freeMode) {
+    btn.textContent = "退出自由模式";
+    card.style.opacity = 0.3;
+    card.style.pointerEvents = 'none';
+    showToast("自由模式：请尽情拉动测力计");
+  } else {
+    btn.textContent = "自由模式";
+    card.style.opacity = 1;
+    card.style.pointerEvents = 'auto';
+    resetAll();
+  }
+};
+
+// Init
+updatePhysics(0);
+</script>
+</body>
+</html>

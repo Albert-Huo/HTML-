@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<title>探究 F与m、a的关系</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --ink:#e9f2ff;
+    --force-color: #ff9100; /* 橙色对应力 */
+    --mass-color: #40c4ff;  /* 蓝色对应质量 */
+  }
+  
+  /* 修复点1：允许滚动！ */
+  /* manipulation: 允许平移(滚动)和捏合缩放，但禁用双击缩放。这是现代移动端网页的最佳实践。 */
+  html, body {
+    touch-action: manipulation; 
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body{ 
+    background:#121212; color:#fff; 
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,sans-serif; 
+    margin:0; 
+    /* 修复点2：使用 padding 适配顶部安全区域，防止内容贴顶 */
+    padding: max(20px, env(safe-area-inset-top)) 10px 40px;
+    display:flex; flex-direction:column; align-items:center;
+    min-height: 100vh; /* 确保背景铺满 */
+    box-sizing: border-box;
+  }
+
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 任务卡片 */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:16px 18px; backdrop-filter:blur(10px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:center; transition:opacity .3s, filter .3s; margin-bottom: 12px; flex-shrink: 0;}
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:700; font-size: 13px; white-space:nowrap; letter-spacing: 0.5px;}
+  .task-text{ line-height:1.5; font-size: 15px; } .task-hint{ color:#ffd54f; font-size:13px; margin-top: 4px; display: block; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.2); transition: all 0.3s;}
+  .dot.active{ background:var(--warn); transform: scale(1.2);} .dot.done{ background:var(--accent); }
+
+  /* 主画布区域 */
+  #canvasWrap{ width:100%; max-width:900px; height:55vh; max-height:460px; position:relative; flex-shrink: 0;}
+  #canvas{ width:100%; height:100%; background:#0b0d12; border-radius:16px; box-shadow:0 12px 32px rgba(0,0,0,.4); position:relative; overflow:hidden; touch-action:none;
+    border: 1px solid rgba(255,255,255,0.08);
+    background-image: 
+      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+  
+  /* 物理实体 */
+  #ship {
+    position: absolute; left: 30px; bottom: 110px;
+    display: flex; align-items: center; transition: transform 0.1s linear; z-index: 5;
+  }
+  .thrusters { display: flex; flex-direction: column; gap:4px; margin-right: -2px; z-index: 1;}
+  .flame { font-size: 26px; filter: drop-shadow(0 0 10px #ff6d00); transform: rotate(-90deg); opacity: 0.2; transition: opacity 0.3s, transform 0.3s; transform-origin: center;}
+  .flame.active { opacity: 1; animation: flicker 0.08s infinite alternate; }
+  @keyframes flicker { from{transform: rotate(-90deg) scale(1);} to{transform: rotate(-90deg) scale(1.2) translateX(2px);} }
+
+  .cargo-bay {
+    display: flex; gap: 2px; background: #263238; border: 2px solid #546e7a;
+    border-radius: 6px; padding: 6px; align-items: center; min-width: 48px; justify-content: center;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+  }
+  .box { font-size: 32px; line-height: 1; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6)); transition: all 0.2s; }
+
+  /* 仪表盘 HUD */
+  .hud-panel {
+    position: absolute; top: 16px; left: 16px; right: 16px;
+    display: flex; gap: 12px;
+  }
+  .data-display {
+    background: rgba(10,10,10,0.7); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px;
+    padding: 8px 14px; min-width: 90px; backdrop-filter: blur(4px);
+    display: flex; flex-direction: column;
+  }
+  .data-label { font-size: 11px; color: #90a4ae; letter-spacing: 1px; margin-bottom: 2px;}
+  .data-val { font-size: 22px; font-family: "Menlo", monospace; color: #fff; font-weight: 700; }
+  .unit { font-size: 14px; color: #78909c; font-weight: normal; margin-left: 2px;}
+
+  /* 优化后的控制区 */
+  .ctrl-dock {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    width: 92%; max-width: 600px;
+    display: flex; gap: 16px; justify-content: center; align-items: stretch;
+    z-index: 10;
+  }
+
+  /* 控制模块卡片 */
+  .ctrl-module {
+    flex: 1;
+    background: rgba(30,30,30,0.9);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 10px 12px;
+    display: flex; flex-direction: column; align-items: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    transition: border-color 0.2s;
+  }
+  .ctrl-module.force { border-top: 3px solid var(--force-color); }
+  .ctrl-module.mass  { border-top: 3px solid var(--mass-color); }
+
+  .module-title { 
+    font-size: 12px; font-weight: 700; margin-bottom: 8px; letter-spacing: 1px; 
+    color: #cfd8dc; display: flex; align-items: center; gap: 6px;
+  }
+
+  /* 步进器样式 */
+  .stepper-ui {
+    display: flex; align-items: center; width: 100%; justify-content: space-between;
+    background: rgba(0,0,0,0.2); border-radius: 12px; padding: 4px;
+  }
+  
+  .step-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none; cursor: pointer;
+    font-size: 20px; font-weight: bold; line-height: 1; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+    background: rgba(255,255,255,0.1); color: #fff;
+  }
+  .step-btn:hover:not(:disabled) { background: rgba(255,255,255,0.25); transform: scale(1.05); }
+  .step-btn:active:not(:disabled) { transform: scale(0.95); }
+  .step-btn:disabled { opacity: 0.2; cursor: default; }
+  
+  .force .step-btn:hover:not(:disabled) { background: rgba(255, 145, 0, 0.3); color: var(--force-color); }
+  .mass .step-btn:hover:not(:disabled)  { background: rgba(64, 196, 255, 0.3); color: var(--mass-color); }
+
+  .val-display {
+    font-size: 20px; font-weight: 800; font-family: monospace;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .force .val-display { color: var(--force-color); text-shadow: 0 0 10px rgba(255,145,0,0.3); }
+  .mass .val-display  { color: var(--mass-color);  text-shadow: 0 0 10px rgba(64,196,255,0.3); }
+  .val-icon { font-size: 16px; opacity: 0.8; }
+
+  /* 启动按钮 */
+  .launch-btn {
+    flex: 0 0 auto;
+    background: var(--accent); color: #000;
+    border: none; border-radius: 16px;
+    padding: 0 24px;
+    font-size: 16px; font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(61,220,151,0.25);
+    transition: all 0.2s;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+  }
+  .launch-btn span { font-size: 11px; font-weight: 600; opacity: 0.7; margin-top: 2px;}
+  .launch-btn strong { font-size: 18px; }
+  .launch-btn:hover { background: #69f0ae; transform: translateY(-2px); box-shadow: 0 4px 25px rgba(61,220,151,0.4); }
+  .launch-btn:active { transform: scale(0.96); }
+  .launch-btn:disabled { background: #444; color: #888; box-shadow: none; cursor: not-allowed; }
+
+  /* 动画与反馈 */
+  .checkmark{ position:absolute; z-index:50; left:50%; top:40%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25); animation:pop .55s ease-out;}
+  .checkmark.active{ display:flex;} .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)} }
+
+  .toolbar{ width:100%; max-width:900px; margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; flex-shrink: 0;}
+  .tool-btn{ padding:12px 18px; background:#333; color:#eee; border:1px solid rgba(255,255,255,0.1); border-radius:10px; cursor:pointer; transition:all .2s; font-size: 14px; font-weight: 500;}
+  .tool-btn:hover{ background:#444; border-color: rgba(255,255,255,0.3);} .tool-btn:active{ transform:scale(.98);} .tool-btn:disabled{ opacity:.5;}
+
+  .toast{ position:fixed; left:50%; bottom:30px; transform:translateX(-50%) translateY(20px); background:rgba(20,20,20,0.95); color:#fff; padding:12px 20px; border-radius:30px; box-shadow:0 10px 30px rgba(0,0,0,.5);
+    border: 1px solid rgba(255,255,255,0.15); font-size:15px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; text-align: center; white-space: nowrap;}
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:300; backdrop-filter: blur(4px); }
+  .modal{ width:min(90vw,360px); background:#1e1e1e; color:#fff; border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:24px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.6);}
+  .modal h3{ margin:0 0 12px; font-size:22px; color: var(--accent);} .modal p{ color:#b0bec5; margin-top:0; line-height: 1.6;} 
+  .modal .ok{ margin-top:20px; background:var(--accent); color:#081a12; font-weight:700; padding: 12px 32px; border:none; border-radius: 8px; cursor: pointer; font-size: 16px; transition: transform 0.1s;}
+  .modal .ok:hover { transform: scale(1.05); }
+
+  .explanation{ width:100%; max-width:900px; margin:20px 0; line-height:1.7; font-size:15px; color:var(--ink); background: rgba(255,255,255,0.03); padding: 16px; border-radius: 12px; flex-shrink: 0;}
+  .explanation h2{ margin:0 0 10px; color:#9bd3ff; font-size:1.2em; display: flex; align-items: center; gap:8px;}
+  .explanation ul{ margin:0; padding-left: 20px; color: #cfd8dc;}
+  .explanation li { margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">保持质量(m)为 1，将受力(F)增加到 3，体验<strong>最大的加速度</strong>。</div>
+      <div class="task-hint" id="taskHint">提示：点击橙色区域的“+”增加推力。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot0"></span><span class="dot" id="dot1"></span><span class="dot" id="dot2"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="canvas">
+      
+      <div class="hud-panel">
+        <div class="data-display" style="border-left: 3px solid var(--accent)">
+          <span class="data-label">加速度 (a)</span>
+          <span class="data-val"><span id="valAcc">0.0</span><span class="unit">m/s²</span></span>
+        </div>
+        <div class="data-display" style="border-left: 3px solid var(--warn)">
+          <span class="data-label">速度 (v)</span>
+          <span class="data-val" style="color:var(--warn)"><span id="valVel">0</span><span class="unit">m/s</span></span>
+        </div>
+      </div>
+
+      <div id="ship">
+        <div class="thrusters" id="thrusters">
+          <div class="flame">🔥</div>
+          <div class="flame">🔥</div>
+          <div class="flame">🔥</div>
+        </div>
+        <div class="cargo-bay" id="cargoBay">
+          <div class="box">📦</div>
+        </div>
+      </div>
+
+      <div class="ctrl-dock">
+        <div class="ctrl-module force">
+          <div class="module-title" style="color:var(--force-color)">受力 Force (F)</div>
+          <div class="stepper-ui">
+            <button class="step-btn" id="btnFDec" onclick="adjust('F', -1)">-</button>
+            <div class="val-display">
+              <span id="dispF">1</span> <span class="val-icon">🔥</span>
+            </div>
+            <button class="step-btn" id="btnFInc" onclick="adjust('F', 1)">+</button>
+          </div>
+        </div>
+
+        <div class="ctrl-module mass">
+          <div class="module-title" style="color:var(--mass-color)">质量 Mass (m)</div>
+          <div class="stepper-ui">
+            <button class="step-btn" id="btnMDec" onclick="adjust('m', -1)">-</button>
+            <div class="val-display">
+              <span id="dispm">1</span> <span class="val-icon">📦</span>
+            </div>
+            <button class="step-btn" id="btnMInc" onclick="adjust('m', 1)">+</button>
+          </div>
+        </div>
+
+        <button class="launch-btn" id="btnLaunch">
+          <strong>启动 🚀</strong>
+          <span>GO!</span>
+        </button>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="btnReset">↺ 步骤重置</button>
+    <button class="tool-btn" id="btnAuto">▶ 自动演示</button>
+    <button class="tool-btn" id="btnFree">⚙ 自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">请按提示调整参数</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3 id="doneTitle">探索完成！🎉</h3>
+      <p>你已成功验证了：<br>物体的加速度与受力成正比，<br>与质量成反比。<br><br><strong style="font-size:1.4em; color:var(--accent)">F = ma</strong></p>
+      <button class="ok" id="okBtn">明白</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>💡 知识点：</h2>
+    <ul>
+      <li><strong>加速度 (a)</strong>：描述物体速度变化的快慢。</li>
+      <li><strong>力 (F) 与 加速度</strong>：在质量不变时，推力(F)越大，起步越快。</li>
+      <li><strong>质量 (m) 与 加速度</strong>：在推力不变时，货物(m)越重，起步越慢。</li>
+    </ul>
+  </div>
+
+<script>
+/* ====== 状态管理 ====== */
+const state = {
+  F: 1, // 力 1-3
+  m: 1, // 质量 1-3
+  running: false,
+  pos: 0,
+  vel: 0,
+  acc: 0,
+  freeMode: false,
+  step: 0, 
+  completed: false
+};
+
+const tasks = [
+  {
+    text: '保持质量(m)为 1，将受力(F)调至 3，体验<strong>最大的加速度</strong>。',
+    hint: '提示：点击橙色区域的 + 号，将火焰增加到 3 个。',
+    check: (s) => s.m === 1 && s.F === 3
+  },
+  {
+    text: '保持受力(F)为 1，将质量(m)调至 3，体验<strong>最小的加速度</strong>。',
+    hint: '提示：将货箱增加到 3 个，并将火焰减为 1 个。',
+    check: (s) => s.m === 3 && s.F === 1
+  },
+  {
+    text: '将质量(m) 固定为 2，调整受力(F)，使加速度为 <strong>1.0 m/s²</strong>。',
+    hint: '提示：当 m=2 时，需要多少力才能让 F/m = 1？',
+    check: (s) => s.m === 2 && s.F === 2
+  }
+];
+
+/* ====== DOM 元素 ====== */
+const els = {
+  ship: document.getElementById('ship'),
+  thrusters: document.getElementById('thrusters'),
+  cargo: document.getElementById('cargoBay'),
+  dispF: document.getElementById('dispF'),
+  dispm: document.getElementById('dispm'),
+  valAcc: document.getElementById('valAcc'),
+  valVel: document.getElementById('valVel'),
+  btnLaunch: document.getElementById('btnLaunch'),
+  taskText: document.getElementById('taskText'),
+  taskHint: document.getElementById('taskHint'),
+  taskStep: document.getElementById('taskStep'),
+  dots: [document.getElementById('dot0'), document.getElementById('dot1'), document.getElementById('dot2')],
+  checkmark: document.getElementById('checkmark'),
+  toast: document.getElementById('toast'),
+  doneMask: document.getElementById('doneMask'),
+  card: document.getElementById('taskCard'),
+  btnFree: document.getElementById('btnFree'),
+  // 按钮引用
+  btnFInc: document.getElementById('btnFInc'),
+  btnFDec: document.getElementById('btnFDec'),
+  btnMInc: document.getElementById('btnMInc'),
+  btnMDec: document.getElementById('btnMDec')
+};
+
+/* ====== 逻辑控制 ====== */
+
+function updateVisuals() {
+  // 更新数值文本
+  els.dispF.textContent = state.F;
+  els.dispm.textContent = state.m;
+
+  // 更新火焰视觉
+  const flames = els.thrusters.children;
+  for(let i=0; i<3; i++) {
+    flames[i].style.display = i < state.F ? 'block' : 'none';
+    flames[i].classList.toggle('active', state.running);
+  }
+
+  // 更新货物视觉
+  els.cargo.innerHTML = '<div class="box">📦</div>'.repeat(state.m);
+  
+  // 更新按钮禁用状态
+  els.btnFDec.disabled = state.running || state.F <= 1;
+  els.btnFInc.disabled = state.running || state.F >= 3;
+  els.btnMDec.disabled = state.running || state.m <= 1;
+  els.btnMInc.disabled = state.running || state.m >= 3;
+  
+  // 更新仪表盘预览（仅静止时）
+  if (!state.running) {
+    let previewA = (state.F / state.m).toFixed(1);
+    els.valAcc.textContent = previewA;
+    els.valVel.textContent = '0';
+  }
+  
+  // 飞船归位
+  if (!state.running && state.pos === 0) {
+    els.ship.style.transform = `translateX(0px)`;
+  }
+}
+
+function adjust(type, delta) {
+  if (state.running) return;
+  if (type === 'F') state.F = Math.min(3, Math.max(1, state.F + delta));
+  if (type === 'm') state.m = Math.min(3, Math.max(1, state.m + delta));
+  updateVisuals();
+}
+
+/* ====== 物理引擎 ====== */
+function launch() {
+  if (state.running) return;
+  
+  // 任务检查前置
+  if (!state.freeMode && !state.completed) {
+    const task = tasks[state.step];
+    if (!task.check(state)) {
+      showToast("设置不符合当前任务要求，请看提示");
+      return;
+    }
+  }
+
+  state.running = true;
+  state.pos = 0;
+  state.vel = 0;
+  state.acc = state.F / state.m; 
+  
+  els.valAcc.textContent = state.acc.toFixed(1);
+  els.btnLaunch.disabled = true;
+  updateVisuals(); 
+
+  let lastTime = performance.now();
+  const width = document.getElementById('canvas').clientWidth - 100; 
+  
+  function loop(time) {
+    if (!state.running) return;
+    const dt = (time - lastTime) / 1000;
+    lastTime = time;
+
+    // 视觉加速调整因子
+    const visualScale = 220; 
+    state.vel += state.acc * dt;
+    state.pos += state.vel * visualScale * dt;
+
+    els.valVel.textContent = (state.vel * 10).toFixed(0); 
+    els.ship.style.transform = `translateX(${state.pos}px)`;
+
+    if (state.pos < width) {
+      requestAnimationFrame(loop);
+    } else {
+      finishRun();
+    }
+  }
+  requestAnimationFrame(loop);
+}
+
+function finishRun() {
+  state.running = false;
+  updateVisuals(); 
+  els.btnLaunch.disabled = false;
+
+  if (state.freeMode) {
+    setTimeout(resetPos, 1000);
+    return;
+  }
+
+  // 任务判定成功
+  if (!state.completed) {
+    showCheck();
+    // 延迟进入下一步
+    setTimeout(() => {
+      nextStep();
+      resetPos();
+    }, 1000);
+  } else {
+    setTimeout(resetPos, 1000);
+  }
+}
+
+function resetPos() {
+  state.pos = 0;
+  state.vel = 0;
+  state.running = false;
+  els.valVel.textContent = '0';
+  updateVisuals();
+}
+
+/* ====== 任务系统 ====== */
+function nextStep() {
+  els.dots[state.step].classList.remove('active');
+  els.dots[state.step].classList.add('done');
+  
+  state.step++;
+  if (state.step >= tasks.length) {
+    state.completed = true;
+    document.getElementById('doneMask').style.display = 'flex';
+  } else {
+    els.dots[state.step].classList.add('active');
+    updateTaskUI();
+  }
+}
+
+function updateTaskUI() {
+  if (state.completed) return;
+  const t = tasks[state.step];
+  els.taskText.innerHTML = t.text;
+  els.taskHint.textContent = t.hint;
+  els.taskStep.textContent = `步骤 ${state.step + 1} / ${tasks.length}`;
+}
+
+function resetAll() {
+  // 1. 强制重置核心状态
+  state.step = 0;
+  state.completed = false;
+  state.F = 1;
+  state.m = 1;
+  state.running = false;
+  
+  // 2. 强制退出自由模式并恢复UI
+  state.freeMode = false;
+  els.card.style.opacity = 1;
+  els.card.style.filter = 'none';
+  els.btnFree.textContent = "⚙ 自由模式";
+  els.taskStep.textContent = "步骤 1 / 3"; // 恢复标题
+
+  // 3. UI重置
+  els.dots.forEach(d => {d.className='dot';});
+  els.dots[0].classList.add('active');
+  document.getElementById('doneMask').style.display = 'none';
+  
+  updateTaskUI();
+  resetPos();
+  updateVisuals();
+  showToast("已重置，请重新开始探究");
+}
+
+/* ====== 交互组件 ====== */
+function showToast(msg) {
+  els.toast.textContent = msg;
+  els.toast.classList.add('show');
+  setTimeout(() => els.toast.classList.remove('show'), 2000);
+}
+
+function showCheck() {
+  els.checkmark.classList.add('active');
+  setTimeout(() => els.checkmark.classList.remove('active'), 800);
+}
+
+/* ====== 按钮事件 ====== */
+document.getElementById('btnReset').onclick = resetAll;
+document.getElementById('okBtn').onclick = () => document.getElementById('doneMask').style.display = 'none';
+document.getElementById('btnLaunch').onclick = launch;
+
+document.getElementById('btnFree').onclick = function() {
+  state.freeMode = !state.freeMode;
+  this.textContent = state.freeMode ? "退出自由模式" : "⚙ 自由模式";
+  
+  if (state.freeMode) {
+    els.card.style.opacity = 0.3;
+    els.card.style.filter = 'grayscale(0.8)';
+    els.taskStep.textContent = "自由模式";
+    els.taskText.innerHTML = "随意调整橙色与蓝色参数，观察运动变化。";
+    els.taskHint.textContent = "";
+  } else {
+    resetAll();
+  }
+};
+
+/* ====== 自动演示 (智能等待修复版) ====== */
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+
+async function autoRunStep(targetF, targetM) {
+  // 设置参数
+  state.F = targetF; 
+  state.m = targetM; 
+  updateVisuals();
+  
+  await sleep(600); // 停顿，让用户看清设置
+  launch();         // 启动
+  
+  await sleep(200); // 等待状态变为 running
+  
+  // 关键修复：只要还在跑，就一直等，防止提前进入下一步
+  while(state.running) {
+    await sleep(100);
+  }
+  
+  // 跑完后额外等一会（让对勾动画播完）
+  await sleep(1500);
+}
+
+document.getElementById('btnAuto').onclick = async function() {
+  if (state.running) return;
+  // 增加 try-finally 防止报错导致按钮永久禁用
+  try {
+    this.disabled = true;
+    
+    // 强制复位，无论之前是不是自由模式
+    resetAll();
+    // 稍微等待 reset 完成
+    await sleep(300);
+    
+    // 步骤 1: F=3, m=1 (最快)
+    await autoRunStep(3, 1);
+    
+    // 步骤 2: F=1, m=3 (最慢)
+    await autoRunStep(1, 3);
+    
+    // 步骤 3: F=2, m=2 (要求 a=1.0)
+    await autoRunStep(2, 2);
+    
+  } finally {
+    this.disabled = false;
+  }
+};
+
+// 初始化
+updateVisuals();
+
+</script>
+</body>
+</html>
