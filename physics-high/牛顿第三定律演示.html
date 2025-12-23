@@ -515,6 +515,9 @@ function completeStep() {
 
 /* ====== 按钮功能 ====== */
 function resetAll() {
+  // 修复：重置时如果有待触发的任务检查定时器，需要清除，防止重置后突然弹出完成
+  if (checkTimer) { clearTimeout(checkTimer); checkTimer = null; }
+  
   state.force = 0;
   state.step = 0;
   state.completed = false;
@@ -534,13 +537,15 @@ function resetAll() {
   if(!state.freeMode) showToast("实验已重置");
 }
 
-/* ====== 自动演示 (Script Error 修复版) ====== */
+/* ====== 自动演示 (修复版) ====== */
 async function autoDemo() {
   if (state.autoMode) return;
+  
+  // 修复关键：先完全重置状态（这会把autoMode设为false），然后再开启autoMode
+  resetAll();
+  
   state.autoMode = true;
   document.getElementById('freeBtn').disabled = true;
-  
-  resetAll();
   
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const animateTo = async (targetVal, duration) => {
@@ -559,19 +564,22 @@ async function autoDemo() {
 
   // Task 1: 50N
   await sleep(500);
+  if(!state.autoMode) return;
+  
   await animateTo(50, 1000);
   await sleep(800);
-  // 手动触发步骤完成，不依赖 physics check，防止竞态
   completeStepAuto(); 
   await sleep(800); 
 
   // Task 2: 150N
+  if(!state.autoMode) return;
   await animateTo(150, 1200);
   await sleep(1000);
   completeStepAuto();
   await sleep(800);
 
   // Task 3: 30N
+  if(!state.autoMode) return;
   await animateTo(30, 1500);
   await sleep(1200);
   completeStepAuto();
@@ -628,6 +636,9 @@ document.getElementById('freeBtn').onclick = () => {
     card.style.opacity = 0.3;
     card.style.pointerEvents = 'none';
     showToast("自由模式：请尽情拉动测力计");
+    // 退出自动演示（如果正在运行）
+    state.autoMode = false; 
+    UI.scaleLeft.classList.remove('highlight');
   } else {
     btn.textContent = "自由模式";
     card.style.opacity = 1;
