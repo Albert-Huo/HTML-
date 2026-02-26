@@ -1,0 +1,1511 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>第三关：飞船光钟实验室</title>
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --panel:rgba(15,15,15,0.55);
+      --panel2:rgba(15,15,15,0.55);
+      --line:rgba(255,255,255,0.12);
+      --text:#ffffff;
+      --muted:#cfd8dc;
+      --accent:#3ddc97;
+      --accent2:#ffd54f;
+      --ok:#31d389;
+      --warn:#ffb74d;
+      --danger:#ff6b6b;
+      --shadow:0 14px 34px rgba(0,0,0,0.35);
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      padding:10px;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 70% 25%, rgba(255,255,255,0.05), transparent 38%),
+        radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 44%),
+        var(--bg);
+      overflow-x:hidden;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+
+    .app{
+      width:min(900px,100%);
+      margin:0 auto 20px;
+    }
+
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:900px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,0.15);
+      margin:0 0 12px;
+      background:#000;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{
+      0%{ background-position:0 0; }
+      100%{ background-position:-100% 0; }
+    }
+
+    .taskCard{
+      width:100%;
+      background:rgba(255,255,255,0.08);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      margin-bottom:10px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:start;
+      gap:10px;
+      transition:opacity .2s, filter .2s;
+    }
+
+    .taskMain{ min-width:0; }
+
+    .stepBadge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(255,255,255,0.16);
+      border:1px solid rgba(255,255,255,0.2);
+      color:#fff;
+      border-radius:8px;
+      padding:4px 8px;
+      margin-right:0;
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    .taskText{
+      display:block;
+      font-size:16px;
+      font-weight:700;
+      line-height:1.4;
+    }
+
+    .taskGoal{
+      margin-top:4px;
+      color:#f2d354;
+      font-weight:600;
+      font-size:12px;
+      opacity:.95;
+    }
+
+    .dots{ display:flex; gap:6px; }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:rgba(255,255,255,0.26);
+      outline:2px solid rgba(255,255,255,0.12);
+    }
+    .dot.on{ background:var(--warn); }
+
+    .lab{
+      position:relative;
+      width:100%;
+      min-height:520px;
+      max-height:620px;
+      background:
+        radial-gradient(circle at 70% 25%, rgba(255,255,255,0.05), transparent 38%),
+        radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 44%),
+        #0b0f14;
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      overflow:hidden;
+      padding:16px;
+      touch-action:none;
+    }
+
+    .modePill{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:10;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background:var(--panel);
+      font-size:13px;
+      color:#dce8ff;
+    }
+
+    .sceneGrid{
+      position:relative;
+      z-index:2;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:14px;
+      margin-top:42px;
+    }
+
+    .framePanel{
+      background:rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:12px;
+      padding:10px;
+      min-height:322px;
+      backdrop-filter: blur(2px);
+    }
+
+    .frameHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      margin-bottom:8px;
+    }
+
+    .frameTitle{
+      font-weight:700;
+      font-size:18px;
+      color:#d8e6ff;
+    }
+
+    .frameNote{
+      font-size:13px;
+      color:#98b4de;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.15);
+      border-radius:999px;
+      padding:3px 9px;
+      white-space:nowrap;
+    }
+
+    .clockValue{
+      margin-top:8px;
+      font-size:17px;
+      color:#e8f1ff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:10px;
+      padding:6px 10px;
+    }
+
+    .clockValue b{
+      color:#fff;
+      font-size:20px;
+      letter-spacing:0.5px;
+    }
+
+    .clockSub{
+      margin-top:6px;
+      font-size:14px;
+      color:#9ec4f7;
+      min-height:22px;
+    }
+
+    svg.scene{
+      width:100%;
+      height:244px;
+      display:block;
+      border-radius:10px;
+      background:
+        radial-gradient(360px 160px at 50% 20%, rgba(98,133,255,0.16), transparent 62%),
+        linear-gradient(180deg, rgba(9,20,42,0.95), rgba(7,16,34,0.95));
+      border:1px solid rgba(255,255,255,0.12);
+    }
+
+    .shipHull{
+      fill:url(#shipGrad);
+      stroke:rgba(209,224,255,0.7);
+      stroke-width:1.2;
+    }
+
+    .mirror{
+      fill:#cfd8ff;
+      fill-opacity:0.84;
+      stroke:#f7fbff;
+      stroke-opacity:0.8;
+      stroke-width:1;
+      rx:6;
+    }
+
+    .beamShip{
+      stroke:#ffd54f;
+      stroke-width:4;
+      stroke-linecap:round;
+      fill:none;
+      stroke-dasharray:8 6;
+      filter:drop-shadow(0 0 6px rgba(255,213,79,0.65));
+    }
+
+    .beamEarth{
+      stroke:#4dd0e1;
+      stroke-width:4.2;
+      stroke-linecap:round;
+      fill:none;
+      stroke-dasharray:8 6;
+      filter:
+        drop-shadow(0 0 6px rgba(77,208,225,0.58))
+        drop-shadow(0 0 14px rgba(77,208,225,0.36));
+    }
+
+    .photonShip{
+      fill:#ffd54f;
+      stroke:#fff;
+      stroke-width:1.1;
+      filter:drop-shadow(0 0 6px rgba(255,213,79,0.72));
+    }
+
+    .photonEarth{
+      fill:#4dd0e1;
+      stroke:#fff;
+      stroke-width:1.1;
+      filter:drop-shadow(0 0 6px rgba(77,208,225,0.72));
+    }
+
+    .traceHint{
+      stroke:rgba(255,255,255,0.22);
+      stroke-width:1.4;
+      stroke-dasharray:6 5;
+      fill:none;
+    }
+
+    .distanceRail{
+      stroke:rgba(131,170,255,0.65);
+      stroke-width:3;
+      stroke-linecap:round;
+    }
+
+    .distanceMark{
+      fill:#8bd6ff;
+      opacity:0.95;
+    }
+
+    .subInfoRow{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .pill{
+      border-radius:10px;
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.15);
+      padding:8px 10px;
+      font-size:15px;
+      color:#d0ddf7;
+      min-height:54px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:3px;
+    }
+
+    .pill b{ color:#fff; font-size:18px; }
+
+    .bottomActions{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    button{
+      border:none;
+      border-radius:8px;
+      padding:10px 16px;
+      color:#fff;
+      background:#444;
+      cursor:pointer;
+      transition:background .2s, transform .05s, opacity .2s;
+    }
+    button:hover{ background:#5a5a5a; }
+    button:active{ transform:scale(.98); }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .btnGhost{
+      background:#444;
+      border:1px solid rgba(255,255,255,0.16);
+      color:#fff;
+    }
+
+    .btnPrimary{
+      background:#2e7d32;
+      color:#fff;
+      font-weight:700;
+    }
+    #autoDemoBtn.is-running{
+      background:#2e7d32;
+      border:1px solid rgba(255,255,255,0.24);
+      box-shadow:0 0 0 1px rgba(61,220,151,0.35) inset;
+    }
+
+    .btnWarn{
+      background:var(--accent);
+      color:#081a12;
+      font-weight:900;
+    }
+
+    .quiz{
+      width:100%;
+      margin-top:8px;
+      background:rgba(255,255,255,0.05);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:12px;
+      padding:14px;
+      display:none;
+    }
+    .quiz.show{
+      display:block;
+    }
+
+    .quizTitle{
+      font-weight:700;
+      font-size:18px;
+      margin-bottom:8px;
+      color:#e8f3ff;
+    }
+
+    .quizOpts{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .quizBtn{
+      background:#444;
+      border:1px solid rgba(255,255,255,0.16);
+      color:#fff;
+      min-height:40px;
+    }
+
+    .quizBtn.good{
+      background:rgba(49,211,137,0.2);
+      border-color:rgba(49,211,137,0.75);
+    }
+
+    .quizBtn.bad{
+      background:rgba(255,107,107,0.2);
+      border-color:rgba(255,107,107,0.75);
+    }
+
+    .quizHint{
+      margin-top:9px;
+      color:#9fc0ef;
+      min-height:22px;
+      font-size:14px;
+    }
+
+    .dock{
+      position:absolute;
+      width:min(360px,84vw);
+      border-radius:12px;
+      overflow:hidden;
+      border:1px solid var(--line);
+      background:var(--panel);
+      backdrop-filter:blur(6px);
+      box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      z-index:15;
+      touch-action:none;
+    }
+
+    .dockHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:10px 12px;
+      cursor:grab;
+      user-select:none;
+      background:rgba(255,255,255,0.05);
+    }
+
+    .dockTitle{ font-size:15px; font-weight:700; color:#e8f2ff; }
+    .dockBadge{
+      display:inline-block;
+      font-size:12px;
+      margin-left:6px;
+      padding:1px 8px;
+      border-radius:999px;
+      background:rgba(49,211,137,0.2);
+      border:1px solid rgba(49,211,137,0.55);
+      color:#8ef5c2;
+      vertical-align:1px;
+    }
+
+    .dockBody{
+      padding:10px 12px 12px;
+      max-height:340px;
+      overflow:auto;
+      transition:max-height .2s ease, opacity .15s ease;
+    }
+
+    .dockBody.collapsed{
+      max-height:0;
+      opacity:0;
+      padding-top:0;
+      padding-bottom:0;
+      overflow:hidden;
+      border-top:none;
+    }
+
+    .iconBtn{
+      padding:6px 11px;
+      border-radius:8px;
+      background:#444;
+      border:1px solid rgba(255,255,255,0.16);
+      color:#fff;
+      font-size:13px;
+      min-width:52px;
+    }
+
+    .mini{ font-size:13px; color:#9bb3de; }
+
+    .sliderBlock{ margin-bottom:10px; }
+    .sliderBlock label{ font-size:14px; color:#d8e7ff; }
+    input[type="range"]{ width:100%; margin-top:6px; }
+
+    .runTable{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+      color:#ddedff;
+    }
+    .runTable th,.runTable td{
+      border-bottom:1px solid rgba(255,255,255,0.12);
+      padding:6px 4px;
+      text-align:center;
+      white-space:nowrap;
+    }
+    .runTable th{ color:#a8c3ee; font-weight:700; }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:20px;
+      transform:translateX(-50%) translateY(10px);
+      background:rgba(8,12,22,0.92);
+      color:#fff;
+      border:1px solid rgba(255,255,255,0.24);
+      border-radius:10px;
+      padding:10px 14px;
+      z-index:60;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .2s ease, transform .2s ease;
+      max-width:min(92vw,720px);
+      text-align:center;
+      font-size:15px;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+    .toast.ok{ border-color:rgba(49,211,137,0.65); color:#baffdc; }
+    .toast.err{ border-color:rgba(255,107,107,0.65); color:#ffd4d4; }
+
+    .checkmark{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:70;
+      pointer-events:none;
+    }
+    .checkmark.on{ display:flex; }
+    .checkmark .ring{
+      width:84px;
+      height:84px;
+      border-radius:50%;
+      border:4px solid rgba(49,211,137,0.9);
+      box-shadow:0 0 20px rgba(49,211,137,0.4);
+      position:relative;
+      background:rgba(13,33,26,0.7);
+    }
+    .checkmark .ring:after{
+      content:"";
+      position:absolute;
+      left:22px;
+      top:18px;
+      width:26px;
+      height:40px;
+      border:solid #5af0a7;
+      border-width:0 5px 5px 0;
+      transform:rotate(45deg);
+    }
+
+    .doneMask{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.5);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:80;
+      padding:16px;
+    }
+    .doneMask.show{ display:flex; }
+
+    .doneCard{
+      width:min(90vw, 420px);
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.15);
+      background:#111;
+      color:#fff;
+      box-shadow:0 16px 36px rgba(0,0,0,0.42);
+      padding:18px 16px;
+      text-align:center;
+    }
+
+    .doneTitle{ margin:8px 0 6px; font-size:22px; color:#fff; }
+    .doneText{ margin-top:0; color:#cfd8dc; line-height:1.6; margin-bottom:12px; }
+
+    .doneBtns{ display:flex; gap:10px; flex-wrap:wrap; }
+
+    @media (max-width:920px){
+      .sceneGrid{ grid-template-columns:1fr; }
+      .subInfoRow{ grid-template-columns:1fr 1fr; }
+      .taskText{ font-size:15px; }
+      .taskGoal{ font-size:12px; }
+      .dock{ width:min(320px,88vw); }
+    }
+
+    @media (max-width:520px){
+      .app{ width:96vw; }
+      .taskCard{ padding:10px 12px; }
+      .stepBadge{ padding:3px 7px; font-size:14px; }
+      .taskText{ font-size:14px; }
+      .taskGoal{ font-size:11px; }
+      .frameTitle{ font-size:16px; }
+      .frameNote{ font-size:12px; }
+      .subInfoRow{ grid-template-columns:1fr; }
+      .btnGhost,.btnPrimary,.btnWarn{ min-height:40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="spectrum"></div>
+
+    <section class="taskCard" id="taskCard">
+      <div class="stepBadge" id="stepBadge">步骤 1/4</div>
+      <div class="taskMain">
+        <div class="taskText" id="taskText">先把速度调到 0c，运行一次，观察两边计时是否一致。</div>
+        <div class="taskGoal" id="taskGoal">目标：v=0c 时，Δt≈0。</div>
+        <div class="quiz taskQuiz" id="quizBox">
+          <div class="quizTitle">结论选择：为什么地球看到飞船光钟更慢？</div>
+          <div class="quizOpts">
+            <button class="quizBtn" data-answer="wrong1">因为飞船上的光速变慢了</button>
+            <button class="quizBtn" data-answer="right">因为光速不变，但外部看到光路更长</button>
+            <button class="quizBtn" data-answer="wrong2">因为飞船时钟机械故障</button>
+          </div>
+          <div class="quizHint" id="quizHint">在第 4 步选择结论。</div>
+        </div>
+      </div>
+      <div class="dots" id="dots"></div>
+    </section>
+
+    <section class="lab" id="labArea">
+      <div class="modePill" id="modePill">模式：引导</div>
+
+      <div class="sceneGrid">
+        <article class="framePanel">
+          <div class="frameHead">
+            <div class="frameTitle">飞船参考系（船内）</div>
+            <div class="frameNote">光路：竖直上下</div>
+          </div>
+
+          <svg class="scene" id="shipScene" viewBox="0 0 360 244" aria-label="ship-frame">
+            <defs>
+              <linearGradient id="shipGrad" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0" stop-color="#2f56df"/>
+                <stop offset="1" stop-color="#19339d"/>
+              </linearGradient>
+            </defs>
+            <rect class="shipHull" x="118" y="22" width="124" height="198" rx="16"></rect>
+            <rect class="mirror" id="shipMirrorTop" x="148" y="42" width="64" height="10"></rect>
+            <rect class="mirror" id="shipMirrorBottom" x="148" y="192" width="64" height="10"></rect>
+            <line class="traceHint" id="shipTrace" x1="180" y1="50" x2="180" y2="196"></line>
+            <line class="beamShip" id="shipBeamUp" x1="180" y1="196" x2="180" y2="196"></line>
+            <line class="beamShip" id="shipBeamDown" x1="180" y1="50" x2="180" y2="50"></line>
+            <circle class="photonShip" id="shipPhoton" r="7" cx="180" cy="196"></circle>
+            <text x="180" y="234" fill="rgba(229,240,255,0.95)" text-anchor="middle" font-size="13">光钟镜面间距 h 可调</text>
+          </svg>
+
+          <div class="clockValue">船内光钟计时：<b id="shipTimeOut">0.000 s</b></div>
+          <div class="clockSub" id="shipClockSub">等待运行...</div>
+        </article>
+
+        <article class="framePanel">
+          <div class="frameHead">
+            <div class="frameTitle">地球参考系（外部观察）</div>
+            <div class="frameNote">光路：斜线更长</div>
+          </div>
+
+          <svg class="scene" id="earthScene" viewBox="0 0 360 244" aria-label="earth-frame">
+            <line class="distanceRail" x1="34" y1="218" x2="326" y2="218"></line>
+            <circle class="distanceMark" cx="34" cy="218" r="4"></circle>
+            <circle class="distanceMark" cx="326" cy="218" r="4"></circle>
+            <rect class="shipHull" id="earthShipBody" x="82" y="22" width="124" height="198" rx="16"></rect>
+            <rect class="mirror" id="earthMirrorTop" x="112" y="42" width="64" height="10"></rect>
+            <rect class="mirror" id="earthMirrorBottom" x="112" y="192" width="64" height="10"></rect>
+            <line class="beamEarth" id="earthBeamUp" x1="144" y1="196" x2="144" y2="196"></line>
+            <line class="beamEarth" id="earthBeamDown" x1="144" y1="50" x2="144" y2="50"></line>
+            <circle class="photonEarth" id="earthPhoton" r="7" cx="144" cy="196"></circle>
+            <line class="traceHint" id="earthTrace0" x1="144" y1="196" x2="144" y2="50"></line>
+            <line class="traceHint" id="earthTrace1" x1="144" y1="50" x2="144" y2="196"></line>
+            <text x="180" y="234" fill="rgba(229,240,255,0.95)" text-anchor="middle" font-size="13">飞船在地球视角中持续向右移动</text>
+          </svg>
+
+          <div class="clockValue">地球观测计时：<b id="earthTimeOut">0.000 s</b></div>
+          <div class="clockSub" id="earthClockSub">等待运行...</div>
+        </article>
+      </div>
+
+      <div class="subInfoRow">
+        <div class="pill">速度 <b id="vOut">0.00 c</b><span class="mini">范围 0.00 - 0.70c</span></div>
+        <div class="pill">时间差 Δt <b id="deltaOut">0.000 s</b><span class="mini">Δt=t<sub>earth</sub>-t<sub>ship</sub></span></div>
+      </div>
+
+      <div class="bottomActions">
+        <button class="btnGhost" id="stepResetBtn">步骤重置</button>
+        <button class="btnGhost" id="autoDemoBtn">自动演示</button>
+        <button class="btnGhost" id="freeModeBtn">自由模式</button>
+      </div>
+
+      <aside class="dock" id="controlDock" style="right:10px; top:66px; left:auto; bottom:auto;">
+        <div class="dockHead" id="controlHead">
+          <div class="dockTitle">实验控制 <span class="dockBadge">步骤</span></div>
+          <button class="iconBtn" id="controlToggleBtn">展开</button>
+        </div>
+        <div class="dockBody collapsed" id="controlBody">
+          <div class="sliderBlock">
+            <label>飞船速度：<b id="vOut2">0.00 c</b></label>
+            <input id="vSlider" type="range" min="0" max="0.7" step="0.01" value="0" />
+          </div>
+
+          <div class="sliderBlock">
+            <label>镜面间距 h（像素）：<b id="hOut">146</b></label>
+            <input id="hSlider" type="range" min="120" max="180" step="2" value="146" />
+          </div>
+
+          <div class="bottomActions" style="margin-top:6px;">
+            <button class="btnPrimary" id="runBtn">打开发射并运行</button>
+            <button class="btnGhost" id="resetRunBtn">重置本次计时</button>
+          </div>
+
+          <p class="mini" style="margin-top:8px; line-height:1.55;">
+            规则：光速恒定，比较同一“光钟一拍”在不同速度下的计时结果。
+          </p>
+        </div>
+      </aside>
+
+      <aside class="dock" id="dataDock" style="right:10px; top:124px; left:auto; bottom:auto;">
+        <div class="dockHead" id="dataHead">
+          <div class="dockTitle">数据面板</div>
+          <button class="iconBtn" id="dataToggleBtn">展开</button>
+        </div>
+        <div class="dockBody collapsed" id="dataBody">
+          <div class="mini" style="line-height:1.6; margin-bottom:8px;">
+            本实验中船内一拍时间由 <b>h</b> 决定，外部观测为
+            <b>t<sub>earth</sub>=γ·t<sub>ship</sub></b>，所以 <b>Δt=(γ-1)·t<sub>ship</sub></b>。
+          </div>
+          <table class="runTable">
+            <thead>
+              <tr>
+                <th>#</th><th>v/c</th><th>γ</th><th>t<sub>ship</sub>(s)</th><th>t<sub>earth</sub>(s)</th><th>Δt(s)</th>
+              </tr>
+            </thead>
+            <tbody id="runTableBody"></tbody>
+          </table>
+        </div>
+      </aside>
+    </section>
+
+    <section style="margin-top:14px; line-height:1.8; color:#d6e6ff;">
+      <h3 style="margin:0 0 8px; font-size:34px;">实验原理（超简）</h3>
+      <ul style="margin:0; padding-left:20px;">
+        <li>飞船内看：光上下反射，路径最短，时间是固有时 <b>t<sub>ship</sub></b>。</li>
+        <li>地球看：飞船在动，光走斜线，路径更长。</li>
+        <li>光速不变时，路径更长就要更久，所以外部观测 <b>t<sub>earth</sub> &gt; t<sub>ship</sub></b>。</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="checkmark" id="checkmark"><div class="ring"></div></div>
+
+  <div class="doneMask" id="doneMask">
+    <div class="doneCard">
+      <h2 class="doneTitle">🎉 恭喜完成通关！</h2>
+      <p class="doneText" id="doneText">
+        你已完成飞船光钟实验验证：外部视角光路更长，计时更慢。
+      </p>
+      <div class="doneBtns">
+        <button class="btnWarn" id="doneResetBtn">再玩一轮</button>
+        <button class="btnGhost" id="doneCloseBtn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const $ = (s)=>document.querySelector(s);
+
+      const taskDefs = [
+        {
+          text:'先把速度调到 0c，运行一次，观察两边计时是否一致。',
+          goal:'目标：v=0c 时，Δt≈0。',
+          check:(run)=> run && run.vRatio <= 0.02 && Math.abs(run.delta) <= 0.02
+        },
+        {
+          text:'把速度调到约 0.4c 再运行，确认地球计时更长。',
+          goal:'目标：v≈0.4c 时，t<sub>earth</sub> &gt; t<sub>ship</sub>。',
+          check:(run)=> run && Math.abs(run.vRatio - 0.4) <= 0.08 && run.delta > 0.08
+        },
+        {
+          text:'把速度提升到 0.7c，验证 Δt 比中速时更大。',
+          goal:'目标：高速下 Δt 明显增大。',
+          check:(run, st)=> {
+            if(!run || run.vRatio < 0.66) return false;
+            const mid = st.history.find((x)=>Math.abs(x.vRatio - 0.4) <= 0.08);
+            return !!mid && run.delta > mid.delta + 0.12;
+          }
+        },
+        {
+          text:'最后完成结论选择，解释时间膨胀来源。',
+          goal:'目标：选择“光速不变 + 光路更长”。',
+          check:null
+        }
+      ];
+
+      const state = {
+        currentTask:0,
+        completed:false,
+        freeMode:false,
+        autoPlaying:false,
+        running:false,
+        locked:false,
+        vRatio:0,
+        hPx:146,
+        properTick:1,
+        history:[],
+        currentRun:null,
+        rafId:0,
+        timers:new Set(),
+        runResolve:null
+      };
+
+      const stepBadge = $('#stepBadge');
+      const taskText = $('#taskText');
+      const taskGoal = $('#taskGoal');
+      const dots = $('#dots');
+      const modePill = $('#modePill');
+      const labArea = $('#labArea');
+
+      const vSlider = $('#vSlider');
+      const hSlider = $('#hSlider');
+      const vOut = $('#vOut');
+      const vOut2 = $('#vOut2');
+      const hOut = $('#hOut');
+      const gammaOut = $('#gammaOut');
+      const shipTickOut = $('#shipTickOut');
+      const deltaOut = $('#deltaOut');
+      const shipTimeOut = $('#shipTimeOut');
+      const earthTimeOut = $('#earthTimeOut');
+      const shipClockSub = $('#shipClockSub');
+      const earthClockSub = $('#earthClockSub');
+
+      const shipBeamUpEl = $('#shipBeamUp');
+      const shipBeamDownEl = $('#shipBeamDown');
+      const shipMirrorTopEl = $('#shipMirrorTop');
+      const shipMirrorBottomEl = $('#shipMirrorBottom');
+      const shipTraceEl = $('#shipTrace');
+      const earthBeamUpEl = $('#earthBeamUp');
+      const earthBeamDownEl = $('#earthBeamDown');
+      const shipPhotonEl = $('#shipPhoton');
+      const earthPhotonEl = $('#earthPhoton');
+      const earthTrace0El = $('#earthTrace0');
+      const earthTrace1El = $('#earthTrace1');
+      const earthShipBodyEl = $('#earthShipBody');
+      const earthMirrorTopEl = $('#earthMirrorTop');
+      const earthMirrorBottomEl = $('#earthMirrorBottom');
+
+      const runBtn = $('#runBtn');
+      const resetRunBtn = $('#resetRunBtn');
+      const stepResetBtn = $('#stepResetBtn');
+      const autoDemoBtn = $('#autoDemoBtn');
+      const freeModeBtn = $('#freeModeBtn');
+
+      const quizBox = $('#quizBox');
+      const quizHint = $('#quizHint');
+      const quizBtns = Array.from(document.querySelectorAll('.quizBtn'));
+
+      const runTableBody = $('#runTableBody');
+
+      const toastEl = $('#toast');
+      const checkmarkEl = $('#checkmark');
+      const doneMaskEl = $('#doneMask');
+      const doneTextEl = $('#doneText');
+      const doneResetBtn = $('#doneResetBtn');
+      const doneCloseBtn = $('#doneCloseBtn');
+
+      const controlDock = $('#controlDock');
+      const controlHead = $('#controlHead');
+      const controlBody = $('#controlBody');
+      const controlToggleBtn = $('#controlToggleBtn');
+
+      const dataDock = $('#dataDock');
+      const dataHead = $('#dataHead');
+      const dataBody = $('#dataBody');
+      const dataToggleBtn = $('#dataToggleBtn');
+
+      const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+      const f3 = (n)=>Number(n).toFixed(3);
+      const wait = (ms)=>new Promise((r)=>{
+        const t = setTimeout(()=>{ state.timers.delete(t); r(); }, ms);
+        state.timers.add(t);
+      });
+
+      function gamma(v){
+        return 1 / Math.sqrt(Math.max(1e-8, 1 - v*v));
+      }
+
+      function clearAsync(){
+        for(const t of state.timers){ clearTimeout(t); }
+        state.timers.clear();
+        if(state.rafId){ cancelAnimationFrame(state.rafId); state.rafId = 0; }
+      }
+
+      function showToast(text, kind='info', ms=1900){
+        toastEl.textContent = text;
+        toastEl.className = 'toast show' + (kind==='ok' ? ' ok' : kind==='err' ? ' err' : '');
+        const t = setTimeout(()=>{
+          state.timers.delete(t);
+          toastEl.className = 'toast';
+        }, ms);
+        state.timers.add(t);
+      }
+
+      function flashCheck(){
+        checkmarkEl.classList.add('on');
+        const t = setTimeout(()=>{
+          state.timers.delete(t);
+          checkmarkEl.classList.remove('on');
+        }, 900);
+        state.timers.add(t);
+      }
+
+      function setUIBusy(on){
+        state.locked = !!on;
+        runBtn.disabled = on;
+        resetRunBtn.disabled = on;
+        autoDemoBtn.disabled = on;
+        freeModeBtn.disabled = on;
+        vSlider.disabled = on;
+        hSlider.disabled = on;
+        quizBtns.forEach((b)=> b.disabled = on);
+      }
+
+      function updateAutoDemoButton(){
+        if(state.autoPlaying){
+          autoDemoBtn.classList.add('is-running');
+          autoDemoBtn.textContent = '自动演示中...';
+        }else{
+          autoDemoBtn.classList.remove('is-running');
+          autoDemoBtn.textContent = '自动演示';
+        }
+      }
+
+      function updateDots(){
+        dots.innerHTML = '';
+        for(let i=0;i<taskDefs.length;i++){
+          const d = document.createElement('span');
+          d.className = 'dot' + (i <= state.currentTask ? ' on' : '');
+          dots.appendChild(d);
+        }
+      }
+
+      function updateTaskCard(){
+        const idx = clamp(state.currentTask, 0, taskDefs.length - 1);
+        const t = taskDefs[idx];
+        stepBadge.textContent = `步骤 ${idx+1}/${taskDefs.length}`;
+        taskText.innerHTML = t.text;
+        taskGoal.innerHTML = t.goal;
+        updateDots();
+        modePill.textContent = `模式：${state.freeMode ? '自由' : '引导'}`;
+        const showQuiz = idx === 3;
+        quizBox.classList.toggle('show', showQuiz);
+        quizHint.textContent = showQuiz ? '请根据实验现象选择结论。' : '在第 4 步选择结论。';
+        const taskCard = $('#taskCard');
+        taskCard.style.opacity = state.freeMode ? '.25' : '1';
+        taskCard.style.filter = state.freeMode ? 'grayscale(.6)' : 'none';
+      }
+
+      function computeRun(vRatio){
+        const g = gamma(vRatio);
+        const yBottom = 196;
+        const yTop = clamp(yBottom - state.hPx, 26, 188);
+        const hPx = yBottom - yTop;
+        const tShip = state.properTick * (hPx / 146);
+        const tEarth = tShip * g;
+        const delta = tEarth - tShip;
+        const drift = clamp(vRatio * g * (hPx * 0.48), 0, 112);
+
+        const shipX = 180;
+        const earthStartX = 122;
+        const x0 = earthStartX;
+        const x1 = earthStartX + drift;
+        const x2 = earthStartX + drift * 2;
+
+        return {
+          vRatio,
+          gamma:g,
+          tShip,
+          tEarth,
+          delta,
+          hPx,
+          drift,
+          shipPts:[
+            {x:shipX,y:yBottom},
+            {x:shipX,y:yTop},
+            {x:shipX,y:yBottom}
+          ],
+          earthPts:[
+            {x:x0,y:yBottom},
+            {x:x1,y:yTop},
+            {x:x2,y:yBottom}
+          ]
+        };
+      }
+
+      function setBeamLine(el, a, b){
+        el.setAttribute('x1', a.x.toFixed(1));
+        el.setAttribute('y1', a.y.toFixed(1));
+        el.setAttribute('x2', b.x.toFixed(1));
+        el.setAttribute('y2', b.y.toFixed(1));
+      }
+
+      function resetBeamLines(run){
+        setBeamLine(shipBeamUpEl, run.shipPts[0], run.shipPts[0]);
+        setBeamLine(shipBeamDownEl, run.shipPts[1], run.shipPts[1]);
+        setBeamLine(earthBeamUpEl, run.earthPts[0], run.earthPts[0]);
+        setBeamLine(earthBeamDownEl, run.earthPts[1], run.earthPts[1]);
+      }
+
+      function updateBeamProgress(run, ds, de){
+        const shipMid = posOnTwoSeg(run.shipPts, clamp(ds, 0, 0.5));
+        const shipEnd = posOnTwoSeg(run.shipPts, ds);
+        if(ds <= 0.5){
+          setBeamLine(shipBeamUpEl, run.shipPts[0], shipMid);
+          setBeamLine(shipBeamDownEl, run.shipPts[1], run.shipPts[1]);
+        }else{
+          setBeamLine(shipBeamUpEl, run.shipPts[0], run.shipPts[1]);
+          setBeamLine(shipBeamDownEl, run.shipPts[1], shipEnd);
+        }
+
+        const earthMid = posOnTwoSeg(run.earthPts, clamp(de, 0, 0.5));
+        const earthEnd = posOnTwoSeg(run.earthPts, de);
+        if(de <= 0.5){
+          setBeamLine(earthBeamUpEl, run.earthPts[0], earthMid);
+          setBeamLine(earthBeamDownEl, run.earthPts[1], run.earthPts[1]);
+        }else{
+          setBeamLine(earthBeamUpEl, run.earthPts[0], run.earthPts[1]);
+          setBeamLine(earthBeamDownEl, run.earthPts[1], earthEnd);
+        }
+      }
+
+      function lerp(a,b,t){ return a + (b-a)*t; }
+
+      function posOnTwoSeg(pts, p){
+        const q = clamp(p,0,1);
+        if(q <= 0.5){
+          const t = q * 2;
+          return { x:lerp(pts[0].x,pts[1].x,t), y:lerp(pts[0].y,pts[1].y,t) };
+        }
+        const t = (q - 0.5) * 2;
+        return { x:lerp(pts[1].x,pts[2].x,t), y:lerp(pts[1].y,pts[2].y,t) };
+      }
+
+      function updateGeometryPreview(){
+        const run = computeRun(state.vRatio);
+        state.currentRun = run;
+        resetBeamLines(run);
+
+        shipMirrorTopEl.setAttribute('y', (run.shipPts[1].y - 8).toFixed(1));
+        shipMirrorBottomEl.setAttribute('y', (run.shipPts[0].y - 4).toFixed(1));
+        shipTraceEl.setAttribute('x1', run.shipPts[0].x.toFixed(1));
+        shipTraceEl.setAttribute('y1', run.shipPts[0].y.toFixed(1));
+        shipTraceEl.setAttribute('x2', run.shipPts[1].x.toFixed(1));
+        shipTraceEl.setAttribute('y2', run.shipPts[1].y.toFixed(1));
+
+        earthTrace0El.setAttribute('x1', run.earthPts[0].x.toFixed(1));
+        earthTrace0El.setAttribute('y1', run.earthPts[0].y.toFixed(1));
+        earthTrace0El.setAttribute('x2', run.earthPts[1].x.toFixed(1));
+        earthTrace0El.setAttribute('y2', run.earthPts[1].y.toFixed(1));
+        earthTrace1El.setAttribute('x1', run.earthPts[1].x.toFixed(1));
+        earthTrace1El.setAttribute('y1', run.earthPts[1].y.toFixed(1));
+        earthTrace1El.setAttribute('x2', run.earthPts[2].x.toFixed(1));
+        earthTrace1El.setAttribute('y2', run.earthPts[2].y.toFixed(1));
+
+        const shipX = run.earthPts[0].x - 62;
+        earthShipBodyEl.setAttribute('x', shipX.toFixed(1));
+        earthMirrorTopEl.setAttribute('x', (shipX + 30).toFixed(1));
+        earthMirrorBottomEl.setAttribute('x', (shipX + 30).toFixed(1));
+        earthMirrorTopEl.setAttribute('y', (run.shipPts[1].y - 8).toFixed(1));
+        earthMirrorBottomEl.setAttribute('y', (run.shipPts[0].y - 4).toFixed(1));
+
+        shipPhotonEl.setAttribute('cx', run.shipPts[0].x.toFixed(1));
+        shipPhotonEl.setAttribute('cy', run.shipPts[0].y.toFixed(1));
+        earthPhotonEl.setAttribute('cx', run.earthPts[0].x.toFixed(1));
+        earthPhotonEl.setAttribute('cy', run.earthPts[0].y.toFixed(1));
+
+        vOut.textContent = `${state.vRatio.toFixed(2)} c`;
+        vOut2.textContent = `${state.vRatio.toFixed(2)} c`;
+        if(gammaOut){ gammaOut.textContent = run.gamma.toFixed(3); }
+        if(shipTickOut){ shipTickOut.textContent = `${f3(run.tShip)} s`; }
+        deltaOut.textContent = `${f3(run.delta)} s`;
+
+        shipClockSub.innerHTML = `船内视角：镜面间距 h=${run.hPx.toFixed(0)}px，单拍时间 t<sub>ship</sub>=${f3(run.tShip)}s`;
+        earthClockSub.innerHTML = `地球视角：斜线路程更长，单拍时间 t<sub>earth</sub>=${f3(run.tEarth)}s`;
+      }
+
+      function setTimes(ship, earth){
+        shipTimeOut.textContent = `${f3(ship)} s`;
+        earthTimeOut.textContent = `${f3(earth)} s`;
+      }
+
+      function appendRunRow(run){
+        const row = document.createElement('tr');
+        row.innerHTML = [
+          `<td>${state.history.length}</td>`,
+          `<td>${run.vRatio.toFixed(2)}</td>`,
+          `<td>${run.gamma.toFixed(3)}</td>`,
+          `<td>${f3(run.tShip)}</td>`,
+          `<td>${f3(run.tEarth)}</td>`,
+          `<td>${f3(run.delta)}</td>`
+        ].join('');
+        runTableBody.prepend(row);
+        while(runTableBody.children.length > 8){ runTableBody.removeChild(runTableBody.lastChild); }
+      }
+
+      function resetRunView(){
+        clearAsync();
+        state.running = false;
+        setTimes(0,0);
+        if(state.currentRun){
+          shipPhotonEl.setAttribute('cx', state.currentRun.shipPts[0].x.toFixed(1));
+          shipPhotonEl.setAttribute('cy', state.currentRun.shipPts[0].y.toFixed(1));
+          earthPhotonEl.setAttribute('cx', state.currentRun.earthPts[0].x.toFixed(1));
+          earthPhotonEl.setAttribute('cy', state.currentRun.earthPts[0].y.toFixed(1));
+        }
+      }
+
+      function completeStep(msg){
+        flashCheck();
+        showToast(msg, 'ok', 1800);
+        if(!state.freeMode && state.currentTask < taskDefs.length - 1){
+          state.currentTask += 1;
+          updateTaskCard();
+        }
+      }
+
+      function checkTaskWithRun(run){
+        if(state.freeMode || state.completed) return;
+        const task = taskDefs[state.currentTask];
+        if(!task || !task.check) return;
+        const ok = task.check(run, state);
+        if(ok){
+          if(state.currentTask === 2){
+            completeStep('高速验证成功，进入最终结论选择。');
+          }else{
+            completeStep('本步完成，继续下一步。');
+          }
+        }
+      }
+
+      function finishAll(){
+        state.completed = true;
+        if(state.currentTask < taskDefs.length - 1){
+          state.currentTask = taskDefs.length - 1;
+        }
+        updateTaskCard();
+        const run = state.history[0] || state.currentRun;
+        if(run){
+          doneTextEl.innerHTML = `恭喜通关：在 v=${run.vRatio.toFixed(2)}c（γ=${run.gamma.toFixed(3)}）时，地球观测 t<sub>earth</sub>=${f3(run.tEarth)}s，大于船内 t<sub>ship</sub>=${f3(run.tShip)}s。`;
+        }
+        doneMaskEl.classList.add('show');
+      }
+
+      function runExperiment(){
+        if((state.locked && !state.autoPlaying) || state.running){
+          showToast('正在运行，请稍候。');
+          return Promise.resolve(null);
+        }
+
+        const run = computeRun(state.vRatio);
+        state.currentRun = run;
+        resetBeamLines(run);
+
+        const baseMs = 2500;
+        const shipDur = baseMs;
+        const earthDur = Math.round(baseMs * run.gamma);
+
+        shipClockSub.innerHTML = '船内：光子沿固定竖直路径往返中...';
+        earthClockSub.innerHTML = '地球：光子沿斜线长路径传播中...';
+
+        state.running = true;
+        const start = performance.now();
+
+        return new Promise((resolve)=>{
+          state.runResolve = resolve;
+
+          const tick = (now)=>{
+            const ds = clamp((now - start) / shipDur, 0, 1);
+            const de = clamp((now - start) / earthDur, 0, 1);
+
+            const pShip = posOnTwoSeg(run.shipPts, ds);
+            const pEarth = posOnTwoSeg(run.earthPts, de);
+
+            shipPhotonEl.setAttribute('cx', pShip.x.toFixed(1));
+            shipPhotonEl.setAttribute('cy', pShip.y.toFixed(1));
+            earthPhotonEl.setAttribute('cx', pEarth.x.toFixed(1));
+            earthPhotonEl.setAttribute('cy', pEarth.y.toFixed(1));
+            updateBeamProgress(run, ds, de);
+
+            setTimes(run.tShip * ds, run.tEarth * de);
+
+            const shipBodyX = run.earthPts[0].x - 62 + (run.earthPts[2].x - run.earthPts[0].x) * de;
+            earthShipBodyEl.setAttribute('x', shipBodyX.toFixed(1));
+            earthMirrorTopEl.setAttribute('x', (shipBodyX + 30).toFixed(1));
+            earthMirrorBottomEl.setAttribute('x', (shipBodyX + 30).toFixed(1));
+            earthMirrorTopEl.setAttribute('y', (run.shipPts[1].y - 8).toFixed(1));
+            earthMirrorBottomEl.setAttribute('y', (run.shipPts[0].y - 4).toFixed(1));
+
+            if(ds >= 1 && de >= 1){
+              state.running = false;
+              state.rafId = 0;
+              shipPhotonEl.setAttribute('cx', run.shipPts[2].x.toFixed(1));
+              shipPhotonEl.setAttribute('cy', run.shipPts[2].y.toFixed(1));
+              earthPhotonEl.setAttribute('cx', run.earthPts[2].x.toFixed(1));
+              earthPhotonEl.setAttribute('cy', run.earthPts[2].y.toFixed(1));
+              setBeamLine(shipBeamUpEl, run.shipPts[0], run.shipPts[1]);
+              setBeamLine(shipBeamDownEl, run.shipPts[1], run.shipPts[2]);
+              setBeamLine(earthBeamUpEl, run.earthPts[0], run.earthPts[1]);
+              setBeamLine(earthBeamDownEl, run.earthPts[1], run.earthPts[2]);
+              setTimes(run.tShip, run.tEarth);
+              shipClockSub.innerHTML = `船内完成：t<sub>ship</sub> = ${f3(run.tShip)}s`;
+              earthClockSub.innerHTML = `地球完成：t<sub>earth</sub> = ${f3(run.tEarth)}s（更长）`;
+
+              state.history.push(run);
+              appendRunRow(run);
+              deltaOut.textContent = `${f3(run.delta)} s`;
+              checkTaskWithRun(run);
+
+              const done = state.runResolve;
+              state.runResolve = null;
+              if(done) done(run);
+              return;
+            }
+
+            state.rafId = requestAnimationFrame(tick);
+          };
+
+          state.rafId = requestAnimationFrame(tick);
+        });
+      }
+
+      function stopCurrentRun(){
+        if(state.rafId){ cancelAnimationFrame(state.rafId); state.rafId = 0; }
+        state.running = false;
+        if(state.runResolve){
+          const done = state.runResolve;
+          state.runResolve = null;
+          done(null);
+        }
+      }
+
+      function resetAll(keepMode=false){
+        clearAsync();
+        stopCurrentRun();
+        state.completed = false;
+        if(!keepMode){ state.freeMode = false; }
+        state.currentTask = 0;
+        state.history = [];
+        runTableBody.innerHTML = '';
+
+        quizBtns.forEach((b)=> b.classList.remove('good','bad'));
+        quizHint.textContent = '在第 4 步选择结论。';
+        doneMaskEl.classList.remove('show');
+
+        setTimes(0,0);
+        freeModeBtn.textContent = state.freeMode ? '返回引导模式' : '自由模式';
+        updateTaskCard();
+        updateGeometryPreview();
+      }
+
+      async function runAutoDemo(){
+        if(state.autoPlaying || state.running){
+          showToast('请等待当前运行结束。');
+          return;
+        }
+
+        state.autoPlaying = true;
+        updateAutoDemoButton();
+        setUIBusy(true);
+        try{
+          resetAll(true);
+          state.freeMode = false;
+          updateTaskCard();
+
+          const stages = [0,0.4,0.7];
+          for(const v of stages){
+            state.vRatio = v;
+            vSlider.value = v.toFixed(2);
+            updateGeometryPreview();
+            await wait(420);
+            await runExperiment();
+            await wait(500);
+          }
+
+          chooseConclusion('right', true);
+          await wait(360);
+        }catch(err){
+          console.error(err);
+          showToast('自动演示中断，请手动重试。','err',2200);
+        }finally{
+          state.autoPlaying = false;
+          setUIBusy(false);
+          updateAutoDemoButton();
+        }
+      }
+
+      function chooseConclusion(answer, fromAuto=false){
+        if(!state.freeMode && state.currentTask < 3 && !fromAuto){
+          showToast('请先完成前三步数据验证。', 'err');
+          return;
+        }
+
+        quizBtns.forEach((b)=> b.classList.remove('good','bad'));
+        const btn = quizBtns.find((b)=>b.dataset.answer === answer);
+        if(!btn) return;
+
+        if(answer === 'right'){
+          btn.classList.add('good');
+          quizHint.textContent = '正确：光速不变，外部视角光路更长，所以外部计时更慢。';
+          if(!state.freeMode){
+            completeStep('结论正确，闯关完成。');
+            finishAll();
+          }else{
+            showToast('自由模式：结论判断正确。', 'ok');
+          }
+        }else{
+          btn.classList.add('bad');
+          quizHint.textContent = '再想一步：如果光速不变，时间变化来自“路程变化”而不是“钟坏了”。';
+          showToast('这个结论不对，再试一次。', 'err');
+        }
+      }
+
+      function initDock(dockEl, headEl, toggleBtnEl, bodyEl){
+        function clampDockToLab(){
+          const labRect = labArea.getBoundingClientRect();
+          const r = dockEl.getBoundingClientRect();
+          const maxX = Math.max(6, labRect.width - r.width - 6);
+          const maxY = Math.max(6, labRect.height - r.height - 6);
+          const x = clamp(r.left - labRect.left, 6, maxX);
+          const y = clamp(r.top - labRect.top, 6, maxY);
+          dockEl.style.left = `${x}px`;
+          dockEl.style.top = `${y}px`;
+          dockEl.style.right = 'auto';
+          dockEl.style.bottom = 'auto';
+        }
+
+        toggleBtnEl.addEventListener('click', ()=>{
+          const collapsed = bodyEl.classList.toggle('collapsed');
+          toggleBtnEl.textContent = collapsed ? '展开' : '收起';
+          requestAnimationFrame(()=>{
+            clampDockToLab();
+            syncDockForMobile();
+          });
+          const t = setTimeout(()=>{
+            state.timers.delete(t);
+            syncDockForMobile();
+          }, 240);
+          state.timers.add(t);
+        });
+
+        let dragging = false;
+        let pointerId = null;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        headEl.addEventListener('pointerdown', (e)=>{
+          if(e.target.tagName === 'BUTTON') return;
+          dragging = true;
+          pointerId = e.pointerId;
+          headEl.setPointerCapture(pointerId);
+          const r = dockEl.getBoundingClientRect();
+          offsetX = e.clientX - r.left;
+          offsetY = e.clientY - r.top;
+          dockEl.style.right = 'auto';
+          dockEl.style.bottom = 'auto';
+          e.preventDefault();
+        });
+
+        headEl.addEventListener('pointermove', (e)=>{
+          if(!dragging || e.pointerId !== pointerId) return;
+          const labRect = labArea.getBoundingClientRect();
+          const maxX = Math.max(6, labRect.width - dockEl.offsetWidth - 6);
+          const maxY = Math.max(6, labRect.height - dockEl.offsetHeight - 6);
+          const x = clamp(e.clientX - labRect.left - offsetX, 6, maxX);
+          const y = clamp(e.clientY - labRect.top - offsetY, 6, maxY);
+          dockEl.style.left = `${x}px`;
+          dockEl.style.top = `${y}px`;
+          e.preventDefault();
+        });
+
+        const endDrag = (e)=>{
+          if(!dragging || (pointerId !== null && e.pointerId !== pointerId)) return;
+          dragging = false;
+          pointerId = null;
+          clampDockToLab();
+        };
+
+        headEl.addEventListener('pointerup', endDrag);
+        headEl.addEventListener('pointercancel', endDrag);
+      }
+
+      function syncDockForMobile(){
+        if(window.innerWidth > 920) return;
+        const labRect = labArea.getBoundingClientRect();
+        const c = controlDock.getBoundingClientRect();
+        const d = dataDock.getBoundingClientRect();
+        const overlapX = Math.max(0, Math.min(c.right,d.right) - Math.max(c.left,d.left));
+        const overlapY = Math.max(0, Math.min(c.bottom,d.bottom) - Math.max(c.top,d.top));
+        if(overlapX * overlapY > 0){
+          const left = clamp(d.left - labRect.left, 6, labRect.width - d.width - 6);
+          const newTop = clamp((d.top - labRect.top) + c.height + 8, 6, labRect.height - d.height - 6);
+          dataDock.style.left = `${left}px`;
+          dataDock.style.top = `${newTop}px`;
+          dataDock.style.right = 'auto';
+          dataDock.style.bottom = 'auto';
+        }
+      }
+
+      function onResize(){
+        updateGeometryPreview();
+        const docks = [controlDock, dataDock];
+        const labRect = labArea.getBoundingClientRect();
+        for(const dock of docks){
+          const r = dock.getBoundingClientRect();
+          if(r.width <= 0 || r.height <= 0) continue;
+          const x = clamp(r.left - labRect.left, 6, Math.max(6, labRect.width - r.width - 6));
+          const y = clamp(r.top - labRect.top, 6, Math.max(6, labRect.height - r.height - 6));
+          dock.style.left = `${x}px`;
+          dock.style.top = `${y}px`;
+          dock.style.right = 'auto';
+          dock.style.bottom = 'auto';
+        }
+        syncDockForMobile();
+      }
+
+      vSlider.addEventListener('input', ()=>{
+        state.vRatio = Number(vSlider.value);
+        updateGeometryPreview();
+      });
+
+      hSlider.addEventListener('input', ()=>{
+        state.hPx = Number(hSlider.value);
+        hOut.textContent = String(state.hPx);
+        updateGeometryPreview();
+      });
+
+      runBtn.addEventListener('click', async ()=>{
+        await runExperiment();
+      });
+
+      resetRunBtn.addEventListener('click', ()=>{
+        if(state.running){
+          stopCurrentRun();
+        }
+        resetRunView();
+        updateGeometryPreview();
+        showToast('已重置本次计时。');
+      });
+
+      stepResetBtn.addEventListener('click', ()=>{
+        resetAll(false);
+        showToast('步骤已重置，回到第 1 步。');
+      });
+
+      autoDemoBtn.addEventListener('click', runAutoDemo);
+
+      freeModeBtn.addEventListener('click', ()=>{
+        if(state.running || state.autoPlaying) return;
+        state.freeMode = !state.freeMode;
+        freeModeBtn.textContent = state.freeMode ? '返回引导模式' : '自由模式';
+        updateTaskCard();
+        showToast(state.freeMode ? '已进入自由模式。' : '已返回引导模式。');
+      });
+
+      quizBtns.forEach((btn)=>{
+        btn.addEventListener('click', ()=>chooseConclusion(btn.dataset.answer));
+      });
+
+      doneCloseBtn.addEventListener('click', ()=>doneMaskEl.classList.remove('show'));
+      doneResetBtn.addEventListener('click', ()=>{
+        doneMaskEl.classList.remove('show');
+        resetAll(false);
+      });
+
+      initDock(controlDock, controlHead, controlToggleBtn, controlBody);
+      initDock(dataDock, dataHead, dataToggleBtn, dataBody);
+
+      window.addEventListener('resize', ()=>{
+        const t = setTimeout(()=>{
+          state.timers.delete(t);
+          onResize();
+        }, 90);
+        state.timers.add(t);
+      }, { passive:true });
+
+      document.addEventListener('visibilitychange', ()=>{
+        if(document.hidden && state.running){
+          stopCurrentRun();
+          showToast('页面切换导致运行中断，可重新运行。','err',2200);
+        }
+      });
+
+      state.vRatio = Number(vSlider.value);
+      hOut.textContent = String(state.hPx);
+      updateAutoDemoButton();
+      updateTaskCard();
+      updateGeometryPreview();
+      setTimes(0,0);
+    })();
+  </script>
+
+<div style="margin: 24px 0 12px; text-align: center; font-size: 14px; opacity: 0.85;">
+    探索更多，访问：<a href="https://xingnian.net.cn" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">https://xingnian.net.cn</a>。
+</div>
+</body>
+</html>

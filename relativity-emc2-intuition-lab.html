@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>第三关：终极实验室 E=mc² 直觉引擎（极简版）</title>
+  <style>
+    :root{
+      --bg:#141414;
+      --line:rgba(255,255,255,0.12);
+      --text:#fff;
+      --ok:#31d389;
+      --warn:#ffb74d;
+      --danger:#ff6b6b;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      padding:10px;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+      color:var(--text);
+      background:#1a1a1a;
+      overflow-x:hidden;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+
+    .app{ width:min(900px,100%); margin:0 auto 20px; }
+
+    #spectrum{
+      position:relative;
+      width:100%;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,0.15);
+      margin:0 0 12px;
+      background:#000;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{ 0%{background-position:0 0;} 100%{background-position:-100% 0;} }
+
+    .taskCard{
+      width:100%;
+      background:rgba(255,255,255,0.08);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      margin-bottom:10px;
+      backdrop-filter:blur(4px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:start;
+      gap:10px;
+      transition:opacity .2s, filter .2s;
+    }
+    .taskMain{ min-width:0; }
+    .stepBadge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(255,255,255,0.16);
+      border:1px solid rgba(255,255,255,0.2);
+      color:#fff;
+      border-radius:8px;
+      padding:4px 8px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .taskText{ display:block; font-size:16px; font-weight:700; line-height:1.4; }
+    .taskGoal{ margin-top:4px; color:#f2d354; font-weight:600; font-size:12px; }
+
+    .taskQuiz{
+      display:none;
+      margin-top:10px;
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:10px;
+      background:rgba(255,255,255,0.06);
+      padding:10px;
+    }
+    .taskQuiz.show{ display:block; }
+    .quizTitle{ font-size:15px; font-weight:700; color:#d9ecff; margin-bottom:8px; }
+    .quizOpts{ display:flex; flex-wrap:wrap; gap:8px; }
+    .quizBtn{
+      border:1px solid rgba(255,255,255,0.2);
+      background:rgba(255,255,255,0.12);
+      color:#fff;
+      border-radius:8px;
+      padding:8px 10px;
+      font-size:13px;
+      cursor:pointer;
+    }
+    .quizBtn.good{ background:rgba(49,211,137,0.22); border-color:rgba(49,211,137,0.7); }
+    .quizBtn.bad{ background:rgba(255,107,107,0.2); border-color:rgba(255,107,107,0.7); }
+    .quizHint{ margin-top:8px; color:#9fc9ff; font-size:14px; min-height:18px; }
+    .formulaHint{
+      display:none;
+      margin-top:8px;
+      padding:8px 10px;
+      border:1px solid rgba(61,220,151,.55);
+      border-radius:8px;
+      background:rgba(61,220,151,0.12);
+      color:#c8ffe5;
+      font-size:14px;
+      line-height:1.6;
+    }
+    .formulaHint.show{ display:block; }
+
+    .dots{ display:flex; gap:6px; }
+    .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.26); outline:2px solid rgba(255,255,255,0.12); }
+    .dot.on{ background:var(--warn); }
+
+    .lab{
+      position:relative;
+      width:100%;
+      min-height:520px;
+      max-height:700px;
+      background:#07090c;
+      border-radius:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      overflow:hidden;
+      padding:16px;
+      touch-action:none;
+    }
+
+    .modePill{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:10;
+      padding:8px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:rgba(10,10,10,0.55);
+      font-size:13px;
+      color:#dce8ff;
+    }
+
+    .mainStage{
+      position:relative;
+      margin-top:42px;
+      min-height:320px;
+      background:#05070b;
+      border-radius:10px;
+      overflow:hidden;
+    }
+
+    svg.scene{
+      width:100%;
+      height:320px;
+      display:block;
+      background:#05070b;
+    }
+    .trackLine{ stroke:rgba(100,160,255,.5); stroke-width:9; stroke-linecap:round; }
+    .cWall{ stroke:rgba(255,110,110,.9); stroke-width:3; stroke-dasharray:8 6; }
+    .pulseRay{ stroke:#ffd54f; stroke-width:3.2; stroke-dasharray:7 6; opacity:0; }
+    .particle{ fill:#ffd54f; stroke:#fff6cd; stroke-width:1.2; filter:drop-shadow(0 0 10px rgba(255,213,79,0.85)); }
+    .vMarker{ stroke:#61f1c5; stroke-width:4; stroke-linecap:round; }
+
+    .energyMini{
+      position:absolute;
+      right:10px;
+      bottom:10px;
+      width:min(240px,62vw);
+      background:rgba(0,0,0,0.58);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:10px;
+      padding:8px;
+      backdrop-filter:blur(4px);
+    }
+    .energyTitle{ font-size:12px; color:#cfe2ff; margin-bottom:6px; }
+    .miniRow{ margin-bottom:7px; }
+    .miniLabel{ display:flex; justify-content:space-between; font-size:12px; color:#a8c5ef; margin-bottom:3px; }
+    .miniTrack{ height:7px; border-radius:999px; background:rgba(255,255,255,.12); overflow:hidden; }
+    .miniFill{ height:100%; width:0; transition:width .2s linear; }
+    .miniFill.speed{ background:linear-gradient(90deg,#ffd76b,#f0a93a); }
+    .miniFill.store{ background:linear-gradient(90deg,#58ffa5,#24bf78); }
+
+    .statusLine{
+      margin-top:8px;
+      font-size:13px;
+      color:#c4dbff;
+      min-height:20px;
+      padding:0 2px;
+    }
+
+    .metricStrip{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      font-size:20px;
+      font-weight:700;
+    }
+    .metricChip{
+      padding:6px 10px;
+      border-radius:999px;
+      background:rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.15);
+    }
+
+    .bottomActions{ margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+
+    button{ border:0; background:transparent; color:inherit; font:inherit; }
+    .btnGhost,.btnPrimary,.btnWarn,.iconBtn{
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.18);
+      padding:9px 12px;
+      font-size:14px;
+      cursor:pointer;
+      touch-action:manipulation;
+    }
+    .btnGhost{ background:rgba(255,255,255,0.14); color:#fff; }
+    .btnPrimary{ background:rgba(49,211,137,0.85); border-color:rgba(49,211,137,0.7); color:#052114; font-weight:700; }
+    .btnWarn{ background:rgba(15,227,153,0.16); border-color:rgba(15,227,153,0.7); color:#7affc5; font-weight:700; }
+    #autoDemoBtn.is-running{ background:rgba(49,211,137,0.85); border-color:rgba(49,211,137,0.7); color:#052114; font-weight:700; }
+
+    .dock{
+      position:absolute;
+      width:min(330px,92vw);
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:14px;
+      background:rgba(17,24,39,.75);
+      backdrop-filter:blur(8px);
+      box-shadow:0 8px 30px rgba(0,0,0,.35);
+      overflow:hidden;
+      z-index:20;
+      touch-action:none;
+    }
+    .dockHead{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:10px;
+      cursor:grab;
+      background:rgba(255,255,255,.03);
+      border-bottom:1px solid rgba(255,255,255,.1);
+    }
+    .dockTitle{ font-size:18px; font-weight:700; color:#eef6ff; }
+    .dockBadge{
+      margin-left:6px;
+      font-size:11px;
+      padding:2px 7px;
+      border-radius:999px;
+      background:rgba(49,211,137,0.2);
+      color:#6df0b3;
+      border:1px solid rgba(49,211,137,0.5);
+      vertical-align:middle;
+    }
+    .iconBtn{ min-width:56px; background:rgba(255,255,255,0.1); color:#fff; font-weight:700; }
+
+    .dockBody{ padding:10px; transition:max-height .25s ease,padding .2s ease,opacity .2s; max-height:460px; opacity:1; }
+    .dockBody.collapsed{ max-height:0; opacity:0; padding-top:0; padding-bottom:0; overflow:hidden; border:0; }
+    .sliderBlock{ margin-bottom:10px; }
+    .sliderBlock label{ display:flex; justify-content:space-between; font-size:14px; color:#d8e8ff; margin-bottom:4px; }
+    input[type="range"]{ width:100%; accent-color:#1e90ff; }
+
+    .runTable{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+      color:#d9e9ff;
+      overflow:hidden;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,0.12);
+    }
+    .runTable th,.runTable td{ border-bottom:1px solid rgba(255,255,255,0.08); padding:6px 5px; text-align:center; }
+    .runTable th{ background:rgba(255,255,255,0.07); font-weight:700; }
+    .mini{ font-size:12px; color:#9fb7d6; }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:20px;
+      transform:translateX(-50%) translateY(20px);
+      background:rgba(15,15,15,.9);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:10px;
+      padding:10px 14px;
+      font-size:14px;
+      opacity:0;
+      pointer-events:none;
+      transition:all .25s;
+      z-index:60;
+      max-width:min(90vw,560px);
+      text-align:center;
+    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+    .toast.ok{ border-color:rgba(49,211,137,0.65); color:#baffdc; }
+    .toast.err{ border-color:rgba(255,107,107,0.65); color:#ffd4d4; }
+
+    .checkmark{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:70;
+      pointer-events:none;
+    }
+    .checkmark.on{ display:flex; }
+    .checkmark .ring{
+      width:84px;
+      height:84px;
+      border-radius:50%;
+      border:4px solid rgba(49,211,137,0.9);
+      box-shadow:0 0 20px rgba(49,211,137,0.4);
+      position:relative;
+      background:rgba(13,33,26,0.7);
+    }
+    .checkmark .ring:after{
+      content:"";
+      position:absolute;
+      left:22px;
+      top:18px;
+      width:26px;
+      height:40px;
+      border:solid #5af0a7;
+      border-width:0 5px 5px 0;
+      transform:rotate(45deg);
+    }
+
+    .doneMask{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.5);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:80;
+      padding:16px;
+    }
+    .doneMask.show{ display:flex; }
+    .doneCard{
+      width:min(90vw, 430px);
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.15);
+      background:#111;
+      color:#fff;
+      box-shadow:0 16px 36px rgba(0,0,0,0.42);
+      padding:18px 16px;
+      text-align:center;
+    }
+    .doneTitle{ margin:8px 0 6px; font-size:22px; color:#fff; }
+    .doneText{ margin-top:0; color:#cfd8dc; line-height:1.6; margin-bottom:12px; }
+    .doneBtns{ display:flex; gap:10px; flex-wrap:wrap; justify-content:center; }
+
+    @media (max-width:920px){
+      .taskText{ font-size:15px; }
+      .dock{ width:min(320px,88vw); }
+    }
+
+    @media (max-width:520px){
+      .app{ width:96vw; }
+      .taskCard{ padding:10px 12px; }
+      .stepBadge{ padding:3px 7px; font-size:14px; }
+      .taskText{ font-size:14px; }
+      .taskGoal{ font-size:11px; }
+      .metricStrip{ font-size:18px; }
+      .energyMini{ width:min(220px,72vw); }
+      .btnGhost,.btnPrimary,.btnWarn{ min-height:40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="spectrum"></div>
+
+    <section class="taskCard" id="taskCard">
+      <div class="stepBadge" id="stepBadge">步骤 1/4</div>
+      <div class="taskMain">
+        <div class="taskText" id="taskText">初速度调到 0c，脉冲 1 格，运行。</div>
+        <div class="taskGoal" id="taskGoal">目标：先看到“低速好提速”。</div>
+
+        <div class="taskQuiz" id="quizBox">
+          <div class="quizTitle">为什么越接近光速，继续提速越难？</div>
+          <div class="quizOpts">
+            <button class="quizBtn" data-answer="wrong1">因为光速变慢了</button>
+            <button class="quizBtn" data-answer="right">因为光速上限不变，新增能量更多进入系统总能量</button>
+            <button class="quizBtn" data-answer="wrong2">因为机器偷懒了</button>
+          </div>
+          <div class="quizHint" id="quizHint">在第 4 步选择结论。</div>
+          <div class="formulaHint" id="formulaHint">
+            结论：静止也有能量 <b>E<sub>0</sub>=mc²</b>，运动后总能量更大，写作 <b>E=&gamma;mc²</b>。
+          </div>
+        </div>
+      </div>
+      <div class="dots" id="dots"></div>
+    </section>
+
+    <section class="lab" id="labArea">
+      <div class="modePill" id="modePill">模式：引导</div>
+
+      <div class="mainStage">
+        <svg class="scene" viewBox="0 0 900 320" aria-label="speed-track">
+          <line class="trackLine" x1="90" y1="150" x2="810" y2="150"></line>
+          <line class="cWall" x1="810" y1="76" x2="810" y2="236"></line>
+          <line class="pulseRay" id="pulseRay" x1="40" y1="150" x2="90" y2="150"></line>
+
+          <line x1="90" y1="210" x2="810" y2="210" stroke="rgba(255,255,255,.35)" stroke-width="2"></line>
+          <line class="vMarker" id="vMarker" x1="90" y1="210" x2="90" y2="190"></line>
+          <text x="90" y="232" text-anchor="middle" fill="rgba(220,235,255,.9)" font-size="16">0c</text>
+          <text x="810" y="232" text-anchor="middle" fill="rgba(255,155,155,.95)" font-size="16">c</text>
+          <text x="810" y="64" text-anchor="middle" fill="rgba(255,155,155,.88)" font-size="15">光速上限</text>
+
+          <circle class="particle" id="particle" cx="90" cy="150" r="11"></circle>
+        </svg>
+
+        <div class="energyMini" id="energyMini">
+          <div class="energyTitle">能量去向（极简）</div>
+          <div class="miniRow">
+            <div class="miniLabel"><span>提速份额</span><b id="speedShareOut">0%</b></div>
+            <div class="miniTrack"><div class="miniFill speed" id="speedFill"></div></div>
+          </div>
+          <div class="miniRow">
+            <div class="miniLabel"><span>总能量 E</span><b id="energyOut">1.000 mc²</b></div>
+            <div class="miniTrack"><div class="miniFill store" id="storeFill"></div></div>
+          </div>
+          <div class="mini" id="energySub">同样脉冲下，越快越难继续提速。</div>
+        </div>
+      </div>
+
+      <div class="statusLine" id="speedSub">待命：先调初速度和脉冲格数。</div>
+
+      <div class="metricStrip">
+        <div class="metricChip">v=<span id="vOut">0.00 c</span></div>
+        <div class="metricChip">Δv=<span id="dvOut">0.000 c</span></div>
+      </div>
+
+      <div class="bottomActions">
+        <button class="btnGhost" id="stepResetBtn">步骤重置</button>
+        <button class="btnGhost" id="autoDemoBtn">自动演示</button>
+        <button class="btnGhost" id="freeModeBtn">自由模式</button>
+      </div>
+
+      <aside class="dock" id="controlDock" style="right:10px; top:66px; left:auto; bottom:auto;">
+        <div class="dockHead" id="controlHead">
+          <div class="dockTitle">实验控制 <span class="dockBadge">步骤</span></div>
+          <button class="iconBtn" id="controlToggleBtn">展开</button>
+        </div>
+        <div class="dockBody collapsed" id="controlBody">
+          <div class="sliderBlock">
+            <label>初速度 v/c：<b id="vOut2">0.00</b></label>
+            <input id="vSlider" type="range" min="0" max="0.95" step="0.01" value="0" />
+          </div>
+
+          <div class="sliderBlock">
+            <label>脉冲格数：<b id="pulseOut2">1</b></label>
+            <input id="pulseSlider" type="range" min="1" max="3" step="1" value="1" />
+          </div>
+
+          <div class="bottomActions" style="margin-top:6px;">
+            <button class="btnPrimary" id="runBtn">发射脉冲并运行</button>
+            <button class="btnGhost" id="resetRunBtn">重置本次</button>
+          </div>
+        </div>
+      </aside>
+
+      <aside class="dock" id="dataDock" style="right:10px; top:132px; left:auto; bottom:auto;">
+        <div class="dockHead" id="dataHead">
+          <div class="dockTitle">数据面板</div>
+          <button class="iconBtn" id="dataToggleBtn">展开</button>
+        </div>
+        <div class="dockBody collapsed" id="dataBody">
+          <div class="mini" style="line-height:1.6; margin-bottom:8px;">
+            高级说明：内部按相对论能量关系计算，课堂先抓“现象”。
+          </div>
+          <table class="runTable">
+            <thead>
+              <tr>
+                <th>#</th><th>v起点</th><th>v终点</th><th>Δv</th><th>脉冲</th><th>E终点</th>
+              </tr>
+            </thead>
+            <tbody id="runTableBody"></tbody>
+          </table>
+        </div>
+      </aside>
+
+      <span id="pulseOut" style="display:none;">1 格</span>
+      <span id="eOut" style="display:none;">1.000 mc²</span>
+    </section>
+
+    <section style="margin-top:14px; line-height:1.8; color:#d6e6ff;">
+      <h3 style="margin:0 0 8px; font-size:34px;">实验原理（超简）</h3>
+      <ul style="margin:0; padding-left:20px;">
+        <li>同样能量脉冲，在低速时更容易变成“速度提升”。</li>
+        <li>越接近光速 c，继续提速越难，但系统总能量仍在增加。</li>
+        <li>这说明“质量与能量可互相表述”，核心公式是 <b>E=mc²</b>（静止形式写作 E<sub>0</sub>=mc²）。</li>
+      </ul>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <div class="checkmark" id="checkmark"><div class="ring"></div></div>
+
+  <div class="doneMask" id="doneMask">
+    <div class="doneCard">
+      <h2 class="doneTitle">🎉 恭喜完成通关！</h2>
+      <p class="doneText" id="doneText">你已经用实验现象走到了质能关系：E=mc²。</p>
+      <div class="doneBtns">
+        <button class="btnWarn" id="doneResetBtn">再玩一轮</button>
+        <button class="btnGhost" id="doneCloseBtn">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const $ = (s)=>document.querySelector(s);
+      const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+      const f3 = (n)=>Number(n).toFixed(3);
+
+      const taskDefs = [
+        { text:'初速度调到 0c，脉冲 1 格，运行。', goal:'目标：先看到低速好提速。', check:(run)=> run && run.vStart <= 0.03 && run.pulseLevel === 1 && run.dv >= 0.16 },
+        { text:'初速度调到 0.70c，脉冲仍 1 格，再运行。', goal:'目标：同样脉冲下，高速 Δv 更小。', check:(run, st)=> run && run.vStart >= 0.66 && run.vStart <= 0.74 && run.pulseLevel === st.step1Pulse && st.step1Dv > 0 && run.dv < st.step1Dv * 0.4 },
+        { text:'初速度调到 0.90c，脉冲调到 2 格，运行。', goal:'目标：Δv 仍很小，但 E 继续上升。', check:(run)=> run && run.vStart >= 0.88 && run.pulseLevel >= 2 && run.dv <= 0.035 && run.energyEnd >= 2.2 },
+        { text:'完成结论选择，最后引出 E=mc²。', goal:'目标：选择“光速上限不变 + 能量进入系统总能量”。', check:null }
+      ];
+
+      const state = {
+        currentTask:0,
+        completed:false,
+        freeMode:false,
+        autoPlaying:false,
+        running:false,
+        locked:false,
+        vRatio:0,
+        pulseLevel:1,
+        history:[],
+        step1Dv:0,
+        step1Pulse:1,
+        currentRun:null,
+        maxEnergySeen:2.6,
+        rafId:0,
+        timers:new Set(),
+        runResolve:null
+      };
+
+      const stepBadge = $('#stepBadge');
+      const taskText = $('#taskText');
+      const taskGoal = $('#taskGoal');
+      const dots = $('#dots');
+      const modePill = $('#modePill');
+
+      const vSlider = $('#vSlider');
+      const pulseSlider = $('#pulseSlider');
+      const vOut = $('#vOut');
+      const vOut2 = $('#vOut2');
+      const pulseOut = $('#pulseOut');
+      const pulseOut2 = $('#pulseOut2');
+      const dvOut = $('#dvOut');
+      const eOut = $('#eOut');
+      const speedSub = $('#speedSub');
+      const energySub = $('#energySub');
+
+      const particleEl = $('#particle');
+      const vMarkerEl = $('#vMarker');
+      const pulseRayEl = $('#pulseRay');
+      const speedFillEl = $('#speedFill');
+      const storeFillEl = $('#storeFill');
+      const speedShareOut = $('#speedShareOut');
+      const energyOut = $('#energyOut');
+
+      const runBtn = $('#runBtn');
+      const resetRunBtn = $('#resetRunBtn');
+      const stepResetBtn = $('#stepResetBtn');
+      const autoDemoBtn = $('#autoDemoBtn');
+      const freeModeBtn = $('#freeModeBtn');
+
+      const quizBox = $('#quizBox');
+      const quizHint = $('#quizHint');
+      const formulaHint = $('#formulaHint');
+      const quizBtns = Array.from(document.querySelectorAll('.quizBtn'));
+
+      const runTableBody = $('#runTableBody');
+      const toastEl = $('#toast');
+      const checkmarkEl = $('#checkmark');
+      const doneMaskEl = $('#doneMask');
+      const doneTextEl = $('#doneText');
+      const doneResetBtn = $('#doneResetBtn');
+      const doneCloseBtn = $('#doneCloseBtn');
+
+      const labArea = $('#labArea');
+      const controlDock = $('#controlDock');
+      const controlHead = $('#controlHead');
+      const controlBody = $('#controlBody');
+      const controlToggleBtn = $('#controlToggleBtn');
+      const dataDock = $('#dataDock');
+      const dataHead = $('#dataHead');
+      const dataBody = $('#dataBody');
+      const dataToggleBtn = $('#dataToggleBtn');
+
+      const wait = (ms)=>new Promise((r)=>{
+        const t = setTimeout(()=>{ state.timers.delete(t); r(); }, ms);
+        state.timers.add(t);
+      });
+
+      function gamma(v){ return 1 / Math.sqrt(Math.max(1e-8, 1 - v*v)); }
+      function vFromGamma(g){ return g <= 1 ? 0 : Math.sqrt(Math.max(0, 1 - 1/(g*g))); }
+      function pulseEnergy(level){ return 0.02 * Number(level); }
+
+      function clearAsync(){
+        for(const t of state.timers){ clearTimeout(t); }
+        state.timers.clear();
+        if(state.rafId){ cancelAnimationFrame(state.rafId); state.rafId = 0; }
+      }
+
+      function showToast(text, kind='info', ms=1900){
+        toastEl.textContent = text;
+        toastEl.className = 'toast show' + (kind==='ok' ? ' ok' : kind==='err' ? ' err' : '');
+        const t = setTimeout(()=>{ state.timers.delete(t); toastEl.className = 'toast'; }, ms);
+        state.timers.add(t);
+      }
+
+      function flashCheck(){
+        checkmarkEl.classList.add('on');
+        const t = setTimeout(()=>{ state.timers.delete(t); checkmarkEl.classList.remove('on'); }, 900);
+        state.timers.add(t);
+      }
+
+      function setUIBusy(on){
+        state.locked = !!on;
+        runBtn.disabled = on;
+        resetRunBtn.disabled = on;
+        autoDemoBtn.disabled = on;
+        freeModeBtn.disabled = on;
+        vSlider.disabled = on;
+        pulseSlider.disabled = on;
+        quizBtns.forEach((b)=> b.disabled = on);
+      }
+
+      function updateAutoDemoButton(){
+        if(state.autoPlaying){
+          autoDemoBtn.classList.add('is-running');
+          autoDemoBtn.textContent = '自动演示中...';
+        }else{
+          autoDemoBtn.classList.remove('is-running');
+          autoDemoBtn.textContent = '自动演示';
+        }
+      }
+
+      function updateDots(){
+        dots.innerHTML = '';
+        for(let i=0;i<taskDefs.length;i++){
+          const d = document.createElement('span');
+          d.className = 'dot' + (i <= state.currentTask ? ' on' : '');
+          dots.appendChild(d);
+        }
+      }
+
+      function updateTaskCard(){
+        const idx = clamp(state.currentTask, 0, taskDefs.length - 1);
+        const t = taskDefs[idx];
+        stepBadge.textContent = `步骤 ${idx+1}/${taskDefs.length}`;
+        taskText.innerHTML = t.text;
+        taskGoal.innerHTML = t.goal;
+        updateDots();
+        modePill.textContent = `模式：${state.freeMode ? '自由' : '引导'}`;
+
+        const showQuiz = idx === 3;
+        quizBox.classList.toggle('show', showQuiz);
+        quizHint.textContent = showQuiz ? '请根据现象选择结论。' : '在第 4 步选择结论。';
+
+        const taskCard = $('#taskCard');
+        taskCard.style.opacity = state.freeMode ? '.25' : '1';
+        taskCard.style.filter = state.freeMode ? 'grayscale(.6)' : 'none';
+      }
+
+      function computeRun(vStart, pulseLevel){
+        const pulseE = pulseEnergy(pulseLevel);
+        const gStart = gamma(vStart);
+        const gEnd = gStart + pulseE;
+        const vEnd = clamp(vFromGamma(gEnd), 0, 0.999);
+        return { vStart, vEnd, dv:vEnd-vStart, pulseLevel, pulseE, energyStart:gStart, energyEnd:gEnd };
+      }
+
+      function xFromV(v){ return 90 + clamp(v,0,1) * (810 - 90); }
+
+      function setParticleAndMarker(v){
+        const x = xFromV(v);
+        particleEl.setAttribute('cx', x.toFixed(1));
+        vMarkerEl.setAttribute('x1', x.toFixed(1));
+        vMarkerEl.setAttribute('x2', x.toFixed(1));
+      }
+
+      function setEnergyVisuals(run, p=1){
+        const currentE = run ? run.energyStart + (run.energyEnd - run.energyStart)*p : gamma(state.vRatio);
+        state.maxEnergySeen = Math.max(state.maxEnergySeen, currentE, 2.2);
+
+        const dvNow = run ? run.dv * p : 0;
+        const speedShare = run ? clamp((run.dv / Math.max(run.pulseE, 1e-6)) * 100, 0, 100) : 0;
+        const speedShareNow = speedShare * p;
+
+        speedFillEl.style.width = `${speedShareNow.toFixed(1)}%`;
+        storeFillEl.style.width = `${clamp((currentE / state.maxEnergySeen) * 100, 0, 100).toFixed(1)}%`;
+        speedShareOut.textContent = `${speedShareNow.toFixed(0)}%`;
+        energyOut.textContent = `${f3(currentE)} mc²`;
+        eOut.textContent = `${f3(currentE)} mc²`;
+        dvOut.textContent = `${f3(dvNow)} c`;
+      }
+
+      function applyPreview(){
+        vOut.textContent = `${state.vRatio.toFixed(2)} c`;
+        vOut2.textContent = state.vRatio.toFixed(2);
+        pulseOut.textContent = `${state.pulseLevel} 格`;
+        pulseOut2.textContent = String(state.pulseLevel);
+        setParticleAndMarker(state.vRatio);
+        setEnergyVisuals(null, 1);
+      }
+
+      function appendRunRow(run){
+        const row = document.createElement('tr');
+        row.innerHTML = [
+          `<td>${state.history.length}</td>`, `<td>${run.vStart.toFixed(2)}</td>`, `<td>${run.vEnd.toFixed(2)}</td>`, `<td>${run.dv.toFixed(3)}</td>`, `<td>${run.pulseLevel}</td>`, `<td>${run.energyEnd.toFixed(3)}</td>`
+        ].join('');
+        runTableBody.prepend(row);
+        while(runTableBody.children.length > 8){ runTableBody.removeChild(runTableBody.lastChild); }
+      }
+
+      function completeStep(msg){
+        flashCheck();
+        showToast(msg, 'ok', 1800);
+        if(!state.freeMode && state.currentTask < taskDefs.length - 1){ state.currentTask += 1; updateTaskCard(); }
+      }
+
+      function checkTaskWithRun(run){
+        if(state.freeMode || state.completed) return;
+        const task = taskDefs[state.currentTask];
+        if(!task || !task.check) return;
+        if(state.currentTask === 0){ state.step1Dv = run.dv; state.step1Pulse = run.pulseLevel; }
+        if(task.check(run, state)) completeStep(state.currentTask === 2 ? '现象验证完成，进入结论选择。' : '本步完成，继续下一步。');
+      }
+
+      function finishAll(){
+        state.completed = true;
+        if(state.currentTask < taskDefs.length - 1){ state.currentTask = taskDefs.length - 1; }
+        updateTaskCard();
+        const run = state.history[state.history.length - 1] || state.currentRun;
+        if(run){ doneTextEl.innerHTML = `你验证了：v=${run.vStart.toFixed(2)}c、脉冲 ${run.pulseLevel} 格时，Δv 仅 ${run.dv.toFixed(3)}c，但 E 升到 ${run.energyEnd.toFixed(3)}mc²。`; }
+        doneMaskEl.classList.add('show');
+      }
+
+      function runExperiment(){
+        if((state.locked && !state.autoPlaying) || state.running){ showToast('正在运行，请稍候。'); return Promise.resolve(null); }
+        const run = computeRun(state.vRatio, state.pulseLevel);
+        state.currentRun = run;
+        state.running = true;
+        speedSub.textContent = '脉冲注入中...';
+        energySub.textContent = '看两条：提速份额与总能量。';
+        pulseRayEl.style.opacity = '1';
+
+        const start = performance.now();
+        const duration = clamp(1900 + run.vStart*1200, 1900, 3300);
+
+        return new Promise((resolve)=>{
+          state.runResolve = resolve;
+          const tick = (now)=>{
+            const p = clamp((now - start) / duration, 0, 1);
+            const vNow = run.vStart + (run.vEnd - run.vStart) * p;
+            setParticleAndMarker(vNow);
+            setEnergyVisuals(run, p);
+            vOut.textContent = `${vNow.toFixed(2)} c`;
+            vOut2.textContent = vNow.toFixed(2);
+
+            if(p >= 1){
+              state.running = false;
+              state.rafId = 0;
+              pulseRayEl.style.opacity = '0';
+              state.vRatio = run.vEnd;
+              vSlider.value = state.vRatio.toFixed(2);
+              speedSub.textContent = `完成：v ${run.vStart.toFixed(2)}c → ${run.vEnd.toFixed(2)}c（Δv=${run.dv.toFixed(3)}c）`;
+              energySub.textContent = `E：${f3(run.energyStart)} → ${f3(run.energyEnd)} mc²`;
+              state.history.push(run);
+              appendRunRow(run);
+              checkTaskWithRun(run);
+              const done = state.runResolve;
+              state.runResolve = null;
+              if(done) done(run);
+              return;
+            }
+            state.rafId = requestAnimationFrame(tick);
+          };
+          state.rafId = requestAnimationFrame(tick);
+        });
+      }
+
+      function stopCurrentRun(){
+        if(state.rafId){ cancelAnimationFrame(state.rafId); state.rafId = 0; }
+        state.running = false;
+        pulseRayEl.style.opacity = '0';
+        if(state.runResolve){ const done = state.runResolve; state.runResolve = null; done(null); }
+      }
+
+      function resetCurrent(){
+        stopCurrentRun();
+        speedSub.textContent = '已重置，可重新发射脉冲。';
+        applyPreview();
+      }
+
+      function resetAll(keepMode=false){
+        clearAsync();
+        stopCurrentRun();
+        state.completed = false;
+        if(!keepMode){ state.freeMode = false; }
+        state.currentTask = 0;
+        state.history = [];
+        state.step1Dv = 0;
+        state.step1Pulse = 1;
+        state.vRatio = 0;
+        state.pulseLevel = 1;
+        state.maxEnergySeen = 2.6;
+
+        runTableBody.innerHTML = '';
+        quizBtns.forEach((b)=> b.classList.remove('good','bad'));
+        quizHint.textContent = '在第 4 步选择结论。';
+        formulaHint.classList.remove('show');
+        doneMaskEl.classList.remove('show');
+
+        vSlider.value = '0';
+        pulseSlider.value = '1';
+        freeModeBtn.textContent = state.freeMode ? '返回引导模式' : '自由模式';
+
+        updateTaskCard();
+        applyPreview();
+      }
+
+      async function runAutoDemo(){
+        if(state.autoPlaying || state.running){ showToast('请等待当前运行结束。'); return; }
+        state.autoPlaying = true;
+        updateAutoDemoButton();
+        setUIBusy(true);
+        try{
+          resetAll(true);
+          state.freeMode = false;
+          updateTaskCard();
+          const plan = [{v:0.00,p:1},{v:0.70,p:1},{v:0.90,p:2}];
+          for(const s of plan){
+            state.vRatio = s.v;
+            state.pulseLevel = s.p;
+            vSlider.value = s.v.toFixed(2);
+            pulseSlider.value = String(s.p);
+            applyPreview();
+            await wait(420);
+            await runExperiment();
+            await wait(480);
+          }
+          chooseConclusion('right', true);
+          await wait(300);
+        }catch(err){
+          console.error(err);
+          showToast('自动演示中断，请手动重试。','err',2200);
+        }finally{
+          state.autoPlaying = false;
+          setUIBusy(false);
+          updateAutoDemoButton();
+        }
+      }
+
+      function chooseConclusion(answer, fromAuto=false){
+        if(!state.freeMode && state.currentTask < 3 && !fromAuto){ showToast('请先完成前三步数据验证。', 'err'); return; }
+        quizBtns.forEach((b)=> b.classList.remove('good','bad'));
+        const btn = quizBtns.find((b)=> b.dataset.answer === answer);
+        if(!btn) return;
+
+        if(answer === 'right'){
+          btn.classList.add('good');
+          quizHint.textContent = '正确：光速上限不变，新增能量更多进入系统总能量。';
+          formulaHint.classList.add('show');
+          if(!state.freeMode){ completeStep('结论正确，闯关完成。'); finishAll(); }
+          else showToast('自由模式：结论判断正确。', 'ok');
+        }else{
+          btn.classList.add('bad');
+          quizHint.textContent = '再看现象：速度更难涨，但总能量还在涨。';
+          formulaHint.classList.remove('show');
+          showToast('这个结论不对，再试一次。', 'err');
+        }
+      }
+
+      function initDock(dockEl, headEl, toggleBtnEl, bodyEl){
+        function clampDockToLab(){
+          const labRect = labArea.getBoundingClientRect();
+          const r = dockEl.getBoundingClientRect();
+          const maxX = Math.max(6, labRect.width - r.width - 6);
+          const maxY = Math.max(6, labRect.height - r.height - 6);
+          const x = clamp(r.left - labRect.left, 6, maxX);
+          const y = clamp(r.top - labRect.top, 6, maxY);
+          dockEl.style.left = `${x}px`;
+          dockEl.style.top = `${y}px`;
+          dockEl.style.right = 'auto';
+          dockEl.style.bottom = 'auto';
+        }
+
+        toggleBtnEl.addEventListener('click', ()=>{
+          const collapsed = bodyEl.classList.toggle('collapsed');
+          toggleBtnEl.textContent = collapsed ? '展开' : '收起';
+          requestAnimationFrame(()=>{ clampDockToLab(); syncDockForMobile(); });
+          const t = setTimeout(()=>{ state.timers.delete(t); syncDockForMobile(); }, 240);
+          state.timers.add(t);
+        });
+
+        let dragging = false;
+        let pointerId = null;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        headEl.addEventListener('pointerdown', (e)=>{
+          if(e.target.tagName === 'BUTTON') return;
+          dragging = true;
+          pointerId = e.pointerId;
+          headEl.setPointerCapture(pointerId);
+          const r = dockEl.getBoundingClientRect();
+          offsetX = e.clientX - r.left;
+          offsetY = e.clientY - r.top;
+          dockEl.style.right = 'auto';
+          dockEl.style.bottom = 'auto';
+          e.preventDefault();
+        });
+
+        headEl.addEventListener('pointermove', (e)=>{
+          if(!dragging || e.pointerId !== pointerId) return;
+          const labRect = labArea.getBoundingClientRect();
+          const maxX = Math.max(6, labRect.width - dockEl.offsetWidth - 6);
+          const maxY = Math.max(6, labRect.height - dockEl.offsetHeight - 6);
+          const x = clamp(e.clientX - labRect.left - offsetX, 6, maxX);
+          const y = clamp(e.clientY - labRect.top - offsetY, 6, maxY);
+          dockEl.style.left = `${x}px`;
+          dockEl.style.top = `${y}px`;
+          e.preventDefault();
+        });
+
+        const endDrag = (e)=>{
+          if(!dragging || (pointerId !== null && e.pointerId !== pointerId)) return;
+          dragging = false;
+          pointerId = null;
+          clampDockToLab();
+        };
+
+        headEl.addEventListener('pointerup', endDrag);
+        headEl.addEventListener('pointercancel', endDrag);
+      }
+
+      function syncDockForMobile(){
+        if(window.innerWidth > 920) return;
+        const labRect = labArea.getBoundingClientRect();
+        const c = controlDock.getBoundingClientRect();
+        const d = dataDock.getBoundingClientRect();
+        const overlapX = Math.max(0, Math.min(c.right,d.right) - Math.max(c.left,d.left));
+        const overlapY = Math.max(0, Math.min(c.bottom,d.bottom) - Math.max(c.top,d.top));
+        if(overlapX * overlapY > 0){
+          const left = clamp(d.left - labRect.left, 6, labRect.width - d.width - 6);
+          const newTop = clamp((d.top - labRect.top) + c.height + 8, 6, labRect.height - d.height - 6);
+          dataDock.style.left = `${left}px`;
+          dataDock.style.top = `${newTop}px`;
+          dataDock.style.right = 'auto';
+          dataDock.style.bottom = 'auto';
+        }
+      }
+
+      function onResize(){
+        const docks = [controlDock, dataDock];
+        const labRect = labArea.getBoundingClientRect();
+        for(const dock of docks){
+          const r = dock.getBoundingClientRect();
+          if(r.width <= 0 || r.height <= 0) continue;
+          const x = clamp(r.left - labRect.left, 6, Math.max(6, labRect.width - r.width - 6));
+          const y = clamp(r.top - labRect.top, 6, Math.max(6, labRect.height - r.height - 6));
+          dock.style.left = `${x}px`;
+          dock.style.top = `${y}px`;
+          dock.style.right = 'auto';
+          dock.style.bottom = 'auto';
+        }
+        syncDockForMobile();
+      }
+
+      vSlider.addEventListener('input', ()=>{ state.vRatio = Number(vSlider.value); applyPreview(); });
+      pulseSlider.addEventListener('input', ()=>{ state.pulseLevel = Number(pulseSlider.value); applyPreview(); });
+
+      runBtn.addEventListener('click', async ()=>{ await runExperiment(); });
+      resetRunBtn.addEventListener('click', ()=>{ resetCurrent(); showToast('已重置本次结果。'); });
+      stepResetBtn.addEventListener('click', ()=>{ resetAll(false); showToast('步骤已重置，回到第 1 步。'); });
+      autoDemoBtn.addEventListener('click', runAutoDemo);
+
+      freeModeBtn.addEventListener('click', ()=>{
+        if(state.running || state.autoPlaying) return;
+        state.freeMode = !state.freeMode;
+        freeModeBtn.textContent = state.freeMode ? '返回引导模式' : '自由模式';
+        updateTaskCard();
+        showToast(state.freeMode ? '已进入自由模式。' : '已返回引导模式。');
+      });
+
+      quizBtns.forEach((btn)=>{ btn.addEventListener('click', ()=>chooseConclusion(btn.dataset.answer)); });
+      doneCloseBtn.addEventListener('click', ()=>doneMaskEl.classList.remove('show'));
+      doneResetBtn.addEventListener('click', ()=>{ doneMaskEl.classList.remove('show'); resetAll(false); });
+
+      initDock(controlDock, controlHead, controlToggleBtn, controlBody);
+      initDock(dataDock, dataHead, dataToggleBtn, dataBody);
+
+      window.addEventListener('resize', ()=>{
+        const t = setTimeout(()=>{ state.timers.delete(t); onResize(); }, 90);
+        state.timers.add(t);
+      }, { passive:true });
+
+      document.addEventListener('visibilitychange', ()=>{
+        if(document.hidden && state.running){
+          stopCurrentRun();
+          showToast('页面切换导致运行中断，可重新运行。','err',2200);
+        }
+      });
+
+      updateAutoDemoButton();
+      updateTaskCard();
+      applyPreview();
+    })();
+  </script>
+
+<div style="margin: 24px 0 12px; text-align: center; font-size: 14px; opacity: 0.85;">
+    探索更多，访问：<a href="https://xingnian.net.cn" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">https://xingnian.net.cn</a>。
+</div>
+</body>
+</html>
