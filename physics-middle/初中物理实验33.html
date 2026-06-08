@@ -1,0 +1,2765 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>初中物理实验33｜声音的产生（交互版）</title>
+  <!-- 实验目录依据：中小学实验教学目录（初中物理 33.探究声音的产生条件） -->
+  <!-- 教材依据：物理 八年级上册 人教版“声音的产生” -->
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --line:rgba(255,255,255,.12);
+      --text:#f5f7fb;
+      --muted:#a8b6ca;
+      --good:#42d392;
+      --warn:#ffb74d;
+      --danger:#ff6363;
+      --glass:#8fd1ff;
+      --metal:#cfd6df;
+      --wood:#c8914a;
+      --dockShadow:0 14px 36px rgba(0,0,0,.42);
+    }
+    *{ box-sizing:border-box; }
+    html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; }
+    body{
+      min-height:100vh;
+      overflow-x:hidden;
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      user-select:none;
+    }
+    button{ font:inherit; }
+
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:960px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,0.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{ 0%{ background-position:0 0; } 100%{ background-position:-100% 0; } }
+
+    .task-card,
+    #stage,
+    .explanation{
+      width:100%;
+      max-width:960px;
+    }
+
+    .task-card{
+      background:rgba(255,255,255,0.08);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition:opacity .2s, filter .2s;
+    }
+    .task-step{
+      background:rgba(255,255,255,0.16);
+      border-radius:8px;
+      padding:6px 10px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .task-text{ line-height:1.55; }
+    .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+    .progress-dots{ display:flex; gap:6px; }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:rgba(255,255,255,0.26);
+      outline:2px solid rgba(255,255,255,0.12);
+      transition:.2s;
+    }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--good); outline-color:rgba(61,220,151,.45); }
+    .dot.warning{
+      background:#ff5f57;
+      outline-color:rgba(255,95,87,.42);
+      box-shadow:0 0 0 3px rgba(255,95,87,.14);
+    }
+
+    #stage{
+      width:100%;
+      max-width:960px;
+      height:76vh;
+      max-height:820px;
+      min-height:660px;
+      margin-top:10px;
+      border-radius:12px;
+      position:relative;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      background:#0b0f14;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      touch-action:none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+        radial-gradient(circle at 18% 82%, rgba(78,168,255,.06), transparent 34%),
+        radial-gradient(circle at 82% 24%, rgba(255,255,255,.04), transparent 26%);
+      background-size:40px 40px, 40px 40px, auto, auto;
+    }
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .tag{
+      border:1px solid rgba(255,255,255,.26);
+      border-radius:999px;
+      padding:6px 10px;
+      font-weight:700;
+      color:#dce9ff;
+      background:rgba(0,0,0,.42);
+      font-size:12px;
+    }
+
+    .hint-lamp-wrap{
+      position:absolute;
+      top:56px;
+      left:14px;
+      z-index:21;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:8px;
+    }
+    .hint-lamp-btn{
+      width:30px;
+      height:30px;
+      border:none;
+      border-radius:0;
+      background:transparent;
+      color:#ffd96a;
+      font-size:22px;
+      cursor:pointer;
+      box-shadow:none;
+      padding:0;
+      line-height:1;
+      filter:drop-shadow(0 2px 5px rgba(0,0,0,.35));
+    }
+    .hint-lamp-btn.flash{ animation:lampFlash .28s ease-in-out 3; }
+    @keyframes lampFlash{
+      0%,100%{
+        transform:scale(1);
+        color:#ffd96a;
+        filter:drop-shadow(0 2px 5px rgba(0,0,0,.35)) drop-shadow(0 0 0 rgba(255,214,94,0));
+      }
+      50%{
+        transform:scale(1.14);
+        color:#fff7bc;
+        filter:
+          drop-shadow(0 2px 5px rgba(0,0,0,.35))
+          drop-shadow(0 0 12px rgba(255,225,120,.96))
+          drop-shadow(0 0 24px rgba(255,214,94,.78))
+          drop-shadow(0 0 38px rgba(255,214,94,.48));
+      }
+    }
+    .hint-pop{
+      display:none;
+      width:300px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(20,27,37,.92);
+      box-shadow:0 14px 30px rgba(0,0,0,.34);
+      backdrop-filter:blur(10px);
+    }
+    .hint-lamp-wrap.open .hint-pop{ display:block; }
+    .hint-pop h4{
+      margin:0 0 6px;
+      font-size:12px;
+      color:#fff1a8;
+    }
+    .hint-detail,.hint-thought{
+      font-size:12px;
+      line-height:1.6;
+      color:#d8e7f7;
+    }
+    .hint-detail{ margin-bottom:10px; }
+    .hint-thought{ color:#bfd2e8; line-height:1.7; }
+
+    .lab-area{
+      position:absolute;
+      inset:54px 10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.82);
+      overflow:hidden;
+    }
+    .apparatus-zone{
+      position:absolute;
+      inset:18px 300px 82px 18px;
+      min-width:420px;
+    }
+    .apparatus-title{
+      position:absolute;
+      left:0;
+      right:0;
+      top:4px;
+      text-align:center;
+      font-size:12px;
+      color:#cbd9ea;
+      font-weight:700;
+      letter-spacing:.4px;
+    }
+    .bench{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      height:72px;
+      background:linear-gradient(180deg,#4a4a4a,#3a3a3a);
+      border-top:1px solid rgba(255,255,255,.12);
+      z-index:1;
+    }
+
+    .water-tank{
+      position:absolute;
+      right:12px;
+      bottom:114px;
+      width:246px;
+      height:188px;
+    }
+    .tank-label,
+    .ball-label{
+      position:absolute;
+      top:-28px;
+      left:50%;
+      transform:translateX(-50%);
+      font-size:12px;
+      font-weight:700;
+      color:#dce9ff;
+      letter-spacing:.4px;
+    }
+    .tank-shell{
+      position:absolute;
+      inset:0;
+      border:3px solid rgba(214,232,255,.58);
+      border-top-width:5px;
+      border-radius:16px 16px 22px 22px;
+      background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.02));
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+      overflow:visible;
+    }
+    .tank-water{
+      position:absolute;
+      left:10px;
+      right:10px;
+      bottom:10px;
+      height:104px;
+      border-radius:16px 16px 20px 20px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255,255,255,.42), rgba(255,255,255,0) 56%),
+        linear-gradient(180deg, rgba(165,226,255,.92), rgba(97,176,245,.9) 56%, rgba(72,136,220,.92) 100%);
+      box-shadow:inset 0 12px 24px rgba(255,255,255,.18);
+      overflow:visible;
+      --burst:0;
+      --ripple:0;
+    }
+    .water-surface{
+      position:absolute;
+      left:0;
+      right:0;
+      top:0;
+      height:16px;
+      border-radius:50%;
+      background:linear-gradient(180deg, rgba(233,247,255,.96), rgba(191,230,255,.74));
+      box-shadow:0 3px 0 rgba(255,255,255,.18);
+    }
+    .water-ripple{
+      position:absolute;
+      left:50%;
+      top:0;
+      width:92px;
+      height:18px;
+      border-radius:50%;
+      border:3px solid rgba(255,255,255,.64);
+      opacity:calc(var(--ripple) * 1.06);
+      transform:translateX(-50%) scale(calc(1 + var(--ripple) * 2.1));
+      transform-origin:center;
+    }
+    .splash-crown{
+      position:absolute;
+      left:50%;
+      bottom:calc(100% - 2px);
+      width:88px;
+      height:32px;
+      transform:translateX(-50%);
+      opacity:calc(var(--burst) * 1.08);
+      pointer-events:none;
+    }
+    .crown-bowl{
+      display:none;
+    }
+    .crown-column{
+      display:none;
+    }
+    .crown-spike{
+      position:absolute;
+      bottom:8px;
+      width:4px;
+      height:calc(6px + var(--burst) * 8px);
+      border-radius:999px;
+      background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(132,220,255,.88));
+      transform-origin:center bottom;
+      box-shadow:0 0 4px rgba(162,227,255,.28);
+    }
+    .crown-spike.s1{ left:24px; transform:translateY(calc(-10px * var(--burst))) translateX(calc(-8px * var(--burst))) scale(calc(.52 + var(--burst) * .14)); }
+    .crown-spike.s2{ left:33px; transform:translateY(calc(-18px * var(--burst))) translateX(calc(-14px * var(--burst))) scale(calc(.72 + var(--burst) * .18)); }
+    .crown-spike.s3{ left:42px; transform:translateY(calc(-5px * var(--burst))) scale(calc(.22 + var(--burst) * .08)); opacity:calc(var(--burst) * .22); }
+    .crown-spike.s4{ left:51px; transform:translateY(calc(-18px * var(--burst))) translateX(calc(14px * var(--burst))) scale(calc(.72 + var(--burst) * .18)); }
+    .crown-spike.s5{ left:60px; transform:translateY(calc(-10px * var(--burst))) translateX(calc(8px * var(--burst))) scale(calc(.52 + var(--burst) * .14)); }
+    .droplet{
+      position:absolute;
+      bottom:calc(100% - 2px);
+      width:4px;
+      height:8px;
+      border-radius:4px 4px 6px 6px;
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(124,216,255,.92));
+      opacity:calc(var(--burst) * 1.18);
+      transform-origin:center bottom;
+      filter:drop-shadow(0 0 4px rgba(144,224,255,.42));
+    }
+    .droplet.d1{ left:37%; transform:translateY(calc(-18px * var(--burst))) translateX(calc(-4px * var(--burst))) scale(calc(.24 + var(--burst) * .24)); }
+    .droplet.d2{ left:38%; transform:translateY(calc(-30px * var(--burst))) translateX(calc(-10px * var(--burst))) scale(calc(.28 + var(--burst) * .28)); }
+    .droplet.d3{ left:39%; transform:translateY(calc(-46px * var(--burst))) translateX(calc(-18px * var(--burst))) scale(calc(.32 + var(--burst) * .32)); }
+    .droplet.d4{ left:40%; transform:translateY(calc(-64px * var(--burst))) translateX(calc(-28px * var(--burst))) scale(calc(.34 + var(--burst) * .36)); }
+    .droplet.d5{ left:36%; transform:translateY(calc(-78px * var(--burst))) translateX(calc(-38px * var(--burst))) scale(calc(.3 + var(--burst) * .34)); }
+    .droplet.d6{ left:35%; transform:translateY(calc(-54px * var(--burst))) translateX(calc(-24px * var(--burst))) scale(calc(.26 + var(--burst) * .28)); }
+    .droplet.d7{ left:41%; transform:translateY(calc(-24px * var(--burst))) translateX(calc(-6px * var(--burst))) scale(calc(.22 + var(--burst) * .22)); }
+    .droplet.d8{ left:59%; transform:translateY(calc(-24px * var(--burst))) translateX(calc(6px * var(--burst))) scale(calc(.22 + var(--burst) * .22)); }
+    .droplet.d9{ left:63%; transform:translateY(calc(-54px * var(--burst))) translateX(calc(24px * var(--burst))) scale(calc(.26 + var(--burst) * .28)); }
+    .droplet.d10{ left:64%; transform:translateY(calc(-78px * var(--burst))) translateX(calc(38px * var(--burst))) scale(calc(.3 + var(--burst) * .34)); }
+    .droplet.d11{ left:60%; transform:translateY(calc(-64px * var(--burst))) translateX(calc(28px * var(--burst))) scale(calc(.34 + var(--burst) * .36)); }
+    .droplet.d12{ left:61%; transform:translateY(calc(-46px * var(--burst))) translateX(calc(18px * var(--burst))) scale(calc(.32 + var(--burst) * .32)); }
+    .droplet.d13{ left:62%; transform:translateY(calc(-30px * var(--burst))) translateX(calc(10px * var(--burst))) scale(calc(.28 + var(--burst) * .28)); }
+    .droplet.d14{ left:63%; transform:translateY(calc(-18px * var(--burst))) translateX(calc(4px * var(--burst))) scale(calc(.24 + var(--burst) * .24)); }
+
+    .ping-setup{
+      position:absolute;
+      left:18px;
+      bottom:94px;
+      width:236px;
+      height:250px;
+    }
+    .stand-base{
+      position:absolute;
+      left:48px;
+      right:42px;
+      bottom:0;
+      height:16px;
+      border-radius:14px;
+      background:linear-gradient(180deg, #3d434c, #1f242b);
+      box-shadow:0 8px 18px rgba(0,0,0,.28);
+    }
+    .stand-pole{
+      position:absolute;
+      left:108px;
+      bottom:16px;
+      width:6px;
+      height:210px;
+      border-radius:999px;
+      background:linear-gradient(180deg, #edf2fa, #98a4b3);
+    }
+    .stand-beam{
+      position:absolute;
+      left:86px;
+      top:16px;
+      width:108px;
+      height:6px;
+      border-radius:999px;
+      background:linear-gradient(90deg, #e7eef8, #a8b4c3);
+    }
+    .ball-pendulum{
+      position:absolute;
+      left:160px;
+      top:18px;
+      width:74px;
+      height:188px;
+      transform-origin:12px 0;
+      transform:rotate(var(--ball-angle, 0deg));
+    }
+    .ball-string{
+      position:absolute;
+      left:10px;
+      top:0;
+      width:2px;
+      height:130px;
+      background:linear-gradient(180deg, rgba(255,255,255,.92), rgba(178,190,210,.84));
+    }
+    .ping-ball{
+      position:absolute;
+      left:-9px;
+      top:126px;
+      width:38px;
+      height:38px;
+      border-radius:50%;
+      background:radial-gradient(circle at 32% 28%, #ffffff 0%, #f4efe7 38%, #e6dbcb 78%, #d3c4ad 100%);
+      box-shadow:0 10px 18px rgba(0,0,0,.22);
+    }
+    .ball-shadow{
+      position:absolute;
+      left:-11px;
+      bottom:-6px;
+      width:48px;
+      height:9px;
+      border-radius:50%;
+      background:rgba(0,0,0,.22);
+      filter:blur(3px);
+      transform:scaleX(calc(.86 + (var(--ball-swing, 0) * .2)));
+      opacity:calc(.28 + var(--ball-swing, 0) * .2);
+    }
+
+    .fork-sound-rings{
+      position:absolute;
+      width:108px;
+      height:108px;
+      pointer-events:none;
+      opacity:0;
+      transition:opacity .16s;
+    }
+    .fork-sound-rings.active{ opacity:1; }
+    .fork-sound-rings span{
+      position:absolute;
+      inset:0;
+      border:2px solid rgba(145,223,255,.55);
+      border-radius:50%;
+      transform:scale(.36);
+      opacity:0;
+      animation:ringSpread 1.4s linear infinite;
+    }
+    .fork-sound-rings span:nth-child(2){ animation-delay:.36s; }
+    .fork-sound-rings span:nth-child(3){ animation-delay:.72s; }
+    @keyframes ringSpread{
+      0%{ transform:scale(.32); opacity:.72; }
+      100%{ transform:scale(1.04); opacity:0; }
+    }
+
+    .striker{
+      position:absolute;
+      width:78px;
+      height:126px;
+      border:none;
+      background:transparent;
+      cursor:pointer;
+      touch-action:none;
+      z-index:12;
+      transform-origin:39px 108px;
+      transform:rotate(0deg);
+    }
+    .striker-stick{
+      position:absolute;
+      left:36px;
+      top:26px;
+      width:6px;
+      height:76px;
+      border-radius:999px;
+      background:linear-gradient(180deg, #dfab67, #a86a30);
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);
+    }
+    .striker-head{
+      position:absolute;
+      left:22px;
+      top:6px;
+      width:30px;
+      height:24px;
+      border-radius:9px;
+      background:linear-gradient(180deg, #636c78, #2c3238);
+      box-shadow:0 6px 12px rgba(0,0,0,.28);
+    }
+    .striker-label{
+      position:absolute;
+      left:50%;
+      top:104px;
+      transform:translateX(-50%);
+      white-space:nowrap;
+      font-size:11px;
+      color:#d2deef;
+      opacity:.9;
+    }
+
+    .fork-assembly{
+      position:absolute;
+      width:108px;
+      height:230px;
+      transform:translate3d(0,0,0);
+      touch-action:none;
+      z-index:10;
+      --fork-bend:0;
+    }
+    .fork-body{
+      position:absolute;
+      inset:0;
+      transform-origin:50% 50%;
+      transition:transform .22s ease;
+    }
+    .fork-drag-zone{
+      position:absolute;
+      left:16px;
+      right:16px;
+      top:10px;
+      bottom:26px;
+      border:none;
+      background:transparent;
+      cursor:grab;
+      z-index:2;
+      border-radius:28px;
+    }
+    .fork-drag-zone:active{ cursor:grabbing; }
+    .fork-handle{
+      position:absolute;
+      left:50%;
+      bottom:8px;
+      width:14px;
+      height:98px;
+      transform:translateX(-50%);
+      border-radius:999px;
+      background:linear-gradient(180deg, #f6f9ff, #adb8c7 72%, #7c8795 100%);
+      box-shadow:0 10px 18px rgba(0,0,0,.18);
+    }
+    .fork-stem{
+      position:absolute;
+      left:50%;
+      bottom:102px;
+      width:12px;
+      height:36px;
+      transform:translateX(-50%);
+      border-radius:999px;
+      background:linear-gradient(180deg, #edf3fb, #aeb8c7 76%, #84909e);
+    }
+    .fork-arch{
+      position:absolute;
+      left:50%;
+      bottom:120px;
+      width:64px;
+      height:28px;
+      transform:translateX(-50%);
+      border:8px solid var(--metal);
+      border-top:none;
+      border-radius:0 0 18px 18px;
+      box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);
+    }
+    .fork-tine{
+      position:absolute;
+      bottom:136px;
+      width:18px;
+      height:94px;
+      border-radius:12px 12px 10px 10px;
+      background:linear-gradient(180deg, #f5f8fc, #b8c2d0 68%, #818d9a 100%);
+      box-shadow:0 10px 16px rgba(0,0,0,.16);
+      transform-origin:50% calc(100% - 1px);
+    }
+    .fork-tine.left{
+      left:22px;
+      transform:rotate(calc(var(--fork-bend) * -1.08deg)) skewX(calc(var(--fork-bend) * -.38deg));
+    }
+    .fork-tine.right{
+      right:22px;
+      transform:rotate(calc(var(--fork-bend) * 1.08deg)) skewX(calc(var(--fork-bend) * .38deg));
+    }
+    .fork-grip-label{
+      position:absolute;
+      left:50%;
+      bottom:-18px;
+      transform:translateX(-50%);
+      font-size:11px;
+      color:#d0dced;
+      white-space:nowrap;
+      opacity:.9;
+      transition:opacity .18s ease;
+    }
+    .fork-assembly.engaged .fork-grip-label{
+      opacity:.18;
+    }
+
+    .dock{
+      position:absolute;
+      width:min(92%, 360px);
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:var(--panel-bg);
+      backdrop-filter:blur(6px);
+      box-shadow:var(--dockShadow);
+      overflow:hidden;
+      touch-action:none;
+      z-index:30;
+    }
+    .dock.control-dock{ width:min(92%, 344px); }
+    .dock.data-dock{ width:min(92%, 320px); }
+    .dock.dragging{ box-shadow:0 20px 48px rgba(0,0,0,.55); }
+    .dockHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none;
+    }
+    .dockHead:active{ cursor:grabbing; }
+    .dockTitle{ font-size:13px; font-weight:700; color:#e7f0ff; }
+    .dockBtns{ display:flex; gap:6px; align-items:center; }
+    .iconBtn{
+      border:1px solid rgba(255,255,255,.2);
+      background:rgba(255,255,255,.08);
+      color:#e8f1ff;
+      border-radius:7px;
+      padding:4px 8px;
+      min-width:unset;
+      height:auto;
+      cursor:pointer;
+      font-size:12px;
+    }
+    .iconBtn:disabled{ opacity:.42; cursor:not-allowed; }
+    .dockBody{
+      padding:10px;
+      max-height:330px;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    .dockBody.collapsed{ display:none; }
+
+    .btnRow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .btnRow .wide{ width:100%; }
+    .main,.sub{
+      border:none;
+      border-radius:8px;
+      padding:8px 12px;
+      color:#fff;
+      cursor:pointer;
+      transition:background .2s, transform .05s, opacity .2s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      font-size:13px;
+      font-weight:700;
+    }
+    .main{
+      background:#2e7d32;
+      color:#fff;
+    }
+    .sub{
+      background:#444;
+      color:#fff;
+    }
+    .main:hover,.sub:hover{ background:#5a5a5a; }
+    .main:active,.sub:active{ transform:scale(.98); }
+    .main:disabled,.sub:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+      transform:none;
+    }
+
+    .analysis{
+      font-size:12px;
+      line-height:1.6;
+      color:#e3efff;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:10px;
+      padding:8px;
+      background:rgba(0,0,0,.24);
+    }
+    .analysis.ok{
+      border-color:rgba(61,220,151,.4);
+    }
+
+    .dataNotice{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:18px;
+      height:18px;
+      margin-left:6px;
+      padding:0 5px;
+      border-radius:999px;
+      background:#f44336;
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      box-shadow:0 0 12px rgba(244,67,54,.36);
+    }
+    .dataNotice.hidden{ display:none; }
+
+    table.record{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:8px;
+      font-size:12px;
+    }
+    .record th,.record td{
+      border:1px solid rgba(255,255,255,.12);
+      padding:4px 5px;
+      text-align:center;
+    }
+    .record th{
+      background:rgba(255,255,255,.08);
+      color:#dce9ff;
+      font-weight:700;
+    }
+    .record td{ color:#c8d6ea; }
+
+    .toolbar{
+      width:100%;
+      max-width:960px;
+      margin:10px auto 0;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .toolbar .sub{
+      background:#444;
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:30px;
+      transform:translate(-50%, 20px);
+      max-width:min(520px, calc(100vw - 32px));
+      padding:12px 18px;
+      border-radius:16px;
+      background:rgba(0,0,0,.86);
+      color:#fff;
+      font-size:16px;
+      line-height:1.5;
+      opacity:0;
+      pointer-events:none;
+      transition:.22s ease;
+      z-index:100;
+      text-align:center;
+    }
+    .toast.show{ opacity:1; transform:translate(-50%, 0); }
+    .checkmark{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:82px;
+      height:82px;
+      margin:-41px 0 0 -41px;
+      border-radius:50%;
+      border:5px solid rgba(66,211,146,.9);
+      opacity:0;
+      transform:scale(.7);
+      transition:.22s ease;
+      pointer-events:none;
+      z-index:40;
+    }
+    .checkmark div{
+      position:absolute;
+      left:23px;
+      top:16px;
+      width:22px;
+      height:38px;
+      border-right:5px solid rgba(66,211,146,.96);
+      border-bottom:5px solid rgba(66,211,146,.96);
+      transform:rotate(42deg);
+    }
+    .checkmark.active{ opacity:1; transform:scale(1); }
+    .modal-mask{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:300;
+      background:rgba(0,0,0,.5);
+    }
+    .modal{
+      width:min(90vw, 370px);
+      background:#111;
+      color:#fff;
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:14px;
+      padding:18px 16px;
+      text-align:center;
+      box-shadow:0 10px 30px rgba(0,0,0,.5);
+    }
+    .modal h3{ margin:8px 0 6px; font-size:20px; }
+    .modal p{ margin-top:0; line-height:1.55; color:#cfd8dc; }
+    .modal .ok{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:120px;
+      min-height:40px;
+      padding:0 18px;
+      border:none;
+      border-radius:10px;
+      margin-top:12px;
+      background:var(--good);
+      color:#081a12;
+      font-weight:700;
+      box-shadow:0 8px 18px rgba(66,211,146,.24);
+    }
+
+    .demo-cursor{
+      position:absolute;
+      width:24px;
+      height:24px;
+      margin:-12px 0 0 -12px;
+      border-radius:50%;
+      border:2px solid rgba(255,255,255,.88);
+      background:rgba(255,255,255,.12);
+      box-shadow:0 0 0 8px rgba(255,255,255,.08);
+      pointer-events:none;
+      opacity:0;
+      z-index:60;
+      transition:opacity .18s ease;
+    }
+    .demo-cursor.active{ opacity:1; }
+    .demo-cursor.click{ animation:cursorPulse .32s ease; }
+    @keyframes cursorPulse{
+      0%{ transform:scale(1); }
+      50%{ transform:scale(.86); }
+      100%{ transform:scale(1); }
+    }
+
+    .explanation{
+      width:100%;
+      max-width:960px;
+      margin:14px 0 20px;
+      line-height:1.65;
+      font-size:.95em;
+      color:#e9f2ff;
+    }
+    .explanation h2{
+      margin:.2em 0 .4em;
+      color:#9bd3ff;
+      font-size:1.15em;
+    }
+    .explanation ul{
+      margin:0;
+      padding-left:22px;
+      line-height:1.8;
+    }
+
+    @media (max-width: 980px){
+      .task-card{
+        grid-template-columns:1fr;
+        gap:16px;
+      }
+      .task-step{ justify-self:start; }
+      #stage{
+        height:auto;
+        min-height:1040px;
+      }
+      .apparatus-zone{
+        inset:18px 18px 300px 18px;
+        min-width:0;
+      }
+      .water-tank{
+        left:18px;
+        width:208px;
+      }
+      .ping-setup{
+        left:auto;
+        right:0;
+        width:214px;
+      }
+      .dock{
+        width:calc(100% - 36px);
+        min-width:0;
+      }
+      .explanation ul{ font-size:15px; }
+    }
+    @media (max-width: 560px){
+      .water-tank,
+      .ping-setup{
+        left:50%;
+        right:auto;
+        transform:translateX(-50%);
+      }
+      .ping-setup{
+        bottom:330px;
+      }
+    }
+  
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText"></div>
+      <div class="task-hint" id="taskHint"></div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：准备敲击</span>
+    </div>
+
+    <div class="hint-lamp-wrap" id="hintLampWrap">
+      <button id="hintLamp" class="hint-lamp-btn" type="button" aria-label="查看实验提示">💡</button>
+      <div class="hint-pop" id="hintPop">
+        <h4>当前提示</h4>
+        <div class="hint-detail" id="hintDetail">先点击木槌敲击音叉，观察音叉发声时叉股是否在振动。</div>
+        <h4>实验思路</h4>
+        <div class="hint-thought" id="hintThought">先看音叉本身发声，再用“水花飞溅”和“乒乓球被弹开”这两个外部现象证明音叉在振动，从而归纳声音由振动产生。</div>
+      </div>
+    </div>
+
+    <div class="lab-area" id="labArea">
+      <div class="apparatus-zone" id="apparatusZone">
+        <div class="apparatus-title">音叉实验装置</div>
+
+        <div class="water-tank" id="waterTank">
+          <div class="tank-label">浅水槽</div>
+          <div class="tank-shell">
+            <div class="tank-water" id="tankWater">
+              <div class="water-surface" id="waterSurface"></div>
+              <div class="water-ripple" id="waterRipple"></div>
+              <div class="splash-crown" aria-hidden="true">
+                <div class="crown-bowl"></div>
+                <div class="crown-column"></div>
+                <span class="crown-spike s1"></span>
+                <span class="crown-spike s2"></span>
+                <span class="crown-spike s3"></span>
+                <span class="crown-spike s4"></span>
+                <span class="crown-spike s5"></span>
+              </div>
+              <div class="droplet d1"></div>
+              <div class="droplet d2"></div>
+              <div class="droplet d3"></div>
+              <div class="droplet d4"></div>
+              <div class="droplet d5"></div>
+              <div class="droplet d6"></div>
+              <div class="droplet d7"></div>
+              <div class="droplet d8"></div>
+              <div class="droplet d9"></div>
+              <div class="droplet d10"></div>
+              <div class="droplet d11"></div>
+              <div class="droplet d12"></div>
+              <div class="droplet d13"></div>
+              <div class="droplet d14"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ping-setup" id="pingSetup">
+          <div class="ball-label">悬挂乒乓球</div>
+          <div class="stand-beam"></div>
+          <div class="stand-pole"></div>
+          <div class="stand-base"></div>
+          <div class="ball-pendulum" id="ballPendulum">
+            <div class="ball-string"></div>
+            <div class="ping-ball" id="pingBall"></div>
+            <div class="ball-shadow" id="ballShadow"></div>
+          </div>
+        </div>
+
+        <button class="striker" id="strikerBtn" type="button" aria-label="向左拉开木槌后松手敲击音叉">
+          <span class="striker-head"></span>
+          <span class="striker-stick"></span>
+          <span class="striker-label">向左拉开木槌后松手敲击</span>
+        </button>
+
+        <div class="fork-sound-rings" id="forkRings" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+
+        <div class="fork-assembly" id="forkAssembly">
+          <button class="fork-drag-zone" id="forkDragZone" aria-label="拖动音叉到水面或乒乓球附近"></button>
+          <div class="fork-body" id="forkBody">
+            <div class="fork-tine left" id="leftTine"></div>
+            <div class="fork-tine right" id="rightTine"></div>
+            <div class="fork-arch"></div>
+            <div class="fork-stem"></div>
+            <div class="fork-handle"></div>
+          </div>
+          <div class="fork-grip-label">拖动音叉做实验</div>
+        </div>
+      </div>
+
+      <div class="dock control-dock drawer control" id="controlDock" style="right:10px; top:10px; left:auto;">
+        <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle data-drag-handle data-drag-handle>
+          <div class="dockTitle drawer-title">实验面板</div>
+          <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">收起</button></div>
+        </div>
+        <div class="dockBody drawer-body" id="controlBody">
+          <div class="btnRow">
+            <button class="main wide" id="recordBtn">记录本次现象</button>
+            <button class="sub" id="stopBtn">停止音叉振动</button>
+            <button class="sub" id="analyzeBtn">分析结论</button>
+          </div>
+          <div class="analysis" id="analysisText">请先完成当前步骤现象记录，再点击“分析结论”。</div>
+        </div>
+      </div>
+
+      <div class="dock data-dock drawer data" id="dataDock" style="right:10px; top:80px; left:auto;">
+        <div class="dockHead drawer-header" id="dataHead" data-drag-handle data-drag-handle data-drag-handle data-drag-handle>
+          <div class="dockTitle drawer-title">数据面板 <span class="dataNotice hidden" id="dataNotice">0</span></div>
+          <div class="dockBtns drawer-actions">
+            <button class="iconBtn" id="clearBtn">清空</button>
+            <button class="iconBtn" id="dataToggleBtn">展开</button>
+          </div>
+        </div>
+        <div class="dockBody collapsed drawer-body" id="dataBody">
+          <table class="record">
+            <thead>
+              <tr><th>场景</th><th>发声</th><th>振动迹象</th><th>说明</th></tr>
+            </thead>
+            <tbody id="recordBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="demo-cursor" id="demoCursor"></div>
+      <div class="checkmark" id="checkmark"><div></div></div>
+      <div class="bench">
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="sub" id="resetBtn">步骤重置</button>
+    <button class="sub" id="autoDemoBtn">自动演示</button>
+    <button class="sub" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">实验完成</h3>
+      <p>你已经完成“声音的产生”实验：<br />声音是由物体的振动产生的。</p>
+      <button class="sub ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：声音的产生</h2>
+    <ul>
+      <li><b>关键操作与现象</b>：敲击音叉后，音叉发声并振动；将振动音叉轻触水面，水面会飞溅出水花；将振动音叉靠近悬挂的乒乓球，乒乓球会被弹开。</li>
+      <li><b>实验结论</b>：大量观察表明，发声的音叉在振动，声音是由物体的振动产生的；发声体停止振动，声音也会消失。</li>
+    </ul>
+  </div>
+
+  <script>
+    const tasks = [
+      {
+        text:'向左拉开木槌并<b>松手敲击音叉</b>，听声音并观察音叉叉股的变化，再记录现象。',
+        hint:'提示：先把木槌向左拉开再松手，让音叉发声，再记录“有声音、在振动”的现象。',
+        check:(ctx)=>ctx.records.some(r=>r.kind === 'fork-sound')
+      },
+      {
+        text:'拖动<b>振动音叉</b>轻触水面，观察是否有水花飞溅，再记录现象。',
+        hint:'提示：要先敲击音叉，再把叉股移到水面附近，观察水面反应。',
+        check:(ctx)=>ctx.records.some(r=>r.kind === 'water-splash')
+      },
+      {
+        text:'把<b>振动音叉</b>靠近悬挂乒乓球，观察乒乓球是否被弹开，再记录现象。',
+        hint:'提示：音叉仍需保持振动，再将它移到乒乓球旁边。',
+        check:(ctx)=>ctx.records.some(r=>r.kind === 'ball-bounce')
+      },
+      {
+        text:'点击“<b>分析结论</b>”，归纳声音是怎样产生的。',
+        hint:'提示：分析时要同时用到“音叉发声”“水花飞溅”“乒乓球被弹开”三组现象。',
+        check:(ctx)=>ctx.analysisOk === true
+      }
+    ];
+
+    const $ = (s)=>document.querySelector(s);
+
+    const stageEl = $('#stage');
+    const taskCard = $('#taskCard');
+    const taskStepEl = $('#taskStep');
+    const taskTextEl = $('#taskText');
+    const taskHintEl = $('#taskHint');
+    const dotsEl = $('#dots');
+
+    const modeTag = $('#modeTag');
+    const statusTag = $('#statusTag');
+    const hintLampWrap = $('#hintLampWrap');
+    const hintLampBtn = $('#hintLamp');
+    const hintDetail = $('#hintDetail');
+    const hintThought = $('#hintThought');
+
+    const labArea = $('#labArea');
+    const apparatusZone = $('#apparatusZone');
+    const waterTank = $('#waterTank');
+    const tankWater = $('#tankWater');
+    const waterSurface = $('#waterSurface');
+    const waterRipple = $('#waterRipple');
+    const pingSetup = $('#pingSetup');
+    const ballPendulum = $('#ballPendulum');
+    const pingBall = $('#pingBall');
+    const ballShadow = $('#ballShadow');
+    const strikerBtn = $('#strikerBtn');
+    const forkAssembly = $('#forkAssembly');
+    const forkBody = $('#forkBody');
+    const forkDragZone = $('#forkDragZone');
+    const leftTine = $('#leftTine');
+    const rightTine = $('#rightTine');
+    const forkRings = $('#forkRings');
+
+    const controlDock = $('#controlDock');
+    const controlHead = $('#controlHead');
+    const controlBody = $('#controlBody');
+    const controlToggleBtn = $('#controlToggleBtn');
+
+    const dataDock = $('#dataDock');
+    const dataHead = $('#dataHead');
+    const dataBody = $('#dataBody');
+    const dataToggleBtn = $('#dataToggleBtn');
+    const dataNotice = $('#dataNotice');
+
+    const recordBtn = $('#recordBtn');
+    const stopBtn = $('#stopBtn');
+    const analyzeBtn = $('#analyzeBtn');
+    const clearBtn = $('#clearBtn');
+    const resetBtn = $('#resetBtn');
+    const autoDemoBtn = $('#autoDemoBtn');
+    const freeBtn = $('#freeBtn');
+
+    const analysisText = $('#analysisText');
+    const recordBody = $('#recordBody');
+    const demoCursor = $('#demoCursor');
+    const toastEl = $('#toast');
+    const checkmarkEl = $('#checkmark');
+    const doneMaskEl = $('#doneMask');
+    const okBtn = $('#okBtn');
+
+    const FORK = {
+      w:108,
+      h:230,
+      tipLeftX:34,
+      tipRightX:74,
+      tipY:0,
+      waterSnapPad:8,
+      ballContactX:14,
+      ballContactY:74,
+      ballGap:2
+    };
+    const STRIKER = {
+      w:78,
+      h:126,
+      pullAngle:34,
+      strikeThreshold:10,
+      reboundAngle:-7
+    };
+
+    const state = {
+      currentTask:0,
+      completed:false,
+      freeMode:false,
+      autoPlaying:false,
+      autoRunId:0,
+      successCooldown:false,
+      warningStep:-1,
+      hintOpen:false,
+      records:[],
+      unseenRecordCount:0,
+      analysisOk:false,
+      timers:new Set(),
+      zTop:40,
+      controlCollapsed:false,
+      dataCollapsed:true,
+      dockMoved:{ control:false, data:false },
+      forkX:280,
+      forkY:50,
+      draggingFork:false,
+      forkEnergy:0,
+      forkPhase:0,
+      forkPose:'upright',
+      ballAngle:0,
+      ballVel:0,
+      ballKick:0,
+      splashBurst:0,
+      ripple:0,
+      waterLatched:false,
+      ballLatched:false,
+      lastObservation:'idle',
+      pendingObservation:'idle',
+      strikerX:0,
+      strikerY:0,
+      strikerAngle:0,
+      strikerDragging:false,
+      strikerPointerId:null,
+      strikerAnimRaf:0,
+      suppressStrikerClick:false,
+      visualRAF:0,
+      lastFrame:0
+    };
+
+    const audioState = {
+      ctx:null,
+      master:null,
+      tone:null,
+      overtone:null,
+      toneGain:null,
+      overtoneGain:null
+    };
+
+    const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
+    const sleep = (ms)=>new Promise((resolve)=>setTimeout(resolve, ms));
+
+    function trackTimeout(fn, ms){
+      const id = setTimeout(()=>{
+        state.timers.delete(id);
+        fn();
+      }, ms);
+      state.timers.add(id);
+      return id;
+    }
+    function clearAllTimers(){
+      for(const id of state.timers) clearTimeout(id);
+      state.timers.clear();
+    }
+
+    function ensureForkAudio(){
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if(!AudioCtx) return null;
+      if(!audioState.ctx){
+        const ctx = new AudioCtx();
+        const master = ctx.createGain();
+        const tone = ctx.createOscillator();
+        const overtone = ctx.createOscillator();
+        const toneGain = ctx.createGain();
+        const overtoneGain = ctx.createGain();
+        tone.type = 'sine';
+        overtone.type = 'sine';
+        tone.frequency.value = 440;
+        overtone.frequency.value = 880;
+        toneGain.gain.value = 0.0001;
+        overtoneGain.gain.value = 0.0001;
+        master.gain.value = 0.0001;
+        tone.connect(toneGain);
+        overtone.connect(overtoneGain);
+        toneGain.connect(master);
+        overtoneGain.connect(master);
+        master.connect(ctx.destination);
+        tone.start();
+        overtone.start();
+        audioState.ctx = ctx;
+        audioState.master = master;
+        audioState.tone = tone;
+        audioState.overtone = overtone;
+        audioState.toneGain = toneGain;
+        audioState.overtoneGain = overtoneGain;
+      }
+      if(audioState.ctx.state === 'suspended'){
+        audioState.ctx.resume().catch(()=>{});
+      }
+      return audioState;
+    }
+
+    function syncForkAudio(forceStop = false){
+      const audio = ensureForkAudio();
+      if(!audio) return;
+      const now = audio.ctx.currentTime;
+      const energy = forceStop ? 0 : state.forkEnergy;
+      const base = 440;
+      const drift = Math.sin(state.forkPhase * 0.8) * 1.8;
+      audio.tone.frequency.setTargetAtTime(base + drift, now, 0.02);
+      audio.overtone.frequency.setTargetAtTime(base * 2 + drift * 1.4, now, 0.02);
+      const loudness = energy > 0.015 ? 0.048 * Math.pow(energy, 1.35) : 0.0001;
+      audio.master.gain.setTargetAtTime(loudness, now, forceStop ? 0.015 : 0.03);
+      audio.toneGain.gain.setTargetAtTime(loudness * 0.92, now, 0.02);
+      audio.overtoneGain.gain.setTargetAtTime(loudness * 0.18, now, 0.02);
+    }
+
+    function showToast(msg){
+      toastEl.textContent = msg || '请继续尝试';
+      toastEl.classList.add('show');
+      clearTimeout(showToast.t);
+      showToast.t = setTimeout(()=>toastEl.classList.remove('show'), 1400);
+    }
+
+    function showCheck(){
+      checkmarkEl.classList.add('active');
+      clearTimeout(showCheck.t);
+      showCheck.t = setTimeout(()=>checkmarkEl.classList.remove('active'), 520);
+    }
+
+    function setStatus(msg){
+      statusTag.textContent = `状态：${msg}`;
+    }
+
+    function syncModeTag(){
+      modeTag.textContent = `模式：${state.autoPlaying ? '自动演示' : (state.freeMode ? '自由' : '引导')}`;
+    }
+
+    function syncInteractiveButtons(){
+      autoDemoBtn.textContent = state.autoPlaying ? '退出自动演示' : '自动演示';
+      autoDemoBtn.disabled = !state.autoPlaying && state.freeMode;
+      recordBtn.disabled = state.autoPlaying;
+      stopBtn.disabled = state.autoPlaying;
+      analyzeBtn.disabled = state.autoPlaying;
+      clearBtn.disabled = state.autoPlaying;
+      resetBtn.disabled = state.autoPlaying;
+      freeBtn.disabled = state.autoPlaying;
+    }
+
+    function currentStageStatus(){
+      if(state.currentTask === 0) return '准备敲击';
+      if(state.currentTask === 1) return '接触水面';
+      if(state.currentTask === 2) return '靠近乒乓球';
+      if(state.currentTask === 3) return '等待分析';
+      return '待操作';
+    }
+
+    function flashHintLamp(){
+      hintLampBtn.classList.remove('flash');
+      void hintLampBtn.offsetWidth;
+      hintLampBtn.classList.add('flash');
+      clearTimeout(flashHintLamp.t);
+      flashHintLamp.t = setTimeout(()=>hintLampBtn.classList.remove('flash'), 900);
+    }
+
+    function syncHintLamp(){
+      hintLampWrap.classList.toggle('open', !!state.hintOpen);
+      let detail = tasks[state.currentTask]?.hint || tasks[0].hint;
+      if(state.freeMode){
+        detail = '自由模式下可反复敲击音叉，并把振动音叉移到水面或乒乓球附近，自主记录现象。';
+      }else if(state.currentTask === 1){
+        detail = '此步要先让音叉保持振动，再把叉股轻触水面，观察是否激起水花。';
+      }else if(state.currentTask === 2){
+        detail = '此步要把振动音叉移到悬挂乒乓球附近，观察乒乓球是否被弹开。';
+      }else if(state.currentTask === 3){
+        detail = '分析时要同时说明：音叉发声时在振动，接触水面会激起水花，靠近乒乓球会把球弹开。';
+      }
+      hintDetail.textContent = detail.replace(/^提示：/, '');
+      if(state.analysisOk){
+        hintThought.innerHTML = '你已经验证：<b>发声音叉在振动</b>，并且这种振动能使水花飞溅、使乒乓球弹开，因此声音由振动产生。';
+      }else{
+        hintThought.innerHTML = '先观察“音叉发声”，再看“接触水面激起水花”和“靠近乒乓球把球弹开”，把这些现象合在一起归纳。';
+      }
+    }
+
+    function warnCurrentStep(msg){
+      if(state.completed) return;
+      state.warningStep = state.currentTask;
+      updateDots();
+      setStatus('当前步骤未完成');
+      showToast(msg || '请先完成当前步骤');
+      flashHintLamp();
+    }
+
+    function updateBadge(){
+      dataNotice.textContent = String(state.unseenRecordCount);
+      dataNotice.classList.toggle('hidden', state.unseenRecordCount <= 0);
+    }
+    function clearBadge(){
+      state.unseenRecordCount = 0;
+      updateBadge();
+    }
+
+    function initDots(){
+      dotsEl.innerHTML = '';
+      for(let i=0;i<tasks.length;i+=1){
+        const d = document.createElement('span');
+        d.className = 'dot';
+        dotsEl.appendChild(d);
+      }
+    }
+    function updateDots(){
+      [...dotsEl.children].forEach((d,i)=>{
+        const isWarning = i === state.warningStep && !state.completed && !state.freeMode;
+        d.classList.toggle('warning', isWarning);
+        d.classList.toggle('active', i === state.currentTask && !state.completed && !isWarning);
+        d.classList.toggle('done', i < state.currentTask || state.completed);
+      });
+    }
+    function setStepUI(i){
+      const idx = clamp(i, 0, tasks.length - 1);
+      state.currentTask = idx;
+      taskStepEl.textContent = `步骤 ${idx + 1} / ${tasks.length}`;
+      taskTextEl.innerHTML = tasks[idx].text;
+      taskHintEl.textContent = tasks[idx].hint;
+      updateDots();
+      syncHintLamp();
+      if(!state.autoPlaying && !state.freeMode && !state.completed){
+        setStatus(currentStageStatus());
+      }
+    }
+
+    function setFreeMode(on){
+      const wasFree = state.freeMode;
+      state.freeMode = !!on;
+      syncModeTag();
+      freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+      syncInteractiveButtons();
+      if(state.freeMode){
+        taskCard.style.opacity = '.74';
+        taskCard.style.filter = 'saturate(.8)';
+        setStatus('自由探索');
+      }else{
+        taskCard.style.opacity = '1';
+        taskCard.style.filter = 'none';
+        if(wasFree){
+          resetFlow(false);
+        }else{
+          recalcProgress();
+          setStatus(currentStageStatus());
+        }
+      }
+      syncHintLamp();
+    }
+
+    function rectInZone(el){
+      const zr = apparatusZone.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return {
+        left:r.left - zr.left,
+        top:r.top - zr.top,
+        width:r.width,
+        height:r.height,
+        right:r.right - zr.left,
+        bottom:r.bottom - zr.top
+      };
+    }
+
+    function getZoneSize(){
+      const r = apparatusZone.getBoundingClientRect();
+      return { width:r.width, height:r.height };
+    }
+
+    function layoutApparatus(){
+      const zone = getZoneSize();
+      const compact = zone.width < 540;
+      const waterW = clamp(compact ? zone.width * 0.58 : zone.width * 0.32, 188, compact ? 228 : 246);
+      const pingW = clamp(compact ? zone.width * 0.54 : zone.width * 0.3, 190, compact ? 220 : 236);
+      waterTank.style.width = `${waterW}px`;
+      pingSetup.style.width = `${pingW}px`;
+      waterTank.style.right = 'auto';
+      pingSetup.style.right = 'auto';
+      waterTank.style.transform = 'none';
+      pingSetup.style.transform = 'none';
+      if(compact){
+        waterTank.style.left = `${Math.max(12, (zone.width - waterW) / 2)}px`;
+        waterTank.style.bottom = '96px';
+        pingSetup.style.left = `${Math.max(12, (zone.width - pingW) / 2)}px`;
+        pingSetup.style.bottom = '332px';
+      }else{
+        pingSetup.style.left = '18px';
+        pingSetup.style.bottom = '94px';
+        waterTank.style.left = `${Math.max(18, zone.width - waterW - 18)}px`;
+        waterTank.style.bottom = '114px';
+      }
+    }
+
+    function getForkHome(){
+      const zone = getZoneSize();
+      const maxX = Math.max(8, zone.width - FORK.w - 8);
+      return {
+        x:clamp(zone.width * 0.5 - FORK.w / 2, 8, maxX),
+        y:52
+      };
+    }
+
+    function getStrikerHome(forkPos = getForkHome()){
+      const zone = getZoneSize();
+      const targetX = forkPos.x + 22 - 52 - 2;
+      const targetY = forkPos.y + 8;
+      return {
+        x:clamp(targetX, 0, Math.max(0, zone.width - STRIKER.w)),
+        y:clamp(targetY, 0, Math.max(0, zone.height - STRIKER.h))
+      };
+    }
+
+    function getWaterTarget(){
+      const surface = rectInZone(waterSurface);
+      return {
+        x:surface.left + surface.width * 0.5 - FORK.w / 2,
+        y:surface.top - (FORK.h - 10) + FORK.waterSnapPad
+      };
+    }
+
+    function getBallTarget(){
+      const ball = rectInZone(pingBall);
+      return {
+        x:ball.left + ball.width + FORK.ballGap - FORK.ballContactX,
+        y:ball.top - 48
+      };
+    }
+
+    function canHammerStrike(){
+      const home = getForkHome();
+      const strikerHome = getStrikerHome(home);
+      return Math.abs(state.forkX - home.x) < 22
+        && Math.abs(state.forkY - home.y) < 30
+        && Math.abs(state.strikerX - strikerHome.x) < 18
+        && Math.abs(state.strikerY - strikerHome.y) < 18
+        && state.forkPose === 'upright';
+    }
+
+    function isForkBlockingBall(){
+      if(state.forkPose !== 'upright') return false;
+      const ball = rectInZone(pingBall);
+      const ballCenterY = ball.top + ball.height / 2;
+      const ballRight = ball.left + ball.width;
+      const forkContactX = state.forkX + FORK.ballContactX;
+      const forkContactY = state.forkY + FORK.ballContactY;
+      return forkContactX <= ballRight + 1
+        && forkContactX >= ballRight - 2
+        && Math.abs(forkContactY - ballCenterY) < ball.height / 2 + 10;
+    }
+
+    function setForkPosition(x, y, options = {}){
+      const zone = getZoneSize();
+      const opt = Object.assign({ snap:true }, options);
+      let nx = clamp(x, 0, zone.width - FORK.w);
+      let ny = clamp(y, 12, zone.height - FORK.h - 18);
+      let pose = 'upright';
+
+      if(opt.snap){
+        const water = getWaterTarget();
+        const distWater = Math.hypot(nx - water.x, ny - water.y);
+        if(distWater < 60){
+          nx = water.x;
+          ny = water.y;
+          pose = 'inverted';
+        }else if(distWater < 126){
+          pose = 'inverted';
+        }
+      }
+
+      state.forkX = nx;
+      state.forkY = ny;
+      state.forkPose = pose;
+      renderFork();
+      evaluateContacts(false);
+    }
+
+    function renderFork(){
+      forkAssembly.style.transform = `translate3d(${state.forkX}px, ${state.forkY}px, 0)`;
+      const bend = Math.sin(state.forkPhase) * 4.4 * state.forkEnergy;
+      forkAssembly.style.setProperty('--fork-bend', `${bend.toFixed(3)}`);
+      forkBody.style.transform = state.forkPose === 'inverted' ? 'rotate(180deg)' : 'rotate(0deg)';
+      forkAssembly.classList.toggle('engaged', state.forkPose === 'inverted' || isForkBlockingBall());
+      forkRings.classList.toggle('active', state.forkEnergy > 0.08);
+      forkRings.style.left = `${state.forkX + 2}px`;
+      forkRings.style.top = `${state.forkY + (state.forkPose === 'inverted' ? 110 : 14)}px`;
+    }
+
+    function renderStriker(){
+      strikerBtn.style.left = `${state.strikerX}px`;
+      strikerBtn.style.top = `${state.strikerY}px`;
+      strikerBtn.style.transform = `rotate(${state.strikerAngle.toFixed(2)}deg)`;
+    }
+
+    function cancelStrikerAnimation(){
+      if(state.strikerAnimRaf){
+        cancelAnimationFrame(state.strikerAnimRaf);
+        state.strikerAnimRaf = 0;
+      }
+    }
+
+    function animateStrikerRelease(shouldStrike, announce = true){
+      cancelStrikerAnimation();
+      const start = state.strikerAngle;
+      const canStrike = shouldStrike && canHammerStrike();
+      const duration = shouldStrike ? 360 : 220;
+      const t0 = performance.now();
+      let struck = false;
+      function easeOut(t){ return 1 - Math.pow(1 - t, 3); }
+      function step(now){
+        const p = clamp((now - t0) / duration, 0, 1);
+        let angle = 0;
+        if(shouldStrike){
+          if(p < 0.58){
+            const q = easeOut(p / 0.58);
+            angle = start + (0 - start) * q;
+          }else if(p < 0.8){
+            if(!struck && canStrike){
+              struck = true;
+              strikeFork(1, announce);
+            }
+            const q = easeOut((p - 0.58) / 0.22);
+            angle = STRIKER.reboundAngle * q;
+          }else{
+            const q = easeOut((p - 0.8) / 0.2);
+            angle = STRIKER.reboundAngle + (0 - STRIKER.reboundAngle) * q;
+          }
+        }else{
+          angle = start + (0 - start) * easeOut(p);
+        }
+        state.strikerAngle = angle;
+        renderStriker();
+        if(p < 1){
+          state.strikerAnimRaf = requestAnimationFrame(step);
+        }else{
+          state.strikerAngle = 0;
+          renderStriker();
+          state.strikerAnimRaf = 0;
+        }
+      }
+      state.strikerAnimRaf = requestAnimationFrame(step);
+      if(shouldStrike && !canStrike && announce){
+        showToast('请先把音叉移回木槌附近再敲击');
+      }
+    }
+
+    function triggerSplash(announce = true){
+      state.splashBurst = Math.max(state.splashBurst, 0.98);
+      state.ripple = Math.max(state.ripple, 0.88);
+      state.lastObservation = 'water-splash';
+      state.pendingObservation = 'water-splash';
+      if(announce) showToast('振动音叉接触水面，激起了水花');
+    }
+
+    function triggerBallBounce(announce = true){
+      state.ballAngle = Math.min(state.ballAngle, -0.18 - state.forkEnergy * 0.06);
+      state.ballVel = -0.032 - state.forkEnergy * 0.012;
+      state.ballKick = 1;
+      state.lastObservation = 'ball-bounce';
+      state.pendingObservation = 'ball-bounce';
+      if(announce) showToast('振动音叉使乒乓球弹开');
+    }
+
+    function buildObservation(kind){
+      if(kind === 'ball-bounce'){
+        return {
+          source:'乒乓球',
+          kind:'ball-bounce',
+          sound:true,
+          vibration:true,
+          mark:'乒乓球被弹开',
+          note:'振动音叉靠近乒乓球时，乒乓球被弹开，说明音叉在振动。'
+        };
+      }
+      if(kind === 'water-splash'){
+        return {
+          source:'水面',
+          kind:'water-splash',
+          sound:true,
+          vibration:true,
+          mark:'看到水花飞溅',
+          note:'振动音叉接触水面，激起水花，说明音叉在振动。'
+        };
+      }
+      if(kind === 'fork-sound'){
+        return {
+          source:'音叉',
+          kind:'fork-sound',
+          sound:true,
+          vibration:true,
+          mark:'叉股明显振动',
+          note:'敲击后音叉发声，叉股在振动。'
+        };
+      }
+      return {
+        source:'尚未开始',
+        kind:'idle',
+        sound:false,
+        vibration:false,
+        mark:'暂无现象',
+        note:'请先敲击音叉，再观察水面或乒乓球的反应。'
+      };
+    }
+
+    function evaluateContacts(announce = false){
+      const vibrating = state.forkEnergy > 0.08;
+      const surface = rectInZone(waterSurface);
+      const waterBody = rectInZone(tankWater);
+      const ball = rectInZone(pingBall);
+      const midX = state.forkX + FORK.w / 2;
+      const tipY = state.forkY + (state.forkPose === 'inverted' ? FORK.h - 10 : 6);
+      const ballCenterX = ball.left + ball.width / 2;
+      const ballCenterY = ball.top + ball.height / 2;
+      const ballRadius = ball.width / 2;
+      const ballRight = ball.left + ball.width;
+      const forkBallContactX = state.forkX + FORK.ballContactX;
+      const forkBallContactY = state.forkY + FORK.ballContactY;
+      const ballDx = forkBallContactX - ballRight;
+      const ballDy = forkBallContactY - ballCenterY;
+      const touchingWater = vibrating
+        && state.forkPose === 'inverted'
+        && midX > waterBody.left + 18
+        && midX < waterBody.right - 18
+        && tipY >= surface.top + 7
+        && tipY < waterBody.bottom - 8;
+      const touchingBall = vibrating
+        && forkBallContactX >= ballRight - 1
+        && ballDx <= 12
+        && Math.abs(ballDy) < ballRadius + 10;
+
+      if(touchingWater){
+        if(!state.waterLatched){
+          triggerSplash(announce);
+        }
+        state.splashBurst = 0.16 + state.forkEnergy * 0.92;
+        state.ripple = 0.22 + state.forkEnergy * 0.68;
+        state.waterLatched = true;
+      }else{
+        state.waterLatched = false;
+        if(state.forkPose !== 'inverted'){
+          state.splashBurst = Math.min(state.splashBurst, 0.12);
+          state.ripple = Math.min(state.ripple, 0.18);
+        }
+      }
+
+      if(touchingBall){
+        if(!state.ballLatched){
+          triggerBallBounce(announce);
+        }
+        state.ballLatched = true;
+      }else{
+        state.ballLatched = false;
+      }
+    }
+
+    function getObservation(){
+      if(state.ballLatched || Math.abs(state.ballAngle) > 0.08 || state.ballKick > 0.1){
+        return buildObservation('ball-bounce');
+      }
+      if(state.waterLatched || state.splashBurst > 0.04 || state.ripple > 0.08){
+        return buildObservation('water-splash');
+      }
+      if(state.pendingObservation && state.pendingObservation !== 'idle'){
+        return buildObservation(state.pendingObservation);
+      }
+      if(state.forkEnergy > 0.08){
+        return buildObservation('fork-sound');
+      }
+      return buildObservation('idle');
+    }
+
+    function updateObservationChip(){
+      const obs = getObservation();
+      const soundText = obs.sound ? '能听到声音' : '听不到声音';
+      const vibText = obs.vibration ? '能判断它在振动' : '暂不能判断其振动';
+      tankWater.style.setProperty('--burst', state.splashBurst.toFixed(3));
+      tankWater.style.setProperty('--ripple', state.ripple.toFixed(3));
+      ballPendulum.style.setProperty('--ball-angle', `${(-state.ballAngle * 57.2958).toFixed(2)}deg`);
+      ballShadow.style.setProperty('--ball-swing', `${Math.min(1, Math.abs(state.ballAngle) / 0.8).toFixed(3)}`);
+    }
+
+    function getGuidedRecordBlockReason(){
+      if(state.freeMode) return '';
+      const obs = getObservation();
+      if(state.currentTask === 0 && obs.kind !== 'fork-sound'){
+        return '步骤1要求：先敲击音叉，并记录“音叉发声、叉股在振动”的现象。';
+      }
+      if(state.currentTask === 1 && obs.kind !== 'water-splash'){
+        return '步骤2要求：先让振动音叉接触水面，再记录“水花飞溅”的现象。';
+      }
+      if(state.currentTask === 2 && obs.kind !== 'ball-bounce'){
+        return '步骤3要求：先让振动音叉靠近乒乓球，再记录“乒乓球被弹开”的现象。';
+      }
+      if(state.currentTask === 3){
+        return '请先完成分析结论后再结束实验。';
+      }
+      return '';
+    }
+
+    function tryPassStep(showFailToast = true){
+      if(state.freeMode || state.autoPlaying || state.completed || state.successCooldown) return false;
+      const current = tasks[state.currentTask];
+      if(!current || !current.check(state)){
+        if(showFailToast){
+          if(state.currentTask === 0) warnCurrentStep('步骤1要求：先敲击音叉并记录发声振动现象。');
+          else if(state.currentTask === 1) warnCurrentStep('步骤2要求：先让振动音叉接触水面，再记录水花现象。');
+          else if(state.currentTask === 2) warnCurrentStep('步骤3要求：先让振动音叉靠近乒乓球，再记录球被弹开的现象。');
+          else warnCurrentStep('请先完成分析后再结束实验。');
+        }
+        return false;
+      }
+      state.successCooldown = true;
+      state.warningStep = -1;
+      updateDots();
+      showCheck();
+      trackTimeout(()=>{
+        if(state.currentTask < tasks.length - 1){
+          setStepUI(state.currentTask + 1);
+        }else{
+          finishLab();
+        }
+        state.successCooldown = false;
+      }, 420);
+      return true;
+    }
+
+    function recalcProgress(){
+      if(state.completed || state.freeMode) return;
+      let idx = 0;
+      while(idx < tasks.length && tasks[idx].check(state)) idx += 1;
+      if(state.warningStep > -1 && idx > state.warningStep){
+        state.warningStep = -1;
+      }
+      if(idx >= tasks.length){
+        finishLab();
+      }else{
+        setStepUI(idx);
+      }
+    }
+
+    function finishLab(){
+      if(state.completed) return;
+      state.completed = true;
+      state.currentTask = tasks.length - 1;
+      setStatus('挑战完成');
+      updateDots();
+      doneMaskEl.style.display = 'flex';
+    }
+
+    function strikeFork(intensity = 1, announce = true){
+      ensureForkAudio();
+      state.forkEnergy = clamp(intensity, 0.24, 1);
+      state.forkPhase = 0;
+      state.lastObservation = 'fork-sound';
+      state.pendingObservation = 'fork-sound';
+      if(announce) showToast('音叉开始振动发声');
+      syncForkAudio(false);
+      renderFork();
+      updateObservationChip();
+      evaluateContacts(false);
+    }
+
+    function stopForkVibration(announce = true){
+      if(state.forkEnergy > 0.02){
+        state.forkEnergy = 0;
+        state.waterLatched = false;
+        state.ballLatched = false;
+        state.lastObservation = 'idle';
+        syncForkAudio(true);
+        if(announce) showToast('音叉已停止振动');
+        renderFork();
+        updateObservationChip();
+        return;
+      }
+      if(announce) showToast('当前音叉没有明显振动');
+    }
+
+    function addRecord(){
+      const obs = getObservation();
+      if(obs.kind === 'idle'){
+        if(!state.freeMode) warnCurrentStep('请先敲击音叉，再观察水面或乒乓球的反应后记录。');
+        else showToast('请先产生一个可观察现象');
+        return;
+      }
+      const guidedBlockReason = getGuidedRecordBlockReason();
+      if(guidedBlockReason){
+        warnCurrentStep(guidedBlockReason);
+        return;
+      }
+      const rec = {
+        id:`${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+        kind:obs.kind,
+        source:obs.source,
+        sound:obs.sound,
+        vibration:obs.vibration,
+        mark:obs.mark,
+        note:obs.note
+      };
+      state.records.push(rec);
+      if(state.records.length > 20) state.records.shift();
+      if(state.pendingObservation === rec.kind){
+        state.pendingObservation = 'idle';
+      }
+      renderRecords();
+      if(state.dataCollapsed){
+        state.unseenRecordCount += 1;
+        updateBadge();
+      }
+      showToast('已记录一组实验现象');
+      tryPassStep(false);
+    }
+
+    function clearData(announce = true){
+      state.records = [];
+      state.unseenRecordCount = 0;
+      state.analysisOk = false;
+      analysisText.classList.remove('ok');
+      analysisText.textContent = '请先完成当前步骤现象记录，再点击“分析结论”。';
+      renderRecords();
+      clearBadge();
+      if(announce) showToast('已清空记录');
+    }
+
+    function renderRecords(){
+      recordBody.innerHTML = '';
+      if(!state.records.length){
+        recordBody.innerHTML = '<tr><td colspan="4" style="color:#9db4d6;">暂无记录</td></tr>';
+        return;
+      }
+      state.records.slice(-12).forEach((r)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.source}</td><td>${r.sound ? '有' : '无'}</td><td>${r.mark}</td><td>${r.note}</td>`;
+        recordBody.appendChild(tr);
+      });
+    }
+
+    function analyzeConclusion(advance = true){
+      const forkSound = state.records.find((r)=>r.kind === 'fork-sound');
+      const waterSplash = state.records.find((r)=>r.kind === 'water-splash');
+      const ballBounce = state.records.find((r)=>r.kind === 'ball-bounce');
+      if(!forkSound || !waterSplash || !ballBounce){
+        state.analysisOk = false;
+        analysisText.classList.remove('ok');
+        analysisText.textContent = '数据不足：请至少补齐“音叉发声”“水花飞溅”“乒乓球被弹开”三组现象后再分析。';
+        if(advance){
+          if(!state.freeMode) warnCurrentStep('请先补齐音叉发声、水花飞溅、乒乓球被弹开三组现象。');
+          else showToast('请先补充观察数据');
+        }
+        return;
+      }
+      state.analysisOk = !!(forkSound.vibration && waterSplash.vibration && ballBounce.vibration);
+      if(state.analysisOk){
+        analysisText.classList.add('ok');
+        analysisText.innerHTML = '结论成立：音叉发声时叉股在振动；振动音叉接触水面会激起水花，靠近乒乓球会使其弹开。<b>因此，声音是由物体的振动产生的。</b>';
+      }else{
+        analysisText.classList.remove('ok');
+        analysisText.textContent = '暂不能得出完整结论：请核对三组现象是否都能够作为“音叉在振动”的证据。';
+      }
+      if(advance){
+        if(!state.freeMode && state.currentTask < tasks.length - 1){
+          recalcProgress();
+        }
+        tryPassStep(false);
+      }
+    }
+
+    function bringToFront(which){
+      state.zTop += 1;
+      if(which === 'control') controlDock.style.zIndex = state.zTop;
+      if(which === 'data') dataDock.style.zIndex = state.zTop;
+    }
+
+    function setDockPos(el, x, y){
+      const area = labArea.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const pad = 10;
+      const nx = clamp(x, pad, area.width - r.width - pad);
+      const ny = clamp(y, pad, area.height - r.height - pad);
+      el.style.left = `${nx}px`;
+      el.style.top = `${ny}px`;
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    }
+
+    function snapDockToEdges(el){
+      const area = labArea.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const x = parseFloat(el.style.left || '10');
+      const y = parseFloat(el.style.top || '10');
+      const pad = 10;
+      const snap = 16;
+      let nx = x;
+      let ny = y;
+      if(Math.abs(x - pad) < snap) nx = pad;
+      if(Math.abs((x + r.width) - (area.width - pad)) < snap) nx = area.width - pad - r.width;
+      if(Math.abs(y - pad) < snap) ny = pad;
+      if(Math.abs((y + r.height) - (area.height - pad)) < snap) ny = area.height - pad - r.height;
+      setDockPos(el, nx, ny);
+    }
+
+    function makeDockDraggable(el, head, kind){
+      let dragging = false;
+      let offX = 0;
+      let offY = 0;
+      let activePointerId = null;
+      head.addEventListener('pointerdown', (e)=>{
+        if(e.target.closest('button')) return;
+        dragging = true;
+        activePointerId = e.pointerId;
+        el.classList.add('dragging');
+        bringToFront(kind);
+        const r = el.getBoundingClientRect();
+        offX = e.clientX - r.left;
+        offY = e.clientY - r.top;
+        state.dockMoved[kind] = true;
+        head.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      head.addEventListener('pointermove', (e)=>{
+        if(!dragging || e.pointerId !== activePointerId) return;
+        const area = labArea.getBoundingClientRect();
+        setDockPos(el, e.clientX - area.left - offX, e.clientY - area.top - offY);
+        e.preventDefault();
+      });
+      const end = (e)=>{
+        if(activePointerId !== null && e && e.pointerId !== activePointerId) return;
+        if(!dragging) return;
+        dragging = false;
+        if(activePointerId !== null && head.hasPointerCapture(activePointerId)){
+          head.releasePointerCapture(activePointerId);
+        }
+        activePointerId = null;
+        el.classList.remove('dragging');
+        snapDockToEdges(el);
+      };
+      head.addEventListener('pointerup', end);
+      head.addEventListener('pointercancel', end);
+      head.addEventListener('lostpointercapture', end);
+    }
+
+    function setControlCollapsed(on){
+      state.controlCollapsed = !!on;
+      controlBody.classList.toggle('collapsed', state.controlCollapsed);
+      controlToggleBtn.textContent = state.controlCollapsed ? '展开' : '收起';
+      bringToFront('control');
+    }
+
+    function setDataCollapsed(on){
+      state.dataCollapsed = !!on;
+      dataBody.classList.toggle('collapsed', state.dataCollapsed);
+      dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+      bringToFront('data');
+      if(!state.dataCollapsed){
+        clearBadge();
+      }
+    }
+
+    function initDockPositions(force = false){
+      const area = labArea.getBoundingClientRect();
+      const cr = controlDock.getBoundingClientRect();
+      const dr = dataDock.getBoundingClientRect();
+      const pad = 10;
+      const rightXControl = area.width - cr.width - pad;
+      const rightXData = area.width - dr.width - pad;
+      if(force || !state.dockMoved.control) setDockPos(controlDock, rightXControl, pad);
+      if(force || !state.dockMoved.data) setDockPos(dataDock, rightXData, pad + cr.height + 10);
+    }
+
+    function getCenterInStage(el){
+      const stage = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return { x:r.left - stage.left + r.width / 2, y:r.top - stage.top + r.height / 2 };
+    }
+
+    function pulseDemoCursor(){
+      demoCursor.classList.remove('click');
+      void demoCursor.offsetWidth;
+      demoCursor.classList.add('click');
+      clearTimeout(pulseDemoCursor.t);
+      pulseDemoCursor.t = setTimeout(()=>demoCursor.classList.remove('click'), 320);
+    }
+
+    async function moveDemoCursorTo(x, y, duration = 420, guardRunId = null){
+      demoCursor.classList.add('active');
+      const sx = parseFloat(demoCursor.style.left || `${x}`);
+      const sy = parseFloat(demoCursor.style.top || `${y}`);
+      const t0 = performance.now();
+      return new Promise((resolve)=>{
+        function step(now){
+          if(guardRunId !== null && (!state.autoPlaying || guardRunId !== state.autoRunId)){
+            resolve();
+            return;
+          }
+          const p = clamp((now - t0) / duration, 0, 1);
+          const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+          demoCursor.style.left = `${sx + (x - sx) * e}px`;
+          demoCursor.style.top = `${sy + (y - sy) * e}px`;
+          if(p < 1) requestAnimationFrame(step);
+          else resolve();
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    async function moveDemoCursorToElement(el, duration = 420, guardRunId = null){
+      const { x, y } = getCenterInStage(el);
+      await moveDemoCursorTo(x, y, duration, guardRunId);
+    }
+
+    function hideDemoCursor(){
+      demoCursor.classList.remove('active', 'click');
+    }
+
+    async function animateForkTo(x, y, duration = 680, guardRunId = null){
+      const sx = state.forkX;
+      const sy = state.forkY;
+      const startCursor = getCenterInStage(forkAssembly);
+      const stage = stageEl.getBoundingClientRect();
+      const zone = apparatusZone.getBoundingClientRect();
+      const cursorOffsetX = startCursor.x - (sx + zone.left - stage.left + FORK.w / 2);
+      const cursorOffsetY = startCursor.y - (sy + zone.top - stage.top + FORK.h * 0.72);
+      const t0 = performance.now();
+      return new Promise((resolve)=>{
+        function step(now){
+          if(guardRunId !== null && (!state.autoPlaying || guardRunId !== state.autoRunId)){
+            resolve();
+            return;
+          }
+          const p = clamp((now - t0) / duration, 0, 1);
+          const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+          const nx = sx + (x - sx) * e;
+          const ny = sy + (y - sy) * e;
+          setForkPosition(nx, ny, { snap:false });
+          const cx = nx + zone.left - stage.left + FORK.w / 2 + cursorOffsetX;
+          const cy = ny + zone.top - stage.top + FORK.h * 0.72 + cursorOffsetY;
+          demoCursor.style.left = `${cx}px`;
+          demoCursor.style.top = `${cy}px`;
+          if(p < 1) requestAnimationFrame(step);
+          else{
+            setForkPosition(x, y, { snap:true });
+            resolve();
+          }
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    function getForkState(){
+      return {
+        x:state.forkX,
+        y:state.forkY,
+        energy:state.forkEnergy,
+        splash:state.splashBurst,
+        ballAngle:state.ballAngle
+      };
+    }
+
+    async function autoDemo(){
+      if(state.autoPlaying){
+        state.autoPlaying = false;
+        state.autoRunId += 1;
+        syncModeTag();
+        syncInteractiveButtons();
+        hideDemoCursor();
+        setStatus(state.completed ? '挑战完成' : (state.freeMode ? '自由探索' : currentStageStatus()));
+        showToast('已退出自动演示');
+        return;
+      }
+      if(state.freeMode) return;
+
+      const runId = ++state.autoRunId;
+      state.autoPlaying = true;
+      setFreeMode(false);
+      setControlCollapsed(false);
+      syncModeTag();
+      syncInteractiveButtons();
+
+      try{
+        const ensureActive = ()=>{
+          if(!state.autoPlaying || runId !== state.autoRunId){
+            throw new Error('auto-demo-cancelled');
+          }
+        };
+        const pause = async (ms)=>{
+          await sleep(ms);
+          ensureActive();
+        };
+        const expectRecordAdded = (before, code)=>{
+          if(state.records.length !== before + 1){
+            throw new Error(code);
+          }
+        };
+
+        resetFlow(false);
+        setStatus('自动演示中');
+        demoCursor.classList.add('active');
+
+        setStepUI(0);
+        await pause(420);
+        await moveDemoCursorToElement(strikerBtn, 420, runId);
+        pulseDemoCursor();
+        strikeFork(1, false);
+        await pause(620);
+        const before1 = state.records.length;
+        await moveDemoCursorToElement(recordBtn, 380, runId);
+        pulseDemoCursor();
+        addRecord();
+        await pause(320);
+        expectRecordAdded(before1, 'AUTO_RECORD_NOT_PERSISTED_STEP1');
+        recalcProgress();
+        await pause(700);
+
+        setStepUI(1);
+        await moveDemoCursorToElement(strikerBtn, 380, runId);
+        pulseDemoCursor();
+        strikeFork(1, false);
+        await pause(280);
+        await animateForkTo(getWaterTarget().x, getWaterTarget().y, 760, runId);
+        await pause(220);
+        const before2 = state.records.length;
+        await moveDemoCursorToElement(recordBtn, 380, runId);
+        pulseDemoCursor();
+        addRecord();
+        await pause(320);
+        expectRecordAdded(before2, 'AUTO_RECORD_NOT_PERSISTED_STEP2');
+        recalcProgress();
+        await pause(720);
+
+        setStepUI(2);
+        await moveDemoCursorToElement(strikerBtn, 380, runId);
+        pulseDemoCursor();
+        strikeFork(1, false);
+        await pause(280);
+        await animateForkTo(getBallTarget().x, getBallTarget().y, 760, runId);
+        triggerBallBounce(false);
+        await pause(220);
+        const before3 = state.records.length;
+        await moveDemoCursorToElement(recordBtn, 380, runId);
+        pulseDemoCursor();
+        addRecord();
+        await pause(320);
+        expectRecordAdded(before3, 'AUTO_RECORD_NOT_PERSISTED_STEP3');
+        recalcProgress();
+        await pause(720);
+
+        setStepUI(3);
+        await moveDemoCursorToElement(analyzeBtn, 380, runId);
+        pulseDemoCursor();
+        analyzeConclusion(false);
+        recalcProgress();
+      }catch(err){
+        if(err && err.message !== 'auto-demo-cancelled'){
+          console.error('[autoDemo] failed:', err);
+          showToast('自动演示失败，请重试');
+        }
+      }finally{
+        if(runId === state.autoRunId){
+          state.autoPlaying = false;
+          syncModeTag();
+          syncInteractiveButtons();
+          hideDemoCursor();
+          setStatus(state.completed ? '挑战完成' : (state.freeMode ? '自由探索' : currentStageStatus()));
+        }
+      }
+    }
+
+    function resetFlow(announce = true){
+      clearAllTimers();
+      state.completed = false;
+      state.successCooldown = false;
+      state.warningStep = -1;
+      state.analysisOk = false;
+      state.forkEnergy = 0;
+      state.forkPhase = 0;
+      state.ballAngle = 0;
+      state.ballVel = 0;
+      state.ballKick = 0;
+      state.splashBurst = 0;
+      state.ripple = 0;
+      state.waterLatched = false;
+      state.ballLatched = false;
+      state.lastObservation = 'idle';
+      state.pendingObservation = 'idle';
+      syncForkAudio(true);
+      cancelStrikerAnimation();
+      doneMaskEl.style.display = 'none';
+      clearData(false);
+      layoutApparatus();
+      const home = getForkHome();
+      const strikerHome = getStrikerHome(home);
+      state.forkX = home.x;
+      state.forkY = home.y;
+      state.forkPose = 'upright';
+      state.strikerX = strikerHome.x;
+      state.strikerY = strikerHome.y;
+      state.strikerAngle = 0;
+      state.strikerDragging = false;
+      state.strikerPointerId = null;
+      renderFork();
+      renderStriker();
+      setStepUI(0);
+      updateObservationChip();
+      setStatus(state.freeMode ? '自由探索' : currentStageStatus());
+      if(announce) showToast('实验已重置');
+    }
+
+    const onResize = (()=>{
+      let t = 0;
+      return ()=>{
+        clearTimeout(t);
+        t = setTimeout(()=>{
+          layoutApparatus();
+          if(!state.dockMoved.control || !state.dockMoved.data){
+            initDockPositions(false);
+          }
+          setForkPosition(state.forkX, state.forkY, { snap:false });
+          const home = getForkHome();
+          const strikerHome = getStrikerHome(home);
+          state.strikerX = strikerHome.x;
+          state.strikerY = strikerHome.y;
+          renderStriker();
+          renderFork();
+          updateObservationChip();
+        }, 120);
+      };
+    })();
+
+    function tickVisual(now){
+      const dt = state.lastFrame ? Math.min(2.4, (now - state.lastFrame) / 16.7) : 1;
+      state.lastFrame = now;
+      const activeFork = state.forkEnergy > 0.08;
+      if(state.forkEnergy > 0){
+        state.forkPhase += 0.58 * dt;
+        state.forkEnergy *= Math.pow(0.992, dt);
+        if(state.forkEnergy < 0.012){
+          state.forkEnergy = 0;
+          state.waterLatched = false;
+          state.ballLatched = false;
+        }
+      }
+      syncForkAudio(state.forkEnergy <= 0.012);
+      if(state.splashBurst > 0){
+        state.splashBurst *= Math.pow(0.972, dt);
+        if(state.splashBurst < 0.02) state.splashBurst = 0;
+      }
+      if(state.ripple > 0){
+        state.ripple *= Math.pow(0.968, dt);
+        if(state.ripple < 0.02) state.ripple = 0;
+      }
+      if(state.ballKick > 0){
+        state.ballKick *= Math.pow(0.95, dt);
+        if(state.ballKick < 0.02) state.ballKick = 0;
+      }
+      state.ballVel += (-state.ballAngle * 0.028 - state.ballVel * 0.038) * dt;
+      state.ballAngle += state.ballVel * dt;
+      if(isForkBlockingBall() && state.ballAngle > -0.02 && state.ballVel > 0){
+        state.ballAngle = -0.02;
+        if(activeFork){
+          state.ballVel = -Math.abs(state.ballVel) * 0.78 - 0.012;
+          state.ballKick = Math.max(state.ballKick, 0.32);
+        }else{
+          state.ballVel = -Math.abs(state.ballVel) * 0.08;
+          state.ballKick = Math.max(state.ballKick, 0.06);
+        }
+      }
+      if(!activeFork && isForkBlockingBall() && state.ballAngle > -0.08){
+        state.ballVel *= Math.pow(0.76, dt);
+        if(Math.abs(state.ballVel) < 0.0035){
+          state.ballAngle = -0.02;
+          state.ballVel = 0;
+        }
+      }
+      if(state.ballAngle < -0.34){
+        state.ballAngle = -0.34;
+        state.ballVel = Math.max(state.ballVel, 0.012);
+      }
+      if(Math.abs(state.ballAngle) < 0.0012 && Math.abs(state.ballVel) < 0.0012){
+        state.ballAngle = 0;
+        state.ballVel = 0;
+      }
+      renderFork();
+      evaluateContacts(false);
+      updateObservationChip();
+      state.visualRAF = requestAnimationFrame(tickVisual);
+    }
+
+    function ensureVisualLoop(){
+      if(state.visualRAF) return;
+      state.visualRAF = requestAnimationFrame(tickVisual);
+    }
+
+    function makeForkDraggable(){
+      let dragging = false;
+      let offX = 0;
+      let offY = 0;
+      forkDragZone.addEventListener('pointerdown', (e)=>{
+        if(state.autoPlaying) return;
+        dragging = true;
+        state.draggingFork = true;
+        const r = forkAssembly.getBoundingClientRect();
+        offX = e.clientX - r.left;
+        offY = e.clientY - r.top;
+        forkDragZone.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      forkDragZone.addEventListener('pointermove', (e)=>{
+        if(!dragging) return;
+        const zone = apparatusZone.getBoundingClientRect();
+        setForkPosition(e.clientX - zone.left - offX, e.clientY - zone.top - offY, { snap:true });
+        e.preventDefault();
+      });
+      const end = ()=>{
+        dragging = false;
+        state.draggingFork = false;
+      };
+      forkDragZone.addEventListener('pointerup', end);
+      forkDragZone.addEventListener('pointercancel', end);
+    }
+
+    function makeStrikerDraggable(){
+      let startX = 0;
+      let startAngle = 0;
+      strikerBtn.addEventListener('pointerdown', (e)=>{
+        if(state.autoPlaying) return;
+        const rect = strikerBtn.getBoundingClientRect();
+        if(e.clientY - rect.top > 52) return;
+        cancelStrikerAnimation();
+        state.strikerDragging = true;
+        state.strikerPointerId = e.pointerId;
+        state.suppressStrikerClick = false;
+        startX = e.clientX;
+        startAngle = state.strikerAngle;
+        strikerBtn.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      strikerBtn.addEventListener('pointermove', (e)=>{
+        if(!state.strikerDragging || e.pointerId !== state.strikerPointerId) return;
+        const dx = e.clientX - startX;
+        state.strikerAngle = clamp(startAngle + dx * 0.45, -STRIKER.pullAngle, 0);
+        renderStriker();
+        e.preventDefault();
+      });
+      const end = (e)=>{
+        if(!state.strikerDragging) return;
+        if(e && state.strikerPointerId !== null && e.pointerId !== state.strikerPointerId) return;
+        const shouldStrike = Math.abs(state.strikerAngle) >= STRIKER.strikeThreshold;
+        state.strikerDragging = false;
+        state.suppressStrikerClick = true;
+        if(state.strikerPointerId !== null && strikerBtn.hasPointerCapture(state.strikerPointerId)){
+          strikerBtn.releasePointerCapture(state.strikerPointerId);
+        }
+        state.strikerPointerId = null;
+        animateStrikerRelease(shouldStrike, true);
+        trackTimeout(()=>{ state.suppressStrikerClick = false; }, 420);
+      };
+      strikerBtn.addEventListener('pointerup', end);
+      strikerBtn.addEventListener('pointercancel', end);
+      strikerBtn.addEventListener('lostpointercapture', end);
+    }
+
+    function bindEvents(){
+      document.addEventListener('pointerdown', ()=>{ ensureForkAudio(); }, { passive:true });
+      document.addEventListener('keydown', ()=>{ ensureForkAudio(); }, { passive:true });
+      hintLampBtn.addEventListener('click', ()=>{
+        state.hintOpen = !state.hintOpen;
+        syncHintLamp();
+      });
+      strikerBtn.addEventListener('click', ()=>{
+        if(state.suppressStrikerClick || state.strikerDragging) return;
+        if(!canHammerStrike()){
+          showToast('请先把音叉移回木槌附近再敲击');
+          return;
+        }
+        strikeFork(1, true);
+      });
+      recordBtn.addEventListener('click', addRecord);
+      stopBtn.addEventListener('click', ()=>stopForkVibration(true));
+      analyzeBtn.addEventListener('click', ()=>analyzeConclusion(true));
+      clearBtn.addEventListener('click', ()=>clearData(true));
+      controlToggleBtn.addEventListener('click', ()=>setControlCollapsed(!state.controlCollapsed));
+      dataToggleBtn.addEventListener('click', ()=>setDataCollapsed(!state.dataCollapsed));
+      resetBtn.addEventListener('click', ()=>resetFlow(true));
+      freeBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        setFreeMode(!state.freeMode);
+      });
+      autoDemoBtn.addEventListener('click', ()=>{ autoDemo(); });
+      okBtn.addEventListener('click', ()=>{ doneMaskEl.style.display = 'none'; });
+      doneMaskEl.addEventListener('click', (e)=>{
+        if(e.target === doneMaskEl) doneMaskEl.style.display = 'none';
+      });
+      window.addEventListener('resize', onResize);
+      makeDockDraggable(controlDock, controlHead, 'control');
+      makeDockDraggable(dataDock, dataHead, 'data');
+      makeForkDraggable();
+      makeStrikerDraggable();
+    }
+
+    function init(){
+      initDots();
+      syncModeTag();
+      syncInteractiveButtons();
+      initDockPositions(true);
+      layoutApparatus();
+      const home = getForkHome();
+      const strikerHome = getStrikerHome(home);
+      state.forkX = home.x;
+      state.forkY = home.y;
+      state.strikerX = strikerHome.x;
+      state.strikerY = strikerHome.y;
+      state.strikerAngle = 0;
+      renderFork();
+      renderStriker();
+      renderRecords();
+      updateBadge();
+      syncHintLamp();
+      updateObservationChip();
+      setStepUI(0);
+      bindEvents();
+      ensureVisualLoop();
+    }
+
+    init();
+
+    window.state = state;
+    window.strikeFork = strikeFork;
+    window.stopForkVibration = stopForkVibration;
+    window.addRecord = addRecord;
+    window.analyzeConclusion = analyzeConclusion;
+    window.resetFlow = resetFlow;
+    window.setFreeMode = setFreeMode;
+    window.setControlCollapsed = setControlCollapsed;
+    window.setDataCollapsed = setDataCollapsed;
+    window.setForkPosition = setForkPosition;
+    window.getWaterTarget = getWaterTarget;
+    window.getBallTarget = getBallTarget;
+    window.getForkState = getForkState;
+    window.tryWaterContact = ()=>evaluateContacts(false);
+    window.tryBallContact = ()=>evaluateContacts(false);
+  </script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

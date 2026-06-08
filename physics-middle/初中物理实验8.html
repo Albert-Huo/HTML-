@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>初中物理实验8｜比较物质的导电性（交互闯关版）</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+    --ink:#e9f2ff;
+    --panel-bg: rgba(12,16,26,0.74);
+    --line: rgba(255,255,255,0.12);
+    --shadow: 0 18px 48px rgba(0,0,0,0.55);
+    --zPanel: 38;
+    --zResults: 37;
+    --wire-off:#5c6877;
+    --wire-on:#ffe066;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    padding:10px;
+    background:#1a1a1a;
+    color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  #spectrum{
+    position:relative;
+    width:100%;
+    max-width:900px;
+    height:40px;
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:0 0 15px rgba(255,255,255,.15);
+    margin:0 0 12px;
+    background:#000;
+    flex-shrink:0;
+  }
+  #spectrum::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:linear-gradient(90deg,
+      #ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,
+      #ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000
+    );
+    background-size:200% 100%;
+    animation:flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow{0%{background-position:0 0;}100%{background-position:-100% 0;}}
+
+  .task-card{
+    width:100%;
+    max-width:900px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:12px 14px;
+    backdrop-filter:blur(6px);
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:10px;
+    align-items:center;
+    transition:opacity .2s, filter .2s;
+  }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:700; white-space:nowrap; }
+  .task-text{ line-height:1.55; }
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.25); outline:2px solid rgba(255,255,255,.12); }
+  .dot.active{ background:var(--warn); }
+  .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.5); }
+  .dot.warn{ background:var(--error); outline-color:rgba(255,107,107,.45); box-shadow:0 0 10px rgba(255,107,107,.42); }
+
+  #stage{
+    width:100%;
+    max-width:900px;
+    height:62vh;
+    max-height:620px;
+    min-height:520px;
+    margin-top:10px;
+    border-radius:12px;
+    position:relative;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.08);
+    background:#08111f;
+    box-shadow:0 10px 26px rgba(0,0,0,.35);
+    touch-action:none;
+    background-image:
+      radial-gradient(circle at 75% 18%, rgba(255,255,255,.06), transparent 32%),
+      radial-gradient(circle at 15% 82%, rgba(0,180,255,.08), transparent 42%);
+  }
+  .hud{
+    position:absolute;
+    left:10px;
+    top:10px;
+    z-index:30;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    pointer-events:none;
+  }
+  .tag{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.34);
+    backdrop-filter:blur(8px);
+    color:#eaf2ff;
+    font-weight:900;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .tag.mode-auto{
+    border-color:rgba(61,220,151,.42);
+    color:#b8ffd6;
+    background:rgba(61,220,151,.14);
+  }
+
+  .lab-area{
+    position:absolute;
+    inset:54px 10px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.08);
+    overflow:hidden;
+    background:
+      linear-gradient(180deg, rgba(12,22,36,.96), rgba(7,12,20,.98)),
+      linear-gradient(90deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+  }
+  .board-grid{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size:26px 26px;
+    opacity:.42;
+  }
+  .shelf{
+    position:absolute;
+    left:50%;
+    top:18px;
+    transform:translateX(-50%);
+    width:min(86%, 620px);
+    height:108px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+  }
+  .shelf::after{
+    content:"材料架";
+    position:absolute;
+    left:14px;
+    top:10px;
+    color:#d2e4ff;
+    font-size:12px;
+    opacity:.8;
+  }
+  .shelf-board{
+    position:absolute;
+    left:18px;
+    right:18px;
+    bottom:20px;
+    height:10px;
+    border-radius:999px;
+    background:linear-gradient(180deg, #71533d, #4a3427);
+  }
+
+  .circuit-svg{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    pointer-events:none;
+    z-index:0;
+  }
+  .circuit-path{
+    fill:none;
+    stroke:var(--wire-off);
+    stroke-width:8;
+    stroke-linecap:round;
+    stroke-linejoin:round;
+    transition:stroke .25s ease, filter .25s ease;
+  }
+  .circuit-path.on{
+    stroke:var(--wire-on);
+    filter:drop-shadow(0 0 5px rgba(255,224,102,.75));
+  }
+
+  .battery{
+    position:absolute;
+    left:64px;
+    top:184px;
+    width:72px;
+    height:120px;
+    border-radius:10px;
+    background:linear-gradient(180deg, #343a40, #21262e);
+    border:1px solid rgba(255,255,255,.18);
+    box-shadow:0 10px 20px rgba(0,0,0,.35);
+    z-index:2;
+  }
+  .battery::before{
+    content:"+";
+    position:absolute;
+    left:50%;
+    top:18px;
+    transform:translateX(-50%);
+    color:#ff6b6b;
+    font-weight:900;
+    font-size:24px;
+  }
+  .battery::after{
+    content:"-";
+    position:absolute;
+    left:50%;
+    bottom:16px;
+    transform:translateX(-50%);
+    color:#7cc5ff;
+    font-weight:900;
+    font-size:24px;
+  }
+  .battery-label,
+  .bulb-label{
+    position:absolute;
+    border-radius:999px;
+    background:rgba(0,0,0,.36);
+    border:1px solid rgba(255,255,255,.10);
+    color:#d8e7ff;
+    font-size:12px;
+    padding:4px 10px;
+    z-index:4;
+  }
+  .battery-label{ left:54px; top:152px; }
+  .bulb-label{ right:46px; top:150px; }
+
+  .bulb{
+    position:absolute;
+    right:54px;
+    top:214px;
+    width:156px;
+    height:78px;
+    z-index:2;
+  }
+  .bulb-terminal{
+    position:absolute;
+    top:50%;
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    transform:translateY(-50%);
+    background:#dfe7f2;
+    box-shadow:0 0 0 1px rgba(0,0,0,.25);
+  }
+  .bulb-terminal.top{ right:8px; top:24px; transform:none; }
+  .bulb-terminal.bottom{ right:8px; bottom:20px; top:auto; transform:none; }
+  .bulb-wire-stem{
+    position:absolute;
+    right:18px;
+    width:16px;
+    height:4px;
+    background:linear-gradient(180deg, #98a8b9, #697889);
+    border-radius:999px;
+  }
+  .bulb-wire-stem.top{ top:28px; }
+  .bulb-wire-stem.bottom{ bottom:22px; }
+  .bulb-base{
+    position:absolute;
+    right:16px;
+    top:16px;
+    width:52px;
+    height:46px;
+    border-radius:12px;
+    background:linear-gradient(180deg, #5a616e, #343a44);
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:inset -4px 0 10px rgba(255,255,255,.06);
+  }
+  .bulb-base::before{
+    content:"";
+    position:absolute;
+    left:-10px;
+    top:50%;
+    width:16px;
+    height:22px;
+    border-radius:10px 0 0 10px;
+    transform:translateY(-50%);
+    background:linear-gradient(180deg, #7d8798, #4c5666);
+  }
+  .bulb-base::after{
+    content:"";
+    position:absolute;
+    right:6px;
+    top:10px;
+    bottom:10px;
+    width:8px;
+    border-radius:999px;
+    background:rgba(255,255,255,.08);
+  }
+  .bulb-glass{
+    position:absolute;
+    left:8px;
+    top:10px;
+    width:86px;
+    height:58px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.24);
+    background:radial-gradient(circle at 34% 40%, rgba(255,255,255,.68), rgba(255,255,255,.18) 28%, rgba(255,214,90,.16) 56%, rgba(255,255,255,.04) 84%);
+    transition:background .25s ease, box-shadow .25s ease, border-color .25s ease;
+    box-shadow:inset -10px 0 16px rgba(255,255,255,.08);
+  }
+  .bulb-glass.lit{
+    background:radial-gradient(circle at 38% 42%, rgba(255,255,255,.96), rgba(255,244,158,.92) 26%, rgba(255,210,64,.88) 58%, rgba(255,188,0,.28) 100%);
+    box-shadow:0 0 26px rgba(255,214,79,.82), 0 0 54px rgba(255,214,79,.24);
+    border-color:rgba(255,255,255,.66);
+  }
+  .filament{
+    position:absolute;
+    left:46px;
+    top:33px;
+    width:18px;
+    height:12px;
+    border-bottom:3px solid rgba(255,210,64,.86);
+    border-left:2px solid rgba(255,255,255,.32);
+    border-right:2px solid rgba(255,255,255,.32);
+    border-radius:0 0 8px 8px;
+    opacity:.6;
+  }
+
+  .drop-zone{
+    position:absolute;
+    left:50%;
+    top:232px;
+    transform:translateX(-50%);
+    width:min(280px, 56%);
+    height:118px;
+    border-radius:20px;
+    border:2px dashed rgba(255,255,255,.18);
+    background:rgba(255,255,255,.03);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);
+  }
+  .drop-zone.ready{
+    border-color:rgba(61,220,151,.62);
+    background:rgba(61,220,151,.08);
+  }
+  .drop-zone::before{
+    content:"导电性测试区";
+    position:absolute;
+    left:50%;
+    top:-14px;
+    transform:translateX(-50%);
+    color:#cfe2ff;
+    font-size:12px;
+    padding:3px 10px;
+    border-radius:999px;
+    background:rgba(0,0,0,.44);
+    border:1px solid rgba(255,255,255,.10);
+  }
+  .drop-zone::after{
+    content:"将被测物体放入导线缺口";
+    position:absolute;
+    left:50%;
+    bottom:10px;
+    transform:translateX(-50%);
+    color:rgba(255,255,255,.34);
+    font-size:12px;
+    white-space:nowrap;
+  }
+
+  .clip{
+    position:absolute;
+    top:268px;
+    width:24px;
+    height:58px;
+    border-radius:10px;
+    background:linear-gradient(180deg, #768395, #3f4a57);
+    box-shadow:0 6px 12px rgba(0,0,0,.35);
+    z-index:3;
+  }
+  .clip.left{ left:calc(50% - 168px); transform:translateX(-50%) rotate(10deg); }
+  .clip.right{ left:calc(50% + 168px); transform:translateX(-50%) rotate(-10deg); }
+  .clip::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    bottom:-12px;
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    transform:translateX(-50%);
+    background:#e3edf8;
+    box-shadow:0 0 0 1px rgba(0,0,0,.24);
+  }
+
+  .items-layer{
+    position:absolute;
+    inset:0;
+    z-index:10;
+  }
+  .item{
+    position:absolute;
+    width:88px;
+    height:88px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.10);
+    background:linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    user-select:none;
+    touch-action:none;
+    cursor:grab;
+    box-shadow:0 12px 22px rgba(0,0,0,.26);
+  }
+  .item:active{ cursor:grabbing; }
+  .item.on-shelf{ transition:left .22s ease, top .22s ease; }
+  .item.connected{
+    border-color:rgba(61,220,151,.40);
+    box-shadow:0 12px 22px rgba(0,0,0,.32), 0 0 0 1px rgba(61,220,151,.18);
+  }
+  .item-icon{
+    position:relative;
+    width:58px;
+    height:38px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .item-label{
+    font-size:12px;
+    color:#d8e7ff;
+    background:rgba(0,0,0,.34);
+    border-radius:999px;
+    padding:3px 8px;
+    white-space:nowrap;
+  }
+  .item.nail .item-icon::before{
+    content:"";
+    width:52px;
+    height:10px;
+    border-radius:999px;
+    background:linear-gradient(180deg, #d8e0ea, #8d9cab);
+    transform:rotate(40deg);
+    box-shadow:0 3px 6px rgba(0,0,0,.25);
+  }
+  .item.nail .item-icon::after{
+    content:"";
+    position:absolute;
+    right:7px;
+    width:10px;
+    height:10px;
+    border-radius:0 999px 999px 0;
+    border:1px solid rgba(0,0,0,.18);
+    border-left:none;
+    background:linear-gradient(180deg, #d8e0ea, #8d9cab);
+    transform:rotate(40deg);
+  }
+  .item.ruler .item-icon::before{
+    content:"";
+    width:64px;
+    height:18px;
+    border-radius:4px;
+    background:linear-gradient(180deg, rgba(124,198,255,.82), rgba(62,138,208,.88));
+    transform:rotate(-8deg);
+    box-shadow:0 3px 6px rgba(0,0,0,.22);
+  }
+  .item.ruler .item-icon::after{
+    content:"";
+    position:absolute;
+    width:56px;
+    height:2px;
+    background:repeating-linear-gradient(90deg, rgba(255,255,255,.7), rgba(255,255,255,.7) 2px, transparent 2px, transparent 7px);
+    transform:rotate(-8deg);
+  }
+  .item.pencil .item-icon::before{
+    content:"";
+    width:58px;
+    height:10px;
+    border-radius:999px;
+    background:linear-gradient(90deg, #2f3640 0 20%, #f8d34d 20% 82%, #f2b93c 82% 94%, #6b4c3b 94% 100%);
+    transform:rotate(-28deg);
+    box-shadow:0 3px 6px rgba(0,0,0,.22);
+  }
+  .item.eraser .item-icon::before{
+    content:"";
+    width:50px;
+    height:28px;
+    border-radius:8px;
+    background:linear-gradient(180deg, #ffb0d1, #ea79a6);
+    transform:rotate(8deg);
+    box-shadow:0 3px 6px rgba(0,0,0,.22);
+  }
+
+  .effect-tag{
+    position:absolute;
+    left:12px;
+    bottom:48px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.42);
+    color:#e7f0ff;
+    font-size:12px;
+    z-index:12;
+    pointer-events:none;
+  }
+  .effect-dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--warn);
+    box-shadow:0 0 10px rgba(255,183,77,.42);
+  }
+  .lab-note{
+    position:absolute;
+    left:12px;
+    bottom:10px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.34);
+    color:#d6e5ff;
+    font-size:12px;
+    z-index:12;
+    pointer-events:none;
+  }
+  .hint-card{
+    position:absolute;
+    right:16px;
+    bottom:14px;
+    padding:10px 12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.10);
+    background:rgba(0,0,0,.28);
+    color:#cfe2ff;
+    font-size:12px;
+    line-height:1.5;
+    max-width:282px;
+    pointer-events:none;
+  }
+
+  .dock{
+    position:absolute;
+    width:min(356px, 90%);
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    box-shadow:0 10px 24px rgba(0,0,0,.35);
+    backdrop-filter:blur(8px);
+    z-index:var(--zPanel);
+    user-select:none;
+  }
+  .resultsDock{ z-index:var(--zResults); }
+  .dockHead{
+    background:var(--panel-bg);
+    padding:10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    cursor:grab;
+    touch-action:none;
+  }
+  .dockHead:active{ cursor:grabbing; }
+  .dockTitle{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:800; color:#eaf2ff; }
+  .dockBtns{ display:flex; gap:8px; align-items:center; }
+  .iconBtn{
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:#eaf2ff;
+    cursor:pointer;
+    font-weight:800;
+    font-size:12px;
+  }
+  .iconBtn:hover{ background:rgba(255,255,255,.10); }
+  .dockBody{
+    background:var(--panel-bg);
+    padding:10px;
+    border-top:1px solid rgba(255,255,255,.10);
+    max-height:340px;
+    overflow:auto;
+  }
+  .dockBody.collapsed{ display:none; }
+  .dockNotice{
+    min-width:18px;
+    height:18px;
+    padding:0 5px;
+    border-radius:999px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#ff5f66;
+    color:#fff;
+    font-size:11px;
+    font-weight:900;
+    border:1px solid rgba(255,255,255,.16);
+    opacity:0;
+    transform:scale(.7);
+    transition:.18s;
+  }
+  .dockNotice.show{
+    opacity:1;
+    transform:scale(1);
+    animation:pulseBadge .75s ease-in-out infinite alternate;
+  }
+  @keyframes pulseBadge{from{box-shadow:0 0 0 0 rgba(255,95,102,.4);}to{box-shadow:0 0 0 6px rgba(255,95,102,0);}}
+  .secTitle{ font-size:12px; color:#cfe2ff; opacity:.95; font-weight:900; margin:0 0 8px; }
+  .mini{ font-size:12px; color:#cfe3ff; opacity:.95; line-height:1.5; }
+  .readout{
+    margin-top:8px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.08);
+    color:#e9f2ff;
+    font-size:12px;
+    padding:6px 10px;
+    white-space:nowrap;
+  }
+  .btnRow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btnRow button{
+    flex:1 1 120px;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    cursor:pointer;
+    font-weight:900;
+    transition:.15s;
+  }
+  .btnRow button:hover{ background:rgba(255,255,255,.12); }
+  .btnRow button:disabled{ opacity:.55; cursor:not-allowed; }
+  .table{ width:100%; border-collapse:collapse; font-size:12px; color:#eaf2ff; }
+  .table th,.table td{ border-bottom:1px solid rgba(255,255,255,.10); padding:6px 4px; text-align:left; font-variant-numeric:tabular-nums; }
+  .table th{ color:#cfe2ff; font-weight:900; }
+
+  .checkmark{
+    position:absolute;
+    z-index:60;
+    left:50%;
+    top:26%;
+    transform:translate(-50%,-50%) scale(.6);
+    width:120px;
+    height:120px;
+    border-radius:50%;
+    background:rgba(61,220,151,.15);
+    border:3px solid var(--accent);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 0 40px rgba(61,220,151,.35), inset 0 0 18px rgba(61,220,151,.18);
+    animation:pop .55s ease-out;
+    pointer-events:none;
+  }
+  .checkmark.active{ display:flex; }
+  .checkmark > div{
+    width:60px;
+    height:30px;
+    border-left:8px solid var(--accent);
+    border-bottom:8px solid var(--accent);
+    transform:rotate(-45deg) translateY(-6px);
+  }
+  @keyframes pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+
+  .demoCursor{
+    position:absolute;
+    z-index:140;
+    width:26px;
+    height:26px;
+    left:-200px;
+    top:-200px;
+    opacity:0;
+    pointer-events:none;
+    transition:left .48s cubic-bezier(.22,.61,.36,1), top .48s cubic-bezier(.22,.61,.36,1), opacity .2s ease, transform .12s ease;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));
+  }
+  .demoCursor.show{ opacity:1; }
+  .demoCursor.clicking{ transform:scale(.9); }
+  .demoCursorPulse{
+    position:absolute;
+    z-index:139;
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    border:2px solid rgba(255,195,74,.95);
+    left:-200px;
+    top:-200px;
+    opacity:0;
+    pointer-events:none;
+    transform:translate(-50%,-50%) scale(.35);
+  }
+  .demoCursorPulse.active{ animation:cursorPulse .45s ease-out; }
+  @keyframes cursorPulse{0%{opacity:.95;transform:translate(-50%,-50%) scale(.35)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
+
+  .toolbar{
+    width:100%;
+    max-width:900px;
+    margin-top:12px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:flex-start;
+  }
+  button.main{
+    padding:10px 16px;
+    border:none;
+    border-radius:8px;
+    background:#444;
+    color:#fff;
+    cursor:pointer;
+    transition:background .25s, transform .05s, opacity .2s;
+  }
+  button.main:hover{ background:#5a5a5a; }
+  button.main:active{ transform:scale(.98); }
+  button.main:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:24px;
+    transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,.82);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s, transform .25s;
+    z-index:200;
+    box-shadow:0 8px 18px rgba(0,0,0,.35);
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:300;
+  }
+  .modal{
+    width:min(90vw,380px);
+    background:#111;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:14px;
+    padding:18px 16px;
+    text-align:center;
+    box-shadow:0 12px 30px rgba(0,0,0,.5);
+  }
+  .modal h3{ margin:8px 0 6px; font-size:20px; color:#a2e3a9; }
+  .modal p{ margin-top:0; color:#cfd8dc; line-height:1.6; }
+  .modal .ok{
+    margin-top:12px;
+    background:var(--accent);
+    color:#081a12;
+    font-weight:800;
+    border:none;
+    border-radius:10px;
+    padding:10px 18px;
+    cursor:pointer;
+  }
+
+  .explanation{
+    width:100%;
+    max-width:900px;
+    margin:14px 0 20px;
+    line-height:1.65;
+    font-size:.95em;
+    color:var(--ink);
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:12px;
+    padding:14px 16px;
+  }
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; }
+  .explanation ul{ margin:.2em 0 .2em 1.1em; }
+  .explanation li{ margin:6px 0; }
+
+  @media (max-width:560px){
+    .task-card{ grid-template-columns:1fr; gap:6px; }
+    .task-step{ width:fit-content; }
+    .progress-dots{ justify-content:flex-start; }
+    #stage{ min-height:620px; }
+    .dock{ width:min(92%, 360px); }
+    .shelf{ width:92%; height:128px; }
+    .battery{ left:24px; top:206px; }
+    .battery-label{ left:18px; top:174px; }
+    .bulb{ right:12px; top:230px; width:144px; height:74px; }
+    .bulb-label{ right:8px; top:172px; }
+    .drop-zone{ width:220px; top:258px; }
+    .clip.left{ left:calc(50% - 124px); top:292px; }
+    .clip.right{ left:calc(50% + 124px); top:292px; }
+    .hint-card{ right:10px; max-width:220px; }
+  }
+
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">将铁钉拖入导线缺口，观察灯泡是否发光。</div>
+      <div class="task-hint" id="taskHint">提示：金属通常容易导电，可先观察灯泡是否亮起。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+
+    
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+<div class="lab-area" id="labArea">
+      <div class="board-grid"></div>
+
+      <svg class="circuit-svg" id="circuitSvg" viewBox="0 0 900 560" preserveAspectRatio="none">
+        <path id="wireTop" class="circuit-path" d="M 100 240 L 100 120 L 826 120 L 826 238"></path>
+        <path id="wireLeft" class="circuit-path" d="M 100 305 L 100 432 L 312 432 L 312 378"></path>
+        <path id="wireRight" class="circuit-path" d="M 826 286 L 826 432 L 588 432 L 588 378"></path>
+      </svg>
+
+      <div class="shelf">
+        <div class="shelf-board"></div>
+      </div>
+
+      <div class="battery"></div>
+      <div class="battery-label">电源</div>
+
+      <div class="bulb">
+        <div class="bulb-glass" id="bulb"></div>
+        <div class="filament"></div>
+        <div class="bulb-base"></div>
+        <div class="bulb-wire-stem top"></div>
+        <div class="bulb-terminal top"></div>
+        <div class="bulb-wire-stem bottom"></div>
+        <div class="bulb-terminal bottom"></div>
+      </div>
+      <div class="bulb-label">小灯泡</div>
+
+      <div class="drop-zone" id="dropZone"></div>
+      <div class="clip left"></div>
+      <div class="clip right"></div>
+
+      <div class="items-layer" id="itemsLayer"></div>
+
+      <div class="effect-tag"><span class="effect-dot"></span><span id="effectText">观察：等待接入材料</span></div>
+      <div class="lab-note" id="labNote">实验状态：请把材料放入导线缺口</div>
+      <div class="hint-card" id="hintCard">依次比较铁钉、塑料尺、铅笔芯。真正的结论来自灯泡是否发光，而不是名字提示。</div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+
+    <div class="dock drawer control" id="controlDock" style="right:10px; top:10px;">
+      <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">控制面板</div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="controlBody">
+        <div class="secTitle">过程读数</div>
+        <div class="mini">导电性判断以器材状态为准：材料接入缺口后，若灯泡发光则说明电路导通。</div>
+        <div class="readout">
+          <span class="pill">当前步骤：<b id="stepPill">铁钉</b></span>
+          <span class="pill">当前材料：<b id="itemPill">未接入</b></span>
+          <span class="pill">材料类型：<b id="typePill">--</b></span>
+          <span class="pill">电路状态：<b id="circuitPill">断开</b></span>
+          <span class="pill">灯泡状态：<b id="lampPill">未发光</b></span>
+          <span class="pill">结论：<b id="resultPill">等待观察</b></span>
+        </div>
+        <div class="btnRow">
+          <button id="removeBtn">取下当前材料</button>
+          <button id="checkBtn">确认观察 ✅</button>
+        </div>
+        <div class="btnRow">
+          <button id="trialResetBtn">本步复位</button>
+          <button id="flashBtn">再次观察灯泡</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dock resultsDock drawer data" id="dataDock" style="right:10px; top:70px;">
+      <div class="dockHead drawer-header" id="dataHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">数据面板 <span class="dockNotice" id="dataNotice">0</span></div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="dataToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="dataBody">
+        <div class="secTitle">数据记录</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>步骤</th>
+              <th>材料</th>
+              <th>现象/结论</th>
+            </tr>
+          </thead>
+          <tbody id="recordBody">
+            <tr><td colspan="4" style="opacity:.72;">当前无记录。达成步骤后会自动记录。</td></tr>
+          </tbody>
+        </table>
+      
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="demoCursor" id="demoCursor" aria-hidden="true">
+      <svg viewBox="0 0 24 24" role="img" aria-label="自动演示鼠标">
+        <path d="M3 2.5L10.2 20.8L12.7 12.9L20.8 10.3L3 2.5Z" fill="#ffffff" stroke="#111820" stroke-width="1.3" />
+      </svg>
+    </div>
+    <div class="demoCursorPulse" id="demoCursorPulse" aria-hidden="true"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="main" id="resetBtn">步骤重置</button>
+    <button class="main" id="autoDemoBtn">自动演示</button>
+    <button class="main" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>实验完成</h3>
+      <p>你已完成铁钉、塑料尺和铅笔芯三种材料的导电性比较，掌握了导体与绝缘体的基本判断方法。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：比较物质的导电性</h2>
+    <ul>
+      <li><b>关键操作</b>：把不同材料放入导线缺口中，观察灯泡是否发光，再确认该材料是否能使电路导通。</li>
+      <li><b>可观察现象</b>：铁钉和铅笔芯接入时灯泡能发光，塑料尺接入时灯泡不发光。</li>
+      <li><b>原理与结论</b>：能让电路导通的材料是导体，不易导通的材料是绝缘体；石墨虽不是金属，但也具有导电性。</li>
+    </ul>
+  </div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const AUTO_DEMO_FACTOR = 1.18;
+
+const ITEMS = [
+  { id:'nail', name:'铁钉', type:'导体', conductive:true, cls:'nail' },
+  { id:'ruler', name:'塑料尺', type:'绝缘体', conductive:false, cls:'ruler' },
+  { id:'pencil', name:'铅笔芯', type:'导体', conductive:true, cls:'pencil' },
+  { id:'eraser', name:'橡皮擦', type:'绝缘体', conductive:false, cls:'eraser' }
+];
+
+const TASKS = [
+  { id:'nail', text:'将铁钉拖入导线缺口，观察灯泡是否发光。', hint:'提示：金属通常容易导电，可先观察灯泡是否亮起。', expect:true, check:() => state.connectedItemId === 'nail' && state.circuitOn },
+  { id:'ruler', text:'将塑料尺拖入导线缺口，观察灯泡是否发光。', hint:'提示：塑料内部缺乏自由移动电荷。', expect:false, check:() => state.connectedItemId === 'ruler' && !state.circuitOn },
+  { id:'pencil', text:'将铅笔芯拖入导线缺口，观察它是否能使灯泡发光。', hint:'提示：铅笔芯中的石墨可以导电。', expect:true, check:() => state.connectedItemId === 'pencil' && state.circuitOn }
+];
+
+const state = {
+  currentTask: 0,
+  completed: false,
+  freeMode: false,
+  autoPlaying: false,
+  draggingId: '',
+  rafId: 0,
+  timers: new Set(),
+  successCooldown: false,
+  warningStep: -1,
+  panelCollapsed: true,
+  dataCollapsed: true,
+  unseenRecordCount: 0,
+  records: [],
+  demoRunId: 0,
+  dragPointerId: -1,
+  dragOffsetX: 0,
+  dragOffsetY: 0,
+  dockMoved: { control:false, data:false },
+  connectedItemId: '',
+  circuitOn: false,
+  activeFlash: false,
+  itemPositions: {}
+};
+
+const stage = $('#stage');
+const labArea = $('#labArea');
+const itemsLayer = $('#itemsLayer');
+const dropZone = $('#dropZone');
+const bulb = $('#bulb');
+const wires = [$('#wireTop'), $('#wireLeft'), $('#wireRight')];
+
+const taskCard = $('#taskCard');
+const taskStepEl = $('#taskStep');
+const taskTextEl = $('#taskText');
+const taskHintEl = $('#taskHint');
+const dots = [$('#dot1'), $('#dot2'), $('#dot3')];
+const modeTag = $('#modeTag');
+const statusTag = $('#statusTag');
+const effectText = $('#effectText');
+const labNote = $('#labNote');
+const hintCard = $('#hintCard');
+
+const controlDock = $('#controlDock');
+const controlHead = $('#controlHead');
+const controlBody = $('#controlBody');
+const controlToggleBtn = $('#controlToggleBtn');
+const dataDock = $('#dataDock');
+const dataHead = $('#dataHead');
+const dataBody = $('#dataBody');
+const dataToggleBtn = $('#dataToggleBtn');
+const dataNotice = $('#dataNotice');
+const recordBody = $('#recordBody');
+
+const stepPill = $('#stepPill');
+const itemPill = $('#itemPill');
+const typePill = $('#typePill');
+const circuitPill = $('#circuitPill');
+const lampPill = $('#lampPill');
+const resultPill = $('#resultPill');
+
+const removeBtn = $('#removeBtn');
+const checkBtn = $('#checkBtn');
+const trialResetBtn = $('#trialResetBtn');
+const flashBtn = $('#flashBtn');
+const resetBtn = $('#resetBtn');
+const autoDemoBtn = $('#autoDemoBtn');
+const freeBtn = $('#freeBtn');
+
+const toastEl = $('#toast');
+const checkmark = $('#checkmark');
+const doneMask = $('#doneMask');
+const okBtn = $('#okBtn');
+const demoCursor = $('#demoCursor');
+const demoCursorPulse = $('#demoCursorPulse');
+
+function trackTimer(id){ state.timers.add(id); return id; }
+function untrackTimer(id){ state.timers.delete(id); }
+function clearTrackedTimers(){
+  state.timers.forEach((id)=>clearTimeout(id));
+  state.timers.clear();
+}
+function wait(ms){
+  return new Promise((resolve)=>{
+    const id = setTimeout(()=>{ untrackTimer(id); resolve(); }, ms);
+    trackTimer(id);
+  });
+}
+async function waitAuto(ms, runId){
+  await wait(Math.round(ms * AUTO_DEMO_FACTOR));
+  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+}
+async function waitForAutoCondition(check, timeoutMs, runId, errorCode){
+  const start = performance.now();
+  while(performance.now() - start < timeoutMs){
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    if(check()) return;
+    await waitAuto(80, runId);
+  }
+  throw new Error(errorCode);
+}
+
+function showToast(msg){
+  toastEl.textContent = msg || '提示';
+  toastEl.classList.add('show');
+  if(showToast.t){
+    clearTimeout(showToast.t);
+    untrackTimer(showToast.t);
+  }
+  showToast.t = trackTimer(setTimeout(()=>{
+    toastEl.classList.remove('show');
+    if(showToast.t){
+      untrackTimer(showToast.t);
+      showToast.t = 0;
+    }
+  }, 1500));
+}
+showToast.t = 0;
+
+function showCheck(){
+  checkmark.classList.add('active');
+  if(showCheck.t){
+    clearTimeout(showCheck.t);
+    untrackTimer(showCheck.t);
+  }
+  showCheck.t = trackTimer(setTimeout(()=>{
+    checkmark.classList.remove('active');
+    if(showCheck.t){
+      untrackTimer(showCheck.t);
+      showCheck.t = 0;
+    }
+  }, 560));
+}
+showCheck.t = 0;
+
+function setStatus(text){
+  statusTag.textContent = `状态：${text || '待操作'}`;
+}
+function updateModeHud(){
+  modeTag.classList.remove('mode-auto');
+  if(state.autoPlaying){
+    modeTag.textContent = '模式：自动演示';
+    modeTag.classList.add('mode-auto');
+  }else if(state.freeMode){
+    modeTag.textContent = '模式：自由';
+  }else{
+    modeTag.textContent = '模式：引导';
+  }
+}
+
+function renderStepDots(){
+  const last = TASKS.length - 1;
+  dots.forEach((d, idx)=>{
+    const done = idx < state.currentTask || (state.completed && idx === last);
+    const active = idx === state.currentTask && !state.completed;
+    d.classList.toggle('done', done);
+    d.classList.toggle('active', active);
+    d.classList.toggle('warn', active && state.warningStep === state.currentTask);
+  });
+}
+function setStepUI(i){
+  state.currentTask = clamp(i, 0, TASKS.length - 1);
+  if(state.warningStep !== state.currentTask) state.warningStep = -1;
+  const t = TASKS[state.currentTask];
+  taskStepEl.textContent = `步骤 ${state.currentTask + 1} / ${TASKS.length}`;
+  taskTextEl.textContent = t.text;
+  taskHintEl.textContent = t.hint;
+  renderStepDots();
+  refreshReadouts();
+}
+function warnCurrentStep(msg){
+  if(state.freeMode || state.completed) return;
+  state.warningStep = state.currentTask;
+  renderStepDots();
+  showToast(msg);
+}
+
+function createItems(){
+  itemsLayer.innerHTML = '';
+  ITEMS.forEach((item, idx)=>{
+    const el = document.createElement('div');
+    el.className = `item ${item.cls}`;
+    el.id = `item-${item.id}`;
+    el.dataset.itemId = item.id;
+    el.innerHTML = `<div class="item-icon"></div><div class="item-label">${item.name}</div>`;
+    itemsLayer.appendChild(el);
+    bindItemDrag(el);
+  });
+  layoutShelfItems();
+}
+
+function layoutShelfItems(){
+  const shelfRect = $('.shelf').getBoundingClientRect();
+  const labRect = labArea.getBoundingClientRect();
+  const xs = [0.18, 0.40, 0.62, 0.84];
+  ITEMS.forEach((item, idx)=>{
+    const el = $(`#item-${item.id}`);
+    const x = shelfRect.left - labRect.left + shelfRect.width * xs[idx] - 44;
+    const y = shelfRect.top - labRect.top + shelfRect.height - 84;
+    state.itemPositions[item.id] = { x, y };
+    if(state.connectedItemId !== item.id){
+      placeItem(item.id, x, y, true);
+    }
+  });
+}
+
+function placeItem(itemId, x, y, onShelf = false){
+  const el = $(`#item-${itemId}`);
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.classList.toggle('on-shelf', onShelf);
+}
+
+function getItemMeta(itemId){
+  return ITEMS.find((x)=>x.id === itemId);
+}
+
+function getDropTargetPos(itemId){
+  const zone = dropZone.getBoundingClientRect();
+  const lab = labArea.getBoundingClientRect();
+  const el = $(`#item-${itemId}`);
+  return {
+    x: zone.left - lab.left + (zone.width - el.offsetWidth) / 2,
+    y: zone.top - lab.top + 18
+  };
+}
+
+function isOverDropZone(el){
+  const a = el.getBoundingClientRect();
+  const b = dropZone.getBoundingClientRect();
+  return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+}
+
+function setCircuitState(on){
+  state.circuitOn = !!on;
+  bulb.classList.toggle('lit', state.circuitOn || state.activeFlash);
+  wires.forEach((w)=>w.classList.toggle('on', state.circuitOn || state.activeFlash));
+}
+
+function applyCurrentConnection(){
+  if(!state.connectedItemId){
+    setCircuitState(false);
+    refreshReadouts();
+    return;
+  }
+  const meta = getItemMeta(state.connectedItemId);
+  setCircuitState(!!meta.conductive);
+  refreshReadouts();
+}
+
+function connectItem(itemId){
+  state.connectedItemId = itemId;
+  const pos = getDropTargetPos(itemId);
+  ITEMS.forEach((item)=>{
+    const el = $(`#item-${item.id}`);
+    el.classList.toggle('connected', item.id === itemId);
+    if(item.id !== itemId){
+      const p = state.itemPositions[item.id];
+      placeItem(item.id, p.x, p.y, true);
+    }
+  });
+  placeItem(itemId, pos.x, pos.y, false);
+  applyCurrentConnection();
+}
+
+function removeCurrentConnection(showTip = false){
+  if(!state.connectedItemId) return;
+  const itemId = state.connectedItemId;
+  const p = state.itemPositions[itemId];
+  state.connectedItemId = '';
+  const el = $(`#item-${itemId}`);
+  el.classList.remove('connected');
+  placeItem(itemId, p.x, p.y, true);
+  setCircuitState(false);
+  refreshReadouts();
+  if(showTip) showToast('已取下当前材料。');
+}
+
+function pulseLamp(){
+  if(state.activeFlash) return;
+  state.activeFlash = true;
+  bulb.classList.add('lit');
+  wires.forEach((w)=>w.classList.add('on'));
+  const id = setTimeout(()=>{
+    state.activeFlash = false;
+    applyCurrentConnection();
+    untrackTimer(id);
+  }, 520);
+  trackTimer(id);
+}
+
+function refreshReadouts(){
+  const currentTask = TASKS[state.currentTask];
+  const meta = state.connectedItemId ? getItemMeta(state.connectedItemId) : null;
+  stepPill.textContent = getItemMeta(currentTask.id).name;
+  itemPill.textContent = meta ? meta.name : '未接入';
+  typePill.textContent = meta ? meta.type : '--';
+  circuitPill.textContent = state.circuitOn ? '闭合' : '断开';
+  lampPill.textContent = state.circuitOn ? '发光' : '未发光';
+  if(!meta) resultPill.textContent = '等待观察';
+  else resultPill.textContent = state.circuitOn ? '该材料能导电' : '该材料不导电';
+
+  if(state.completed){
+    labNote.textContent = '实验状态：挑战完成';
+    effectText.textContent = '观察：已完成全部比较';
+  }else if(state.freeMode){
+    labNote.textContent = meta ? `实验状态：正在测试 ${meta.name}` : '实验状态：自由探索中';
+    effectText.textContent = meta ? `观察：${state.circuitOn ? '灯泡发光，电路导通' : '灯泡不发光，电路不导通'}` : '观察：等待接入材料';
+  }else if(meta){
+    labNote.textContent = `实验状态：已接入 ${meta.name}，请确认观察`;
+    effectText.textContent = `观察：${state.circuitOn ? '灯泡发光，电路导通' : '灯泡不发光，电路不导通'}`;
+  }else{
+    labNote.textContent = '实验状态：请把材料放入导线缺口';
+    effectText.textContent = '观察：等待接入材料';
+  }
+
+  if(state.currentTask === 0) hintCard.textContent = '步骤 1 先比较铁钉。导电性判断一定要看灯泡是否发光。';
+  else if(state.currentTask === 1) hintCard.textContent = '步骤 2 观察塑料尺接入后灯泡为什么不亮，再确认。';
+  else if(state.currentTask === 2) hintCard.textContent = '步骤 3 观察铅笔芯接入后灯泡能否发光，体会石墨也能导电。';
+
+  if(state.autoPlaying) setStatus('自动演示中');
+  else if(state.freeMode) setStatus('自由探索');
+  else if(state.completed) setStatus('挑战完成');
+  else if(state.draggingId) setStatus('拖动接线中');
+  else setStatus('待操作');
+
+  removeBtn.disabled = !state.connectedItemId || state.autoPlaying;
+  checkBtn.disabled = state.autoPlaying;
+  flashBtn.disabled = state.autoPlaying || !state.connectedItemId;
+}
+
+function addRecord(step, itemName, phenomenon){
+  state.records.push({ step, itemName, phenomenon });
+  if(state.records.length > 120) state.records.shift();
+  if(state.dataCollapsed) state.unseenRecordCount = Math.min(999, state.unseenRecordCount + 1);
+  else state.unseenRecordCount = 0;
+  renderRecordTable();
+  refreshDataNotice();
+}
+function renderRecordTable(){
+  if(!state.records.length){
+    recordBody.innerHTML = '<tr><td colspan="4" style="opacity:.72;">当前无记录。达成步骤后会自动记录。</td></tr>';
+    return;
+  }
+  recordBody.innerHTML = state.records.map((r, i)=>(
+    `<tr><td>${i + 1}</td><td>${r.step}</td><td>${r.itemName}</td><td>${r.phenomenon}</td></tr>`
+  )).join('');
+}
+function refreshDataNotice(){
+  const n = state.unseenRecordCount;
+  dataNotice.textContent = n > 99 ? '99+' : String(n);
+  dataNotice.classList.toggle('show', state.dataCollapsed && n > 0);
+}
+function lockSuccess(){
+  state.successCooldown = true;
+  const id = setTimeout(()=>{
+    state.successCooldown = false;
+    untrackTimer(id);
+  }, 620);
+  trackTimer(id);
+}
+
+function passCurrentTask(fromAuto = false){
+  if(state.successCooldown || state.completed) return false;
+  if(state.freeMode && !fromAuto){
+    showToast('自由模式下可继续测试，不进入闯关判定。');
+    return false;
+  }
+  if(!state.connectedItemId){
+    if(!fromAuto) warnCurrentStep('请先把材料放入导线缺口。');
+    return false;
+  }
+  const current = TASKS[state.currentTask];
+  if(!current.check()){
+    if(!fromAuto){
+      if(state.connectedItemId !== current.id) warnCurrentStep(`请先测试${getItemMeta(current.id).name}。`);
+      else warnCurrentStep(current.expect ? '请先观察灯泡发光后再确认。' : '请先观察灯泡不发光后再确认。');
+    }
+    return false;
+  }
+
+  state.warningStep = -1;
+  const meta = getItemMeta(state.connectedItemId);
+  const phenomenon = state.circuitOn ? '灯泡发光，判定为导体' : '灯泡不发光，判定为绝缘体';
+  addRecord(`步骤${state.currentTask + 1}`, meta.name, phenomenon);
+  showCheck();
+  lockSuccess();
+
+  if(state.currentTask >= TASKS.length - 1){
+    state.completed = true;
+    renderStepDots();
+    refreshReadouts();
+    setStatus('挑战完成');
+    if(fromAuto && state.autoPlaying){
+      state.autoPlaying = false;
+      updateModeHud();
+      refreshInteractionLocks();
+    }
+    doneMask.style.display = 'flex';
+  } else {
+    setStepUI(state.currentTask + 1);
+    removeCurrentConnection(false);
+    if(!fromAuto) showToast('✅ 过关，进入下一步。');
+  }
+  return true;
+}
+
+function bindItemDrag(el){
+  el.addEventListener('pointerdown', (e)=>{
+    if(e.button !== 0) return;
+    if(state.autoPlaying || state.completed) return;
+    state.draggingId = el.dataset.itemId;
+    state.dragPointerId = e.pointerId;
+    const rect = el.getBoundingClientRect();
+    state.dragOffsetX = e.clientX - rect.left;
+    state.dragOffsetY = e.clientY - rect.top;
+    try { el.setPointerCapture(e.pointerId); }
+    catch (err) { console.warn('setPointerCapture failed', err); }
+    el.classList.remove('on-shelf');
+    setStatus('拖动接线中');
+    e.preventDefault();
+  });
+
+  el.addEventListener('pointermove', (e)=>{
+    if(state.draggingId !== el.dataset.itemId || state.dragPointerId !== e.pointerId) return;
+    const lab = labArea.getBoundingClientRect();
+    const x = clamp(e.clientX - lab.left - state.dragOffsetX, 8, lab.width - el.offsetWidth - 8);
+    const y = clamp(e.clientY - lab.top - state.dragOffsetY, 8, lab.height - el.offsetHeight - 8);
+    placeItem(el.dataset.itemId, x, y, false);
+    dropZone.classList.toggle('ready', isOverDropZone(el));
+    e.preventDefault();
+  });
+
+  const finish = (e) => {
+    if(state.draggingId !== el.dataset.itemId || state.dragPointerId !== e.pointerId) return;
+    try { el.releasePointerCapture(e.pointerId); }
+    catch (err) { console.warn('releasePointerCapture failed', err); }
+    dropZone.classList.remove('ready');
+    if(isOverDropZone(el)) connectItem(el.dataset.itemId);
+    else if(state.connectedItemId === el.dataset.itemId) removeCurrentConnection(false);
+    else{
+      const p = state.itemPositions[el.dataset.itemId];
+      placeItem(el.dataset.itemId, p.x, p.y, true);
+    }
+    state.draggingId = '';
+    state.dragPointerId = -1;
+    refreshReadouts();
+  };
+  el.addEventListener('pointerup', finish);
+  el.addEventListener('pointercancel', finish);
+}
+
+removeBtn.onclick = () => {
+  if(state.autoPlaying) return;
+  removeCurrentConnection(true);
+};
+checkBtn.onclick = () => { passCurrentTask(false); };
+trialResetBtn.onclick = () => {
+  if(state.autoPlaying) return;
+  removeCurrentConnection(false);
+  showToast(state.freeMode ? '自由场景已复位。' : `已复位当前步骤：${getItemMeta(TASKS[state.currentTask].id).name}。`);
+};
+flashBtn.onclick = () => {
+  if(state.autoPlaying || !state.connectedItemId) return;
+  pulseLamp();
+};
+
+function setControlCollapsed(on){
+  state.panelCollapsed = !!on;
+  controlBody.classList.toggle('collapsed', state.panelCollapsed);
+  controlToggleBtn.textContent = state.panelCollapsed ? '展开' : '收起';
+}
+function setDataCollapsed(on){
+  state.dataCollapsed = !!on;
+  dataBody.classList.toggle('collapsed', state.dataCollapsed);
+  dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+  if(!state.dataCollapsed) state.unseenRecordCount = 0;
+  refreshDataNotice();
+}
+controlToggleBtn.onclick = () => {
+  setControlCollapsed(!state.panelCollapsed);
+  resolveDrawerOverlap(true);
+};
+dataToggleBtn.onclick = () => {
+  setDataCollapsed(!state.dataCollapsed);
+  resolveDrawerOverlap(true);
+};
+
+function getStageRect(){ return stage.getBoundingClientRect(); }
+function setDockPos(el, x, y){
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.style.right = 'auto';
+  el.style.bottom = 'auto';
+}
+function clampDockPos(el, x, y){
+  const s = getStageRect();
+  const r = el.getBoundingClientRect();
+  const pad = 10;
+  return { x: clamp(x, pad, s.width - r.width - pad), y: clamp(y, pad, s.height - r.height - pad) };
+}
+function overlapArea(a, b){
+  const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+  const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+  return x * y;
+}
+function bringToFront(which){
+  if(which === 'control'){
+    document.documentElement.style.setProperty('--zPanel', '42');
+    document.documentElement.style.setProperty('--zResults', '39');
+  }else{
+    document.documentElement.style.setProperty('--zResults', '42');
+    document.documentElement.style.setProperty('--zPanel', '39');
+  }
+}
+function resolveDrawerOverlap(force = false){
+  const narrow = window.innerWidth <= 560;
+  const enforce = force || state.autoPlaying;
+  if(!enforce && !narrow) return;
+  if(state.panelCollapsed || state.dataCollapsed) return;
+
+  const s = getStageRect();
+  const c = controlDock.getBoundingClientRect();
+  const d = dataDock.getBoundingClientRect();
+  if(overlapArea(c, d) <= 0) return;
+
+  const pad = 10;
+  const rightX = s.width - d.width - pad;
+  const leftX = pad;
+  const belowY = c.bottom - s.top + 8;
+  const aboveY = c.top - s.top - d.height - 8;
+  const candidates = [
+    { x: rightX, y: belowY },
+    { x: rightX, y: aboveY },
+    { x: leftX, y: belowY },
+    { x: leftX, y: aboveY }
+  ];
+
+  let best = null;
+  let bestOv = Infinity;
+  for(const raw of candidates){
+    const next = clampDockPos(dataDock, raw.x, raw.y);
+    const rect = { left: s.left + next.x, top: s.top + next.y, right: s.left + next.x + d.width, bottom: s.top + next.y + d.height };
+    const ov = overlapArea(c, rect);
+    if(ov < bestOv){
+      bestOv = ov;
+      best = next;
+    }
+    if(ov <= 0) break;
+  }
+  if(best) setDockPos(dataDock, best.x, best.y);
+}
+function defaultDockPositions(force = false){
+  const s = getStageRect();
+  const pad = 10;
+  const cr = controlDock.getBoundingClientRect();
+  const dr = dataDock.getBoundingClientRect();
+  if(force || !state.dockMoved.control) setDockPos(controlDock, s.width - cr.width - pad, pad);
+  const cNow = controlDock.getBoundingClientRect();
+  const baseY = cNow.bottom - s.top + 8;
+  if(force || !state.dockMoved.data){
+    const next = clampDockPos(dataDock, s.width - dr.width - pad, baseY);
+    setDockPos(dataDock, next.x, next.y);
+  }
+  resolveDrawerOverlap();
+}
+function bindDockDrag(el, headEl, kind){
+  let dragging = false;
+  let sx = 0;
+  let sy = 0;
+  let bx = 0;
+  let by = 0;
+  function currentPos(){
+    const s = getStageRect();
+    const r = el.getBoundingClientRect();
+    return { x: r.left - s.left, y: r.top - s.top };
+  }
+  function finishDrag(e){
+    if(!dragging) return;
+    dragging = false;
+    el.style.boxShadow = '';
+    try { headEl.releasePointerCapture(e.pointerId); }
+    catch (err) { console.warn('releasePointerCapture failed', err); }
+    resolveDrawerOverlap(true);
+  }
+  headEl.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('button')) return;
+    dragging = true;
+    bringToFront(kind);
+    el.style.boxShadow = getComputedStyle(document.documentElement).getPropertyValue('--shadow');
+    const p = currentPos();
+    bx = p.x;
+    by = p.y;
+    sx = e.clientX;
+    sy = e.clientY;
+    state.dockMoved[kind] = true;
+    try { headEl.setPointerCapture(e.pointerId); }
+    catch (err) { console.warn('setPointerCapture failed', err); }
+    e.preventDefault();
+  });
+  headEl.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    const p = clampDockPos(el, bx + (e.clientX - sx), by + (e.clientY - sy));
+    setDockPos(el, p.x, p.y);
+    e.preventDefault();
+  });
+  headEl.addEventListener('pointerup', finishDrag);
+  headEl.addEventListener('pointercancel', finishDrag);
+}
+bindDockDrag(controlDock, controlHead, 'control');
+bindDockDrag(dataDock, dataHead, 'data');
+
+function refreshInteractionLocks(){
+  const autoLocked = state.autoPlaying;
+  removeBtn.disabled = autoLocked || !state.connectedItemId;
+  checkBtn.disabled = autoLocked;
+  trialResetBtn.disabled = autoLocked;
+  flashBtn.disabled = autoLocked || !state.connectedItemId;
+  resetBtn.disabled = autoLocked;
+  freeBtn.disabled = autoLocked;
+  if(autoLocked){
+    autoDemoBtn.textContent = '退出自动演示';
+    autoDemoBtn.disabled = false;
+  }else{
+    autoDemoBtn.textContent = '自动演示';
+    autoDemoBtn.disabled = state.freeMode;
+  }
+  freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+}
+
+function setFreeMode(on){
+  if(state.autoPlaying) return;
+  state.freeMode = !!on;
+  state.warningStep = -1;
+  doneMask.style.display = 'none';
+  if(state.freeMode){
+    taskCard.style.opacity = '.28';
+    taskCard.style.filter = 'grayscale(.6)';
+    setStatus('自由探索');
+    showToast('自由模式：可任意比较材料的导电性。');
+  }else{
+    taskCard.style.opacity = '1';
+    taskCard.style.filter = 'none';
+    setStatus('待操作');
+  }
+  updateModeHud();
+  refreshInteractionLocks();
+  removeCurrentConnection(false);
+  renderStepDots();
+  refreshReadouts();
+}
+
+function resetAll(opts = {}){
+  const { preserveAuto = false, showTip = true, preserveFreeMode = false } = opts;
+  clearTrackedTimers();
+  const keepFree = preserveFreeMode && state.freeMode;
+
+  if(!preserveAuto){
+    state.autoPlaying = false;
+    state.demoRunId += 1;
+  }
+
+  state.completed = false;
+  state.successCooldown = false;
+  state.warningStep = -1;
+  state.currentTask = 0;
+  state.records = [];
+  state.unseenRecordCount = 0;
+  state.draggingId = '';
+  state.dragPointerId = -1;
+  state.connectedItemId = '';
+  state.circuitOn = false;
+  state.activeFlash = false;
+  doneMask.style.display = 'none';
+
+  setControlCollapsed(true);
+  setDataCollapsed(true);
+  state.dockMoved.control = false;
+  state.dockMoved.data = false;
+  defaultDockPositions(true);
+
+  state.freeMode = !!keepFree;
+  taskCard.style.opacity = keepFree ? '.28' : '1';
+  taskCard.style.filter = keepFree ? 'grayscale(.6)' : 'none';
+  setCircuitState(false);
+  createItems();
+  renderRecordTable();
+  refreshDataNotice();
+  setStepUI(0);
+  updateModeHud();
+  refreshInteractionLocks();
+  refreshReadouts();
+  if(showTip && !state.autoPlaying) showToast(keepFree ? '自由模式场景已重置。' : '已重置：回到步骤1。');
+}
+
+function ensureAutoDrawerLayout(){
+  setControlCollapsed(false);
+  setDataCollapsed(true);
+  state.dockMoved.control = false;
+  state.dockMoved.data = false;
+  defaultDockPositions(true);
+  resolveDrawerOverlap(true);
+}
+
+function assertAutoRecorded(beforeLen){
+  if(state.records.length <= beforeLen) throw new Error('AUTO_RECORD_NOT_PERSISTED');
+}
+
+function setDemoCursor(x, y){
+  demoCursor.classList.add('show');
+  demoCursor.style.left = `${x}px`;
+  demoCursor.style.top = `${y}px`;
+}
+function hideDemoCursor(){
+  demoCursor.classList.remove('show', 'clicking');
+  demoCursorPulse.classList.remove('active');
+  demoCursor.style.left = '-200px';
+  demoCursor.style.top = '-200px';
+  demoCursorPulse.style.left = '-200px';
+  demoCursorPulse.style.top = '-200px';
+}
+async function clickDemoCursor(ms = 180, runId = state.demoRunId){
+  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+  demoCursor.classList.add('clicking');
+  const x = Number.parseFloat(demoCursor.style.left || '0');
+  const y = Number.parseFloat(demoCursor.style.top || '0');
+  demoCursorPulse.style.left = `${x}px`;
+  demoCursorPulse.style.top = `${y}px`;
+  demoCursorPulse.classList.remove('active');
+  void demoCursorPulse.offsetWidth;
+  demoCursorPulse.classList.add('active');
+  await waitAuto(ms, runId);
+  demoCursor.classList.remove('clicking');
+}
+function elemCenterInStage(el){
+  const s = stage.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return { x: r.left - s.left + r.width / 2, y: r.top - s.top + r.height / 2 };
+}
+async function demoClickElement(el, runId, action = null){
+  const p = elemCenterInStage(el);
+  setDemoCursor(p.x, p.y);
+  await waitAuto(220, runId);
+  await clickDemoCursor(150, runId);
+  if(action) await action();
+  else el.click();
+  await waitAuto(180, runId);
+}
+async function demoDragItemToZone(itemId, runId){
+  const el = $(`#item-${itemId}`);
+  const lab = labArea.getBoundingClientRect();
+  const startRect = el.getBoundingClientRect();
+  const zone = getDropTargetPos(itemId);
+  let x = startRect.left - lab.left;
+  let y = startRect.top - lab.top;
+  setDemoCursor(x + el.offsetWidth / 2, y + el.offsetHeight / 2);
+  await waitAuto(180, runId);
+  await clickDemoCursor(130, runId);
+
+  const steps = 28;
+  for(let i = 1; i <= steps; i++){
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    const nx = x + ((zone.x - x) * i) / steps;
+    const ny = y + ((zone.y - y) * i) / steps;
+    placeItem(itemId, nx, ny, false);
+    dropZone.classList.toggle('ready', i > steps - 5);
+    setDemoCursor(nx + el.offsetWidth / 2, ny + el.offsetHeight / 2);
+    await waitAuto(20, runId);
+  }
+  dropZone.classList.remove('ready');
+  connectItem(itemId);
+  await waitAuto(220, runId);
+}
+
+function stopAutoDemo(byUser = false){
+  if(!state.autoPlaying) return;
+  state.demoRunId += 1;
+  state.autoPlaying = false;
+  hideDemoCursor();
+  updateModeHud();
+  refreshInteractionLocks();
+  if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
+  if(byUser) showToast('已退出自动演示。');
+}
+
+async function startAutoDemo(){
+  if(state.autoPlaying || state.freeMode) return;
+  state.autoPlaying = true;
+  const runId = ++state.demoRunId;
+  updateModeHud();
+  refreshInteractionLocks();
+  resetAll({ preserveAuto:true, showTip:false });
+  ensureAutoDrawerLayout();
+  setStatus('自动演示中');
+
+  try {
+    for(const task of TASKS){
+      await demoDragItemToZone(task.id, runId);
+      await waitForAutoCondition(() => state.connectedItemId === task.id && state.circuitOn === task.expect, 1800, runId, 'AUTO_CIRCUIT_NOT_READY');
+      const before = state.records.length;
+      await demoClickElement(checkBtn, runId, async () => { passCurrentTask(true); });
+      assertAutoRecorded(before);
+      await waitAuto(720, runId);
+    }
+    if(!state.completed) throw new Error('AUTO_NOT_COMPLETED');
+    setStatus('挑战完成');
+  } catch (err) {
+    const msg = String(err && err.message ? err.message : err);
+    if(msg !== 'AUTO_DEMO_CANCELLED'){
+      console.error('[autoDemo] failed:', err);
+      if(msg.startsWith('AUTO_RECORD')) showToast('自动演示记录失败，请重试。');
+      else showToast('自动演示中断，已恢复可操作状态。');
+      if(!state.completed) setStatus('待操作');
+    }
+  } finally {
+    hideDemoCursor();
+    if(runId === state.demoRunId){
+      state.autoPlaying = false;
+      updateModeHud();
+      refreshInteractionLocks();
+      if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
+    }
+  }
+}
+
+resetBtn.onclick = () => {
+  if(state.autoPlaying) return;
+  resetAll({ preserveAuto:false, showTip:true, preserveFreeMode:state.freeMode });
+};
+freeBtn.onclick = () => setFreeMode(!state.freeMode);
+autoDemoBtn.onclick = () => {
+  if(state.autoPlaying) stopAutoDemo(true);
+  else{
+    if(state.freeMode){
+      showToast('请先退出自由模式，再启动自动演示。');
+      return;
+    }
+    startAutoDemo();
+  }
+};
+okBtn.onclick = () => { doneMask.style.display = 'none'; };
+
+function init(){
+  renderRecordTable();
+  refreshDataNotice();
+  resetAll({ preserveAuto:false, showTip:false });
+}
+
+const relayout = (() => {
+  let t = 0;
+  return () => {
+    if(t){
+      clearTimeout(t);
+      untrackTimer(t);
+    }
+    t = trackTimer(setTimeout(()=>{
+      t = 0;
+      layoutShelfItems();
+      defaultDockPositions();
+      resolveDrawerOverlap(true);
+      refreshReadouts();
+    }, 120));
+  };
+})();
+
+window.addEventListener('resize', relayout);
+window.addEventListener('orientationchange', relayout);
+window.addEventListener('beforeunload', ()=>{ clearTrackedTimers(); });
+
+init();
+</script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

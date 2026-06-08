@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验 12-cc｜探究液体压强与哪些因素有关（交互版）</title>
+  <!-- 实验目录依据：中小学实验教学目录（初中物理 12. 探究液体压强与哪些因素有关） -->
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --ink:#ffffff;
+      --card-bg:rgba(255,255,255,0.08);
+      --panel-bg:rgba(15,15,15,0.55);
+      --line:rgba(255,255,255,0.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --error:#ff6b6b;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:940px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,0.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{ 0%{ background-position:0 0; } 100%{ background-position:-100% 0; } }
+
+    .task-card{
+      width:100%;
+      max-width:940px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      gap:10px;
+      align-items:center;
+      transition:opacity .2s, filter .2s;
+    }
+    .task-step{
+      background:rgba(255,255,255,0.15);
+      border-radius:8px;
+      padding:6px 10px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .task-text{ line-height:1.58; }
+    .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+    .progress-dots{ display:flex; gap:6px; align-items:center; }
+    .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.12); }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.5); }
+
+    #stage{
+      width:100%;
+      max-width:940px;
+      height:62vh;
+      max-height:580px;
+      min-height:430px;
+      margin-top:10px;
+      position:relative;
+      overflow:hidden;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.08);
+      background:#0b0f14;
+      box-shadow:0 8px 24px rgba(0,0,0,.35);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 75% 25%, rgba(255,255,255,0.06), transparent 40%),
+        radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 46%);
+    }
+
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:11;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+      background:rgba(0,0,0,0.48);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:8px 10px;
+      font-size:12px;
+    }
+    .tag{
+      border:1px solid rgba(255,255,255,.25);
+      border-radius:999px;
+      padding:2px 8px;
+      font-weight:700;
+      color:#dce9ff;
+      background:rgba(255,255,255,.06);
+    }
+
+    .panel{
+      position:absolute;
+      right:10px;
+      top:10px;
+      z-index:12;
+      width:min(370px, calc(100% - 20px));
+      background:var(--panel-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px;
+      backdrop-filter:blur(6px);
+      box-shadow:0 8px 20px rgba(0,0,0,.35);
+    }
+    .panel h3{ margin:0 0 8px; font-size:14px; color:#dbe7ff; }
+    .controls{ display:grid; gap:8px; }
+    .control{ border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:8px; background:rgba(0,0,0,.25); }
+    .controlLabel{ font-size:12px; color:#dce9ff; margin-bottom:6px; display:flex; justify-content:space-between; gap:8px; }
+    .valPill{ border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:2px 8px; font-size:11px; color:#e8f1ff; }
+    .control input[type="range"]{ width:100%; }
+    .control select{ width:100%; padding:6px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.45); color:#fff; }
+    .control .toggle{ display:flex; align-items:center; gap:8px; font-size:12px; color:#dce9ff; }
+
+    .canvasWrap{
+      position:absolute;
+      left:10px;
+      right:10px;
+      top:170px;
+      bottom:142px;
+      z-index:2;
+    }
+    canvas#graph{
+      width:100%;
+      height:100%;
+      display:block;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(6,10,16,0.86);
+    }
+
+    .bottomBar{
+      position:absolute;
+      left:10px;
+      right:10px;
+      bottom:10px;
+      z-index:13;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    .panelCard{
+      background:rgba(15,15,15,0.58);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:8px;
+      backdrop-filter:blur(6px);
+      min-height:122px;
+    }
+    .panelCard h4{ margin:0 0 6px; font-size:12px; color:#dbe7ff; }
+    .logList{ max-height:86px; overflow:auto; -webkit-overflow-scrolling:touch; font-size:12px; line-height:1.45; color:#d7e6ff; }
+    .logItem{ padding:2px 0; border-bottom:1px dashed rgba(255,255,255,.12); }
+    .logItem:last-child{ border-bottom:none; }
+
+    .toolbar{
+      width:100%;
+      max-width:940px;
+      margin-top:12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-start;
+    }
+    button.main, button.sub{
+      border:none;
+      border-radius:8px;
+      padding:10px 16px;
+      color:#fff;
+      cursor:pointer;
+      transition:background .2s, transform .05s, opacity .2s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+    }
+    button.main{ background:#2e7d32; }
+    button.sub{ background:#444; }
+    button.main:hover, button.sub:hover{ background:#5a5a5a; }
+    button.main:active, button.sub:active{ transform:scale(.98); }
+    button.main:disabled, button.sub:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .checkmark{
+      position:absolute;
+      z-index:50;
+      left:50%;
+      top:18%;
+      transform:translate(-50%,-50%) scale(.6);
+      width:120px;
+      height:120px;
+      border-radius:50%;
+      background:rgba(61,220,151,.15);
+      border:3px solid var(--accent);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);
+      animation:pop .55s ease-out;
+      pointer-events:none;
+    }
+    .checkmark.active{ display:flex; }
+    .checkmark > div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+    @keyframes pop{
+      0%{ transform:translate(-50%,-50%) scale(.4); opacity:.2; }
+      60%{ transform:translate(-50%,-50%) scale(1.08); opacity:1; }
+      100%{ transform:translate(-50%,-50%) scale(1); }
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:24px;
+      transform:translateX(-50%) translateY(20px);
+      background:rgba(0,0,0,.82);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:10px;
+      font-size:14px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .25s, transform .25s;
+      z-index:200;
+    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+    .modal-mask{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:300;
+      background:rgba(0,0,0,.5);
+    }
+    .modal{
+      width:min(90vw, 360px);
+      background:#111;
+      color:#fff;
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:14px;
+      padding:18px 16px;
+      text-align:center;
+      box-shadow:0 10px 30px rgba(0,0,0,.5);
+    }
+    .modal h3{ margin:8px 0 6px; font-size:20px; }
+    .modal p{ margin-top:0; line-height:1.55; color:#cfd8dc; }
+    .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; }
+
+    .explanation{
+      width:100%;
+      max-width:940px;
+      margin:14px 0 20px;
+      line-height:1.65;
+      font-size:.95em;
+      color:#e9f2ff;
+    }
+    .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; }
+
+    @media (max-width:760px){
+      .task-card{ grid-template-columns:1fr; }
+      .task-step{ width:fit-content; }
+      .panel{ position:static; width:auto; margin:10px; }
+      .canvasWrap{ top:250px; bottom:174px; }
+      .bottomBar{ grid-template-columns:1fr; }
+      #stage{ height:72vh; max-height:820px; }
+      .hud{ top:auto; bottom:178px; left:10px; right:10px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText"></div>
+      <div class="task-hint" id="taskHint"></div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式: 引导</span>
+      <span class="tag" id="labTag">实验 12</span>
+    </div>
+
+    <div class="panel">
+      <h3>实验面板</h3>
+      <div class="controls" id="controls"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+        <button class="main" id="runBtn">进行实验</button>
+        <button class="sub" id="analyzeBtn">分析结论</button>
+      </div>
+      <div id="readout" style="margin-top:8px;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:8px;background:rgba(0,0,0,.3);font-size:12px;line-height:1.55;color:#e8f2ff;">等待实验数据...</div>
+    </div>
+
+    <div class="canvasWrap">
+      <canvas id="graph"></canvas>
+    </div>
+
+    <div class="bottomBar">
+      <div class="panelCard">
+        <h4>数据记录（最近12条）</h4>
+        <div class="logList" id="logList"></div>
+      </div>
+      <div class="panelCard">
+        <h4>分析输出</h4>
+        <div id="analysisText" style="font-size:12px;line-height:1.6;color:#e3efff;">暂无。请记录数据后点击“分析结论”。</div>
+      </div>
+    </div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="sub" id="resetBtn">步骤重置</button>
+    <button class="sub" id="autoDemoBtn">自动演示</button>
+    <button class="sub" id="freeBtn">自由模式</button>
+    <button class="sub" id="clearBtn">清空数据</button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！</h3>
+      <p>你已完成本实验的核心探究任务。</p>
+      <button class="sub ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验 12：探究液体压强与哪些因素有关</h2>
+    <ul id="expList"></ul>
+  </div>
+
+  <script>
+    const LAB = {"id":12,"name":"探究液体压强与哪些因素有关","short":"液体压强因素","explanation":["液体内部压强与液体密度和深度有关。","在同一深度，液体密度越大，压强越大。","在同一种液体中，深度越大，压强越大。"],"xLabel":"深度 h (cm)","yLabel":"液体压强 p (kPa)","tasks":[{"text":"选择“清水”，把深度调到 <b>20 cm</b>，点击“进行实验”。","hint":"提示：先建立基准数据。"},{"text":"仍用清水，把深度提高到 <b>35 cm 及以上</b>，再实验。","hint":"提示：比较两次压强大小。"},{"text":"切换到“盐水”，深度回到 <b>20 cm</b>，再实验。","hint":"提示：同深度比较不同液体。"},{"text":"点击“分析结论”，完成本实验。","hint":"提示：应得到“压强随深度、密度增大而增大”。"}]};
+
+    const CONTROL_DEFS = {
+      12:[
+        {key:'liquid', label:'液体类型', type:'select', options:[['water','清水'],['salt','盐水']], default:'water'},
+        {key:'depth', label:'探头深度 h', type:'range', min:5, max:45, step:1, unit:'cm', default:20}
+      ],
+      13:[
+        {key:'liquid', label:'液体类型', type:'select', options:[['water','清水'],['salt','盐水']], default:'water'},
+        {key:'vdisp', label:'排开液体体积 V排', type:'range', min:10, max:80, step:1, unit:'mL', default:20}
+      ],
+      14:[
+        {key:'f1', label:'左侧力 F1', type:'range', min:1, max:6, step:0.1, unit:'N', default:3},
+        {key:'l1', label:'左侧力臂 L1', type:'range', min:5, max:25, step:1, unit:'cm', default:10},
+        {key:'f2', label:'右侧力 F2', type:'range', min:1, max:10, step:0.1, unit:'N', default:3},
+        {key:'l2', label:'右侧力臂 L2', type:'range', min:5, max:25, step:1, unit:'cm', default:10}
+      ],
+      15:[
+        {key:'surface', label:'反射面', type:'select', options:[['mirror','平面镜'],['rough','粗糙面']], default:'mirror'},
+        {key:'incidence', label:'入射角 i', type:'range', min:10, max:80, step:1, unit:'°', default:30}
+      ],
+      16:[
+        {key:'distance', label:'物距 s', type:'range', min:5, max:30, step:1, unit:'cm', default:10},
+        {key:'height', label:'物高 h', type:'range', min:2, max:12, step:0.5, unit:'cm', default:5}
+      ],
+      17:[
+        {key:'focal', label:'焦距 f', type:'range', min:8, max:12, step:1, unit:'cm', default:10},
+        {key:'u', label:'物距 u', type:'range', min:5, max:40, step:1, unit:'cm', default:25}
+      ],
+      18:[
+        {key:'currentDir', label:'电流方向', type:'select', options:[['AB','A→B'],['BA','B→A']], default:'AB'},
+        {key:'winding', label:'绕线方向', type:'select', options:[['right','右手绕向'],['left','左手绕向']], default:'right'},
+        {key:'current', label:'电流 I', type:'range', min:0.2, max:2.0, step:0.1, unit:'A', default:1.0}
+      ],
+      19:[
+        {key:'circuitClosed', label:'回路状态', type:'select', options:[['closed','闭合'],['open','断开']], default:'closed'},
+        {key:'B', label:'磁场强度等级', type:'range', min:1, max:3, step:1, unit:'级', default:2},
+        {key:'speed', label:'导体速度 v', type:'range', min:0, max:5, step:0.5, unit:'m/s', default:2},
+        {key:'motionDir', label:'运动方向', type:'select', options:[['cut','切割磁感线'],['away','反向切割'],['parallel','平行磁感线']], default:'cut'}
+      ],
+      20:[
+        {key:'type', label:'电路类型', type:'select', options:[['series','串联'],['parallel','并联']], default:'series'},
+        {key:'V', label:'电源电压 U', type:'range', min:3, max:12, step:0.5, unit:'V', default:6},
+        {key:'R1', label:'电阻 R1', type:'range', min:5, max:30, step:1, unit:'Ω', default:10},
+        {key:'R2', label:'电阻 R2', type:'range', min:5, max:30, step:1, unit:'Ω', default:15}
+      ]
+    };
+
+    const $ = (s)=>document.querySelector(s);
+
+    const controlsEl = $('#controls');
+    const taskCard = $('#taskCard');
+    const taskStepEl = $('#taskStep');
+    const taskTextEl = $('#taskText');
+    const taskHintEl = $('#taskHint');
+    const dotsEl = $('#dots');
+    const modeTag = $('#modeTag');
+    const labTag = $('#labTag');
+    const expList = $('#expList');
+
+    const readoutEl = $('#readout');
+    const logList = $('#logList');
+    const analysisText = $('#analysisText');
+
+    const runBtn = $('#runBtn');
+    const analyzeBtn = $('#analyzeBtn');
+    const resetBtn = $('#resetBtn');
+    const autoDemoBtn = $('#autoDemoBtn');
+    const freeBtn = $('#freeBtn');
+    const clearBtn = $('#clearBtn');
+    const graph = $('#graph');
+
+    const toastEl = $('#toast');
+    const checkmarkEl = $('#checkmark');
+    const doneMaskEl = $('#doneMask');
+    const okBtn = $('#okBtn');
+
+    const state = {
+      currentTask: 0,
+      completed: false,
+      freeMode: false,
+      autoPlaying: false,
+      successCooldown: false,
+      vars: {},
+      records: [],
+      analysisOk: false,
+      analysisMsg: '',
+      drawRAF: 0,
+      timers: new Set()
+    };
+
+    const clamp = (v,a,b)=>Math.max(a, Math.min(b, v));
+    const near = (a,b,t=1)=>Math.abs(a-b)<=t;
+    const round = (n,p=2)=>Number(n.toFixed(p));
+    const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+
+    function trackTimeout(fn, ms){
+      const id = setTimeout(()=>{ state.timers.delete(id); fn(); }, ms);
+      state.timers.add(id);
+      return id;
+    }
+    function clearAllTimers(){
+      for(const id of state.timers) clearTimeout(id);
+      state.timers.clear();
+    }
+
+    function showToast(msg){
+      toastEl.textContent = msg || '请继续尝试';
+      toastEl.classList.add('show');
+      clearTimeout(showToast.t);
+      showToast.t = setTimeout(()=>toastEl.classList.remove('show'), 1400);
+    }
+    function showCheck(){
+      checkmarkEl.classList.add('active');
+      clearTimeout(showCheck.t);
+      showCheck.t = setTimeout(()=>checkmarkEl.classList.remove('active'), 520);
+    }
+
+    function initStatic(){
+      labTag.textContent = `实验 ${LAB.id}｜${LAB.short}`;
+      expList.innerHTML = LAB.explanation.map(s=>`<li>${s}</li>`).join('');
+      dotsEl.innerHTML = LAB.tasks.map(()=>'<span class="dot"></span>').join('');
+    }
+
+    function initControls(){
+      const defs = CONTROL_DEFS[LAB.id];
+      controlsEl.innerHTML = '';
+      defs.forEach(def=>{
+        state.vars[def.key] = def.default;
+        const wrap = document.createElement('div');
+        wrap.className = 'control';
+        wrap.dataset.key = def.key;
+
+        const label = document.createElement('div');
+        label.className = 'controlLabel';
+        label.innerHTML = `<span>${def.label}</span><span class="valPill" id="pill_${def.key}"></span>`;
+        wrap.appendChild(label);
+
+        if(def.type === 'range'){
+          const input = document.createElement('input');
+          input.type = 'range';
+          input.min = String(def.min);
+          input.max = String(def.max);
+          input.step = String(def.step);
+          input.value = String(def.default);
+          input.addEventListener('input', ()=>{
+            state.vars[def.key] = Number(input.value);
+            refreshPill(def);
+          });
+          wrap.appendChild(input);
+        }else if(def.type === 'select'){
+          const sel = document.createElement('select');
+          def.options.forEach(([value,text])=>{
+            const op = document.createElement('option');
+            op.value = value;
+            op.textContent = text;
+            if(value === def.default) op.selected = true;
+            sel.appendChild(op);
+          });
+          sel.addEventListener('change', ()=>{
+            state.vars[def.key] = sel.value;
+            refreshPill(def);
+          });
+          wrap.appendChild(sel);
+        }
+
+        controlsEl.appendChild(wrap);
+        refreshPill(def);
+      });
+    }
+
+    function refreshPill(def){
+      const pill = $(`#pill_${def.key}`);
+      if(!pill) return;
+      const val = state.vars[def.key];
+      if(def.type === 'range'){
+        pill.textContent = `${val}${def.unit || ''}`;
+      }else if(def.type === 'select'){
+        const hit = def.options.find(o=>o[0]===val);
+        pill.textContent = hit ? hit[1] : String(val);
+      }
+    }
+
+    function setVar(key, value){
+      state.vars[key] = value;
+      const wrap = controlsEl.querySelector(`.control[data-key="${key}"]`);
+      if(!wrap) return;
+      const range = wrap.querySelector('input[type="range"]');
+      const sel = wrap.querySelector('select');
+      if(range) range.value = String(value);
+      if(sel) sel.value = String(value);
+      const def = CONTROL_DEFS[LAB.id].find(d=>d.key===key);
+      if(def) refreshPill(def);
+    }
+
+    function computeRecord(vars){
+      const randNoise = (k)=> (Math.random()*2-1)*k;
+      switch(LAB.id){
+        case 12:{
+          const rho = vars.liquid==='salt' ? 1.2 : 1.0;
+          const p = rho * 9.8 * (vars.depth/100) * 10 + randNoise(0.12);
+          return {
+            x: vars.depth,
+            y: round(p,2),
+            summary: `${vars.liquid==='salt'?'盐水':'清水'} h=${vars.depth}cm → p=${round(p,2)}kPa`,
+            metrics: {rho, p:round(p,2)}
+          };
+        }
+        case 13:{
+          const rho = vars.liquid==='salt' ? 1.2 : 1.0;
+          const F = rho * vars.vdisp * 10 / 1000 + randNoise(0.01);
+          return {
+            x: vars.vdisp,
+            y: round(F,3),
+            summary: `${vars.liquid==='salt'?'盐水':'清水'} V排=${vars.vdisp}mL → F浮=${round(F,3)}N`,
+            metrics: {rho, F:round(F,3)}
+          };
+        }
+        case 14:{
+          const tauL = vars.f1 * vars.l1;
+          const tauR = vars.f2 * vars.l2;
+          const delta = tauR - tauL;
+          const balanced = Math.abs(delta) <= 1.2;
+          return {
+            x: vars.f2,
+            y: round(delta,2),
+            summary: `F1L1=${round(tauL,2)} F2L2=${round(tauR,2)} Δτ=${round(delta,2)} ${balanced?'(平衡)':'(未平衡)'}`,
+            metrics: {tauL:round(tauL,2), tauR:round(tauR,2), delta:round(delta,2), balanced}
+          };
+        }
+        case 15:{
+          const i = vars.incidence;
+          let r = i;
+          if(vars.surface==='mirror'){
+            r = i + randNoise(1.2);
+          }else{
+            r = i + randNoise(14);
+          }
+          r = clamp(r, 0, 89);
+          return {
+            x: i,
+            y: round(r,1),
+            summary: `${vars.surface==='mirror'?'平面镜':'粗糙面'} i=${i}° → r=${round(r,1)}°`,
+            metrics: {i, r:round(r,1), mirror:vars.surface==='mirror'}
+          };
+        }
+        case 16:{
+          const s = vars.distance;
+          const sp = s + randNoise(0.4);
+          const h = vars.height;
+          const hp = h + randNoise(0.2);
+          return {
+            x: s,
+            y: round(sp,2),
+            summary: `s=${s}cm, s'=${round(sp,2)}cm, h=${h}cm, h'=${round(hp,2)}cm`,
+            metrics: {s, sp:round(sp,2), h, hp:round(hp,2)}
+          };
+        }
+        case 17:{
+          const f = vars.focal;
+          const u = vars.u;
+          let v = null;
+          let type = '';
+          let mag = null;
+          if(near(u,f,0.2)){
+            v = 999;
+            mag = 999;
+            type = '近焦点，不易成清晰像';
+          }else if(u > f){
+            v = (f*u)/(u-f);
+            mag = v/u;
+            type = u>2*f ? '倒立缩小实像' : '倒立放大实像';
+          }else{
+            v = -(f*u)/(f-u);
+            mag = Math.abs(v/u);
+            type = '正立放大虚像';
+          }
+          return {
+            x: u,
+            y: round(v,2),
+            summary: `f=${f}cm u=${u}cm → v=${round(v,2)}cm, ${type}`,
+            metrics: {f,u,v:round(v,2), mag:round(mag,2), type}
+          };
+        }
+        case 18:{
+          const base = vars.current;
+          const B = base * (vars.winding==='right'?1:0.95) + randNoise(0.05);
+          const north = (vars.currentDir==='AB') ^ (vars.winding==='left') ? '右端N' : '左端N';
+          return {
+            x: vars.current,
+            y: round(B,2),
+            summary: `${vars.currentDir}, ${vars.winding==='right'?'右手绕向':'左手绕向'} → ${north}, B≈${round(B,2)}`,
+            metrics: {B:round(B,2), north}
+          };
+        }
+        case 19:{
+          const bLevel = vars.B;
+          const k = bLevel * 9;
+          let I = 0;
+          if(vars.circuitClosed==='closed' && vars.motionDir!=='parallel'){
+            const sign = vars.motionDir==='away' ? -1 : 1;
+            I = sign * k * vars.speed + randNoise(1.2);
+          }
+          I = round(I,2);
+          return {
+            x: vars.speed,
+            y: I,
+            summary: `${vars.circuitClosed==='closed'?'闭合':'断开'} ${vars.motionDir} v=${vars.speed} → I=${I}mA`,
+            metrics: {I, absI:Math.abs(I)}
+          };
+        }
+        case 20:{
+          const V = vars.V;
+          const R1 = vars.R1;
+          const R2 = vars.R2;
+          let m = {};
+          if(vars.type==='series'){
+            const I = V/(R1+R2);
+            const U1 = I*R1;
+            const U2 = I*R2;
+            m = {type:'series', I:round(I,3), I1:round(I,3), I2:round(I,3), U:round(V,2), U1:round(U1,2), U2:round(U2,2)};
+          }else{
+            const I1 = V/R1;
+            const I2 = V/R2;
+            const I = I1 + I2;
+            m = {type:'parallel', I:round(I,3), I1:round(I1,3), I2:round(I2,3), U:round(V,2), U1:round(V,2), U2:round(V,2)};
+          }
+          return {
+            x: R1,
+            y: m.I,
+            summary: `${m.type==='series'?'串联':'并联'} I=${m.I}A U1=${m.U1}V U2=${m.U2}V`,
+            metrics: m
+          };
+        }
+        default:
+          return {x:0,y:0,summary:'--',metrics:{}};
+      }
+    }
+
+    function runExperiment(showStepCheck=true){
+      const rec = computeRecord(state.vars);
+      rec.vars = JSON.parse(JSON.stringify(state.vars));
+      rec.id = `${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
+      state.records.push(rec);
+      readoutEl.innerHTML = `<b>本次结果：</b>${rec.summary}`;
+      renderLog();
+      scheduleDraw();
+      if(showStepCheck) tryPassStep(true);
+      return rec;
+    }
+
+    function analyzeLab(showToastMsg=true){
+      let ok = false;
+      let msg = '';
+      const rs = state.records;
+
+      switch(LAB.id){
+        case 12:{
+          const w20 = rs.find(r=>r.vars.liquid==='water' && near(r.vars.depth,20,1));
+          const w35 = rs.find(r=>r.vars.liquid==='water' && r.vars.depth>=35);
+          const s20 = rs.find(r=>r.vars.liquid==='salt' && near(r.vars.depth,20,1));
+          ok = !!(w20 && w35 && s20 && w35.metrics.p > w20.metrics.p && s20.metrics.p > w20.metrics.p);
+          msg = ok ? '结论：液体压强随深度增大而增大；同深度下盐水压强大于清水。' : '数据不足或趋势不明显：请补充 20cm清水、35cm以上清水、20cm盐水三组数据。';
+          break;
+        }
+        case 13:{
+          const w20 = rs.find(r=>r.vars.liquid==='water' && near(r.vars.vdisp,20,1));
+          const w40 = rs.find(r=>r.vars.liquid==='water' && r.vars.vdisp>=40);
+          const s40 = rs.find(r=>r.vars.liquid==='salt' && near(r.vars.vdisp,40,2));
+          ok = !!(w20 && w40 && s40 && w40.metrics.F > w20.metrics.F && s40.metrics.F > w40.metrics.F*0.95);
+          msg = ok ? '结论：浮力与排开体积、液体密度有关，二者增大时浮力增大。' : '请补充：清水20mL、清水40mL、盐水40mL的对比数据。';
+          break;
+        }
+        case 14:{
+          const balanced = rs.filter(r=>r.metrics.balanced);
+          ok = balanced.length >= 3;
+          msg = ok ? `结论：已获得${balanced.length}组平衡数据，验证 F1·L1 ≈ F2·L2。` : '请先获得至少3组平衡数据（|Δτ|较小）。';
+          break;
+        }
+        case 15:{
+          const mirror = rs.filter(r=>r.vars.surface==='mirror');
+          const rough = rs.filter(r=>r.vars.surface==='rough');
+          const mirrorOk = mirror.length>=2 && mirror.every(r=>Math.abs(r.metrics.i-r.metrics.r)<=2.2);
+          const roughOk = rough.length>=1;
+          ok = mirrorOk && roughOk;
+          msg = ok ? '结论：平面镜反射中 r≈i；粗糙面反射方向分散（漫反射）。' : '请补充：平面镜至少两组角度、粗糙面至少一组对比。';
+          break;
+        }
+        case 16:{
+          const valid = rs.filter(r=>Math.abs(r.metrics.s-r.metrics.sp)<=1.0 && Math.abs(r.metrics.h-r.metrics.hp)<=0.8);
+          ok = valid.length>=3;
+          msg = ok ? '结论：平面镜成像满足像距≈物距，像高≈物高，为正立虚像。' : '请补充至少3组数据并观察 s 与 s\'、h 与 h\' 的对应关系。';
+          break;
+        }
+        case 17:{
+          const hasGt2f = rs.some(r=>r.metrics.u > 2*r.metrics.f && r.metrics.type.includes('缩小实像'));
+          const hasMid = rs.some(r=>r.metrics.u > r.metrics.f && r.metrics.u < 2*r.metrics.f && r.metrics.type.includes('放大实像'));
+          const hasLtF = rs.some(r=>r.metrics.u < r.metrics.f && r.metrics.type.includes('虚像'));
+          ok = hasGt2f && hasMid && hasLtF;
+          msg = ok ? '结论：u>2f 缩小实像；f<u<2f 放大实像；u<f 放大虚像。' : '请覆盖三类典型区间（u>2f、f<u<2f、u<f）后再分析。';
+          break;
+        }
+        case 18:{
+          const a = rs.find(r=>r.vars.currentDir==='AB');
+          const b = rs.find(r=>r.vars.currentDir==='BA');
+          const c = rs.find(r=>r.vars.winding==='left');
+          ok = !!(a && b && c && a.metrics.north !== b.metrics.north);
+          msg = ok ? '结论：电流方向反向会使磁极方向反向；绕线方向变化也会影响磁场方向。' : '请至少完成 A→B、B→A 及绕向改变后的对比实验。';
+          break;
+        }
+        case 19:{
+          const closedNonZero = rs.find(r=>r.vars.circuitClosed==='closed' && r.vars.motionDir!=='parallel' && Math.abs(r.metrics.I)>1);
+          const openZero = rs.find(r=>r.vars.circuitClosed==='open' && Math.abs(r.metrics.I)<=0.8);
+          const stronger = rs.filter(r=>r.vars.circuitClosed==='closed' && r.vars.motionDir!=='parallel').sort((a,b)=>a.vars.speed-b.vars.speed);
+          let trend = false;
+          if(stronger.length>=2){
+            const first = stronger[0], last = stronger[stronger.length-1];
+            trend = Math.abs(last.metrics.I) >= Math.abs(first.metrics.I);
+          }
+          ok = !!(closedNonZero && openZero && trend);
+          msg = ok ? '结论：闭合回路且切割磁感线时有感应电流；速度/磁场增强时电流通常增大。' : '请补充闭合与断开对比，并记录不同速度（或磁场）下电流变化。';
+          break;
+        }
+        case 20:{
+          const s = rs.find(r=>r.metrics.type==='series' && near(r.metrics.I1,r.metrics.I2,0.02) && near(r.metrics.U1+r.metrics.U2,r.metrics.U,0.2));
+          const p = rs.find(r=>r.metrics.type==='parallel' && near(r.metrics.U1,r.metrics.U2,0.02) && near(r.metrics.I1+r.metrics.I2,r.metrics.I,0.03));
+          ok = !!(s && p);
+          msg = ok ? '结论：串联 I相等、U总=U1+U2；并联 U相等、I总=I1+I2。' : '请分别完成串联与并联的测量对比，再分析。';
+          break;
+        }
+      }
+
+      state.analysisOk = ok;
+      state.analysisMsg = msg;
+      analysisText.innerHTML = msg;
+      if(showToastMsg) showToast(ok ? '分析完成' : '分析未通过，请补充数据');
+      tryPassStep(false);
+      return ok;
+    }
+
+    function renderLog(){
+      const list = state.records.slice(-12).reverse();
+      if(!list.length){
+        logList.innerHTML = '<div style="opacity:.75;">暂无数据。请点击“进行实验”。</div>';
+        return;
+      }
+      logList.innerHTML = list.map(r=>`<div class="logItem">${r.summary}</div>`).join('');
+    }
+
+    function setStepUI(i){
+      const idx = clamp(i, 0, LAB.tasks.length-1);
+      state.currentTask = idx;
+      taskStepEl.textContent = `步骤 ${idx+1} / ${LAB.tasks.length}`;
+      taskTextEl.innerHTML = LAB.tasks[idx].text;
+      taskHintEl.textContent = LAB.tasks[idx].hint;
+      [...dotsEl.children].forEach((d, n)=>{
+        d.classList.toggle('active', n===idx && !state.completed);
+        d.classList.toggle('done', n<idx || state.completed);
+      });
+    }
+
+    function checkStepPass(step){
+      const rs = state.records;
+      switch(LAB.id){
+        case 12:
+          if(step===0) return rs.some(r=>r.vars.liquid==='water' && near(r.vars.depth,20,1));
+          if(step===1) return rs.some(r=>r.vars.liquid==='water' && r.vars.depth>=35);
+          if(step===2) return rs.some(r=>r.vars.liquid==='salt' && near(r.vars.depth,20,1));
+          if(step===3) return state.analysisOk;
+          return false;
+        case 13:
+          if(step===0) return rs.some(r=>r.vars.liquid==='water' && near(r.vars.vdisp,20,1));
+          if(step===1) return rs.some(r=>r.vars.liquid==='water' && r.vars.vdisp>=40);
+          if(step===2) return rs.some(r=>r.vars.liquid==='salt' && near(r.vars.vdisp,40,2));
+          if(step===3) return state.analysisOk;
+          return false;
+        case 14:{
+          const bal = rs.filter(r=>r.metrics.balanced);
+          if(step===0) return bal.length>=1;
+          if(step===1) return bal.length>=2;
+          if(step===2) return bal.length>=3;
+          if(step===3) return state.analysisOk;
+          return false;
+        }
+        case 15:
+          if(step===0) return rs.some(r=>r.vars.surface==='mirror' && near(r.vars.incidence,30,2));
+          if(step===1) return rs.some(r=>r.vars.surface==='mirror' && near(r.vars.incidence,60,2));
+          if(step===2) return rs.some(r=>r.vars.surface==='rough');
+          if(step===3) return state.analysisOk;
+          return false;
+        case 16:
+          if(step===0) return rs.some(r=>near(r.vars.distance,10,1));
+          if(step===1) return rs.some(r=>near(r.vars.distance,20,1));
+          if(step===2) return rs.length>=3;
+          if(step===3) return state.analysisOk;
+          return false;
+        case 17:
+          if(step===0) return rs.some(r=>r.metrics.u > 2*r.metrics.f);
+          if(step===1) return rs.some(r=>r.metrics.u > r.metrics.f && r.metrics.u < 2*r.metrics.f);
+          if(step===2) return rs.some(r=>r.metrics.u < r.metrics.f);
+          if(step===3) return state.analysisOk;
+          return false;
+        case 18:
+          if(step===0) return rs.some(r=>r.vars.currentDir==='AB');
+          if(step===1) return rs.some(r=>r.vars.currentDir==='BA');
+          if(step===2) return rs.some(r=>r.vars.winding==='left');
+          if(step===3) return state.analysisOk;
+          return false;
+        case 19:
+          if(step===0) return rs.some(r=>r.vars.circuitClosed==='closed' && r.vars.motionDir!=='parallel' && Math.abs(r.metrics.I)>1);
+          if(step===1) return rs.some(r=>r.vars.circuitClosed==='open' && Math.abs(r.metrics.I)<1);
+          if(step===2) return rs.filter(r=>r.vars.circuitClosed==='closed').length>=3;
+          if(step===3) return state.analysisOk;
+          return false;
+        case 20:
+          if(step===0) return rs.some(r=>r.vars.type==='series');
+          if(step===1) return rs.some(r=>r.vars.type==='parallel');
+          if(step===2) return rs.length>=3;
+          if(step===3) return state.analysisOk;
+          return false;
+      }
+      return false;
+    }
+
+    function tryPassStep(triggeredByUser){
+      if(state.freeMode || state.completed || state.successCooldown) return;
+      const ok = checkStepPass(state.currentTask);
+      if(!ok){
+        if(triggeredByUser) showToast('当前步骤条件尚未满足');
+        return;
+      }
+      state.successCooldown = true;
+      trackTimeout(()=>{ state.successCooldown = false; }, 360);
+      showCheck();
+
+      if(state.currentTask >= LAB.tasks.length-1){
+        state.completed = true;
+        doneMaskEl.style.display = 'flex';
+        setStepUI(state.currentTask);
+      }else{
+        setStepUI(state.currentTask + 1);
+      }
+    }
+
+    function setFreeMode(on){
+      state.freeMode = !!on;
+      freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+      autoDemoBtn.disabled = state.freeMode;
+      taskCard.style.opacity = state.freeMode ? '.25' : '1';
+      taskCard.style.filter = state.freeMode ? 'grayscale(.6)' : 'none';
+      modeTag.textContent = state.freeMode ? '模式: 自由' : '模式: 引导';
+      if(!state.freeMode && !state.completed){
+        setStepUI(0);
+      }
+    }
+
+    function clearData(showTip=true){
+      state.records = [];
+      state.analysisOk = false;
+      state.analysisMsg = '';
+      analysisText.innerHTML = '暂无。请记录数据后点击“分析结论”。';
+      readoutEl.innerHTML = '等待实验数据...';
+      renderLog();
+      scheduleDraw();
+      if(showTip) showToast('数据已清空');
+    }
+
+    function resetFlow(showTip=true){
+      clearAllTimers();
+      state.completed = false;
+      state.successCooldown = false;
+      doneMaskEl.style.display = 'none';
+      checkmarkEl.classList.remove('active');
+      if(!state.freeMode) setStepUI(0);
+      if(showTip) showToast('步骤已重置');
+    }
+
+    function scheduleDraw(){
+      if(state.drawRAF) cancelAnimationFrame(state.drawRAF);
+      state.drawRAF = requestAnimationFrame(()=>{
+        state.drawRAF = 0;
+        drawGraph();
+      });
+    }
+
+    function drawGraph(){
+      const rect = graph.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(320, Math.floor(rect.width*dpr));
+      const h = Math.max(220, Math.floor(rect.height*dpr));
+      if(graph.width!==w || graph.height!==h){
+        graph.width = w;
+        graph.height = h;
+      }
+      const ctx = graph.getContext('2d');
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,w,h);
+      ctx.scale(dpr,dpr);
+
+      const W = rect.width;
+      const H = rect.height;
+      const padL = 54, padR = 16, padT = 20, padB = 42;
+      const left = padL, right = W-padR, top = padT, bottom = H-padB;
+      const pw = right-left, ph = bottom-top;
+
+      const xs = state.records.map(r=>r.x);
+      const ys = state.records.map(r=>r.y);
+      let maxX = xs.length ? Math.max(...xs) : 10;
+      let maxY = ys.length ? Math.max(...ys.map(v=>Math.abs(v))) : 10;
+      if(maxX < 1) maxX = 1;
+      if(maxY < 1) maxY = 1;
+      maxX *= 1.15;
+      maxY *= 1.15;
+
+      const toX = (x)=> left + (x/maxX)*pw;
+      const toY = (y)=> bottom - ((y+0)/(maxY))*ph;
+
+      ctx.fillStyle = 'rgba(8,14,22,.9)';
+      ctx.fillRect(0,0,W,H);
+
+      ctx.strokeStyle = 'rgba(255,255,255,.08)';
+      ctx.lineWidth = 1;
+      for(let i=0;i<=5;i++){
+        const x = left + pw*(i/5);
+        const y = top + ph*(i/5);
+        ctx.beginPath(); ctx.moveTo(x,top); ctx.lineTo(x,bottom); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(right,y); ctx.stroke();
+      }
+
+      ctx.strokeStyle = 'rgba(255,255,255,.8)';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.moveTo(left,bottom); ctx.lineTo(right,bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(left,top); ctx.lineTo(left,bottom); ctx.stroke();
+
+      ctx.fillStyle = 'rgba(225,238,255,.9)';
+      ctx.font = '12px -apple-system,BlinkMacSystemFont,Segoe UI,Arial';
+      ctx.fillText(LAB.xLabel, right-120, bottom+30);
+      ctx.fillText(LAB.yLabel, left-42, top+12);
+
+      ctx.fillStyle = '#7ed6ff';
+      state.records.forEach((r)=>{
+        const x = toX(r.x);
+        const y = toY(Math.max(0,r.y));
+        ctx.beginPath();
+        ctx.arc(x,y,4.1,0,Math.PI*2);
+        ctx.fill();
+      });
+
+      if(state.records.length>=2){
+        const arr = state.records.slice().sort((a,b)=>a.x-b.x);
+        ctx.strokeStyle = 'rgba(61,220,151,.8)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        arr.forEach((r,idx)=>{
+          const x = toX(r.x);
+          const y = toY(Math.max(0,r.y));
+          if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+        });
+        ctx.stroke();
+      }
+    }
+
+    async function autoDemo(){
+      if(state.autoPlaying || state.freeMode) return;
+      state.autoPlaying = true;
+      autoDemoBtn.disabled = true;
+      runBtn.disabled = true;
+      analyzeBtn.disabled = true;
+
+      const runStep = async (vars, wait=240)=>{
+        Object.entries(vars).forEach(([k,v])=>setVar(k,v));
+        runExperiment(false);
+        await sleep(wait);
+      };
+
+      try{
+        setFreeMode(false);
+        clearData(false);
+        resetFlow(false);
+
+        switch(LAB.id){
+          case 12:
+            await runStep({liquid:'water', depth:20});
+            await runStep({liquid:'water', depth:38});
+            await runStep({liquid:'salt', depth:20});
+            break;
+          case 13:
+            await runStep({liquid:'water', vdisp:20});
+            await runStep({liquid:'water', vdisp:50});
+            await runStep({liquid:'salt', vdisp:40});
+            break;
+          case 14:
+            await runStep({f1:3, l1:10, f2:3, l2:10});
+            await runStep({f1:2, l1:15, f2:3, l2:10});
+            await runStep({f1:4, l1:8, f2:3.2, l2:10});
+            break;
+          case 15:
+            await runStep({surface:'mirror', incidence:30});
+            await runStep({surface:'mirror', incidence:60});
+            await runStep({surface:'rough', incidence:45});
+            break;
+          case 16:
+            await runStep({distance:10, height:5});
+            await runStep({distance:20, height:5});
+            await runStep({distance:15, height:7});
+            break;
+          case 17:
+            await runStep({focal:10, u:26});
+            await runStep({focal:10, u:15});
+            await runStep({focal:10, u:8});
+            break;
+          case 18:
+            await runStep({currentDir:'AB', winding:'right', current:1.0});
+            await runStep({currentDir:'BA', winding:'right', current:1.0});
+            await runStep({currentDir:'AB', winding:'left', current:1.0});
+            break;
+          case 19:
+            await runStep({circuitClosed:'closed', B:2, speed:2, motionDir:'cut'});
+            await runStep({circuitClosed:'open', B:2, speed:2, motionDir:'cut'});
+            await runStep({circuitClosed:'closed', B:3, speed:4, motionDir:'cut'});
+            break;
+          case 20:
+            await runStep({type:'series', V:6, R1:10, R2:15});
+            await runStep({type:'parallel', V:6, R1:10, R2:15});
+            await runStep({type:'parallel', V:6, R1:20, R2:15});
+            break;
+        }
+
+        analyzeLab(false);
+        tryPassStep(false);
+      }catch(err){
+        console.error('[autoDemo] failed:', err);
+        showToast('自动演示失败，请重试');
+      }finally{
+        state.autoPlaying = false;
+        autoDemoBtn.disabled = false;
+        runBtn.disabled = false;
+        analyzeBtn.disabled = false;
+      }
+    }
+
+    function bindEvents(){
+      runBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        runExperiment(true);
+      });
+      analyzeBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        analyzeLab(true);
+      });
+      resetBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        resetFlow(true);
+      });
+      autoDemoBtn.addEventListener('click', ()=>autoDemo());
+      freeBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        setFreeMode(!state.freeMode);
+      });
+      clearBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        clearData(true);
+        if(!state.freeMode) setStepUI(0);
+      });
+      okBtn.addEventListener('click', ()=>{ doneMaskEl.style.display='none'; });
+
+      const onResize = (()=>{
+        let t = 0;
+        return ()=>{
+          clearTimeout(t);
+          t = setTimeout(()=>scheduleDraw(), 120);
+        };
+      })();
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
+      document.addEventListener('gesturestart', e=>e.preventDefault(), {passive:false});
+      graph.addEventListener('touchstart', (e)=>{ if(e.touches && e.touches.length>1) e.preventDefault(); }, {passive:false});
+    }
+
+    function init(){
+      initStatic();
+      initControls();
+      setStepUI(0);
+      renderLog();
+      bindEvents();
+      scheduleDraw();
+      showToast(`已加载：实验12（cc）`);
+    }
+
+    init();
+  </script>
+</body>
+</html>

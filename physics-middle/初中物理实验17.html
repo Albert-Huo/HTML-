@@ -1,0 +1,2513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验17｜用表测量时间（交互版）</title>
+  <!-- 实验目录依据：中小学实验教学目录（初中物理 17. 用表测量时间） -->
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --ink:#fff;
+      --card-bg:rgba(255,255,255,.08);
+      --panel-bg:rgba(15,15,15,.58);
+      --line:rgba(255,255,255,.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --dockShadow:0 14px 36px rgba(0,0,0,.42);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:980px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{ 0%{background-position:0 0;} 100%{background-position:-100% 0;} }
+
+    .task-card{
+      width:100%;
+      max-width:980px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition:opacity .2s, filter .2s;
+    }
+    .task-step{ background:rgba(255,255,255,.16); border-radius:8px; padding:6px 10px; font-weight:700; white-space:nowrap; }
+    .task-text{ line-height:1.55; }
+    .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+    .progress-dots{ display:flex; gap:6px; }
+    .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.26); outline:2px solid rgba(255,255,255,.12); }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.45); }
+    .dot.warn{ background:#ff5f57; outline-color:rgba(255,95,87,.45); }
+
+    #stage{
+      width:100%;
+      max-width:980px;
+      height:66vh;
+      max-height:660px;
+      min-height:500px;
+      margin-top:10px;
+      border-radius:12px;
+      position:relative;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      background:#0b0f14;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 76% 25%, rgba(255,255,255,.06), transparent 42%),
+        radial-gradient(circle at 22% 78%, rgba(0,255,255,.05), transparent 46%);
+    }
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      background:rgba(0,0,0,.48);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:7px 10px;
+      font-size:12px;
+    }
+    .tag{ border:1px solid rgba(255,255,255,.26); border-radius:999px; padding:2px 8px; font-weight:700; color:#dce9ff; background:rgba(255,255,255,.06); }
+
+    .lab-area{
+      position:absolute;
+      inset:54px 10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.82);
+      overflow:hidden;
+    }
+    #scene{ width:100%; height:100%; display:block; touch-action:none; }
+
+    .dock{
+      position:absolute;
+      width:min(94%, 380px);
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:var(--panel-bg);
+      backdrop-filter:blur(6px);
+      box-shadow:var(--dockShadow);
+      overflow:hidden;
+      touch-action:none;
+      z-index:30;
+    }
+    .dock.dragging{ box-shadow:0 20px 48px rgba(0,0,0,.55); }
+    .dockHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none;
+    }
+    .dockHead:active{ cursor:grabbing; }
+    .dockTitle{ font-size:13px; font-weight:700; color:#e7f0ff; }
+    .dataNotice{
+      display:none;
+      min-width:18px;
+      height:18px;
+      padding:0 6px;
+      margin-left:6px;
+      border-radius:999px;
+      background:#ff4d4f;
+      color:#fff;
+      font-size:11px;
+      font-weight:800;
+      line-height:18px;
+      text-align:center;
+      box-shadow:0 0 0 2px rgba(255,77,79,.18);
+      animation:dataNoticeBlink .9s ease-in-out infinite;
+    }
+    .dataNotice.show{ display:inline-block; }
+    @keyframes dataNoticeBlink{
+      0%,100%{ transform:scale(1); opacity:1; }
+      50%{ transform:scale(1.08); opacity:.78; }
+    }
+    .dockBtns{ display:flex; gap:6px; }
+    .iconBtn{ border:1px solid rgba(255,255,255,.2); background:rgba(255,255,255,.08); color:#e8f1ff; border-radius:7px; padding:4px 8px; font-size:12px; cursor:pointer; }
+    .dockBody{ padding:10px; max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+    .dockBody.collapsed{ display:none; }
+
+    .row{ margin-bottom:8px; font-size:12px; }
+    .lab-hint{ color:#dce9ff; line-height:1.55; }
+    .status-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+    .pill{ border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:4px 8px; font-size:11px; color:#e8f1ff; background:rgba(0,0,0,.28); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .field{ border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px; background:rgba(0,0,0,.2); margin-bottom:8px; }
+    .field .name{ display:flex; justify-content:space-between; font-size:12px; color:#dce9ff; margin-bottom:6px; gap:8px; }
+    .field input[type="range"], .field select{ width:100%; }
+    .field select{ border:1px solid rgba(255,255,255,.25); border-radius:8px; background:rgba(0,0,0,.4); color:#fff; padding:6px 8px; }
+
+    .btnRow{ display:flex; gap:8px; flex-wrap:wrap; }
+    button.main, button.sub{
+      border:none;
+      border-radius:8px;
+      padding:8px 12px;
+      color:#fff;
+      cursor:pointer;
+      transition:background .2s, transform .05s, opacity .2s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      font-size:13px;
+    }
+    button.main{ background:#2e7d32; }
+    button.sub{ background:#444; }
+    button.main:hover, button.sub:hover{ background:#5a5a5a; }
+    button.main:active, button.sub:active{ transform:scale(.98); }
+    button.main:disabled, button.sub:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .analysis{ font-size:12px; line-height:1.6; color:#e3efff; border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px; background:rgba(0,0,0,.24); }
+    .analysis.ok{ border-color:rgba(61,220,151,.4); }
+    table.record{ width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
+    table.record th, table.record td{ border:1px solid rgba(255,255,255,.12); padding:4px 5px; text-align:center; }
+    table.record th{ background:rgba(255,255,255,.08); color:#dce9ff; font-weight:700; }
+    .chartWrap{ margin-top:8px; border:1px solid rgba(255,255,255,.12); border-radius:10px; background:rgba(0,0,0,.25); overflow:hidden; }
+    #chart{ width:100%; height:170px; display:block; }
+
+    .checkmark{
+      position:absolute;
+      z-index:60;
+      left:50%;
+      top:18%;
+      transform:translate(-50%,-50%) scale(.6);
+      width:120px;
+      height:120px;
+      border-radius:50%;
+      background:rgba(61,220,151,.15);
+      border:3px solid var(--accent);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);
+      animation:pop .55s ease-out;
+      pointer-events:none;
+    }
+    .checkmark.active{ display:flex; }
+    .checkmark > div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+    @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2;} 60%{transform:translate(-50%,-50%) scale(1.08);opacity:1;} 100%{transform:translate(-50%,-50%) scale(1);} }
+    .demoCursor{
+      position:absolute;
+      left:-200px;
+      top:-200px;
+      width:24px;
+      height:24px;
+      z-index:120;
+      pointer-events:none;
+      opacity:0;
+      transform:translate(-2px,-2px);
+      transition:left .25s ease, top .25s ease, opacity .16s ease, transform .12s ease;
+    }
+    .demoCursor.show{ opacity:1; }
+    .demoCursor.clicking{ transform:translate(-2px,-2px) scale(.92); }
+    .demoCursor svg{ display:block; width:100%; height:100%; }
+    .demoCursorPulse{
+      position:absolute;
+      left:-200px;
+      top:-200px;
+      width:12px;
+      height:12px;
+      margin-left:-6px;
+      margin-top:-6px;
+      border-radius:999px;
+      border:2px solid rgba(124,209,255,.9);
+      pointer-events:none;
+      z-index:119;
+      opacity:0;
+    }
+    .demoCursorPulse.active{ animation:cursorPulse .45s ease-out; }
+    @keyframes cursorPulse{
+      0%{ transform:scale(.35); opacity:.95; }
+      100%{ transform:scale(2.7); opacity:0; }
+    }
+
+    .toolbar{ width:100%; max-width:980px; margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; }
+    .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,.82); color:#fff; padding:10px 14px; border-radius:10px; font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+    .modal-mask{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:300; background:rgba(0,0,0,.5); }
+    .modal{ width:min(90vw, 380px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+    .modal h3{ margin:8px 0 6px; font-size:20px; }
+    .modal p{ margin-top:0; line-height:1.55; color:#cfd8dc; }
+    .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; }
+
+    .explanation{ width:100%; max-width:980px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:#e9f2ff; }
+    .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; }
+
+    @media (max-width:760px){
+      .task-card{ grid-template-columns:1fr; }
+      .task-step{ width:fit-content; }
+      #stage{ height:76vh; max-height:920px; }
+      .dock{ width:min(96%, 380px); }
+      .hud{ left:8px; right:8px; }
+    }
+  
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText"></div>
+      <div class="task-hint" id="taskHint"></div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待开始</span>
+    </div>
+
+    
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+<div class="lab-area" id="labArea">
+      <canvas id="scene"></canvas>
+    </div>
+
+    <div class="dock drawer control" id="controlDock" style="right:10px; top:10px; left:auto; bottom:auto;">
+      <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">控制面板</div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="controlBody">
+        <div class="row lab-hint" id="apparatusHint"></div>
+        <div class="status-grid">
+          <div class="pill" id="pillA">关键状态A</div>
+          <div class="pill" id="pillB">关键状态B</div>
+          <div class="pill" id="pillC">关键状态C</div>
+          <div class="pill" id="pillD">关键状态D</div>
+        </div>
+        <div id="controlFields"></div>
+        <div class="btnRow" id="actionBtns"></div>
+        <div class="btnRow" style="margin-top:8px;">
+          <button class="sub" id="recordBtn">记录当前数据</button>
+          <button class="sub" id="checkBtn">确认观察 ✅</button>
+          <button class="sub" id="analyzeBtn">分析结论</button>
+        </div>
+        <div class="analysis" id="analysisText" style="margin-top:8px;">暂无。请按步骤操作器材并记录数据后分析。</div>
+        <div class="chartWrap"><canvas id="chart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="dock drawer data" id="dataDock" style="right:10px; top:78px; left:auto; bottom:auto;">
+      <div class="dockHead drawer-header" id="dataHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">数据面板 <span class="dataNotice" id="dataNotice">0</span></div>
+        <div class="dockBtns drawer-actions">
+          <button class="iconBtn" id="dataToggleBtn">展开</button>
+        </div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="dataBody">
+        <table class="record">
+          <thead><tr><th id="th1">条件</th><th id="th2">读数1</th><th id="th3">读数2</th><th id="th4">备注</th></tr></thead>
+          <tbody id="recordBody"></tbody>
+        </table>
+      
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+    <div class="demoCursor" id="demoCursor" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M5 3l11 10-4 .8 2 4.4-2.2 1-2-4.4-3 2z" fill="#ffffff" stroke="#0b1220" stroke-width="1.4" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="demoCursorPulse" id="demoCursorPulse" aria-hidden="true"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="sub" id="resetBtn">步骤重置</button>
+    <button class="sub" id="autoDemoBtn">自动演示</button>
+    <button class="sub" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">实验完成</h3>
+      <p id="doneText">你已完成本实验的核心操作链与数据分析。</p>
+      <button class="sub ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2 id="expTitle"></h2>
+    <ul id="expBullets"></ul>
+  </div>
+
+  <script>
+    const LAB_ID = 17;
+
+    const LABS = {
+      14:{
+        name:'观察分子之间存在间隙的现象',
+        catalog:'中小学实验教学目录 初中物理 14',
+        textbook:'人教版初中物理 分子热运动相关观察活动（目录条目对齐）',
+        apparatusHint:'器材：量筒A(50mL水) + 量筒B(50mL酒精) + 混合量筒 + 漏斗。先后倒入并摇匀后读数。',
+        bullets:[
+          '向同一量筒中倒入水和酒精，混合后总体积通常小于两者体积之和。',
+          '该现象说明分子之间存在间隙，分子可进入彼此间隙。',
+          '实验结论来自量筒读数变化与混合前后对比。'
+        ],
+        tableHeaders:['操作条件','理论体积(mL)','实测体积(mL)','备注'],
+        controls:[
+          {key:'shakeLevel', label:'摇匀程度', type:'range', min:1, max:5, step:1, unit:'级', def:3}
+        ],
+        actions:[
+          {id:'pourWater', label:'倒入水'},
+          {id:'pourAlcohol', label:'倒入酒精'},
+          {id:'shakeRead', label:'摇匀并读数'}
+        ],
+        tasks:[
+          {text:'先将<b>50mL水</b>倒入混合量筒。', hint:'点击“倒入水”。'},
+          {text:'再将<b>50mL酒精</b>倒入同一量筒。', hint:'点击“倒入酒精”。'},
+          {text:'摇匀后读取混合体积并与100mL比较。', hint:'点击“摇匀并读数”，观察是否小于100mL。'},
+          {text:'点击“分析结论”，完成本实验。', hint:'结论应包含“分子间有间隙”。'}
+        ]
+      },
+      15:{
+        name:'观察分子之间存在引力的现象',
+        catalog:'中小学实验教学目录 初中物理 15',
+        textbook:'人教版初中物理 分子动理论相关观察活动（目录条目对齐）',
+        apparatusHint:'器材：两块铅柱(或金属块) + 刮刀 + 压紧夹具 + 弹簧测力计。',
+        bullets:[
+          '将接触面处理干净并压紧后，两块金属块间会出现较明显吸附。',
+          '用弹簧测力计拉伸可观察到分开前需要一定拉力。',
+          '实验体现了分子之间存在引力。'
+        ],
+        tableHeaders:['拉力条件','测力计读数(N)','是否分离','备注'],
+        controls:[
+          {key:'pullN', label:'拉力设定', type:'range', min:1, max:8, step:0.5, unit:'N', def:3}
+        ],
+        actions:[
+          {id:'scrape', label:'刮净接触面'},
+          {id:'press', label:'压紧金属块'},
+          {id:'pullTest', label:'拉伸测力'}
+        ],
+        tasks:[
+          {text:'先处理接触面，保证接触条件。', hint:'点击“刮净接触面”。'},
+          {text:'将两块金属块压紧贴合。', hint:'点击“压紧金属块”。'},
+          {text:'进行拉伸测力并观察是否易分离。', hint:'调节拉力后点击“拉伸测力”。'},
+          {text:'点击“分析结论”，完成本实验。', hint:'结论应包含“分子间有引力”。'}
+        ]
+      },
+      16:{
+        name:'用刻度尺测量长度',
+        catalog:'中小学实验教学目录 初中物理 16',
+        textbook:'人教版初中物理 长度测量活动（目录条目对齐）',
+        apparatusHint:'器材：刻度尺 + 待测物体(铅笔/橡皮/钥匙) + 放大读数窗。',
+        bullets:[
+          '测量长度时需使零刻度线与物体一端对齐。',
+          '读数应看物体另一端对应刻度，并估读到分度值下一位。',
+          '可通过更换物体重复测量提高可信度。'
+        ],
+        tableHeaders:['物体','测得长度(cm)','参考长度(cm)','备注'],
+        controls:[
+          {key:'object', label:'待测物体', type:'select', options:[['pencil','铅笔'],['eraser','橡皮'],['key','钥匙']], def:'pencil'}
+        ],
+        actions:[
+          {id:'alignZero', label:'对齐零刻度'},
+          {id:'measureLength', label:'读取长度'},
+          {id:'nextObject', label:'更换物体'}
+        ],
+        tasks:[
+          {text:'先让物体左端与刻度尺<b>零刻度</b>对齐。', hint:'点击“对齐零刻度”。'},
+          {text:'读取当前物体长度并记录。', hint:'点击“读取长度”后记录数据。'},
+          {text:'更换另一件物体并完成再次测量。', hint:'点击“更换物体”后重复对齐与读数。'},
+          {text:'点击“分析结论”，完成本实验。', hint:'结论要体现规范读数方法。'}
+        ]
+      },
+      17:{
+        name:'用表测量时间',
+        catalog:'中小学实验教学目录 初中物理 17',
+        textbook:'人教版初中物理 时间测量活动（目录条目对齐）',
+        apparatusHint:'器材：摆球(周期事件) + 秒表。',
+        bullets:[
+          '测量时间时要明确起止时刻并规范启停秒表。',
+          '可测多个周期总时长，再求单次时间以减小误差。',
+          '重复测量有助于提高结果可靠性。'
+        ],
+        tableHeaders:['完整摆动次数','总时间(s)','单次时间(s)','备注'],
+        controls:[
+          {key:'cycles', label:'本组完整摆动次数', type:'select', options:[['10','10次完整摆动'],['20','20次完整摆动']], def:'10'},
+          {key:'tempo', label:'摆动节奏', type:'select', options:[['slow','慢'],['normal','中'],['fast','快']], def:'normal'}
+        ],
+        actions:[
+          {id:'startPendulum', label:'启动摆球'},
+          {id:'startWatch', label:'开始计时'},
+          {id:'stopWatch', label:'停止计时'}
+        ],
+        tasks:[
+          {text:'先让摆球稳定摆动，再点“确认观察”。', hint:'提示：先启动摆球。'},
+          {text:'测量 <b>10次完整摆动</b> 的总时长并记录后，再点“确认观察”。', hint:'提示：一次完整摆动，指摆球从同侧最高点出发，再回到同侧最高点。'},
+          {text:'再改为 <b>20次完整摆动</b> 计时并记录比较后，再点“确认观察”。', hint:'提示：引导模式下，这一步只认 20 次完整摆动的数据。'},
+          {text:'点击“分析结论”，确认“总时长/次数”的思路后，再点“确认观察”。', hint:'提示：结论要体现多次计时求单次时间。'}
+        ]
+      },
+      18:{
+        name:'测量物体运动的速度',
+        catalog:'中小学实验教学目录 初中物理 18',
+        textbook:'人教版初中物理 速度测量活动（目录条目对齐）',
+        apparatusHint:'器材：小车轨道 + 刻度尺(测程) + 秒表(测时) + 终点标记。',
+        bullets:[
+          '速度测量通常由位移和时间两部分构成。',
+          '通过 v=s/t 计算平均速度，并可做多组比较。',
+          '改变推力或测程可观察速度变化。'
+        ],
+        tableHeaders:['实验条件','用时(s)','速度(m/s)','备注'],
+        controls:[
+          {key:'distance', label:'测程', type:'range', min:1.0, max:3.0, step:0.2, unit:'m', def:1.6},
+          {key:'push', label:'推力等级', type:'range', min:1, max:5, step:1, unit:'级', def:3}
+        ],
+        actions:[
+          {id:'runCart', label:'发车并计时'},
+          {id:'resetCart', label:'小车归位'}
+        ],
+        tasks:[
+          {text:'完成一组小车发车与计时。', hint:'点击“发车并计时”。'},
+          {text:'改变推力或测程后再测一组。', hint:'调节滑块后再次发车。'},
+          {text:'比较两组速度差异并记录。', hint:'至少保留2条记录。'},
+          {text:'点击“分析结论”，完成本实验。', hint:'结论应基于 v=s/t。'}
+        ]
+      },
+      19:{
+        name:'观察力使物体产生形变',
+        catalog:'中小学实验教学目录 初中物理 19',
+        textbook:'人教版初中物理 力的作用效果观察活动（目录条目对齐）',
+        apparatusHint:'器材：弹簧/海绵样件 + 施力装置 + 刻度尺。',
+        bullets:[
+          '力可以使物体形状或体积发生变化。',
+          '通常作用力越大，形变越明显。',
+          '不同材料在相同力下形变程度可能不同。'
+        ],
+        tableHeaders:['样件+力','形变量(mm)','恢复情况','备注'],
+        controls:[
+          {key:'sample', label:'样件', type:'select', options:[['spring','弹簧'],['sponge','海绵']], def:'spring'},
+          {key:'force', label:'施力大小', type:'range', min:1, max:10, step:1, unit:'N', def:3}
+        ],
+        actions:[
+          {id:'applyForce', label:'施加力'},
+          {id:'releaseForce', label:'撤去力'}
+        ],
+        tasks:[
+          {text:'对样件施加较小力并观察形变。', hint:'设置较小力后点击“施加力”。'},
+          {text:'增大力后再次施力比较形变。', hint:'提高力值再操作。'},
+          {text:'可切换另一样件做对比记录。', hint:'切换样件并施力。'},
+          {text:'点击“分析结论”，完成本实验。', hint:'结论包含“力越大形变越明显”。'}
+        ]
+      },
+      20:{
+        name:'观察力使物体运动状态发生改变',
+        catalog:'中小学实验教学目录 初中物理 20',
+        textbook:'人教版初中物理 力与运动关系观察活动（目录条目对齐）',
+        apparatusHint:'器材：小车轨道 + 施力器(方向/大小) + 速度指示表。',
+        bullets:[
+          '力可以改变物体运动状态：由静止到运动、加速、减速或改变方向。',
+          '同方向施力通常使速度增大，反方向施力通常使速度减小。',
+          '连续记录施力前后速度可直观看到状态变化。'
+        ],
+        tableHeaders:['施力条件','施力前速度','施力后速度','备注'],
+        controls:[
+          {key:'dir', label:'施力方向', type:'select', options:[['forward','向右'],['backward','向左']], def:'forward'},
+          {key:'mag', label:'力大小', type:'range', min:1, max:8, step:1, unit:'N', def:4},
+          {key:'duration', label:'作用时长', type:'range', min:0.2, max:1.2, step:0.1, unit:'s', def:0.6}
+        ],
+        actions:[
+          {id:'applyMotionForce', label:'施加力'},
+          {id:'stopCart', label:'停车归零'}
+        ],
+        tasks:[
+          {text:'先对静止小车施加一次向右力。', hint:'确认小车由静止变为运动。'},
+          {text:'再施加反向力，观察速度变化。', hint:'将方向改为“向左”后施力。'},
+          {text:'累计至少2组前后速度记录。', hint:'记录施力前后速度。'},
+          {text:'点击“分析结论”，完成本实验。', hint:'结论应体现“力改变运动状态”。'}
+        ]
+      }
+    };
+
+    const LAB = LABS[LAB_ID];
+    const OBJECT_LENGTHS = { pencil:12.6, eraser:4.3, key:6.8 };
+
+    const $ = (s)=>document.querySelector(s);
+    const stageEl = $('#stage');
+    const labArea = $('#labArea');
+    const scene = $('#scene');
+    const chart = $('#chart');
+
+    const taskCard = $('#taskCard');
+    const taskStepEl = $('#taskStep');
+    const taskTextEl = $('#taskText');
+    const taskHintEl = $('#taskHint');
+    const dotsEl = $('#dots');
+
+    const modeTag = $('#modeTag');
+    const statusTag = $('#statusTag');
+
+    const apparatusHint = $('#apparatusHint');
+    const pillA = $('#pillA');
+    const pillB = $('#pillB');
+    const pillC = $('#pillC');
+    const pillD = $('#pillD');
+
+    const controlFields = $('#controlFields');
+    const actionBtns = $('#actionBtns');
+
+    const controlDock = $('#controlDock');
+    const controlHead = $('#controlHead');
+    const controlBody = $('#controlBody');
+    const controlToggleBtn = $('#controlToggleBtn');
+
+    const dataDock = $('#dataDock');
+    const dataHead = $('#dataHead');
+    const dataBody = $('#dataBody');
+    const dataToggleBtn = $('#dataToggleBtn');
+    const dataNotice = $('#dataNotice');
+
+    const recordBtn = $('#recordBtn');
+    const checkBtn = $('#checkBtn');
+    const analyzeBtn = $('#analyzeBtn');
+    const resetBtn = $('#resetBtn');
+    const autoDemoBtn = $('#autoDemoBtn');
+    const freeBtn = $('#freeBtn');
+
+    const analysisText = $('#analysisText');
+    const recordBody = $('#recordBody');
+
+    const checkmarkEl = $('#checkmark');
+    const demoCursorEl = $('#demoCursor');
+    const demoCursorPulseEl = $('#demoCursorPulse');
+    const toastEl = $('#toast');
+    const doneMaskEl = $('#doneMask');
+    const doneText = $('#doneText');
+    const okBtn = $('#okBtn');
+
+    const expTitle = $('#expTitle');
+    const expBullets = $('#expBullets');
+
+    const th1 = $('#th1');
+    const th2 = $('#th2');
+    const th3 = $('#th3');
+    const th4 = $('#th4');
+
+    const state = {
+      currentTask:0,
+      completed:false,
+      freeMode:false,
+      autoPlaying:false,
+      autoRunId:0,
+      successCooldown:false,
+      stepWarnIdx:-1,
+      vars:{},
+      records:[],
+      analysisOk:false,
+      timers:new Set(),
+      rafId:0,
+      lastTs:0,
+      controlCollapsed:false,
+      dataCollapsed:true,
+      dockMoved:{control:false, data:false},
+      zTop:40,
+      apparatus:null,
+      unseenRecordCount:0
+    };
+
+    const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
+    const round = (n,p=2)=>Number(n.toFixed(p));
+    const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+
+    function trackTimeout(fn, ms){
+      const id = setTimeout(()=>{ state.timers.delete(id); fn(); }, ms);
+      state.timers.add(id);
+      return id;
+    }
+    function clearAllTimers(){
+      for(const id of state.timers) clearTimeout(id);
+      state.timers.clear();
+    }
+
+    function showToast(msg){
+      toastEl.textContent = msg || '请继续尝试';
+      toastEl.classList.add('show');
+      clearTimeout(showToast.t);
+      showToast.t = setTimeout(()=>toastEl.classList.remove('show'), 1400);
+    }
+    function showCheck(){
+      checkmarkEl.classList.add('active');
+      clearTimeout(showCheck.t);
+      showCheck.t = setTimeout(()=>checkmarkEl.classList.remove('active'), 520);
+    }
+
+    function updateModeHud(){
+      const modeText = state.autoPlaying ? '自动演示' : (state.freeMode ? '自由' : '引导');
+      modeTag.textContent = `模式：${modeText}`;
+      freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+    }
+
+    function updateAutoDemoBtn(){
+      autoDemoBtn.textContent = state.autoPlaying ? '退出自动演示' : '自动演示';
+      autoDemoBtn.disabled = state.freeMode && !state.autoPlaying;
+    }
+
+    function updateBadge(){
+      if(!dataNotice) return;
+      if(state.unseenRecordCount > 0){
+        dataNotice.textContent = state.unseenRecordCount > 99 ? '99+' : String(state.unseenRecordCount);
+        dataNotice.classList.add('show');
+      }else{
+        dataNotice.textContent = '0';
+        dataNotice.classList.remove('show');
+      }
+    }
+
+    function clearBadge(){
+      state.unseenRecordCount = 0;
+      updateBadge();
+    }
+
+    function warnCurrentStep(msg){
+      if(state.completed) return;
+      state.stepWarnIdx = state.currentTask;
+      [...dotsEl.children].forEach((d,n)=>d.classList.toggle('warn', n===state.currentTask && !state.completed));
+      setStatus('当前步骤未完成');
+      showToast(msg);
+    }
+
+    function setDemoCursorVisible(on){
+      demoCursorEl.classList.toggle('show', !!on);
+      if(!on){
+        demoCursorEl.classList.remove('clicking');
+        demoCursorPulseEl.classList.remove('active');
+        demoCursorEl.style.left = '-200px';
+        demoCursorEl.style.top = '-200px';
+        demoCursorPulseEl.style.left = '-200px';
+        demoCursorPulseEl.style.top = '-200px';
+      }
+    }
+
+    async function moveDemoCursorTo(x, y, ms=280){
+      demoCursorEl.style.left = `${round(x, 1)}px`;
+      demoCursorEl.style.top = `${round(y, 1)}px`;
+      await sleep(ms);
+    }
+
+    async function pulseDemoCursor(ms=170){
+      demoCursorEl.classList.add('clicking');
+      const x = Number.parseFloat(demoCursorEl.style.left || '0');
+      const y = Number.parseFloat(demoCursorEl.style.top || '0');
+      demoCursorPulseEl.style.left = `${x}px`;
+      demoCursorPulseEl.style.top = `${y}px`;
+      demoCursorPulseEl.classList.remove('active');
+      void demoCursorPulseEl.offsetWidth;
+      demoCursorPulseEl.classList.add('active');
+      await sleep(ms);
+      demoCursorEl.classList.remove('clicking');
+    }
+
+    function pushRecord(rec){
+      state.records.push(rec);
+      if(state.records.length > 40) state.records.shift();
+      if(state.dataCollapsed){
+        state.unseenRecordCount += 1;
+        updateBadge();
+      }
+      renderRecords();
+      scheduleChart();
+    }
+
+    function centerOf(el){
+      const stageRect = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return { x:r.left - stageRect.left + r.width/2, y:r.top - stageRect.top + r.height/2 };
+    }
+
+    function makeInitialApparatus(){
+      switch(LAB_ID){
+        case 14: return { waterMl:50, alcoholMl:50, mixMl:0, pouredWater:false, pouredAlcohol:false, shaken:false, mixRead:null, bubblePhase:0 };
+        case 15: return { scraped:false, pressed:false, pullN:0, adhered:false, separated:false, tested:false };
+        case 16: return { object:'pencil', startCm:2.6, aligned:false, lastRead:null, measureCount:0, alignedCount:0 };
+        case 17: return {
+          pendulumOn:false,
+          angle:0,
+          stopwatchRunning:false,
+          stopwatchStart:0,
+          elapsed:0,
+          measured:false,
+          cyclesDone:0,
+          measureStartPhase:null,
+          measureStartMs:0,
+          waitingReference:false,
+          overrun:false
+        };
+        case 18: return { running:false, progress:0, lastTime:null, lastSpeed:null, runCount:0, needsReset:false, rulerMax:3.0 };
+        case 19: return { applied:false, lastDeform:0, recoverPct:100, applyCount:0 };
+        case 20: return { velocity:0, cartX:0.18, animating:false, targetX:0.18, beforeV:0, afterV:0, changed:false };
+      }
+      return {};
+    }
+
+    function initUIStatic(){
+      document.title = `初中物理实验${LAB_ID}｜${LAB.name}（交互版）`;
+      doneText.textContent = `你已完成“${LAB.name}”的核心操作链与数据分析。`;
+      expTitle.textContent = `实验名：${LAB.name}`;
+      apparatusHint.textContent = LAB.apparatusHint;
+      apparatusHint.style.display = LAB_ID === 17 ? 'none' : '';
+      expBullets.innerHTML = LAB.bullets.map(v=>`<li>${v}</li>`).join('');
+      th1.textContent = LAB.tableHeaders[0];
+      th2.textContent = LAB.tableHeaders[1];
+      th3.textContent = LAB.tableHeaders[2];
+      th4.textContent = LAB.tableHeaders[3];
+      controlDock.style.width = LAB_ID === 17 ? 'min(94%, 300px)' : '';
+      dataDock.style.width = LAB_ID === 17 ? 'min(94%, 320px)' : '';
+      const chartWrap = chart.closest('.chartWrap');
+      if(chartWrap) chartWrap.style.display = LAB_ID === 17 ? 'none' : '';
+    }
+
+    function initTaskUI(){
+      dotsEl.innerHTML = LAB.tasks.map(()=>'<span class="dot"></span>').join('');
+      setStepUI(0);
+    }
+
+    function setStepUI(i){
+      const idx = clamp(i,0,LAB.tasks.length-1);
+      state.currentTask = idx;
+      const t = LAB.tasks[idx];
+      taskStepEl.textContent = `步骤 ${idx+1} / ${LAB.tasks.length}`;
+      taskTextEl.innerHTML = t.text;
+      taskHintEl.textContent = t.hint;
+      [...dotsEl.children].forEach((d,n)=>{
+        d.classList.toggle('active', n===idx && !state.completed);
+        d.classList.toggle('done', n<idx || state.completed);
+        d.classList.toggle('warn', !state.completed && n===state.stepWarnIdx);
+      });
+    }
+
+    function setFreeMode(on){
+      state.freeMode = !!on;
+      updateModeHud();
+      updateAutoDemoBtn();
+      if(state.freeMode){
+        taskCard.style.opacity = '.74';
+        taskCard.style.filter = 'saturate(.8)';
+        setStatus('自由探索');
+      }else{
+        taskCard.style.opacity = '1';
+        taskCard.style.filter = 'none';
+        setStatus(state.completed ? '挑战完成' : '待开始');
+      }
+    }
+
+    function setStatus(msg){
+      statusTag.textContent = `状态：${msg}`;
+    }
+
+    function initControls(){
+      state.vars = {};
+      controlFields.innerHTML = '';
+      for(const def of LAB.controls){
+        state.vars[def.key] = def.def;
+        const wrap = document.createElement('div');
+        wrap.className = 'field';
+        wrap.innerHTML = `<div class="name"><span>${def.label}</span><span id="pill_${def.key}"></span></div>`;
+        if(def.type === 'range'){
+          const input = document.createElement('input');
+          input.type = 'range';
+          input.min = String(def.min);
+          input.max = String(def.max);
+          input.step = String(def.step);
+          input.value = String(def.def);
+          input.addEventListener('input', ()=>{
+            state.vars[def.key] = Number(input.value);
+            refreshControlPill(def);
+          });
+          wrap.appendChild(input);
+        }else if(def.type === 'select'){
+          const sel = document.createElement('select');
+          for(const [val,text] of def.options){
+            const op = document.createElement('option');
+            op.value = val;
+            op.textContent = text;
+            if(val === def.def) op.selected = true;
+            sel.appendChild(op);
+          }
+          sel.addEventListener('change', ()=>{
+            state.vars[def.key] = sel.value;
+            refreshControlPill(def);
+            if(LAB_ID === 16 && def.key === 'object'){
+              state.apparatus.object = sel.value;
+              state.apparatus.startCm = randIn(1.6, 3.8);
+              state.apparatus.aligned = false;
+              state.apparatus.lastRead = null;
+              showToast('已切换物体，请先对齐零刻度');
+            }
+          });
+          wrap.appendChild(sel);
+        }
+        controlFields.appendChild(wrap);
+        refreshControlPill(def);
+      }
+    }
+
+    function randIn(a,b){ return a + Math.random()*(b-a); }
+
+    function refreshControlPill(def){
+      const pill = $(`#pill_${def.key}`);
+      if(!pill) return;
+      const v = state.vars[def.key];
+      if(def.type === 'range') pill.textContent = `${v}${def.unit || ''}`;
+      else {
+        const hit = def.options.find(x=>x[0]===v);
+        pill.textContent = hit ? hit[1] : String(v);
+      }
+    }
+
+    function setVar(key, value){
+      state.vars[key] = value;
+      const field = controlFields.querySelector(`#pill_${key}`)?.closest('.field');
+      if(!field) return;
+      const inp = field.querySelector('input[type="range"]');
+      const sel = field.querySelector('select');
+      if(inp) inp.value = String(value);
+      if(sel) sel.value = String(value);
+      const def = LAB.controls.find(d=>d.key===key);
+      if(def) refreshControlPill(def);
+    }
+
+    function initActionButtons(){
+      actionBtns.innerHTML = '';
+      for(const a of LAB.actions){
+        const b = document.createElement('button');
+        b.className = a.id.includes('run') || a.id.includes('apply') || a.id.includes('measure') || a.id.includes('stopWatch') ? 'main' : 'sub';
+        b.textContent = a.label;
+        b.addEventListener('click', ()=>{ if(!state.autoPlaying) performAction(a.id, true); });
+        actionBtns.appendChild(b);
+      }
+    }
+
+    function performAction(actionId, showStep=true){
+      const ap = state.apparatus;
+      let changed = false;
+
+      switch(LAB_ID){
+        case 14:{
+          if(actionId === 'pourWater' && !ap.pouredWater){ ap.pouredWater = true; ap.waterMl = 0; ap.mixMl += 50; changed = true; setStatus('已倒入水'); }
+          if(actionId === 'pourAlcohol' && !ap.pouredAlcohol){ ap.pouredAlcohol = true; ap.alcoholMl = 0; ap.mixMl += 50; changed = true; setStatus('已倒入酒精'); }
+          if(actionId === 'shakeRead'){
+            if(!(ap.pouredWater && ap.pouredAlcohol)){ showToast('需先倒入两种液体'); break; }
+            ap.shaken = true;
+            const shrink = 3 + (5 - state.vars.shakeLevel) * 0.5;
+            ap.mixRead = round(100 - shrink, 1);
+            ap.mixMl = ap.mixRead;
+            changed = true;
+            setStatus('已摇匀并读数');
+          }
+          break;
+        }
+        case 15:{
+          if(actionId === 'scrape'){ ap.scraped = true; changed = true; setStatus('接触面已处理'); }
+          if(actionId === 'press'){
+            if(!ap.scraped){ showToast('建议先刮净接触面再压紧'); }
+            ap.pressed = true;
+            ap.adhered = ap.scraped;
+            ap.separated = !ap.scraped;
+            changed = true;
+            setStatus(ap.adhered ? '压紧后已吸附' : '压紧但吸附弱');
+          }
+          if(actionId === 'pullTest'){
+            ap.pullN = Number(state.vars.pullN);
+            const threshold = ap.scraped && ap.pressed ? 5.8 : 2.2;
+            ap.tested = true;
+            if(ap.pullN >= threshold){ ap.separated = true; ap.adhered = false; }
+            else { ap.separated = false; ap.adhered = true; }
+            changed = true;
+            setStatus(ap.separated ? '样件已分离' : '仍保持吸附');
+          }
+          break;
+        }
+        case 16:{
+          const len = OBJECT_LENGTHS[state.vars.object];
+          if(actionId === 'alignZero'){
+            ap.object = state.vars.object;
+            ap.startCm = 0;
+            ap.aligned = true;
+            ap.alignedCount += 1;
+            changed = true;
+            setStatus('已对齐零刻度');
+          }
+          if(actionId === 'measureLength'){
+            if(!ap.aligned){ showToast('请先对齐零刻度'); break; }
+            ap.lastRead = round(len + randIn(-0.08, 0.08), 2);
+            ap.measureCount += 1;
+            changed = true;
+            setStatus(`读数完成：${ap.lastRead}cm`);
+          }
+          if(actionId === 'nextObject'){
+            const order = ['pencil','eraser','key'];
+            const idx = order.indexOf(state.vars.object);
+            const next = order[(idx + 1) % order.length];
+            setVar('object', next);
+            ap.object = next;
+            ap.startCm = round(randIn(1.4, 3.9), 2);
+            ap.aligned = false;
+            ap.lastRead = null;
+            changed = true;
+            setStatus(`已更换物体：${nameOfObject(next)}`);
+          }
+          break;
+        }
+        case 17:{
+          if(actionId === 'startPendulum'){
+            ap.pendulumOn = true;
+            changed = true;
+            setStatus('摆球已启动');
+          }
+          if(actionId === 'startWatch'){
+            if(!ap.pendulumOn){ showToast('请先启动摆球'); break; }
+            const periodSec = state.vars.tempo === 'slow' ? 1.2 : state.vars.tempo === 'fast' ? 0.5 : 0.8;
+            const omega = (Math.PI * 2) / (periodSec * 1000);
+            const now = performance.now();
+            const phase = now * omega;
+            const nextPeakPhase = Math.ceil((phase - Math.PI / 2) / (Math.PI * 2)) * (Math.PI * 2) + Math.PI / 2;
+            ap.stopwatchRunning = true;
+            ap.stopwatchStart = 0;
+            ap.measureStartPhase = nextPeakPhase;
+            ap.measureStartMs = nextPeakPhase / omega;
+            ap.waitingReference = true;
+            ap.elapsed = 0;
+            ap.cyclesDone = 0;
+            ap.measured = false;
+            ap.overrun = false;
+            changed = true;
+            setStatus('秒表计时中，等待起始参考点');
+          }
+          if(actionId === 'stopWatch'){
+            if(!ap.stopwatchRunning){ showToast('秒表尚未开始'); break; }
+            ap.stopwatchRunning = false;
+            ap.waitingReference = false;
+            ap.elapsed = round(ap.elapsed, 2);
+            ap.measured = ap.cyclesDone > 0;
+            const targetCycles = Number(state.vars.cycles);
+            if(ap.cyclesDone === 0){
+              setStatus('尚未经过起始参考点，可重新开始计时');
+            }else if(state.freeMode){
+              setStatus(`计时完成：${ap.cyclesDone}次完整摆动，共${ap.elapsed}s`);
+            }else if(ap.cyclesDone < targetCycles){
+              setStatus(`次数不足：仅${ap.cyclesDone}/${targetCycles}次，可重新开始计时`);
+            }else if(ap.cyclesDone > targetCycles){
+              setStatus(`次数超过：${ap.cyclesDone}/${targetCycles}次，可重新开始计时`);
+            }else{
+              setStatus(`计时完成：${ap.elapsed}s`);
+            }
+            changed = true;
+          }
+          break;
+        }
+        case 18:{
+          if(actionId === 'runCart'){
+            if(ap.running){ showToast('小车正在运动'); break; }
+            const s = Number(state.vars.distance);
+            const force = Number(state.vars.push);
+            const a = 0.7 + force * 0.55;
+            const t = round(Math.sqrt((2*s)/a) + randIn(-0.08, 0.08), 2);
+            const v = round(s / t, 2);
+            ap.running = true;
+            ap.progress = 0;
+            ap.lastTime = t;
+            ap.lastSpeed = v;
+            ap.runCount += 1;
+            ap.needsReset = true;
+            trackTimeout(()=>{ ap.running = false; ap.progress = 1; }, 1200);
+            changed = true;
+            setStatus(`完成发车：t=${t}s, v=${v}m/s`);
+          }
+          if(actionId === 'resetCart'){
+            ap.running = false;
+            ap.progress = 0;
+            ap.needsReset = false;
+            changed = true;
+            setStatus('小车已归位');
+          }
+          break;
+        }
+        case 19:{
+          if(actionId === 'applyForce'){
+            const f = Number(state.vars.force);
+            const sample = state.vars.sample;
+            let d = sample === 'spring' ? f * 3.4 : f * 5.2;
+            if(sample === 'sponge') d = Math.min(d, 42);
+            ap.lastDeform = round(d, 1);
+            ap.applied = true;
+            ap.recoverPct = sample === 'spring' ? 98 : 86;
+            ap.applyCount += 1;
+            changed = true;
+            setStatus(`已施力：形变量${ap.lastDeform}mm`);
+          }
+          if(actionId === 'releaseForce'){
+            ap.applied = false;
+            ap.lastDeform = 0;
+            changed = true;
+            setStatus('已撤去力');
+          }
+          break;
+        }
+        case 20:{
+          if(actionId === 'applyMotionForce'){
+            const dir = state.vars.dir === 'forward' ? 1 : -1;
+            const mag = Number(state.vars.mag);
+            const dt = Number(state.vars.duration);
+            ap.beforeV = round(ap.velocity, 2);
+            const dv = dir * mag * dt * 0.45;
+            ap.velocity = round(clamp(ap.velocity + dv, -6, 6), 2);
+            ap.afterV = ap.velocity;
+            ap.changed = true;
+            const nx = clamp(ap.cartX + ap.velocity * 0.012, 0.08, 0.92);
+            ap.targetX = nx;
+            ap.animating = true;
+            trackTimeout(()=>{ ap.cartX = ap.targetX; ap.animating = false; }, 800);
+            changed = true;
+            setStatus(`速度变化：${ap.beforeV}→${ap.afterV}m/s`);
+          }
+          if(actionId === 'stopCart'){
+            ap.beforeV = ap.velocity;
+            ap.velocity = 0;
+            ap.afterV = 0;
+            ap.changed = true;
+            changed = true;
+            setStatus('小车已停车');
+          }
+          break;
+        }
+      }
+
+      if(changed){
+        updatePills();
+        scheduleChart();
+      }
+      return changed;
+    }
+
+    function nameOfObject(k){
+      if(k==='pencil') return '铅笔';
+      if(k==='eraser') return '橡皮';
+      return '钥匙';
+    }
+
+    function buildRecord(){
+      const ap = state.apparatus;
+      switch(LAB_ID){
+        case 14:{
+          if(ap.mixRead === null){ showToast('请先摇匀并读数'); return null; }
+          return { c1:'水50+酒精50', c2:'100.0', c3:String(ap.mixRead), c4:ap.mixRead < 100 ? '体积缩小' : '无明显变化', y:ap.mixRead };
+        }
+        case 15:{
+          if(!ap.tested){ showToast('请先进行拉伸测力'); return null; }
+          return { c1:`拉力${ap.pullN}N`, c2:String(ap.pullN), c3:ap.separated ? '已分离' : '未分离', c4:ap.scraped&&ap.pressed ? '处理后测试' : '未充分处理', y:ap.pullN };
+        }
+        case 16:{
+          if(ap.lastRead === null){ showToast('请先读取长度'); return null; }
+          const ref = OBJECT_LENGTHS[state.vars.object];
+          return { c1:nameOfObject(state.vars.object), c2:String(ap.lastRead), c3:String(ref), c4:`误差${round(ap.lastRead-ref,2)}cm`, y:ap.lastRead };
+        }
+        case 17:{
+          if(!ap.measured){ showToast('请先完成一次计时'); return null; }
+          const single = round(ap.elapsed / ap.cyclesDone, 3);
+          return { c1:`${ap.cyclesDone}次完整摆动`, c2:String(ap.elapsed), c3:String(single), c4:`节奏:${state.vars.tempo}`, y:single };
+        }
+        case 18:{
+          if(ap.lastTime===null || ap.lastSpeed===null){ showToast('请先发车并计时'); return null; }
+          return { c1:`s=${state.vars.distance}m, 推力${state.vars.push}`, c2:String(ap.lastTime), c3:String(ap.lastSpeed), c4:'v=s/t', y:ap.lastSpeed };
+        }
+        case 19:{
+          if(!ap.applied){ showToast('请先施加力'); return null; }
+          return { c1:`${state.vars.sample==='spring'?'弹簧':'海绵'} ${state.vars.force}N`, c2:String(ap.lastDeform), c3:`恢复${ap.recoverPct}%`, c4:ap.lastDeform>20 ? '形变明显' : '形变较小', y:ap.lastDeform };
+        }
+        case 20:{
+          if(!ap.changed){ showToast('请先施加力或停车'); return null; }
+          return { c1:`${state.vars.dir==='forward'?'向右':'向左'} ${state.vars.mag}N`, c2:String(ap.beforeV), c3:String(ap.afterV), c4:ap.afterV>ap.beforeV ? '加速/起动' : (ap.afterV<ap.beforeV ? '减速/反向' : '保持/停止'), y:Math.abs(ap.afterV) };
+        }
+      }
+      return null;
+    }
+
+    function addRecord(){
+      const rec = buildRecord();
+      if(!rec) return false;
+      if(LAB_ID === 17 && !state.freeMode){
+        if(!(state.currentTask===1 || state.currentTask===2)){
+          showToast('请在需要记录的步骤中再记录数据');
+          return false;
+        }
+        if(!state.apparatus.measured){
+          showToast('请先完成一次规范计时');
+          return false;
+        }
+        const requiredCycles = state.currentTask===1 ? 10 : 20;
+        if(Number(state.apparatus.cyclesDone) !== requiredCycles){
+          showToast(`当前步骤需要记录 ${requiredCycles} 次完整摆动的总时长`);
+          return false;
+        }
+        if(state.apparatus.overrun){
+          showToast('当前计时已经超过目标次数，请重新开始计时');
+          return false;
+        }
+      }
+      pushRecord(rec);
+      setStatus(state.freeMode ? '自由探索' : '已记录，等待确认');
+      return true;
+    }
+
+    function renderRecords(){
+      recordBody.innerHTML = '';
+      if(!state.records.length){
+        recordBody.innerHTML = '<tr><td colspan="4" style="color:#9db4d6;">暂无记录</td></tr>';
+        return;
+      }
+      for(const r of [...state.records].slice(-12).reverse()){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.c1}</td><td>${r.c2}</td><td>${r.c3}</td><td>${r.c4}</td>`;
+        recordBody.appendChild(tr);
+      }
+    }
+
+    function analyzeConclusion(showToastMsg=true){
+      const rs = state.records;
+      let ok = false;
+      let msg = '';
+      switch(LAB_ID){
+        case 14:{
+          const hit = rs.find(r=>Number(r.c3) < 100);
+          ok = !!hit;
+          msg = ok ? '结论：水和酒精混合后总体积小于100mL，说明分子之间存在间隙。' : '请至少获得一条“混合体积小于100mL”的记录。';
+          break;
+        }
+        case 15:{
+          const stuck = rs.find(r=>r.c3==='未分离' && Number(r.c2)>=2.5);
+          ok = !!stuck;
+          msg = ok ? '结论：接触面处理并压紧后，金属块需一定拉力才分开，说明分子间存在引力。' : '请完成一次“有明显拉力但仍未分离”的记录。';
+          break;
+        }
+        case 16:{
+          const objs = new Set(rs.map(r=>r.c1));
+          const good = rs.filter(r=>Math.abs(Number(r.c2)-Number(r.c3)) <= 0.2).length;
+          ok = objs.size >= 2 && good >= 2;
+          msg = ok ? '结论：长度测量应先零刻度对齐，再读取另一端刻度；重复测量可提高准确性。' : '请至少测量2种物体，且读数与参考值偏差较小。';
+          break;
+        }
+        case 17:{
+          const labels = new Set(rs.map(r=>r.c1));
+          ok = labels.has('10次完整摆动') && labels.has('20次完整摆动');
+          msg = ok ? '结论：秒表可测多次完整摆动的总时长，再用“总时长/完整摆动次数”求单次时间。' : '请先分别记录 10 次与 20 次完整摆动的总时长。';
+          break;
+        }
+        case 18:{
+          if(rs.length>=2){
+            const ys = rs.map(r=>Number(r.c3));
+            ok = Math.max(...ys) > Math.min(...ys);
+          }
+          msg = ok ? '结论：通过测程和用时可算速度 v=s/t；不同条件下速度会变化。' : '请记录至少2组速度数据并形成差异。';
+          break;
+        }
+        case 19:{
+          const spring = rs.filter(r=>r.c1.includes('弹簧')).map(r=>Number(r.c2));
+          const sponge = rs.filter(r=>r.c1.includes('海绵')).map(r=>Number(r.c2));
+          ok = (spring.length>=2 && Math.max(...spring)>Math.min(...spring)) || (sponge.length>=2 && Math.max(...sponge)>Math.min(...sponge));
+          msg = ok ? '结论：力可使物体发生形变，且一般力越大形变越明显。' : '请补充同一样件在不同力下的对比记录。';
+          break;
+        }
+        case 20:{
+          const a = rs.find(r=>Number(r.c2)===0 && Number(r.c3)>0);
+          const b = rs.find(r=>Number(r.c3) < Number(r.c2));
+          ok = !!(a && b);
+          msg = ok ? '结论：力可使静止物体运动，也可使运动物体减速、停止或改变方向。' : '请至少包含“由静止到运动”和“速度减小/反向”两类记录。';
+          break;
+        }
+      }
+      state.analysisOk = ok;
+      analysisText.textContent = msg;
+      analysisText.classList.toggle('ok', ok);
+      if(showToastMsg) showToast(ok ? '分析完成：结论成立' : '分析未通过，请补充实验记录');
+      setStatus(ok ? '分析完成，等待确认' : '分析未通过');
+      return ok;
+    }
+
+    function checkStepPass(step){
+      const ap = state.apparatus;
+      const rs = state.records;
+      switch(LAB_ID){
+        case 14:
+          if(step===0) return ap.pouredWater;
+          if(step===1) return ap.pouredAlcohol;
+          if(step===2) return ap.shaken && ap.mixRead !== null && ap.mixRead < 100;
+          if(step===3) return state.analysisOk;
+          return false;
+        case 15:
+          if(step===0) return ap.scraped;
+          if(step===1) return ap.pressed;
+          if(step===2) return rs.some(r=>r.c3==='未分离');
+          if(step===3) return state.analysisOk;
+          return false;
+        case 16:
+          if(step===0) return ap.alignedCount >= 1;
+          if(step===1) return rs.length >= 1;
+          if(step===2) return new Set(rs.map(r=>r.c1)).size >= 2;
+          if(step===3) return state.analysisOk;
+          return false;
+        case 17:
+          if(step===0) return ap.pendulumOn;
+          if(step===1) return rs.some(r=>r.c1 === '10次完整摆动');
+          if(step===2) return rs.some(r=>r.c1 === '10次完整摆动') && rs.some(r=>r.c1 === '20次完整摆动');
+          if(step===3) return state.analysisOk;
+          return false;
+        case 18:
+          if(step===0) return ap.runCount >= 1;
+          if(step===1) return ap.runCount >= 2;
+          if(step===2) return rs.length >= 2;
+          if(step===3) return state.analysisOk;
+          return false;
+        case 19:
+          if(step===0) return rs.length>=1;
+          if(step===1) return rs.length>=2;
+          if(step===2) return rs.some(r=>r.c1.includes('海绵')) || rs.some(r=>r.c1.includes('弹簧'));
+          if(step===3) return state.analysisOk;
+          return false;
+        case 20:
+          if(step===0) return rs.some(r=>Number(r.c2)===0 && Number(r.c3)>0);
+          if(step===1) return rs.some(r=>Number(r.c3) < Number(r.c2));
+          if(step===2) return rs.length>=2;
+          if(step===3) return state.analysisOk;
+          return false;
+      }
+      return false;
+    }
+
+    function tryPassStep(showFailToast=true, fromAuto=false){
+      if(state.freeMode || state.completed || state.successCooldown) return false;
+      if(state.autoPlaying && !fromAuto) return false;
+      const ok = checkStepPass(state.currentTask);
+      if(!ok){
+        if(showFailToast){
+          if(LAB_ID === 17){
+          const msg = state.currentTask===0
+              ? '请先启动摆球并让其稳定摆动，再点击“确认观察”。'
+              : state.currentTask===1
+                ? '请先完成 10 次完整摆动的规范启停计时并记录，再点击“确认观察”。'
+                : state.currentTask===2
+                  ? '请先改为 20 次完整摆动，再完成第二次计时并记录后点击“确认观察”。'
+                  : '请先分析出“总时长/次数”的测时思路，再点击“确认观察”。';
+            warnCurrentStep(msg);
+          }else{
+            warnCurrentStep('当前步骤条件还未满足');
+          }
+        }
+        return false;
+      }
+      state.stepWarnIdx = -1;
+      setStepUI(state.currentTask);
+      const advance = ()=>{
+        if(state.currentTask < LAB.tasks.length - 1){
+          setStepUI(state.currentTask + 1);
+          setStatus(`进入步骤 ${state.currentTask+1}/${LAB.tasks.length}`);
+        }else{
+          finishLab();
+        }
+      };
+      if(fromAuto){
+        showCheck();
+        advance();
+        return true;
+      }
+      state.successCooldown = true;
+      showCheck();
+      trackTimeout(()=>{
+        advance();
+        state.successCooldown = false;
+      }, 420);
+      return true;
+    }
+
+    function recalcProgress(){
+      if(state.completed || state.freeMode) return;
+      let idx = 0;
+      while(idx < LAB.tasks.length && checkStepPass(idx)) idx += 1;
+      if(idx >= LAB.tasks.length) finishLab();
+      else setStepUI(idx);
+    }
+
+    function finishLab(){
+      if(state.completed) return;
+      state.completed = true;
+      state.stepWarnIdx = -1;
+      state.currentTask = LAB.tasks.length - 1;
+      setStepUI(state.currentTask);
+      setStatus('挑战完成');
+      doneMaskEl.style.display = 'flex';
+    }
+
+    function updatePills(){
+      const ap = state.apparatus;
+      switch(LAB_ID){
+        case 14:
+          pillA.textContent = `水:${ap.waterMl.toFixed(0)}mL`;
+          pillB.textContent = `酒精:${ap.alcoholMl.toFixed(0)}mL`;
+          pillC.textContent = `混合:${ap.mixMl.toFixed(1)}mL`;
+          pillD.textContent = `读数:${ap.mixRead===null?'--':ap.mixRead+'mL'}`;
+          break;
+        case 15:
+          pillA.textContent = `刮净:${ap.scraped?'是':'否'}`;
+          pillB.textContent = `压紧:${ap.pressed?'是':'否'}`;
+          pillC.textContent = `拉力:${ap.pullN||0}N`;
+          pillD.textContent = ap.separated ? '状态:已分离' : '状态:吸附中';
+          break;
+        case 16:
+          pillA.textContent = `物体:${nameOfObject(state.vars.object)}`;
+          pillB.textContent = `对齐:${ap.aligned?'是':'否'}`;
+          pillC.textContent = `读数:${ap.lastRead===null?'--':ap.lastRead+'cm'}`;
+          pillD.textContent = `记录:${state.records.length}条`;
+          break;
+        case 17:
+          pillA.textContent = `摆球:${ap.pendulumOn?'运行':'停止'}`;
+          pillB.textContent = `秒表:${ap.stopwatchRunning?'计时中':'待机'}`;
+          pillC.textContent = `总时:${Number(ap.elapsed || 0).toFixed(2)}s`;
+          pillD.textContent = state.freeMode
+            ? `已计完整摆动:${ap.cyclesDone}次`
+            : `完整摆动:${ap.cyclesDone}/${state.vars.cycles}`;
+          break;
+        case 18:
+          pillA.textContent = `测程:${state.vars.distance}m`;
+          pillB.textContent = `用时:${ap.lastTime===null?'--':ap.lastTime+'s'}`;
+          pillC.textContent = `速度:${ap.lastSpeed===null?'--':ap.lastSpeed+'m/s'}`;
+          pillD.textContent = `发车:${ap.runCount}次`;
+          break;
+        case 19:
+          pillA.textContent = `样件:${state.vars.sample==='spring'?'弹簧':'海绵'}`;
+          pillB.textContent = `施力:${state.vars.force}N`;
+          pillC.textContent = `形变:${ap.lastDeform}mm`;
+          pillD.textContent = `恢复:${ap.recoverPct}%`;
+          break;
+        case 20:
+          pillA.textContent = `方向:${state.vars.dir==='forward'?'向右':'向左'}`;
+          pillB.textContent = `速度:${ap.velocity.toFixed(2)}m/s`;
+          pillC.textContent = `前后:${ap.beforeV.toFixed(2)}→${ap.afterV.toFixed(2)}`;
+          pillD.textContent = `位置:${(ap.cartX*100).toFixed(0)}%`;
+          break;
+      }
+    }
+
+    function drawScene(){
+      const rect = scene.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(1, Math.floor(rect.width * dpr));
+      const h = Math.max(1, Math.floor(rect.height * dpr));
+      if(scene.width !== w || scene.height !== h){ scene.width = w; scene.height = h; }
+      const ctx = scene.getContext('2d');
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,w,h);
+      ctx.scale(dpr,dpr);
+      const W = rect.width;
+      const H = rect.height;
+
+      ctx.fillStyle = '#2f343a';
+      ctx.fillRect(0, H-70, W, 70);
+      ctx.fillStyle = 'rgba(255,255,255,.08)';
+      ctx.fillRect(0, H-70, W, 2);
+
+      switch(LAB_ID){
+        case 14: draw14(ctx,W,H); break;
+        case 15: draw15(ctx,W,H); break;
+        case 16: draw16(ctx,W,H); break;
+        case 17: draw17(ctx,W,H); break;
+        case 18: draw18(ctx,W,H); break;
+        case 19: draw19(ctx,W,H); break;
+        case 20: draw20(ctx,W,H); break;
+      }
+    }
+
+    function drawBeaker(ctx, x, y, w, h, fillRatio, color, label){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(210,230,255,.72)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x, y, w, h);
+      const fh = h * clamp(fillRatio,0,1);
+      ctx.fillStyle = color;
+      ctx.fillRect(x+3, y+h-fh-3, w-6, fh);
+      ctx.fillStyle = '#d8e7ff';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText(label, x+4, y-8);
+      ctx.strokeStyle = 'rgba(255,255,255,.4)';
+      for(let i=1;i<=5;i++){
+        const ty = y + h - i*h/5;
+        ctx.beginPath(); ctx.moveTo(x+2,ty); ctx.lineTo(x+16,ty); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function draw14(ctx,W,H){
+      const ap = state.apparatus;
+      const y = H-320;
+      drawBeaker(ctx, W*0.08, y, 120, 220, ap.waterMl/50, 'rgba(115,190,255,.85)', '量筒A(水)');
+      drawBeaker(ctx, W*0.30, y, 120, 220, ap.alcoholMl/50, 'rgba(255,194,126,.85)', '量筒B(酒精)');
+      drawBeaker(ctx, W*0.60, y-20, 140, 240, ap.mixMl/110, 'rgba(180,146,255,.78)', '混合量筒');
+
+      ctx.fillStyle = '#9fb6d2';
+      ctx.beginPath();
+      ctx.moveTo(W*0.67, y-40);
+      ctx.lineTo(W*0.62, y-12);
+      ctx.lineTo(W*0.72, y-12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#dfe9ff';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText('漏斗', W*0.66, y-48);
+
+      if(ap.shaken){
+        for(let i=0;i<60;i++){
+          const px = W*0.61 + (i%10)*12 + ((i*37)%7);
+          const py = y+210 - Math.floor(i/10)*30 + ((i*17)%9);
+          ctx.fillStyle = i%2 ? 'rgba(122,214,255,.65)' : 'rgba(218,156,255,.65)';
+          ctx.beginPath();
+          ctx.arc(px, py, 2, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+
+      ctx.fillStyle = '#eaf2ff';
+      ctx.font = '14px -apple-system,Segoe UI';
+      ctx.fillText('固体对象: 量筒外壳  液体对象: 水/酒精/混合液  测量器具: 量筒刻度', W*0.06, H-26);
+    }
+
+    function draw15(ctx,W,H){
+      const ap = state.apparatus;
+      const baseY = H-170;
+      const gap = ap.separated ? 80 : (ap.adhered ? 4 : 18);
+      const lx = W*0.36;
+      const rx = lx + 130 + gap;
+
+      ctx.fillStyle = '#8d939a';
+      ctx.fillRect(lx, baseY, 130, 90);
+      ctx.fillRect(rx, baseY, 130, 90);
+
+      if(ap.scraped){
+        ctx.strokeStyle = 'rgba(255,255,255,.85)';
+        for(let i=0;i<5;i++){
+          ctx.beginPath(); ctx.moveTo(lx+122, baseY+8+i*16); ctx.lineTo(lx+128, baseY+14+i*16); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(rx+2, baseY+8+i*16); ctx.lineTo(rx+8, baseY+14+i*16); ctx.stroke();
+        }
+      }
+
+      ctx.fillStyle = '#c7d5e8';
+      ctx.fillRect(W*0.48, baseY-64, 18, 54);
+      ctx.fillRect(W*0.43, baseY-14, W*0.14, 8);
+      ctx.fillStyle = '#e5efff';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText('压紧夹具', W*0.45, baseY-72);
+
+      const sx = W*0.76, sy = H-340;
+      ctx.fillStyle = '#d8ecff';
+      ctx.fillRect(sx, sy, 110, 170);
+      ctx.strokeStyle = '#4da3ff'; ctx.lineWidth = 3; ctx.strokeRect(sx, sy, 110, 170);
+      ctx.fillStyle = '#00131f';
+      ctx.fillRect(sx+18, sy+14, 74, 26);
+      ctx.fillStyle = '#66b0ff';
+      ctx.font = 'bold 18px Courier New';
+      ctx.fillText((ap.pullN || 0).toFixed(1), sx+30, sy+33);
+      ctx.fillStyle = '#345';
+      ctx.fillRect(sx+54, sy+40, 4, 80);
+      ctx.strokeStyle = '#dce8f6';
+      ctx.beginPath(); ctx.moveTo(sx+56, sy+120); ctx.lineTo(sx+56, sy+146); ctx.stroke();
+      ctx.beginPath(); ctx.arc(sx+56, sy+154, 8, 0, Math.PI*2); ctx.stroke();
+      ctx.fillStyle = '#dfeaff';
+      ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillText('弹簧测力计', sx+16, sy-8);
+
+      ctx.strokeStyle = '#f4f8ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(rx+130, baseY+45); ctx.lineTo(sx+56, sy+154); ctx.stroke();
+
+      ctx.fillStyle = '#ffd28f';
+      ctx.fillRect(W*0.21, H-250, 18, 80);
+      ctx.fillStyle = '#e4efff';
+      ctx.fillText('刮刀', W*0.18, H-258);
+
+      ctx.fillStyle = '#eaf2ff';
+      ctx.font = '14px -apple-system,Segoe UI';
+      ctx.fillText('固体对象: 金属块A/B  测量器具: 弹簧测力计', W*0.06, H-26);
+    }
+
+    function draw16(ctx,W,H){
+      const ap = state.apparatus;
+      const len = OBJECT_LENGTHS[state.vars.object];
+      const rulerX = W*0.1, rulerY = H-190, rulerW = W*0.74, rulerH = 56;
+      ctx.fillStyle = '#f6e6aa';
+      ctx.fillRect(rulerX, rulerY, rulerW, rulerH);
+      ctx.strokeStyle = '#8f7f4b'; ctx.lineWidth = 2; ctx.strokeRect(rulerX, rulerY, rulerW, rulerH);
+
+      for(let i=0;i<=20;i++){
+        const x = rulerX + rulerW * (i/20);
+        const long = i%5===0 ? 24 : 14;
+        ctx.strokeStyle = '#5b5132'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x, rulerY); ctx.lineTo(x, rulerY + long); ctx.stroke();
+        if(i%5===0){
+          ctx.fillStyle = '#4f472d';
+          ctx.font = '12px Arial';
+          ctx.fillText(String(i), x-4, rulerY + 40);
+        }
+      }
+
+      const start = ap.startCm;
+      const pxPerCm = rulerW / 20;
+      const ox = rulerX + start * pxPerCm;
+      const ow = len * pxPerCm;
+      ctx.fillStyle = state.vars.object==='pencil' ? '#ffa44f' : state.vars.object==='eraser' ? '#7ddf9f' : '#c7d3e7';
+      ctx.fillRect(ox, rulerY-38, ow, 24);
+      ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.strokeRect(ox, rulerY-38, ow, 24);
+      ctx.fillStyle = '#dce7f8';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText(`待测物: ${nameOfObject(state.vars.object)}`, rulerX, rulerY-48);
+
+      if(ap.aligned){
+        ctx.strokeStyle = '#3ddc97'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(rulerX, rulerY-48); ctx.lineTo(rulerX, rulerY+60); ctx.stroke();
+      }
+
+      ctx.fillStyle = '#1a2635';
+      ctx.fillRect(W*0.78, H-280, 150, 120);
+      ctx.strokeStyle = '#93b5d8'; ctx.lineWidth = 2; ctx.strokeRect(W*0.78, H-280, 150, 120);
+      ctx.fillStyle = '#d9e8ff';
+      ctx.fillText('放大读数窗', W*0.82, H-258);
+      ctx.font = 'bold 28px Courier New';
+      ctx.fillStyle = '#7bd2ff';
+      ctx.fillText(ap.lastRead===null ? '--' : `${ap.lastRead}cm`, W*0.80, H-212);
+
+      ctx.fillStyle = '#eaf2ff';
+      ctx.font = '14px -apple-system,Segoe UI';
+      ctx.fillText('固体对象: 待测物体  测量器具: 刻度尺', W*0.06, H-26);
+    }
+
+    function draw17(ctx,W,H){
+      const ap = state.apparatus;
+      const pivotX = W*0.30, pivotY = H-245;
+      const L = 160;
+      const theta = ap.pendulumOn ? ap.angle : 0.2;
+      const bx = pivotX + Math.sin(theta) * L;
+      const by = pivotY + Math.cos(theta) * L;
+
+      ctx.fillStyle = '#7a8592';
+      ctx.fillRect(pivotX-80, pivotY-8, 160, 8);
+      ctx.fillRect(pivotX-4, pivotY-8, 8, 220);
+      ctx.fillStyle = '#dce9ff';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText('摆球装置', pivotX-34, pivotY-20);
+
+      ctx.strokeStyle = '#f2f8ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(pivotX, pivotY); ctx.lineTo(bx, by); ctx.stroke();
+      ctx.fillStyle = '#9ec3ff';
+      ctx.beginPath(); ctx.arc(bx, by, 18, 0, Math.PI*2); ctx.fill();
+
+      const counterText = state.freeMode
+        ? `完整摆动：${ap.cyclesDone}次`
+        : `完整摆动：${ap.cyclesDone} / ${state.vars.cycles}`;
+      ctx.fillStyle = ap.overrun ? '#ff8a65' : 'rgba(8,14,24,.88)';
+      ctx.strokeStyle = ap.overrun ? 'rgba(255,138,101,.58)' : 'rgba(147,181,216,.38)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.roundRect(pivotX-86, pivotY-66, 172, 34, 16);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e6f2ff';
+      ctx.font = 'bold 13px -apple-system,Segoe UI';
+      ctx.fillText(counterText, pivotX-62, pivotY-44);
+      if(ap.stopwatchRunning && ap.waitingReference){
+        ctx.fillStyle = '#ffd54f';
+        ctx.font = '11px -apple-system,Segoe UI';
+        ctx.fillText('等待起始参考点', pivotX-42, pivotY-30);
+      }
+
+      const sx = W*0.45, sy = H-250;
+      ctx.fillStyle = '#16222f';
+      ctx.fillRect(sx, sy, 230, 170);
+      ctx.strokeStyle = '#95b6d9'; ctx.lineWidth = 2; ctx.strokeRect(sx, sy, 230, 170);
+      ctx.fillStyle = '#e6f2ff';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText('秒表', sx+96, sy+20);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(sx+24, sy+34, 182, 56);
+      ctx.fillStyle = '#79c5ff';
+      ctx.font = 'bold 34px Courier New';
+      const disp = Number(ap.elapsed || 0).toFixed(2);
+      ctx.fillText(disp, sx+56, sy+74);
+      ctx.fillStyle = '#dce9ff';
+      ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillText(`本组完整摆动: ${state.vars.cycles}次`, sx+30, sy+112);
+      ctx.fillText(`节奏: ${state.vars.tempo}`, sx+30, sy+132);
+
+      ctx.fillStyle = '#eaf2ff';
+      ctx.font = '14px -apple-system,Segoe UI';
+      ctx.fillText('固体对象: 摆球  测量器具: 秒表', W*0.06, H-26);
+    }
+
+    function draw18(ctx,W,H){
+      const ap = state.apparatus;
+      const y = H-170;
+      const left = W*0.10;
+      const right = W*0.85;
+      ctx.strokeStyle = '#9cb0c8'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(right,y); ctx.stroke();
+
+      for(let i=0;i<=Math.round(state.vars.distance*10);i++){
+        const x = left + (right-left) * (i/(state.vars.distance*10));
+        const long = i%5===0 ? 22 : 12;
+        ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x,y+long); ctx.stroke();
+      }
+
+      const px = left + (right-left) * ap.progress;
+      ctx.fillStyle = '#ffcf6b';
+      ctx.fillRect(px-26, y-28, 52, 24);
+      ctx.fillStyle = '#9eb9d8';
+      ctx.beginPath(); ctx.arc(px-16, y-2, 7, 0, Math.PI*2); ctx.arc(px+16,y-2,7,0,Math.PI*2); ctx.fill();
+
+      ctx.fillStyle = '#dce8fa';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText('小车轨道', left+10, y-36);
+      ctx.fillText(`测程: ${state.vars.distance}m`, left+10, y+42);
+
+      const sx = W*0.63, sy = H-320;
+      ctx.fillStyle = '#162230';
+      ctx.fillRect(sx, sy, 190, 130);
+      ctx.strokeStyle = '#94b7da'; ctx.strokeRect(sx, sy, 190, 130);
+      ctx.fillStyle = '#e6f3ff'; ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillText('秒表/速度计算', sx+48, sy+18);
+      ctx.fillStyle = '#000'; ctx.fillRect(sx+20, sy+28, 150, 42);
+      ctx.fillStyle = '#7fd1ff'; ctx.font = 'bold 24px Courier New';
+      ctx.fillText(ap.lastTime===null ? '--' : `${ap.lastTime}s`, sx+40, sy+56);
+      ctx.fillStyle = '#dce8fa'; ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText(`v=${ap.lastSpeed===null?'--':ap.lastSpeed+' m/s'}`, sx+32, sy+98);
+
+      ctx.fillStyle = '#eaf2ff';
+      ctx.font = '14px -apple-system,Segoe UI';
+      ctx.fillText('固体对象: 小车  测量器具: 刻度尺+秒表', W*0.06, H-26);
+    }
+
+    function draw19(ctx,W,H){
+      const ap = state.apparatus;
+      const sample = state.vars.sample;
+      const force = Number(state.vars.force);
+
+      const sx = W*0.22, sy = H-330;
+      ctx.fillStyle = '#95a0ad';
+      ctx.fillRect(sx-70, sy, 140, 8);
+      ctx.fillRect(sx-4, sy, 8, 230);
+
+      const springLen = 80 + (sample==='spring' ? ap.lastDeform*1.4 : 0);
+      ctx.strokeStyle = '#b8cadb'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      for(let i=0;i<18;i++){
+        const yy = sy+18+i*(springLen/18);
+        const xx = sx + (i%2===0? -14 : 14);
+        if(i===0) ctx.moveTo(sx,yy); else ctx.lineTo(xx,yy);
+      }
+      ctx.stroke();
+      ctx.fillStyle = '#f1d28b';
+      ctx.fillRect(sx-22, sy+20+springLen, 44, 34);
+
+      const bx = W*0.56, by = H-250;
+      const baseH = 78;
+      const comp = sample==='sponge' ? ap.lastDeform*1.1 : 0;
+      ctx.fillStyle = '#7bd9a8';
+      ctx.fillRect(bx, by + comp, 140, baseH - comp);
+      ctx.strokeStyle = '#bce7d1'; ctx.strokeRect(bx, by + comp, 140, baseH - comp);
+      ctx.fillStyle = '#cfdcf0';
+      ctx.fillRect(bx+42, by-56, 56, 50);
+
+      ctx.strokeStyle = '#9ab0c9'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(W*0.82, H-310); ctx.lineTo(W*0.82, H-110); ctx.stroke();
+      for(let i=0;i<=10;i++){
+        const y = H-110 - i*20;
+        ctx.beginPath(); ctx.moveTo(W*0.82, y); ctx.lineTo(W*0.82 + (i%5===0?18:10), y); ctx.stroke();
+      }
+      ctx.fillStyle = '#dce8fa'; ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillText('刻度尺(mm)', W*0.79, H-322);
+      ctx.fillText(`形变量: ${ap.lastDeform} mm`, W*0.73, H-88);
+      ctx.fillText(`施力: ${force}N`, W*0.73, H-68);
+
+      ctx.fillStyle = '#dce8fa';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText(sample==='spring' ? '当前观察样件: 弹簧' : '当前观察样件: 海绵', W*0.06, H-92);
+
+      ctx.fillStyle = '#eaf2ff';
+      ctx.font = '14px -apple-system,Segoe UI';
+      ctx.fillText('固体对象: 弹簧/海绵  测量器具: 刻度尺', W*0.06, H-26);
+    }
+
+    function draw20(ctx,W,H){
+      const ap = state.apparatus;
+      const y = H-170;
+      const left = W*0.08;
+      const right = W*0.90;
+      ctx.strokeStyle = '#9cb1ca'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(right,y); ctx.stroke();
+
+      const px = left + (right-left)*ap.cartX;
+      ctx.fillStyle = '#ffd06b';
+      ctx.fillRect(px-30, y-30, 60, 24);
+      ctx.fillStyle = '#9eb9d8';
+      ctx.beginPath(); ctx.arc(px-18,y-2,7,0,Math.PI*2); ctx.arc(px+18,y-2,7,0,Math.PI*2); ctx.fill();
+
+      const dir = state.vars.dir==='forward' ? 1 : -1;
+      const mag = Number(state.vars.mag);
+      ctx.strokeStyle = '#ffb36d';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(px, y-64);
+      ctx.lineTo(px + dir*(20 + mag*8), y-64);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(px + dir*(20 + mag*8), y-64);
+      ctx.lineTo(px + dir*(12 + mag*8), y-70);
+      ctx.lineTo(px + dir*(12 + mag*8), y-58);
+      ctx.closePath();
+      ctx.fillStyle = '#ffb36d';
+      ctx.fill();
+
+      const gx = W*0.63, gy = H-320, gw = 210, gh = 130;
+      ctx.fillStyle = '#162230'; ctx.fillRect(gx, gy, gw, gh);
+      ctx.strokeStyle = '#95b7d8'; ctx.strokeRect(gx, gy, gw, gh);
+      ctx.fillStyle = '#dce9ff'; ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillText('速度指示表', gx+72, gy+18);
+      ctx.fillStyle = '#0a1119'; ctx.fillRect(gx+18, gy+28, 174, 40);
+      ctx.fillStyle = '#7fd1ff'; ctx.font = 'bold 24px Courier New';
+      ctx.fillText(`${ap.velocity.toFixed(2)} m/s`, gx+34, gy+56);
+      ctx.fillStyle = '#dce9ff'; ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillText(`前速度: ${ap.beforeV.toFixed(2)}m/s`, gx+20, gy+86);
+      ctx.fillText(`后速度: ${ap.afterV.toFixed(2)}m/s`, gx+20, gy+104);
+
+      ctx.fillStyle = '#eaf2ff';
+      ctx.font = '14px -apple-system,Segoe UI';
+      ctx.fillText('固体对象: 小车  测量器具: 速度指示表', W*0.06, H-26);
+    }
+
+    function updateDynamic(dt){
+      const ap = state.apparatus;
+      if(LAB_ID === 14 && ap.shaken) ap.bubblePhase += dt*0.004;
+      if(LAB_ID === 17 && ap.pendulumOn){
+        const periodSec = state.vars.tempo === 'slow' ? 1.2 : state.vars.tempo === 'fast' ? 0.5 : 0.8;
+        const omega = (Math.PI * 2) / (periodSec * 1000);
+        const now = performance.now();
+        const phase = now * omega;
+        ap.angle = Math.sin(phase) * 0.38;
+        if(ap.stopwatchRunning){
+          if(ap.waitingReference && phase >= ap.measureStartPhase){
+            ap.waitingReference = false;
+            ap.stopwatchStart = ap.measureStartMs;
+            ap.elapsed = 0;
+            ap.cyclesDone = 0;
+            ap.overrun = false;
+          }
+          if(!ap.waitingReference && ap.stopwatchStart){
+            ap.elapsed = Math.max(0, (now - ap.stopwatchStart) / 1000);
+            ap.cyclesDone = Math.max(0, Math.floor(((phase - ap.measureStartPhase) / (Math.PI * 2)) + 1e-6));
+            if(!state.freeMode){
+              ap.overrun = ap.cyclesDone > Number(state.vars.cycles);
+            }
+          }
+          updatePills();
+        }
+      }
+      if(LAB_ID === 18 && ap.running){ ap.progress = clamp(ap.progress + dt/1200, 0, 1); }
+      if(LAB_ID === 20 && ap.animating){
+        const dx = ap.targetX - ap.cartX;
+        ap.cartX += dx * Math.min(1, dt*0.01);
+      }
+    }
+
+    function loop(ts){
+      const dt = state.lastTs ? (ts - state.lastTs) : 16;
+      state.lastTs = ts;
+      updateDynamic(dt);
+      drawScene();
+      state.rafId = requestAnimationFrame(loop);
+    }
+
+    function scheduleChart(){
+      if(scheduleChart.t) return;
+      scheduleChart.t = trackTimeout(()=>{
+        scheduleChart.t = null;
+        drawChart();
+      }, 60);
+    }
+
+    function drawChart(){
+      const rect = chart.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(1, Math.floor(rect.width*dpr));
+      const h = Math.max(1, Math.floor(rect.height*dpr));
+      if(chart.width!==w || chart.height!==h){ chart.width = w; chart.height = h; }
+      const ctx = chart.getContext('2d');
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,w,h);
+      ctx.scale(dpr,dpr);
+      const W = rect.width, H = rect.height;
+
+      ctx.fillStyle = 'rgba(6,10,16,.9)';
+      ctx.fillRect(0,0,W,H);
+      const left=38, right=W-10, top=12, bottom=H-24;
+      const pw = right-left, ph = bottom-top;
+
+      ctx.strokeStyle = 'rgba(255,255,255,.12)';
+      for(let i=0;i<=4;i++){
+        const y = top + ph*(i/4);
+        ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(right,y); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(left,bottom); ctx.lineTo(right,bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(left,top); ctx.lineTo(left,bottom); ctx.stroke();
+
+      const ys = state.records.map(r=>Number(r.y));
+      if(!ys.length) return;
+      let maxY = Math.max(...ys);
+      if(maxY <= 0) maxY = 1;
+      maxY *= 1.2;
+
+      const toX = (i)=> left + pw * (i/(Math.max(1, ys.length-1)));
+      const toY = (v)=> bottom - (v/maxY)*ph;
+
+      ctx.strokeStyle = 'rgba(61,220,151,.85)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ys.forEach((v,i)=>{ const x=toX(i), y=toY(v); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
+      ctx.stroke();
+
+      ctx.fillStyle = '#7ed6ff';
+      ys.forEach((v,i)=>{ const x=toX(i), y=toY(v); ctx.beginPath(); ctx.arc(x,y,3.6,0,Math.PI*2); ctx.fill(); });
+
+      ctx.fillStyle = '#dce9ff';
+      ctx.font = '11px -apple-system,Segoe UI';
+      ctx.fillText('记录序号', right-56, bottom+16);
+      ctx.fillText('读数趋势', left+2, top+10);
+    }
+
+    function setDockPos(el, x, y){
+      const stage = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const nx = clamp(x, 4, stage.width - r.width - 4);
+      const ny = clamp(y, 4, stage.height - r.height - 4);
+      el.style.left = `${nx}px`;
+      el.style.top = `${ny}px`;
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    }
+
+    function isNarrowStage(){
+      return stageEl.getBoundingClientRect().width <= 760;
+    }
+
+    function bringToFront(kind){
+      state.zTop += 1;
+      if(kind==='control') controlDock.style.zIndex = String(state.zTop);
+      if(kind==='data') dataDock.style.zIndex = String(state.zTop);
+    }
+
+    function snapDockToEdges(el){
+      const stage = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const x = r.left - stage.left;
+      const y = r.top - stage.top;
+      const leftGap = x;
+      const rightGap = stage.width - (x + r.width);
+      const topGap = y;
+      const bottomGap = stage.height - (y + r.height);
+      const m = 14;
+      let nx = x, ny = y;
+      if(leftGap < m) nx = 4;
+      else if(rightGap < m) nx = stage.width - r.width - 4;
+      if(topGap < m) ny = 4;
+      else if(bottomGap < m) ny = stage.height - r.height - 4;
+      setDockPos(el, nx, ny);
+    }
+
+    function makeDockDraggable(el, head, kind){
+      let dragging = false;
+      let offX = 0, offY = 0;
+      head.addEventListener('pointerdown', (e)=>{
+        if(e.target.closest('button')) return;
+        dragging = true;
+        el.classList.add('dragging');
+        bringToFront(kind);
+        const r = el.getBoundingClientRect();
+        offX = e.clientX - r.left;
+        offY = e.clientY - r.top;
+        state.dockMoved[kind] = true;
+        head.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      head.addEventListener('pointermove', (e)=>{
+        if(!dragging) return;
+        const stage = stageEl.getBoundingClientRect();
+        setDockPos(el, e.clientX - stage.left - offX, e.clientY - stage.top - offY);
+        e.preventDefault();
+      });
+      const end = ()=>{
+        if(!dragging) return;
+        dragging = false;
+        el.classList.remove('dragging');
+        snapDockToEdges(el);
+      };
+      head.addEventListener('pointerup', end);
+      head.addEventListener('pointercancel', end);
+    }
+
+    function setControlCollapsed(on){
+      state.controlCollapsed = !!on;
+      controlBody.classList.toggle('collapsed', state.controlCollapsed);
+      controlToggleBtn.textContent = state.controlCollapsed ? '展开' : '收起';
+      bringToFront('control');
+      if(!state.controlCollapsed) initDockPositions(true);
+    }
+
+    function setDataCollapsed(on){
+      state.dataCollapsed = !!on;
+      dataBody.classList.toggle('collapsed', state.dataCollapsed);
+      dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+      bringToFront('data');
+      if(!state.dataCollapsed){
+        clearBadge();
+        scheduleChart();
+      }
+      initDockPositions(true);
+    }
+
+    function initDockPositions(force=false){
+      const stage = stageEl.getBoundingClientRect();
+      const cr = controlDock.getBoundingClientRect();
+      const dr = dataDock.getBoundingClientRect();
+      const pad = 10;
+      if(force || !state.dockMoved.control){
+        setDockPos(controlDock, stage.width - cr.width - pad, pad);
+      }
+      if(force || !state.dockMoved.data){
+        setDockPos(dataDock, stage.width - dr.width - pad, Math.min(pad + cr.height + 12, stage.height - dr.height - pad));
+      }
+    }
+
+    function clearData(showTip=true){
+      state.records = [];
+      state.analysisOk = false;
+      state.unseenRecordCount = 0;
+      analysisText.classList.remove('ok');
+      analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
+      updateBadge();
+      renderRecords();
+      scheduleChart();
+      if(showTip) showToast('数据已清空');
+    }
+
+    function resetFlow(showTip=true){
+      clearAllTimers();
+      state.completed = false;
+      state.successCooldown = false;
+      state.stepWarnIdx = -1;
+      doneMaskEl.style.display = 'none';
+      setDemoCursorVisible(false);
+      state.apparatus = makeInitialApparatus();
+      clearData(false);
+      setStepUI(0);
+      setStatus(state.freeMode ? '自由探索' : '待开始');
+      updatePills();
+      if(showTip) showToast('实验已重置');
+    }
+
+    function requestStopAutoDemo(){
+      if(!state.autoPlaying) return;
+      state.autoPlaying = false;
+      state.autoRunId += 1;
+      autoDemoBtn.disabled = true;
+      autoDemoBtn.textContent = '正在退出...';
+      setDemoCursorVisible(false);
+      setStatus('已退出自动演示');
+      updateModeHud();
+    }
+
+    async function autoDemo(){
+      if(state.autoPlaying || state.freeMode) return;
+      const runId = ++state.autoRunId;
+      let failed = false;
+      state.autoPlaying = true;
+      updateModeHud();
+      updateAutoDemoBtn();
+      recordBtn.disabled = true;
+      checkBtn.disabled = true;
+      analyzeBtn.disabled = true;
+      resetBtn.disabled = true;
+      freeBtn.disabled = true;
+
+      const ensure = ()=>{ if(!state.autoPlaying || runId !== state.autoRunId) throw new Error('auto-cancelled'); };
+      const wait = async (ms)=>{ await sleep(ms); ensure(); };
+      const clickEl = async (el, ms=220, fire=true)=>{
+        const {x,y} = centerOf(el);
+        await moveDemoCursorTo(x, y, 240);
+        await pulseDemoCursor();
+        if(fire) el.click();
+        await wait(ms);
+      };
+      const doA = async (id, ms=950, btnIndex=null)=>{
+        if(typeof btnIndex === 'number' && actionBtns.children[btnIndex]){
+          await clickEl(actionBtns.children[btnIndex], 140, false);
+        }
+        if(!performAction(id, false)) throw new Error(`AUTO_ACTION_FAILED:${id}`);
+        updatePills();
+        await wait(ms);
+      };
+      const doR = async (ms=320)=>{
+        const beforeLen = state.records.length;
+        await clickEl(recordBtn, 120, false);
+        if(!addRecord()) throw new Error('AUTO_RECORD_FAILED');
+        if(state.records.length <= beforeLen) throw new Error('AUTO_RECORD_NOT_PERSISTED');
+        await wait(ms);
+      };
+      const waitForCycles = async (target, timeoutMs=18000)=>{
+        const start = performance.now();
+        while(true){
+          ensure();
+          if(state.apparatus.cyclesDone >= target) return;
+          if(performance.now() - start > timeoutMs) throw new Error(`AUTO_CYCLE_TIMEOUT:${target}`);
+          await sleep(40);
+        }
+      };
+      const stopAtCycles = async (target, btnIndex, timeoutMs=18000)=>{
+        const btn = actionBtns.children[btnIndex];
+        if(!btn) throw new Error('AUTO_STOP_BTN_MISSING');
+        const {x,y} = centerOf(btn);
+        await moveDemoCursorTo(x, y, 160);
+        const start = performance.now();
+        while(true){
+          ensure();
+          if(state.apparatus.cyclesDone >= target) break;
+          if(performance.now() - start > timeoutMs) throw new Error(`AUTO_STOP_TIMEOUT:${target}`);
+          await sleep(16);
+        }
+        await pulseDemoCursor(110);
+        if(!performAction('stopWatch', false)) throw new Error('AUTO_STOP_ACTION_FAILED');
+        updatePills();
+        await wait(150);
+      };
+
+      try{
+        resetFlow(false);
+        setFreeMode(false);
+        setControlCollapsed(false);
+        setDataCollapsed(true);
+        initDockPositions(true);
+        setDemoCursorVisible(true);
+        updateModeHud();
+        updateAutoDemoBtn();
+
+        setStepUI(0);
+        setStatus('自动演示：启动摆球');
+        showToast('步骤1：启动摆球并观察稳定摆动');
+        await wait(420);
+        await doA('startPendulum', 900, 0);
+        await clickEl(checkBtn, 160, false);
+        if(!tryPassStep(false, true)) throw new Error('AUTO_STEP1_NOT_PASSED');
+
+        setStepUI(1);
+        setStatus('自动演示：10次计时');
+        showToast('步骤2：完成一次启停计时并记录');
+        await wait(360);
+        setVar('tempo', 'fast');
+        setVar('cycles', 10);
+        await doA('startWatch', 220, 1);
+        await stopAtCycles(10, 2, 9000);
+        await doR();
+        await clickEl(checkBtn, 160, false);
+        if(!tryPassStep(false, true)) throw new Error('AUTO_STEP2_NOT_PASSED');
+
+        setStepUI(2);
+        setStatus('自动演示：20次计时');
+        showToast('步骤3：改为20次完整摆动后再次计时');
+        await wait(360);
+        setVar('cycles', 20);
+        await doA('startWatch', 220, 1);
+        await stopAtCycles(20, 2, 15000);
+        await doR();
+        await clickEl(checkBtn, 160, false);
+        if(!tryPassStep(false, true)) throw new Error('AUTO_STEP3_NOT_PASSED');
+
+        setStepUI(3);
+        setStatus('自动演示：分析结论');
+        showToast('步骤4：分析总时长与完整摆动次数关系');
+        await wait(360);
+        await clickEl(analyzeBtn, 160, false);
+        if(!analyzeConclusion(false)) throw new Error('AUTO_ANALYSIS_NOT_READY');
+        await wait(260);
+        await clickEl(checkBtn, 160, false);
+        if(!tryPassStep(false, true)) throw new Error('AUTO_STEP4_NOT_PASSED');
+      }catch(err){
+        if(err && err.message !== 'auto-cancelled'){
+          failed = true;
+          console.error('[autoDemo] failed:', err);
+          setStatus('自动演示失败');
+          showToast('自动演示失败，请重试');
+        }
+      }finally{
+        const cancelled = runId !== state.autoRunId;
+        state.autoPlaying = false;
+        recordBtn.disabled = false;
+        checkBtn.disabled = false;
+        analyzeBtn.disabled = false;
+        resetBtn.disabled = false;
+        freeBtn.disabled = false;
+        autoDemoBtn.disabled = false;
+        setDemoCursorVisible(false);
+        updateModeHud();
+        updateAutoDemoBtn();
+        if(!cancelled){
+          setStatus(state.completed ? '挑战完成' : (failed ? '自动演示失败' : (state.freeMode ? '自由探索' : '待开始')));
+        }
+      }
+    }
+
+    function bindEvents(){
+      controlToggleBtn.addEventListener('click', ()=>setControlCollapsed(!state.controlCollapsed));
+      dataToggleBtn.addEventListener('click', ()=>setDataCollapsed(!state.dataCollapsed));
+
+      recordBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) addRecord(); });
+      checkBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) tryPassStep(true); });
+      analyzeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) analyzeConclusion(true); });
+      resetBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) resetFlow(true); });
+      autoDemoBtn.addEventListener('click', ()=>{ if(state.autoPlaying) requestStopAutoDemo(); else autoDemo(); });
+      freeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setFreeMode(!state.freeMode); });
+      okBtn.addEventListener('click', ()=>{ doneMaskEl.style.display = 'none'; });
+
+      const onResize = (()=>{
+        let t = 0;
+        return ()=>{
+          clearTimeout(t);
+          t = setTimeout(()=>{
+            if(!state.dockMoved.control || !state.dockMoved.data) initDockPositions(false);
+            snapDockToEdges(controlDock);
+            snapDockToEdges(dataDock);
+            scheduleChart();
+          }, 130);
+        };
+      })();
+
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
+      document.addEventListener('gesturestart', e=>e.preventDefault(), {passive:false});
+
+      controlDock.addEventListener('pointerdown', ()=>bringToFront('control'));
+      dataDock.addEventListener('pointerdown', ()=>bringToFront('data'));
+    }
+
+    function init(){
+      initUIStatic();
+      initTaskUI();
+      state.apparatus = makeInitialApparatus();
+      initControls();
+      initActionButtons();
+      updatePills();
+      renderRecords();
+
+      makeDockDraggable(controlDock, controlHead, 'control');
+      makeDockDraggable(dataDock, dataHead, 'data');
+      bindEvents();
+
+      setControlCollapsed(true);
+      setDataCollapsed(true);
+      initDockPositions(true);
+      updateModeHud();
+      updateAutoDemoBtn();
+      updateBadge();
+      setStatus('待开始');
+
+      state.lastTs = 0;
+      if(state.rafId) cancelAnimationFrame(state.rafId);
+      state.rafId = requestAnimationFrame(loop);
+      scheduleChart();
+    }
+
+    init();
+  </script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

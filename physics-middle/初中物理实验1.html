@@ -1,0 +1,2151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验1｜用常见温度计测量温度（交互版）</title>
+  <!-- 实验目录依据：初中物理实验教学基本目录：1.用常见温度计测量温度（学生必做） [oai_citation:0‡中小学实验教学目录.pdf](file-service://file-J5GicvEkQbn22LMjq72bxo) -->
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:rgba(15,15,15,0.55);
+      --card:rgba(255,255,255,0.06);
+      --line:rgba(255,255,255,0.12);
+      --fg:#eaf2ff;
+      --muted:rgba(234,242,255,0.78);
+      --warn:#ffb74d;
+      --good:#3ddc97;
+      --bad:#ff6b6b;
+      --shadow:0 18px 48px rgba(0,0,0,0.55);
+      --zPanel: 9;
+      --zResults: 9;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0; padding:10px;
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(61,220,151,0.10), transparent 55%),
+                  radial-gradient(1000px 700px at 90% 30%, rgba(155,211,255,0.12), transparent 55%),
+                  var(--bg);
+      color:var(--fg);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      display:flex; flex-direction:column; align-items:center;
+    }
+
+    /* ===== 彩条（完全复用框架风格） ===== */
+    #spectrum{
+      position: relative; width:100%; max-width:980px; height:40px;
+      border-radius:12px; overflow:hidden;
+      box-shadow:0 0 18px rgba(255,255,255,0.14);
+      background:#000; margin:0 0 12px; flex-shrink:0;
+      border:1px solid rgba(255,255,255,0.10);
+    }
+    #spectrum::before{
+      content:""; position:absolute; inset:0; border-radius:inherit;
+      background: linear-gradient(90deg,
+        #00bcd4, #3f51b5, #7c4dff, #ff3d00, #ffca28, #2ee59d, #00bcd4,
+        #3f51b5, #7c4dff, #ff3d00, #ffca28, #2ee59d, #00bcd4
+      );
+      background-size:200% 100%;
+      animation: flowRainbow 6.5s linear infinite;
+      filter:saturate(1.15);
+      opacity:.95;
+    }
+    @keyframes flowRainbow{ 0%{ background-position:0% 0; } 100%{ background-position:-100% 0; } }
+
+    /* ===== 步骤卡（完全复用框架风格） ===== */
+    .task-card{
+      width:100%; max-width:980px;
+      background:var(--card);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:14px;
+      padding:12px 14px;
+      backdrop-filter: blur(8px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition: opacity .2s, filter .2s;
+    }
+    .task-step{
+      background:rgba(255,255,255,0.15);
+      border-radius:10px;
+      padding:6px 10px;
+      font-weight:800;
+      white-space:nowrap;
+      letter-spacing:.2px;
+    }
+    .task-text{ line-height:1.55; }
+    .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+    .progress-dots{ display:flex; gap:6px; align-items:center; }
+    .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.12); }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--good); outline-color: rgba(61,220,151,0.45); }
+    .dot.warn{
+      background: var(--bad);
+      outline-color: rgba(255,107,107,0.48);
+      box-shadow: 0 0 10px rgba(255,107,107,0.45);
+    }
+
+    /* ===== 舞台 ===== */
+    #stage{
+      width:100%; max-width:980px;
+      height:64vh; max-height:610px; min-height:440px;
+      position:relative; overflow:hidden;
+      border-radius:14px;
+      background:
+        radial-gradient(circle at 18% 22%, rgba(255,255,255,0.06), transparent 45%),
+        radial-gradient(circle at 78% 55%, rgba(0,255,255,0.05), transparent 50%),
+        linear-gradient(180deg, rgba(10,14,22,1), rgba(7,10,16,1));
+      margin-top:10px;
+      box-shadow:0 12px 30px rgba(0,0,0,0.42);
+      border:1px solid rgba(255,255,255,0.10);
+      touch-action:none;
+    }
+    .hud{
+      position:absolute; left:56px; top:10px; z-index:31;
+      display:flex; gap:8px; align-items:center;
+      pointer-events:none;
+    }
+    .hud .tag{
+      font-size:11px;
+      font-weight:900;
+      padding:4px 9px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(0,0,0,0.34);
+      color:#eaf2ff;
+      letter-spacing:.2px;
+    }
+    .hud .tag.mode-auto{
+      color:#071328;
+      background: rgba(255,183,77,0.95);
+      border-color: rgba(255,255,255,0.24);
+    }
+
+    /* 指引线（视觉提示，可关） */
+    #guideSvg{ position:absolute; inset:0; z-index:3; pointer-events:none; opacity:.9; }
+    .guideOff #guideSvg{ opacity:0; }
+
+    /* ？说明按钮 */
+    .helpBtn{
+      position:absolute; left:10px; top:10px; z-index:30;
+      width:38px; height:38px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.35);
+      color:var(--fg);
+      font-weight:900;
+      cursor:pointer;
+      backdrop-filter: blur(8px);
+      display:flex; align-items:center; justify-content:center;
+      transition:.15s;
+      user-select:none;
+    }
+    .helpBtn:hover{ background: rgba(255,255,255,0.10); }
+    .helpBtn:active{ transform: scale(.98); }
+    .helpMask{
+      position:absolute; inset:0; z-index:40;
+      background: rgba(0,0,0,0.55);
+      display:none;
+      align-items:flex-start;
+      justify-content:flex-start;
+      padding:10px;
+    }
+    .helpMask.show{ display:flex; }
+    .helpCard{
+      margin-top:54px;
+      width:min(560px, 92%);
+      background: rgba(15,15,15,0.84);
+      border:1px solid rgba(255,255,255,0.14);
+      border-radius:14px;
+      padding:12px 12px;
+      backdrop-filter: blur(10px);
+      color:#dbe7ff;
+      line-height:1.62;
+      font-size:12.8px;
+      box-shadow:0 16px 50px rgba(0,0,0,0.48);
+    }
+    .helpCard b{ color:#fff; }
+    .helpCard .mini{ margin-top:8px; font-size:12px; opacity:.86; }
+
+    /* ===== 交互对象：三只“烧杯” ===== */
+    .bench{
+      position:absolute; left:0; right:0; top:72px; height:250px;
+      pointer-events:none;
+    }
+    .beaker{
+      position:absolute; top:26px;
+      width:220px; height:200px;
+      border-radius:18px 18px 26px 26px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.04);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.35);
+      overflow:hidden;
+      pointer-events:auto;
+    }
+    .beaker::after{
+      content:"";
+      position:absolute; inset:0;
+      background: linear-gradient(120deg, rgba(255,255,255,0.10), transparent 35%, rgba(255,255,255,0.06));
+      opacity:.65;
+      pointer-events:none;
+    }
+    .beaker .label{
+      position:absolute; left:10px; top:10px;
+      font-size:12px; font-weight:800; letter-spacing:.2px;
+      color:#cfe2ff;
+      background: rgba(0,0,0,0.34);
+      border:1px solid rgba(255,255,255,0.12);
+      padding:4px 10px;
+      border-radius:999px;
+      backdrop-filter: blur(8px);
+    }
+    .beaker .tempTag{
+      position:absolute; right:10px; top:10px;
+      font-size:12px; font-weight:800;
+      color:#071328;
+      padding:4px 10px;
+      border-radius:999px;
+      background: rgba(255,183,77,0.95);
+      border:1px solid rgba(255,255,255,0.20);
+      font-variant-numeric: tabular-nums;
+    }
+    .liquid{
+      position:absolute; left:10px; right:10px; bottom:10px;
+      height:120px;
+      border-radius:14px 14px 18px 18px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(0,188,212,0.20);
+      overflow:hidden;
+    }
+    .liquid .wave{
+      position:absolute; left:-20%; right:-20%; top:-18px; height:38px;
+      border-radius:999px;
+      background: rgba(255,255,255,0.12);
+      filter: blur(0.2px);
+      animation: wave 2.8s ease-in-out infinite;
+      opacity:.85;
+    }
+    @keyframes wave{
+      0%{ transform:translateX(-10px); }
+      50%{ transform:translateX(10px); }
+      100%{ transform:translateX(-10px); }
+    }
+    .beaker .hint{
+      position:absolute; left:10px; bottom:10px;
+      font-size:12px; color:#ffd54f; opacity:.92;
+      background: rgba(0,0,0,0.34);
+      border:1px solid rgba(255,255,255,0.12);
+      padding:4px 10px;
+      border-radius:999px;
+      backdrop-filter: blur(8px);
+      pointer-events:none;
+    }
+    /* 三杯位置 */
+    #bCold{ left:6%; }
+    #bRoom{ left:calc(50% - 110px); }
+    #bHot { right:6%; }
+
+    /* 液体色随温度变化（JS会写入变量） */
+    .beaker[data-kind="cold"] .tempTag{ background: rgba(155,211,255,0.95); color:#071328; }
+    .beaker[data-kind="room"] .tempTag{ background: rgba(61,220,151,0.95); color:#071328; }
+    .beaker[data-kind="hot"]  .tempTag{ background: rgba(255,107,107,0.95); color:#071328; }
+
+    /* ===== 温度计（可拖拽） ===== */
+    .thermo{
+      position:absolute;
+      width:68px; height:300px;
+      left:calc(50% - 34px); top:310px;
+      border-radius:16px;
+      pointer-events:auto;
+      user-select:none;
+      z-index:8;
+      transition: transform .12s ease;
+      touch-action:none;
+    }
+    .thermo.dragging{ transform: scale(1.01); filter: drop-shadow(0 20px 40px rgba(0,0,0,0.55)); transition:none; }
+    .thermo .glass{
+      position:absolute; left:18px; top:10px; width:32px; height:238px;
+      border-radius:18px;
+      background: rgba(255,255,255,0.10);
+      border:1px solid rgba(255,255,255,0.18);
+      box-shadow: inset 0 0 18px rgba(255,255,255,0.05);
+      overflow:hidden;
+    }
+    .thermo .cap{
+      position:absolute; left:14px; top:0px; width:40px; height:18px;
+      border-radius:10px;
+      background: rgba(0,0,0,0.35);
+      border:1px solid rgba(255,255,255,0.16);
+      backdrop-filter: blur(8px);
+    }
+    .thermo .stem{
+      position:absolute; left:32px; top:18px; width:4px; height:216px;
+      border-radius:999px;
+      background: rgba(0,0,0,0.22);
+      border:1px solid rgba(255,255,255,0.14);
+    }
+    .thermo .mercury{
+      position:absolute; left:33px; bottom:54px;
+      width:2px;
+      height:0px; /* JS控制 */
+      border-radius:999px;
+      background: rgba(255,80,80,0.95);
+      box-shadow: 0 0 14px rgba(255,80,80,0.25);
+    }
+    .thermo .bulb{
+      position:absolute; left:22px; bottom:30px;
+      width:24px; height:24px;
+      border-radius:50%;
+      background: rgba(255,80,80,0.92);
+      border:1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 0 18px rgba(255,80,80,0.25);
+    }
+    .thermo .scale{
+      position:absolute; left:6px; top:18px; width:58px; height:230px;
+      border-radius:14px;
+      pointer-events:none;
+      opacity:.92;
+    }
+    .tick{
+      position:absolute; left:0; right:0;
+      height:1px; background: rgba(255,255,255,0.10);
+    }
+    .tick.major{ background: rgba(255,255,255,0.22); }
+    .tickLabel{
+      position:absolute; left:2px;
+      transform: translateY(-50%);
+      font-size:10px; color:#cfe2ff;
+      opacity:.85;
+      font-variant-numeric: tabular-nums;
+    }
+    .readout{
+      position:absolute; right:-6px; top:8px;
+      transform: translateX(100%);
+      display:flex; flex-direction:column; gap:6px;
+      align-items:flex-start;
+      pointer-events:none;
+    }
+    .chip{
+      font-size:12px; font-weight:900;
+      padding:4px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.30);
+      backdrop-filter: blur(8px);
+      color:var(--fg);
+      white-space:nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .chip.small{ font-size:11px; opacity:.86; font-weight:800; }
+
+    /* ===== 抽屉面板（完全复用框架风格：可拖动+折叠） ===== */
+    .dock{ position:absolute; pointer-events:auto; user-select:none; transition: box-shadow .12s ease, transform .12s ease; }
+    .dock.dragging{ box-shadow: var(--shadow); transform: scale(1.01); transition:none; }
+
+    .panelDock{ z-index: var(--zPanel); width:min(350px, 70%); }
+    .panelHead{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      background: var(--panel);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px 10px;
+      backdrop-filter: blur(8px);
+      cursor: grab;
+      touch-action:none;
+    }
+    .panelHead:active{ cursor: grabbing; }
+    .panelHead .title{
+      font-weight:900; font-size:13px; color:#9bd3ff; letter-spacing:.2px;
+      display:flex; align-items:center; gap:8px;
+    }
+    .iconBtn{
+      border:none; cursor:pointer;
+      padding:8px 10px;
+      border-radius:12px;
+      background: rgba(255,255,255,0.10);
+      color:#fff;
+      font-weight:900;
+      transition:.15s;
+      white-space:nowrap;
+    }
+    .iconBtn:hover{ background: rgba(255,255,255,0.16); }
+    .iconBtn:active{ transform: scale(.98); }
+
+    .panelBody{
+      margin-top:8px;
+      background: var(--panel);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px;
+      backdrop-filter: blur(8px);
+      transform-origin: top right;
+      transition: max-height .22s ease, opacity .22s ease, transform .22s ease, padding .22s ease;
+      overflow:hidden;
+      max-height: 520px;
+      user-select:text;
+    }
+    .panelBody.collapsed{
+      max-height:0;
+      padding-top:0; padding-bottom:0;
+      opacity:0;
+      transform: translateY(-6px) scale(0.98);
+      border-color: transparent;
+    }
+    .row{
+      display:grid; grid-template-columns: 96px 1fr 70px; gap:8px; align-items:center;
+      margin:8px 0;
+    }
+    .row label{ font-size:12px; color:#cfe2ff; opacity:.92; font-weight:800; }
+    input[type="range"]{ width:100%; }
+    .val{
+      text-align:right;
+      font-variant-numeric: tabular-nums;
+      font-size:12px; color:#eaf2ff;
+      opacity:.95; white-space:nowrap;
+    }
+    .miniBtns{
+      display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
+    }
+    .miniBtns button{
+      padding:9px 12px;
+      background:#3a3d45;
+      color:#fff; border:none; border-radius:12px;
+      cursor:pointer; transition:.15s;
+      user-select:none;
+      flex: 1 1 140px;
+      white-space:nowrap;
+      font-weight:900;
+    }
+    .miniBtns button:hover{ background:#4b4f59; }
+    .miniBtns button:active{ transform:scale(.98); }
+    .miniBtns button.primary{ background:#2e7d32; }
+    .miniBtns button.primary:hover{ background:#338a37; }
+    .miniBtns button.ghost{ background:transparent; border:1px solid rgba(255,255,255,0.25); }
+    .miniBtns button:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+    /* 结果抽屉 */
+    .resultsDock{ z-index: var(--zResults); left:12px; right:12px; }
+    .resultsHead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      background: rgba(15,15,15,0.50);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:14px;
+      padding:10px 10px;
+      backdrop-filter: blur(8px);
+      cursor: grab;
+      touch-action:none;
+    }
+    .resultsHead:active{ cursor: grabbing; }
+    .tabs{ display:flex; gap:6px; align-items:center; }
+    .tab{
+      padding:7px 10px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      font-size:12px;
+      cursor:pointer;
+      color:#eaf2ff;
+      user-select:none;
+      transition:.15s;
+      white-space:nowrap;
+      font-weight:900;
+    }
+    .tab.active{ border-color: rgba(61,220,151,0.35); background: rgba(61,220,151,0.14); }
+
+    .resultsBody{
+      margin-top:8px;
+      background: rgba(15,15,15,0.50);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:14px;
+      padding:10px 12px;
+      backdrop-filter: blur(8px);
+      overflow:hidden;
+      transition: max-height .18s ease, opacity .18s ease, transform .18s ease, padding .18s ease;
+      transform-origin: bottom;
+      max-height: 240px;
+      user-select:text;
+    }
+    .resultsBody.scroll{ overflow:auto; -webkit-overflow-scrolling: touch; }
+    .resultsBody.collapsed{
+      max-height:0 !important;
+      padding-top:0; padding-bottom:0;
+      opacity:0;
+      transform: translateY(8px) scale(0.99);
+      border-color: transparent;
+    }
+    .notice-badge{
+      min-width:18px; height:18px;
+      display:inline-flex; align-items:center; justify-content:center;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:900;
+      color:#fff;
+      background: rgba(255,107,107,0.95);
+      border:1px solid rgba(255,255,255,0.24);
+      padding:0 6px;
+      line-height:1;
+      opacity:0;
+      transform: scale(0.8);
+      transition: opacity .14s ease, transform .14s ease;
+    }
+    .notice-badge.show{
+      opacity:1;
+      transform: scale(1);
+      animation: badgeBlink .9s ease-in-out infinite;
+    }
+    @keyframes badgeBlink{
+      0%,100%{ box-shadow:0 0 0 rgba(255,107,107,0.00); }
+      50%{ box-shadow:0 0 16px rgba(255,107,107,0.58); }
+    }
+
+    .grid2{
+      display:grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap:10px;
+    }
+    .grid2 h4{ margin:0 0 6px; font-size:12.5px; color:#9bd3ff; }
+    .pill{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:4px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.35);
+      color:#eaf2ff; font-size:12px;
+      margin-right:6px; margin-bottom:6px;
+      font-variant-numeric: tabular-nums;
+      white-space:nowrap;
+    }
+    .pill .k{ opacity:.75; }
+    .table{
+      width:100%; border-collapse:collapse; font-size:12px; color:#eaf2ff;
+      overflow:hidden; border-radius:12px;
+    }
+    .table th,.table td{
+      padding:6px 8px;
+      border-bottom:1px solid rgba(255,255,255,0.08);
+      text-align:center;
+      font-variant-numeric: tabular-nums;
+      white-space:nowrap;
+    }
+    .table th{ color:#cfe2ff; opacity:.92; font-weight:900; }
+    .table tr:last-child td{ border-bottom:none; }
+
+    /* 底部三按钮（完全复用框架风格：步骤重置 / 自动演示 / 自由模式） */
+    .toolbar{
+      display:flex; gap:10px; flex-wrap:wrap;
+      width:100%; max-width:980px;
+      margin-top:12px;
+      justify-content:flex-start;
+    }
+    button.main{
+      padding:10px 16px;
+      background:#444;
+      color:#fff;
+      border:none; border-radius:10px;
+      cursor:pointer;
+      transition: background .25s, transform .05s, opacity .2s;
+      user-select:none;
+      font-weight:900;
+    }
+    button.main:hover{ background:#5a5a5a; }
+    button.main:active{ transform: scale(.98); }
+    button.main:disabled{ opacity:.5; cursor:not-allowed; }
+
+    /* 完成动画 */
+    .checkmark{
+      position:absolute; z-index:60; left:50%; top:22%;
+      transform: translate(-50%,-50%) scale(0.6);
+      width:120px; height:120px; border-radius:50%;
+      background: rgba(61,220,151,0.15);
+      border: 3px solid var(--good);
+      display:none; align-items:center; justify-content:center;
+      box-shadow: 0 0 40px rgba(61,220,151,.35), inset 0 0 18px rgba(61,220,151,.18);
+      animation: pop .55s ease-out;
+      pointer-events:none;
+    }
+    .checkmark.active{ display:flex; }
+    .checkmark > div{
+      width:60px; height:30px;
+      border-left: 8px solid var(--good);
+      border-bottom: 8px solid var(--good);
+      transform: rotate(-45deg) translateY(-6px);
+    }
+    @keyframes pop{
+      0%{ transform:translate(-50%,-50%) scale(.4); opacity:.2; }
+      60%{ transform:translate(-50%,-50%) scale(1.08); opacity:1; }
+      100%{ transform:translate(-50%,-50%) scale(1); }
+    }
+
+    /* Toast */
+    .toast{
+      position: fixed; left:50%; bottom:24px;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.82);
+      color:#fff; padding:10px 14px;
+      border-radius:12px;
+      font-size:14px; opacity:0;
+      pointer-events:none;
+      transition: opacity .25s, transform .25s;
+      z-index:200;
+      box-shadow:0 8px 18px rgba(0,0,0,.35);
+      font-weight:800;
+    }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+    /* 完成弹窗 */
+    .modal-mask{
+      position:fixed; inset:0;
+      background: rgba(0,0,0,0.5);
+      display:none; align-items:center; justify-content:center;
+      z-index:300;
+    }
+    .modal{
+      width:min(92vw, 420px);
+      background:#0f1420;
+      color:#fff;
+      border:1px solid rgba(255,255,255,0.15);
+      border-radius:16px;
+      padding:18px 16px;
+      text-align:center;
+      box-shadow:0 12px 30px rgba(0,0,0,.5);
+    }
+    .modal h3{ margin:8px 0 6px; font-size:20px; }
+    .modal p{ color:#cfd8dc; margin-top:0; line-height:1.6; }
+    .modal .ok{
+      margin-top: 12px;
+      background: var(--good);
+      color:#081a12;
+      font-weight:900;
+      border:none;
+      border-radius:12px;
+      padding:10px 18px;
+      cursor:pointer;
+    }
+
+    /* 说明框（完全按要求） */
+    .explanation{
+      width:100%; max-width:980px;
+      margin:14px 0 20px;
+      line-height:1.7;
+      font-size:0.95em;
+      color:var(--fg);
+      background: rgba(255,255,255,0.04);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:14px;
+      padding:14px 16px;
+      backdrop-filter: blur(8px);
+    }
+    .explanation h2{ margin:.2em 0 .5em; color:#9bd3ff; font-size:1.15em; }
+    .explanation ul{ margin:.2em 0 .2em 1.1em; }
+    .explanation li{ margin:7px 0; }
+
+    @media (max-width:760px){
+      .grid2{ grid-template-columns:1fr; }
+      .beaker{ width:190px; }
+      #bCold{ left:4%; }
+      #bHot{ right:4%; }
+      #bRoom{ left:calc(50% - 95px); }
+      .thermo{ top:320px; }
+      .panelDock{ width:min(350px, 82%); }
+    }
+  
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+
+<body>
+  <div id="spectrum"></div>
+
+  <!-- 步骤卡 -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText">把<b>温度计</b>拖到任意一个烧杯里，让“玻璃泡”浸入液体。</div>
+      <div class="task-hint" id="taskHint">提示：不要让温度计碰到杯壁/杯底；看示数先等它稳定。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+      <span class="dot" id="dot4"></span>
+    </div>
+  </div>
+
+  <div id="stage">
+    <!-- 指引线 -->
+    <svg id="guideSvg" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="gLine" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="rgba(244,246,251,0.10)"></stop>
+          <stop offset="1" stop-color="rgba(244,246,251,0.42)"></stop>
+        </linearGradient>
+      </defs>
+      <path id="guidePath" d="M0,0 C0,0 0,0 0,0" fill="none" stroke="url(#gLine)" stroke-width="2"/>
+    </svg>
+    <div class="hud" id="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+
+    
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+<!-- 说明按钮 -->
+    <button class="helpBtn" id="helpBtn" title="实验说明">？</button>
+    <div class="helpMask" id="helpMask">
+      <div class="helpCard">
+        <div><b>正确读数 3 要点：</b></div>
+        <div>① <b>玻璃泡完全浸入</b>被测液体；② <b>不碰杯壁/杯底</b>；③ <b>视线与液柱顶端齐平</b>再读数。</div>
+        <div style="margin-top:8px;"><b>本交互里你要做的：</b>把温度计放进不同烧杯 → 等示数稳定 → 点击<b>记录一次</b> → 做比较。</div>
+        <div class="mini">小技巧：温度变化快慢取决于“温度差”和“温度计反应时间”（我们用“稳定速度”滑条模拟）。</div>
+      </div>
+    </div>
+
+    <!-- 三个烧杯 -->
+    <div class="bench" id="bench">
+      <div class="beaker" id="bCold" data-kind="cold">
+        <div class="label">冷水杯</div>
+        <div class="tempTag" id="tagCold">10.0℃</div>
+        <div class="liquid" id="liqCold">
+          <div class="wave"></div>
+        </div>
+        <div class="hint">拖入测温</div>
+      </div>
+
+      <div class="beaker" id="bRoom" data-kind="room">
+        <div class="label">室温杯</div>
+        <div class="tempTag" id="tagRoom">25.0℃</div>
+        <div class="liquid" id="liqRoom">
+          <div class="wave"></div>
+        </div>
+        <div class="hint">拖入测温</div>
+      </div>
+
+      <div class="beaker" id="bHot" data-kind="hot">
+        <div class="label">热水杯</div>
+        <div class="tempTag" id="tagHot">60.0℃</div>
+        <div class="liquid" id="liqHot">
+          <div class="wave"></div>
+        </div>
+        <div class="hint">拖入测温</div>
+      </div>
+    </div>
+
+    <!-- 温度计（可拖拽） -->
+    <div class="thermo" id="thermo" aria-label="温度计">
+      <div class="cap"></div>
+      <div class="glass">
+        <div class="stem"></div>
+        <div class="mercury" id="mercury"></div>
+      </div>
+      <div class="bulb"></div>
+      <div class="scale" id="scale"></div>
+      <div class="readout">
+        <div class="chip" id="readChip">读数：25.0℃</div>
+        <div class="chip small" id="stateChip">状态：未浸入</div>
+      </div>
+    </div>
+
+    <!-- 控制面板（可拖动、可折叠） -->
+    <div class="dock panelDock drawer control" id="controlDock">
+      <div class="panelHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
+        <div class="title">实验控制 <span class="chip" style="font-weight:900;">量程 -10~110℃</span></div>
+        <button class="iconBtn" id="controlToggleBtn" title="折叠/展开">展开</button>
+      </div>
+
+      <div class="panelBody collapsed drawer-body" id="controlBody">
+        <div class="row">
+          <label>冷水温度</label>
+          <input id="tCold" type="range" min="-5" max="20" step="0.5" value="10">
+          <div class="val" id="tColdVal">10.0℃</div>
+        </div>
+
+        <div class="row">
+          <label>室温温度</label>
+          <input id="tRoom" type="range" min="15" max="35" step="0.5" value="25">
+          <div class="val" id="tRoomVal">25.0℃</div>
+        </div>
+
+        <div class="row">
+          <label>热水温度</label>
+          <input id="tHot" type="range" min="35" max="90" step="0.5" value="60">
+          <div class="val" id="tHotVal">60.0℃</div>
+        </div>
+
+        <div class="row">
+          <label>稳定速度</label>
+          <input id="tau" type="range" min="0.6" max="3.2" step="0.1" value="1.6">
+          <div class="val" id="tauVal">中等</div>
+        </div>
+
+        <div style="margin-top:8px;">
+          <div style="font-size:12.5px; color:#9bd3ff; font-weight:900; margin-bottom:6px;">当前测量</div>
+          <div id="pills"></div>
+          <div style="margin-top:6px; font-size:12px; opacity:.78;">
+            目标：先正确放置，再等稳定，最后记录。
+          </div>
+        </div>
+
+        <div id="challengeBlock" style="display:none; margin-top:10px; font-size:12.5px; line-height:1.65; color:#dbe7ff;">
+          <div style="padding:10px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.28);">
+            <div style="font-weight:900; color:#9bd3ff;">挑战判定</div>
+            <div style="margin-top:6px; opacity:.9;">
+              至少记录 <b>3 次</b>（冷/室温/热 各一次），并让其中 <b>2 次</b>读数误差 ≤ <b>0.8℃</b>。
+            </div>
+            <div style="margin-top:8px;">
+              <span class="pill"><span class="k">已记录</span><span id="statN">0</span></span>
+              <span class="pill"><span class="k">达标次数</span><span id="statGood">0</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="miniBtns">
+          <button class="primary" id="recordBtn">记录一次</button>
+          <button class="ghost" id="clearBtn">清空记录</button>
+          <button id="hintBtn">开启/关闭指引线</button>
+          <button class="ghost" id="homeBtn">温度计归位</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 数据抽屉（可拖动、可折叠） -->
+    <div class="dock resultsDock drawer data" id="dataDock">
+      <div class="resultsHead drawer-header" id="dataHead" data-drag-handle data-drag-handle>
+        <div class="title" style="font-weight:900; color:#9bd3ff; display:flex; align-items:center; gap:8px;">
+          数据面板
+          <span class="notice-badge" id="dataNotice">0</span>
+        </div>
+        <button class="iconBtn" id="dataToggleBtn">展开</button>
+      </div>
+      <div class="resultsBody scroll collapsed drawer-body" id="dataBody">
+        <h4>记录表</h4>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>对象</th>
+              <th>读数(℃)</th>
+              <th>目标(℃)</th>
+            </tr>
+          </thead>
+          <tbody id="recordBody">
+            <tr><td colspan="4" style="opacity:.7;">把温度计放进烧杯里，等稳定后点击“记录一次”。</td></tr>
+          </tbody>
+        </table>
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+
+      </div>
+    </div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <!-- 三按钮 -->
+  <div class="toolbar">
+    <button class="main" id="resetBtn">步骤重置</button>
+    <button class="main" id="autoDemoBtn">自动演示</button>
+    <button class="main" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <!-- 完成弹窗 -->
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>实验完成</h3>
+      <p>
+        你已经掌握了：<br/>
+        <b>正确放置温度计 → 等示数稳定 → 再读数并记录</b>。<br/>
+        这就是“用常见温度计测量温度”的关键技能！
+      </p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <!-- 说明文字框 -->
+  <div class="explanation">
+    <h2>实验名：用常见温度计测量温度</h2>
+    <ul>
+      <li><b>关键操作</b>：玻璃泡完全浸入液体，不碰杯壁/杯底，等读数变化明显变慢再记录。</li>
+      <li><b>可观察现象</b>：温度计进入不同烧杯后，液柱读数会逐步逼近该杯温度，并在后期趋于稳定。</li>
+      <li><b>原理与结论</b>：温度计与液体发生热交换，接近平衡时交换减弱，所以“稳定后读数”更接近真实温度。</li>
+    </ul>
+    <div style="margin-top:10px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.10); background:rgba(0,0,0,0.20); color:rgba(234,242,255,0.90);">
+      <b>互动提示：</b>拖动温度计到不同烧杯里，观察读数“慢慢追上目标温度”。这就是温度计的“反应时间”。
+    </div>
+  </div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const AUTO_DEMO_FACTOR = 1.25;
+
+    const state = {
+      currentTask: 0,
+      completed: false,
+      freeMode: false,
+      autoPlaying: false,
+      draggingId: null,
+      rafId: 0,
+      timers: new Set(),
+      successCooldown: false,
+      warningStep: -1,
+      stableCounter: 0,
+      records: [],
+      Tread: 25,
+      Ttarget: 25,
+      immersedKind: null,
+      demoRunId: 0,
+      dataCollapsed: true,
+      unseenRecordCount: 0,
+      pillsTick: 0
+    };
+
+    const stage = $('#stage');
+    const toast = $('#toast');
+    const checkmark = $('#checkmark');
+    const doneMask = $('#doneMask');
+    const modeTag = $('#modeTag');
+    const statusTag = $('#statusTag');
+    const challengeBlock = $('#challengeBlock');
+
+    function trackTimer(id) {
+      state.timers.add(id);
+      return id;
+    }
+    function untrackTimer(id) {
+      state.timers.delete(id);
+    }
+    function clearTrackedTimers() {
+      state.timers.forEach((id) => clearTimeout(id));
+      state.timers.clear();
+    }
+    function wait(ms) {
+      const scaled = Math.max(0, Math.round(ms * AUTO_DEMO_FACTOR));
+      return new Promise((resolve) => {
+        const id = setTimeout(() => {
+          untrackTimer(id);
+          resolve();
+        }, scaled);
+        trackTimer(id);
+      });
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg || '提示';
+      toast.classList.add('show');
+      if (showToast.t) {
+        clearTimeout(showToast.t);
+        untrackTimer(showToast.t);
+      }
+      showToast.t = trackTimer(
+        setTimeout(() => {
+          toast.classList.remove('show');
+          if (showToast.t) {
+            untrackTimer(showToast.t);
+            showToast.t = 0;
+          }
+        }, 1300)
+      );
+    }
+    function showCheck() {
+      checkmark.classList.add('active');
+      if (showCheck.t) {
+        clearTimeout(showCheck.t);
+        untrackTimer(showCheck.t);
+      }
+      showCheck.t = trackTimer(
+        setTimeout(() => {
+          checkmark.classList.remove('active');
+          if (showCheck.t) {
+            untrackTimer(showCheck.t);
+            showCheck.t = 0;
+          }
+        }, 520)
+      );
+    }
+
+    function updateModeHud() {
+      modeTag.classList.remove('mode-auto');
+      if (state.autoPlaying) {
+        modeTag.textContent = '模式：自动演示';
+        modeTag.classList.add('mode-auto');
+      } else if (state.freeMode) {
+        modeTag.textContent = '模式：自由';
+      } else {
+        modeTag.textContent = '模式：引导';
+      }
+    }
+    function setStatusTag(text) {
+      statusTag.textContent = `状态：${text || '待操作'}`;
+    }
+
+    function bringToFront(which) {
+      if (which === 'control') {
+        document.documentElement.style.setProperty('--zPanel', '14');
+        document.documentElement.style.setProperty('--zResults', '11');
+      } else {
+        document.documentElement.style.setProperty('--zResults', '14');
+        document.documentElement.style.setProperty('--zPanel', '11');
+      }
+    }
+
+    const steps = [
+      { text: '把<b>温度计</b>拖到任意一个烧杯里，让“玻璃泡”浸入液体。', hint: '提示：不要让温度计碰到杯壁/杯底；先放稳再看读数。' },
+      { text: '等待读数<b>接近稳定</b>（变化变慢），再读出温度。', hint: '提示：看右侧“状态”：已浸入；读数变化越来越慢。' },
+      { text: '分别测<b>冷水/室温/热水</b>，每测一次点击<b>记录一次</b>。', hint: '提示：至少记录 3 次（每杯一次）。' },
+      { text: '挑战：让至少 <b>2 次</b>记录的误差 ≤ <b>0.8℃</b>，即可通关！', hint: '提示：读数没稳定就记录，误差通常会更大。' }
+    ];
+
+    const taskStep = $('#taskStep');
+    const taskText = $('#taskText');
+    const taskHint = $('#taskHint');
+    const dots = [$('#dot1'), $('#dot2'), $('#dot3'), $('#dot4')];
+
+    function renderStepUI() {
+      const i = state.currentTask;
+      const last = steps.length - 1;
+      taskStep.textContent = `步骤 ${i + 1} / ${steps.length}`;
+      taskText.innerHTML = steps[i].text;
+      taskHint.textContent = steps[i].hint;
+      dots.forEach((d, idx) => {
+        const isDone = idx < i || (state.completed && idx === last);
+        const isActive = idx === i && !state.completed;
+        d.classList.toggle('active', isActive);
+        d.classList.toggle('done', isDone);
+        d.classList.toggle('warn', isActive && state.warningStep === i);
+      });
+      challengeBlock.style.display = i >= 3 || state.freeMode ? '' : 'none';
+    }
+    function setStepUI(i) {
+      state.currentTask = clamp(i, 0, steps.length - 1);
+      renderStepUI();
+    }
+    function passCurrentStep() {
+      if (state.freeMode || state.currentTask >= steps.length - 1) return;
+      if (state.warningStep === state.currentTask) state.warningStep = -1;
+      setStepUI(state.currentTask + 1);
+      showCheck();
+    }
+    function markStepWarning(msg) {
+      if (state.freeMode) return;
+      state.warningStep = state.currentTask;
+      renderStepUI();
+      showToast(msg);
+    }
+
+    const controlDock = $('#controlDock');
+    const controlHead = $('#controlHead');
+    const controlBody = $('#controlBody');
+    const controlToggleBtn = $('#controlToggleBtn');
+    const dataDock = $('#dataDock');
+    const dataHead = $('#dataHead');
+    const dataBody = $('#dataBody');
+    const dataToggleBtn = $('#dataToggleBtn');
+    const dataNotice = $('#dataNotice');
+
+    function setControlCollapsed(on) {
+      if (!on && window.innerWidth <= 760 && !state.dataCollapsed) {
+        setDataCollapsed(true);
+      }
+      controlBody.classList.toggle('collapsed', !!on);
+      controlToggleBtn.textContent = on ? '展开' : '收起';
+      resolveDrawerOverlap();
+    }
+    function refreshDataNotice() {
+      const n = state.unseenRecordCount;
+      dataNotice.textContent = n > 99 ? '99+' : String(n);
+      dataNotice.classList.toggle('show', state.dataCollapsed && n > 0);
+    }
+    function setDataCollapsed(on) {
+      state.dataCollapsed = !!on;
+      dataBody.classList.toggle('collapsed', state.dataCollapsed);
+      dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+      if (!state.dataCollapsed) {
+        state.unseenRecordCount = 0;
+      }
+      refreshDataNotice();
+      resolveDrawerOverlap();
+    }
+    function setDataCollapsedByUser(on) {
+      if (!on && window.innerWidth <= 760 && !controlBody.classList.contains('collapsed')) {
+        setControlCollapsed(true);
+      }
+      setDataCollapsed(on);
+    }
+    controlToggleBtn.addEventListener('click', () => setControlCollapsed(!controlBody.classList.contains('collapsed')));
+    dataToggleBtn.addEventListener('click', () => setDataCollapsedByUser(!state.dataCollapsed));
+
+    const dockState = { control: { userMoved: false }, data: { userMoved: false } };
+    function getStageRect() {
+      return stage.getBoundingClientRect();
+    }
+    function setDockPos(el, x, y) {
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    }
+    function clampDockPos(el, x, y) {
+      const s = getStageRect();
+      const r = el.getBoundingClientRect();
+      const pad = 10;
+      return {
+        x: clamp(x, pad, s.width - r.width - pad),
+        y: clamp(y, pad, s.height - r.height - pad)
+      };
+    }
+    function overlapArea(a, b) {
+      const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+      const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+      return x * y;
+    }
+    function defaultDockPositions(force = false) {
+      const s = getStageRect();
+      const pad = 10;
+
+      const controlRect = controlDock.getBoundingClientRect();
+      const dataRect = dataDock.getBoundingClientRect();
+      if (force || !dockState.control.userMoved) {
+        setDockPos(controlDock, s.width - controlRect.width - pad, pad);
+      }
+
+      const controlNow = controlDock.getBoundingClientRect();
+      const controlBottom = controlNow.bottom - s.top;
+      const baseDataY = controlBottom + 10;
+      if (force || !dockState.data.userMoved) {
+        const next = clampDockPos(dataDock, s.width - dataRect.width - pad, baseDataY);
+        setDockPos(dataDock, next.x, next.y);
+      }
+      resolveDrawerOverlap();
+    }
+    function resolveDrawerOverlap(force = false) {
+      const narrow = window.innerWidth <= 760;
+      const enforce = !!force || state.autoPlaying;
+      if (!enforce && (!narrow || controlBody.classList.contains('collapsed') || state.dataCollapsed)) return;
+      const s = getStageRect();
+      const c = controlDock.getBoundingClientRect();
+      const d = dataDock.getBoundingClientRect();
+      if (overlapArea(c, d) <= 0) return;
+      const pad = 10;
+      const rightX = s.width - d.width - pad;
+      const leftX = pad;
+      const belowY = c.bottom - s.top + 10;
+      const aboveY = c.top - s.top - d.height - 10;
+      const maxY = s.height - d.height - pad;
+
+      const candidates = [
+        { x: rightX, y: belowY },
+        { x: rightX, y: aboveY },
+        { x: leftX, y: belowY },
+        { x: leftX, y: aboveY },
+        { x: leftX, y: maxY }
+      ];
+      if (enforce) {
+        candidates.unshift(
+          { x: leftX, y: pad },
+          { x: rightX, y: pad },
+          { x: leftX, y: maxY },
+          { x: rightX, y: maxY }
+        );
+      }
+
+      let best = null;
+      let bestOverlap = Infinity;
+      for (const raw of candidates) {
+        const next = clampDockPos(dataDock, raw.x, raw.y);
+        const rect = {
+          left: s.left + next.x,
+          top: s.top + next.y,
+          right: s.left + next.x + d.width,
+          bottom: s.top + next.y + d.height
+        };
+        const ov = overlapArea(c, rect);
+        if (ov < bestOverlap) {
+          bestOverlap = ov;
+          best = next;
+        }
+        if (ov <= 0) break;
+      }
+      if (best) setDockPos(dataDock, best.x, best.y);
+    }
+    function bindDockDrag(el, headEl, kind) {
+      let dragging = false;
+      let sx = 0;
+      let sy = 0;
+      let bx = 0;
+      let by = 0;
+      function currentPos() {
+        const s = getStageRect();
+        const r = el.getBoundingClientRect();
+        return { x: r.left - s.left, y: r.top - s.top };
+      }
+      function finishDrag() {
+        if (!dragging) return;
+        dragging = false;
+        el.classList.remove('dragging');
+        resolveDrawerOverlap();
+        if (state.autoPlaying) setStatusTag('自动演示中');
+      }
+      headEl.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        bringToFront(kind);
+        dragging = true;
+        el.classList.add('dragging');
+        headEl.setPointerCapture(e.pointerId);
+        const p = currentPos();
+        bx = p.x;
+        by = p.y;
+        sx = e.clientX;
+        sy = e.clientY;
+      });
+      headEl.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const s = getStageRect();
+        const r = el.getBoundingClientRect();
+        const pad = 10;
+        const x = clamp(bx + (e.clientX - sx), pad, s.width - r.width - pad);
+        const y = clamp(by + (e.clientY - sy), pad, s.height - r.height - pad);
+        setDockPos(el, x, y);
+        dockState[kind].userMoved = true;
+        if (state.autoPlaying) setStatusTag('自动演示中');
+      });
+      headEl.addEventListener('pointerup', finishDrag);
+      headEl.addEventListener('pointercancel', finishDrag);
+    }
+    bindDockDrag(controlDock, controlHead, 'control');
+    bindDockDrag(dataDock, dataHead, 'data');
+
+    let relayoutTimer = 0;
+    function debouncedRelayout() {
+      if (relayoutTimer) clearTimeout(relayoutTimer);
+      relayoutTimer = setTimeout(() => {
+        relayoutTimer = 0;
+        defaultDockPositions();
+      }, 130);
+    }
+    window.addEventListener('resize', debouncedRelayout);
+    window.addEventListener('orientationchange', debouncedRelayout);
+
+    const helpBtn = $('#helpBtn');
+    const helpMask = $('#helpMask');
+    helpBtn.addEventListener('click', () => helpMask.classList.toggle('show'));
+    helpMask.addEventListener('click', (e) => {
+      if (e.target === helpMask) helpMask.classList.remove('show');
+    });
+
+    const tCold = $('#tCold');
+    const tRoom = $('#tRoom');
+    const tHot = $('#tHot');
+    const tColdVal = $('#tColdVal');
+    const tRoomVal = $('#tRoomVal');
+    const tHotVal = $('#tHotVal');
+    const tagCold = $('#tagCold');
+    const tagRoom = $('#tagRoom');
+    const tagHot = $('#tagHot');
+    const liqCold = $('#liqCold');
+    const liqRoom = $('#liqRoom');
+    const liqHot = $('#liqHot');
+    const tau = $('#tau');
+    const tauVal = $('#tauVal');
+    const thermo = $('#thermo');
+    const mercury = $('#mercury');
+    const readChip = $('#readChip');
+    const stateChip = $('#stateChip');
+    const scale = $('#scale');
+    const bCold = $('#bCold');
+    const bRoom = $('#bRoom');
+    const bHot = $('#bHot');
+    const guidePath = $('#guidePath');
+
+    const Tmin = -10;
+    const Tmax = 110;
+
+    function fmt(v) {
+      return (+v).toFixed(1);
+    }
+    function tempToColor(t) {
+      const cl = clamp(t, -5, 90);
+      const k = (cl + 5) / 95;
+      const hue = 190 + (10 - 190) * k;
+      return `hsla(${hue.toFixed(1)}, 90%, 55%, 0.22)`;
+    }
+    function updateBeakerVisual() {
+      const Tc = +tCold.value;
+      const Tr = +tRoom.value;
+      const Th = +tHot.value;
+      tColdVal.textContent = `${fmt(Tc)}℃`;
+      tRoomVal.textContent = `${fmt(Tr)}℃`;
+      tHotVal.textContent = `${fmt(Th)}℃`;
+      tagCold.textContent = `${fmt(Tc)}℃`;
+      tagRoom.textContent = `${fmt(Tr)}℃`;
+      tagHot.textContent = `${fmt(Th)}℃`;
+      liqCold.style.background = tempToColor(Tc);
+      liqRoom.style.background = tempToColor(Tr);
+      liqHot.style.background = tempToColor(Th);
+    }
+    function targetTempByKind(kind) {
+      if (kind === 'cold') return +tCold.value;
+      if (kind === 'room') return +tRoom.value;
+      if (kind === 'hot') return +tHot.value;
+      return 25;
+    }
+    function updateTargetFromImmersion() {
+      state.Ttarget = state.immersedKind ? targetTempByKind(state.immersedKind) : 25;
+    }
+    [tCold, tRoom, tHot].forEach((inp) => {
+      inp.addEventListener('input', () => {
+        updateBeakerVisual();
+        updateTargetFromImmersion();
+      });
+    });
+
+    function updateTauLabel() {
+      const v = +tau.value;
+      tauVal.textContent = v < 1.1 ? '很快' : v < 1.8 ? '中等' : v < 2.6 ? '较慢' : '很慢';
+    }
+    tau.addEventListener('input', updateTauLabel);
+
+    function buildScale() {
+      scale.innerHTML = '';
+      const H = 230;
+      for (let t = Tmin; t <= Tmax; t += 5) {
+        const y = (1 - (t - Tmin) / (Tmax - Tmin)) * H;
+        const div = document.createElement('div');
+        div.className = `tick${t % 10 === 0 ? ' major' : ''}`;
+        div.style.top = `${(18 + y).toFixed(1)}px`;
+        div.style.left = t % 10 === 0 ? '22px' : '30px';
+        div.style.right = '10px';
+        scale.appendChild(div);
+        if (t % 20 === 0) {
+          const lab = document.createElement('div');
+          lab.className = 'tickLabel';
+          lab.style.top = `${(18 + y).toFixed(1)}px`;
+          lab.textContent = `${t}`;
+          scale.appendChild(lab);
+        }
+      }
+    }
+    function setMercuryByTemp(t) {
+      const tCl = clamp(t, Tmin, Tmax);
+      const k = (tCl - Tmin) / (Tmax - Tmin);
+      mercury.style.height = `${(190 * k).toFixed(1)}px`;
+      mercury.style.background = `rgba(255,80,80,${(0.82 + 0.18 * k).toFixed(2)})`;
+    }
+    function updateReadout() {
+      readChip.textContent = `读数：${fmt(state.Tread)}℃`;
+      let st = '未浸入';
+      if (state.immersedKind === 'cold') st = '已浸入（冷水杯）';
+      if (state.immersedKind === 'room') st = '已浸入（室温杯）';
+      if (state.immersedKind === 'hot') st = '已浸入（热水杯）';
+      stateChip.textContent = `状态：${st}`;
+      setMercuryByTemp(state.Tread);
+    }
+
+    function getBulbPoint() {
+      const tr = thermo.getBoundingClientRect();
+      return { x: tr.left + tr.width / 2, y: tr.bottom - 42 };
+    }
+    function pointInRect(p, r) {
+      return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
+    }
+    function getLiquidRect(beakerEl) {
+      const r = beakerEl.getBoundingClientRect();
+      return { left: r.left + 10, right: r.right - 10, top: r.bottom - 130, bottom: r.bottom - 10 };
+    }
+    function detectImmersion() {
+      const p = getBulbPoint();
+      const rC = getLiquidRect(bCold);
+      const rR = getLiquidRect(bRoom);
+      const rH = getLiquidRect(bHot);
+      let nextKind = null;
+      if (pointInRect(p, rC)) nextKind = 'cold';
+      else if (pointInRect(p, rR)) nextKind = 'room';
+      else if (pointInRect(p, rH)) nextKind = 'hot';
+      if (nextKind !== state.immersedKind) {
+        state.immersedKind = nextKind;
+        updateTargetFromImmersion();
+        if (state.immersedKind && !state.freeMode && state.currentTask === 0) {
+          passCurrentStep();
+        }
+      }
+    }
+    function updateGuideLine() {
+      const s = stage.getBoundingClientRect();
+      const p = getBulbPoint();
+      const fromX = p.x - s.left;
+      const fromY = p.y - s.top;
+      let toEl = bRoom;
+      if (state.immersedKind === 'cold') toEl = bCold;
+      if (state.immersedKind === 'hot') toEl = bHot;
+      const tr = toEl.getBoundingClientRect();
+      const toX = (tr.left + tr.right) / 2 - s.left;
+      const toY = (tr.top + tr.bottom) / 2 - s.top + 30;
+      const cx1 = fromX + 60;
+      const cy1 = fromY + 40;
+      const cx2 = toX + 120;
+      const cy2 = toY - 40;
+      const W = s.width || 1;
+      const H = s.height || 1;
+      const P = (x, y) => `${((x / W) * 100).toFixed(2)},${((y / H) * 100).toFixed(2)}`;
+      guidePath.setAttribute('d', `M${P(fromX, fromY)} C${P(cx1, cy1)} ${P(cx2, cy2)} ${P(toX, toY)}`);
+    }
+    function tickThermo(dt) {
+      const tauSec = +tau.value;
+      const k = 1 - Math.exp(-dt / tauSec);
+      const noise = state.immersedKind ? (Math.random() - 0.5) * 0.06 : (Math.random() - 0.5) * 0.03;
+      state.Tread = clamp(state.Tread + (state.Ttarget - state.Tread) * k + noise, Tmin, Tmax);
+      updateReadout();
+    }
+
+    function clampThermoPos(x, y, w, h) {
+      const s = stage.getBoundingClientRect();
+      const pad = 8;
+      return { x: clamp(x, pad, s.width - w - pad), y: clamp(y, pad, s.height - h - pad) };
+    }
+    function setThermoPos(x, y) {
+      thermo.style.left = `${x}px`;
+      thermo.style.top = `${y}px`;
+    }
+    function getThermoPos() {
+      const s = stage.getBoundingClientRect();
+      const r = thermo.getBoundingClientRect();
+      return { x: r.left - s.left, y: r.top - s.top, w: r.width, h: r.height };
+    }
+    function thermoHome(showMsg = true) {
+      const homeY = window.innerWidth <= 760 ? 320 : 310;
+      setThermoPos(stage.clientWidth / 2 - 34, homeY);
+      if (showMsg) showToast('温度计已归位');
+    }
+
+    let thermoDragging = false;
+    let thermoStartX = 0;
+    let thermoStartY = 0;
+    let thermoBaseX = 0;
+    let thermoBaseY = 0;
+    function endThermoDrag() {
+      if (!thermoDragging) return;
+      thermoDragging = false;
+      thermo.classList.remove('dragging');
+      state.draggingId = null;
+    }
+    thermo.addEventListener('pointerdown', (e) => {
+      if (state.autoPlaying) return;
+      thermoDragging = true;
+      state.draggingId = 'thermo';
+      bringToFront('control');
+      thermo.classList.add('dragging');
+      thermo.setPointerCapture(e.pointerId);
+      const p = getThermoPos();
+      thermoBaseX = p.x;
+      thermoBaseY = p.y;
+      thermoStartX = e.clientX;
+      thermoStartY = e.clientY;
+    });
+    thermo.addEventListener('pointermove', (e) => {
+      if (!thermoDragging) return;
+      const p = getThermoPos();
+      const next = clampThermoPos(thermoBaseX + (e.clientX - thermoStartX), thermoBaseY + (e.clientY - thermoStartY), p.w, p.h);
+      setThermoPos(next.x, next.y);
+    });
+    thermo.addEventListener('pointerup', endThermoDrag);
+    thermo.addEventListener('pointercancel', endThermoDrag);
+
+    const pills = $('#pills');
+    const tbody = $('#recordBody');
+    const statN = $('#statN');
+    const statGood = $('#statGood');
+    const recordBtn = $('#recordBtn');
+    const clearBtn = $('#clearBtn');
+    const hintBtn = $('#hintBtn');
+    const homeBtn = $('#homeBtn');
+    const resetBtn = $('#resetBtn');
+    const autoDemoBtn = $('#autoDemoBtn');
+    const freeBtn = $('#freeBtn');
+
+    function currentObjName() {
+      if (state.immersedKind === 'cold') return '冷水杯';
+      if (state.immersedKind === 'room') return '室温杯';
+      if (state.immersedKind === 'hot') return '热水杯';
+      return '空气/桌面';
+    }
+    function currentTarget() {
+      return state.immersedKind ? targetTempByKind(state.immersedKind) : 25;
+    }
+    function renderPills() {
+      const target = currentTarget();
+      const err = Math.abs(state.Tread - target);
+      const stable = state.immersedKind ? (Math.abs(state.Tread - target) < 0.35 ? '接近稳定' : '变化中') : '未测量';
+      pills.innerHTML = [
+        `<span class="pill"><span class="k">对象</span><span>${currentObjName()}</span></span>`,
+        `<span class="pill"><span class="k">目标</span><span>${fmt(target)}℃</span></span>`,
+        `<span class="pill"><span class="k">误差</span><span>${fmt(err)}℃</span></span>`,
+        `<span class="pill"><span class="k">趋势</span><span>${stable}</span></span>`
+      ].join('');
+    }
+    function renderTable() {
+      if (!state.records.length) {
+        tbody.innerHTML = '<tr><td colspan="4" style="opacity:.7;">把温度计放进烧杯里，等稳定后点击“记录一次”。</td></tr>';
+        return;
+      }
+      tbody.innerHTML = state.records
+        .map(
+          (r, idx) => `<tr><td>${idx + 1}</td><td>${r.obj}</td><td>${fmt(r.read)}</td><td>${fmt(r.target)}</td></tr>`
+        )
+        .join('');
+    }
+    function updateStats() {
+      const good = state.records.filter((r) => Math.abs(r.read - r.target) <= 0.8).length;
+      statN.textContent = `${state.records.length}`;
+      statGood.textContent = `${good}`;
+      if (!state.freeMode && state.currentTask === 2 && state.records.length >= 3) {
+        passCurrentStep();
+        showToast('已记录≥3次，进入挑战步骤。');
+      }
+      if (!state.completed && state.records.length >= 3 && good >= 2) {
+        state.completed = true;
+        state.warningStep = -1;
+        renderStepUI();
+        showCheck();
+        doneMask.style.display = 'flex';
+        setStatusTag('挑战完成');
+      }
+    }
+    function addRecord() {
+      const rec = { obj: currentObjName(), read: state.Tread, target: currentTarget() };
+      state.records.push(rec);
+      if (state.dataCollapsed) state.unseenRecordCount += 1;
+      refreshDataNotice();
+      renderTable();
+      updateStats();
+    }
+    function tryRecord(fromAuto = false) {
+      if (!state.immersedKind) {
+        if (!fromAuto && !state.freeMode) markStepWarning('请先把温度计浸入烧杯，再记录数据。');
+        if (!fromAuto) showToast('先把温度计放进任意烧杯里再记录。');
+        return false;
+      }
+      if (!fromAuto && !state.freeMode && state.currentTask < 2) {
+        markStepWarning('请先完成当前步骤，再进行数据记录。');
+        return false;
+      }
+      addRecord();
+      if (!fromAuto) showToast(state.currentTask === 2 ? '记录成功，再测另一杯做比较。' : '记录成功。');
+      return true;
+    }
+    function hasRequiredAutoRecords() {
+      if (state.records.length < 3) return false;
+      const objs = new Set(state.records.map((r) => r.obj));
+      return objs.has('冷水杯') && objs.has('室温杯') && objs.has('热水杯');
+    }
+
+    recordBtn.addEventListener('click', () => {
+      tryRecord(false);
+    });
+    clearBtn.addEventListener('click', () => {
+      state.records = [];
+      state.unseenRecordCount = 0;
+      refreshDataNotice();
+      renderTable();
+      updateStats();
+      showToast('已清空记录');
+    });
+    hintBtn.addEventListener('click', () => {
+      stage.classList.toggle('guideOff');
+      showToast(stage.classList.contains('guideOff') ? '已关闭指引线' : '已开启指引线');
+    });
+    homeBtn.addEventListener('click', () => thermoHome(true));
+
+    $('#okBtn').addEventListener('click', () => {
+      doneMask.style.display = 'none';
+      showToast('可继续练习：调整温度后再次测量。');
+    });
+
+    function refreshInteractionLocks() {
+      const autoLocked = state.autoPlaying;
+      const controls = [recordBtn, clearBtn, hintBtn, homeBtn, controlToggleBtn, dataToggleBtn, tCold, tRoom, tHot, tau, helpBtn];
+      controls.forEach((el) => {
+        if (el) el.disabled = autoLocked;
+      });
+
+      resetBtn.disabled = autoLocked;
+      freeBtn.disabled = autoLocked;
+
+      if (autoLocked) {
+        autoDemoBtn.textContent = '退出自动演示';
+        autoDemoBtn.disabled = false;
+        return;
+      }
+      autoDemoBtn.textContent = '自动演示';
+      autoDemoBtn.disabled = state.freeMode;
+    }
+    function stopMainLoop() {
+      if (state.rafId) cancelAnimationFrame(state.rafId);
+      state.rafId = 0;
+    }
+    function startMainLoop() {
+      stopMainLoop();
+      state.lastTs = performance.now();
+      const loop = (ts) => {
+        const dt = clamp((ts - state.lastTs) / 1000, 0.016, 0.08);
+        state.lastTs = ts;
+        detectImmersion();
+        updateGuideLine();
+        tickThermo(dt);
+        state.pillsTick += dt;
+        if (state.pillsTick >= 0.18) {
+          state.pillsTick = 0;
+          renderPills();
+        }
+        if (!state.freeMode && state.currentTask === 1 && state.immersedKind) {
+          if (Math.abs(state.Ttarget - state.Tread) < 0.35) {
+            state.stableCounter += dt;
+            if (state.stableCounter > 0.9) {
+              state.stableCounter = 0;
+              passCurrentStep();
+              showToast('示数已接近稳定，可以读数并记录。');
+            }
+          } else {
+            state.stableCounter = 0;
+          }
+        }
+        state.rafId = requestAnimationFrame(loop);
+      };
+      state.rafId = requestAnimationFrame(loop);
+    }
+
+    function resetAll(opts = {}) {
+      const { preserveAuto = false, showResetToast = true } = opts;
+      clearTrackedTimers();
+      if (!preserveAuto) state.autoPlaying = false;
+      state.completed = false;
+      state.warningStep = -1;
+      state.stableCounter = 0;
+      state.records = [];
+      state.unseenRecordCount = 0;
+      state.immersedKind = null;
+      state.Tread = 25;
+      state.Ttarget = 25;
+      state.successCooldown = false;
+      state.draggingId = null;
+      doneMask.style.display = 'none';
+
+      tCold.value = 10;
+      tRoom.value = 25;
+      tHot.value = 60;
+      tau.value = 1.6;
+      updateBeakerVisual();
+      updateTauLabel();
+      updateReadout();
+
+      renderTable();
+      updateStats();
+      refreshDataNotice();
+
+      setStepUI(0);
+      setControlCollapsed(true);
+      setDataCollapsed(true);
+      dockState.control.userMoved = false;
+      dockState.data.userMoved = false;
+      defaultDockPositions(true);
+
+      thermoHome(false);
+      startMainLoop();
+      updateModeHud();
+      refreshInteractionLocks();
+      setStatusTag('待操作');
+      if (showResetToast) showToast('已重置：从步骤1重新开始');
+    }
+
+    resetBtn.addEventListener('click', () => {
+      state.freeMode = false;
+      freeBtn.textContent = '自由模式';
+      freeBtn.classList.remove('primary');
+      resetAll({ preserveAuto: false, showResetToast: true });
+    });
+
+    freeBtn.addEventListener('click', () => {
+      if (state.autoPlaying) return;
+      state.freeMode = !state.freeMode;
+      freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+      freeBtn.classList.toggle('primary', state.freeMode);
+      updateModeHud();
+      refreshInteractionLocks();
+      renderStepUI();
+      showToast(state.freeMode ? '已进入自由模式：不再强制步骤门禁。' : '已退出自由模式：恢复步骤引导。');
+    });
+
+    const demoCursor = document.createElement('div');
+    demoCursor.style.position = 'absolute';
+    demoCursor.style.zIndex = '140';
+    demoCursor.style.width = '26px';
+    demoCursor.style.height = '26px';
+    demoCursor.style.left = '-200px';
+    demoCursor.style.top = '-200px';
+    demoCursor.style.opacity = '0';
+    demoCursor.style.pointerEvents = 'none';
+    demoCursor.style.transition = 'left .48s cubic-bezier(.22,.61,.36,1), top .48s cubic-bezier(.22,.61,.36,1), opacity .2s ease, transform .12s ease';
+    demoCursor.style.filter = 'drop-shadow(0 1px 2px rgba(0,0,0,.55))';
+    demoCursor.innerHTML = '<svg viewBox="0 0 24 24" role="img" aria-label="自动演示鼠标"><path d="M3 2.5L10.2 20.8L12.7 12.9L20.8 10.3L3 2.5Z" fill="#ffffff" stroke="#111820" stroke-width="1.3" /></svg>';
+    stage.appendChild(demoCursor);
+
+    const demoCursorPulse = document.createElement('div');
+    demoCursorPulse.style.position = 'absolute';
+    demoCursorPulse.style.zIndex = '139';
+    demoCursorPulse.style.width = '24px';
+    demoCursorPulse.style.height = '24px';
+    demoCursorPulse.style.borderRadius = '50%';
+    demoCursorPulse.style.border = '2px solid rgba(255,195,74,.95)';
+    demoCursorPulse.style.left = '-200px';
+    demoCursorPulse.style.top = '-200px';
+    demoCursorPulse.style.opacity = '0';
+    demoCursorPulse.style.pointerEvents = 'none';
+    demoCursorPulse.style.transform = 'translate(-50%,-50%) scale(.35)';
+    stage.appendChild(demoCursorPulse);
+
+    const demoCursorCss = document.createElement('style');
+    demoCursorCss.textContent = `
+      @keyframes cursorPulse{
+        0%{ opacity:.95; transform:translate(-50%,-50%) scale(.35); }
+        100%{ opacity:0; transform:translate(-50%,-50%) scale(1.5); }
+      }
+      .demo-cursor-show{ opacity:1 !important; }
+      .demo-cursor-clicking{ transform:scale(.9); }
+      .demo-cursor-dragging{ filter:drop-shadow(0 2px 4px rgba(61,220,151,.7)); }
+      .demo-cursor-pulse-active{ animation:cursorPulse .45s ease-out; }
+    `;
+    document.head.appendChild(demoCursorCss);
+
+    function setDemoCursor(x, y) {
+      demoCursor.classList.add('demo-cursor-show');
+      demoCursor.style.left = `${x}px`;
+      demoCursor.style.top = `${y}px`;
+    }
+    function hideDemoCursor() {
+      demoCursor.classList.remove('demo-cursor-show', 'demo-cursor-clicking', 'demo-cursor-dragging');
+      demoCursorPulse.classList.remove('demo-cursor-pulse-active');
+      demoCursor.style.left = '-200px';
+      demoCursor.style.top = '-200px';
+      demoCursorPulse.style.left = '-200px';
+      demoCursorPulse.style.top = '-200px';
+    }
+    async function clickDemoCursor(ms = 260, runId = state.demoRunId) {
+      if (runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+      demoCursor.classList.add('demo-cursor-clicking');
+      const x = Number.parseFloat(demoCursor.style.left || '0');
+      const y = Number.parseFloat(demoCursor.style.top || '0');
+      demoCursorPulse.style.left = `${x}px`;
+      demoCursorPulse.style.top = `${y}px`;
+      demoCursorPulse.classList.remove('demo-cursor-pulse-active');
+      void demoCursorPulse.offsetWidth;
+      demoCursorPulse.classList.add('demo-cursor-pulse-active');
+      await waitAuto(ms, runId);
+      demoCursor.classList.remove('demo-cursor-clicking');
+    }
+
+    async function waitAuto(ms, runId) {
+      await wait(ms);
+      if (runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    }
+    function beakerTargetPos(kind) {
+      const s = stage.getBoundingClientRect();
+      const el = kind === 'cold' ? bCold : kind === 'hot' ? bHot : bRoom;
+      const liquid = getLiquidRect(el);
+      const bulbOffsetY = 258; // getBulbPoint uses tr.bottom - 42 for a 300px thermometer
+      const bulbX = (liquid.left + liquid.right) * 0.5 - s.left;
+      const bulbY = (liquid.top + liquid.bottom) * 0.5 - s.top;
+      return {
+        x: clamp(bulbX - 34, 8, s.width - 68 - 8),
+        y: clamp(bulbY - bulbOffsetY, 8, s.height - 300 - 8)
+      };
+    }
+    async function demoDragThermoTo(kind, runId) {
+      const from = getThermoPos();
+      const to = beakerTargetPos(kind);
+      demoCursor.classList.add('demo-cursor-dragging');
+      setDemoCursor(from.x + 34, from.y + 20);
+      await clickDemoCursor(180, runId);
+      for (let i = 1; i <= 22; i++) {
+        const k = i / 22;
+        const x = from.x + (to.x - from.x) * k;
+        const y = from.y + (to.y - from.y) * k;
+        setThermoPos(x, y);
+        setDemoCursor(x + 34, y + 20);
+        await waitAuto(36, runId);
+      }
+      demoCursor.classList.remove('demo-cursor-dragging');
+      await clickDemoCursor(200, runId);
+      await waitAuto(220, runId);
+    }
+    async function waitUntilStable(runId, timeoutMs = 9000) {
+      let elapsed = 0;
+      while (elapsed < timeoutMs) {
+        if (Math.abs(state.Ttarget - state.Tread) < 0.35) return;
+        await waitAuto(180, runId);
+        elapsed += 180;
+      }
+    }
+    async function recordAutoWithAssert(kind, runId) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        detectImmersion();
+        if (state.immersedKind !== kind) {
+          await demoDragThermoTo(kind, runId);
+          await waitAuto(420, runId);
+          detectImmersion();
+        }
+        if (state.immersedKind !== kind) {
+          state.immersedKind = kind;
+          updateTargetFromImmersion();
+        }
+        await waitUntilStable(runId, 11000);
+        state.immersedKind = kind;
+        updateTargetFromImmersion();
+        state.Tread = targetTempByKind(kind);
+        const ok = tryRecord(true);
+        if (ok) return true;
+        await waitAuto(700, runId);
+      }
+      return false;
+    }
+    function ensureAutoDrawerLayout() {
+      setControlCollapsed(false);
+      setDataCollapsed(true);
+      dockState.control.userMoved = false;
+      dockState.data.userMoved = false;
+      defaultDockPositions(true);
+      resolveDrawerOverlap(true);
+      const settle = setTimeout(() => {
+        if (!state.autoPlaying) return;
+        defaultDockPositions();
+        resolveDrawerOverlap(true);
+      }, 260);
+      trackTimer(settle);
+    }
+    function stopAutoDemo(byUser = false) {
+      if (!state.autoPlaying) return;
+      state.demoRunId += 1;
+      state.autoPlaying = false;
+      updateModeHud();
+      refreshInteractionLocks();
+      hideDemoCursor();
+      setStatusTag('待操作');
+      if (byUser) showToast('已退出自动演示');
+    }
+    async function startAutoDemo() {
+      if (state.autoPlaying || state.freeMode) return;
+      state.autoPlaying = true;
+      const runId = ++state.demoRunId;
+      updateModeHud();
+      refreshInteractionLocks();
+      resetAll({ preserveAuto: true, showResetToast: false });
+      ensureAutoDrawerLayout();
+      setStatusTag('自动演示中');
+
+      try {
+        setStepUI(0);
+        await waitAuto(900, runId);
+        await demoDragThermoTo('cold', runId);
+        await waitAuto(850, runId);
+        if (state.currentTask === 0) passCurrentStep();
+
+        setStepUI(1);
+        setStatusTag('等待示数稳定');
+        await waitUntilStable(runId);
+        await waitAuto(900, runId);
+        if (state.currentTask === 1) passCurrentStep();
+
+        setStepUI(2);
+        setStatusTag('记录三组数据');
+        for (const kind of ['cold', 'room', 'hot']) {
+          await demoDragThermoTo(kind, runId);
+          await waitAuto(800, runId);
+          const ok = await recordAutoWithAssert(kind, runId);
+          if (!ok) {
+            throw new Error(`AUTO_RECORD_FAILED_${kind}`);
+          }
+          await waitAuto(900, runId);
+        }
+        if (!hasRequiredAutoRecords()) throw new Error('AUTO_RECORD_INCOMPLETE');
+        if (state.currentTask === 2) passCurrentStep();
+        await waitAuto(850, runId);
+        doneMask.style.display = 'flex';
+        setStatusTag('演示完成');
+      } catch (error) {
+        if (String(error && error.message) !== 'AUTO_DEMO_CANCELLED') {
+          console.error('auto demo failed', error);
+          if (String(error && error.message).startsWith('AUTO_RECORD_')) {
+            showToast('自动演示记录失败：未写入有效数据，请重试。');
+            setStatusTag('记录失败');
+          } else {
+            showToast('自动演示中断，已恢复可操作状态');
+          }
+        }
+      } finally {
+        hideDemoCursor();
+        if (runId === state.demoRunId) {
+          state.autoPlaying = false;
+          updateModeHud();
+          refreshInteractionLocks();
+          if (!doneMask.style.display || doneMask.style.display === 'none') {
+            setStatusTag('待操作');
+          }
+        }
+      }
+    }
+
+    autoDemoBtn.addEventListener('click', () => {
+      if (state.autoPlaying) {
+        stopAutoDemo(true);
+      } else {
+        if (state.freeMode) {
+          showToast('请先退出自由模式，再启动自动演示。');
+          return;
+        }
+        startAutoDemo();
+      }
+    });
+
+    buildScale();
+    updateBeakerVisual();
+    updateTauLabel();
+    renderPills();
+    resetAll({ preserveAuto: false, showResetToast: false });
+  </script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,2241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>初中物理实验2｜探究晶体熔化和凝固的过程及特点（自动演示优化版）</title>
+  <style>
+    /* === 样式保持不变，复用原有高品质设计 === */
+    :root{
+      --card-bg: rgba(255,255,255,0.08);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --error:#ff6b6b;
+      --fg:#eaf2ff;
+      --muted:rgba(234,242,255,0.78);
+      --line:rgba(255,255,255,0.12);
+      --zPanel: 9;
+      --zResults: 9;
+    }
+    body{
+      background:#1a1a1a;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      color:var(--fg);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      margin:0;
+      padding:10px;
+      overflow-x: hidden;
+    }
+    #spectrum{
+      position:relative; width:100%; max-width:900px; height:40px; border-radius:10px; overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,0.15); background:#000;
+      margin:0 0 12px;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:""; position:absolute; inset:0; border-radius:inherit;
+      background: linear-gradient(90deg,
+        #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+        #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+      );
+      background-size:200% 100%;
+      animation: flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{
+      0%{ background-position:0% 0; }
+      100%{ background-position:-100% 0; }
+    }
+    .task-card{
+      width:100%; max-width:900px; box-sizing: border-box;
+      background:var(--card-bg);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter: blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+    }
+    .task-step{
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .task-text{ line-height:1.5; font-size: 14px; }
+    .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; margin-top: 4px;}
+    .progress-dots{ display:flex; gap:6px; align-items:center; }
+    .dot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,0.25); }
+    .dot.active{ background: var(--warn); transform: scale(1.2); transition: transform 0.2s; }
+    .dot.done{ background: var(--accent); }
+    .dot.warn{
+      background: var(--error);
+      box-shadow: 0 0 0 3px rgba(255,107,107,0.18);
+    }
+    #stage{
+      width:100%; max-width:900px; box-sizing: border-box;
+      height:60vh; max-height:560px;
+      position:relative;
+      overflow:hidden;
+      border-radius:12px;
+      background: radial-gradient(1200px 600px at 20% 20%, rgba(80,120,255,0.18), transparent 55%),
+                  radial-gradient(1200px 700px at 80% 40%, rgba(255,180,77,0.10), transparent 55%),
+                  #0b0f18;
+      margin-top:10px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      touch-action:none;
+      border:1px solid rgba(255,255,255,0.08);
+    }
+    .stage{
+      position:absolute; inset:0;
+      display:grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 10px;
+      padding: 10px;
+    }
+    .panel{
+      background: rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:12px;
+      overflow:hidden;
+      position:relative;
+      display: flex; flex-direction: column;
+    }
+    .panel-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:8px 12px;
+      border-bottom:1px solid rgba(255,255,255,0.10);
+      background: rgba(0,0,0,0.25);
+      flex-shrink: 0;
+    }
+    .panel-title{ font-weight:800; letter-spacing:.2px; font-size: 14px;}
+    .panel-sub{ font-size:11px; color: var(--muted); margin-top: 2px;}
+    .apparatus{
+      flex: 1; position: relative;
+      display:flex; align-items:center; justify-content:center;
+      overflow: hidden;
+    }
+    .bench{
+      width:min(360px, 92%);
+      height:min(360px, 88%);
+      position:relative;
+      user-select:none;
+    }
+    .waterBath{
+      position:absolute;
+      left:50%; top: 40%;
+      transform: translate(-50%,-50%);
+      width: 78%;
+      height: 62%;
+      border-radius: 20px 20px 24px 24px;
+      border: 2px solid rgba(158,210,255,0.45);
+      box-shadow:
+        inset 0 0 0 2px rgba(255,255,255,0.05),
+        0 10px 22px rgba(0,0,0,0.28);
+      background: linear-gradient(180deg, rgba(190,226,255,0.08), rgba(140,190,255,0.02));
+      overflow: hidden;
+    }
+    .bathLabel{
+      position:absolute; left:12px; top:8px; z-index:3;
+      padding:3px 8px; border-radius:999px;
+      background: rgba(0,0,0,0.35);
+      border:1px solid rgba(255,255,255,0.14);
+      color: rgba(230,244,255,0.94); font-size:11px; font-weight:800;
+      letter-spacing:.2px;
+    }
+    .bathWater{
+      position:absolute; left:8px; right:8px; bottom:8px; height:68%;
+      border-radius: 0 0 16px 16px;
+      background:
+        linear-gradient(180deg, rgba(83,188,255,0.38), rgba(43,128,218,0.20)),
+        repeating-linear-gradient(120deg, rgba(255,255,255,0.10) 0 10px, rgba(255,255,255,0.03) 10px 20px);
+      border:1px solid rgba(170,220,255,0.32);
+      box-shadow: inset 0 8px 12px rgba(255,255,255,0.06);
+    }
+    .bathSurface{
+      position:absolute; left:10px; right:10px; bottom: calc(8px + 68% - 2px);
+      height:3px; border-radius:999px;
+      background: rgba(198,236,255,0.75);
+      box-shadow: 0 0 10px rgba(130,205,255,0.45);
+      z-index: 2;
+      pointer-events:none;
+    }
+    .beaker{
+      position:absolute;
+      left:50%; top: 42%;
+      transform: translate(-50%,-50%);
+      width: 52%;
+      height: 54%;
+      border-radius: 16px 16px 20px 20px;
+      border: 2px solid rgba(234,242,255,0.46);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03));
+      z-index: 4;
+    }
+    .beaker::after{
+      content:""; position:absolute; left: 10px; right: 10px; bottom: 10px; height: 10px;
+      border-radius: 0 0 16px 16px; background: rgba(255,255,255,0.05);
+    }
+    .sample{
+      position:absolute; left: 50%; bottom: 10%; transform: translateX(-50%);
+      width: 86%; height: 72%; border-radius: 12px; overflow:hidden;
+      border: none; background: transparent;
+    }
+    .sampleLabel{
+      position:absolute; left:10px; top:8px; padding:4px 8px; border-radius:999px;
+      background: rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.14);
+      color: rgba(234,242,255,0.92); font-size:12px; letter-spacing:.2px;
+      backdrop-filter: blur(6px); pointer-events:none; z-index: 2;
+    }
+    .solidLayer, .liquidLayer{ position:absolute; left:0; right:0; bottom:0; transition: height .18s linear; }
+    .solidLayer{
+      height: 70%;
+      background:
+        linear-gradient(180deg, rgba(160,210,255,0.65), rgba(140,190,255,0.35)),
+        repeating-linear-gradient(135deg, rgba(255,255,255,0.15) 0 10px, rgba(255,255,255,0.05) 10px 20px);
+      filter: drop-shadow(0 0 10px rgba(120,180,255,0.15));
+    }
+    .liquidLayer{
+      height: 30%;
+      background: linear-gradient(180deg, rgba(60,220,151,0.25), rgba(80,180,255,0.18));
+      backdrop-filter: blur(4px);
+    }
+    .thermo{
+      position:absolute; left: 29%; top: 6%; width: 14px; height: 56%;
+      border-radius: 10px; background: rgba(255,255,255,0.10);
+      border:1px solid rgba(255,255,255,0.18); box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      z-index: 5;
+    }
+    .thermo::after{
+      content:""; position:absolute; left: 50%; bottom: -12px; transform: translateX(-50%);
+      width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,0.12);
+      border:1px solid rgba(255,255,255,0.18);
+    }
+    .mercury{
+      position:absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+      width: 8px; height: 10%; border-radius: 8px;
+      background: linear-gradient(180deg, rgba(255,107,107,0.95), rgba(255,107,107,0.55));
+      box-shadow: 0 0 10px rgba(255,107,107,0.28); transition: height .18s linear;
+    }
+    .heater{
+      position:absolute; left:50%; top: 78%; transform: translate(-50%,-50%);
+      width: 58%; height: 16%;
+      background: transparent;
+      border: none;
+    }
+    .flame{
+      position:absolute; left:50%; top: 50%; transform: translate(-50%,-50%);
+      width: 46px; height: 64px; border-radius: 50% 50% 55% 55%;
+      background: radial-gradient(circle at 50% 35%, rgba(255,255,255,0.7), rgba(255,183,77,0.55) 35%, rgba(255,107,107,0.0) 68%),
+                  radial-gradient(circle at 50% 72%, rgba(255,107,107,0.55), rgba(255,107,107,0.08) 60%, transparent 70%);
+      opacity: .10; filter: blur(.2px) drop-shadow(0 0 18px rgba(255,183,77,0.12));
+      transition: opacity .15s linear, transform .15s linear;
+      animation: flicker 0.22s infinite alternate;
+    }
+    @keyframes flicker{
+      from{ transform: translate(-50%,-50%) scale(0.98) rotate(-1deg); }
+      to{ transform: translate(-50%,-50%) scale(1.02) rotate(1deg); }
+    }
+    .statusChip{
+      position:absolute; right: -4px; bottom: calc(100% + 8px); padding: 5px 10px;
+      border-radius: 999px; font-size: 11px; border:1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.42); color: var(--fg); white-space: nowrap;
+      max-width: 188px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .graphWrap{
+      flex: 1; display:flex; flex-direction:column; padding: 10px; gap:10px; position:relative; overflow: hidden;
+    }
+    .graphArea{
+      flex: 1; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.30); position:relative; overflow:hidden;
+    }
+    #graph{ width:100%; height:100%; display:block; }
+    .selectBox{
+      position:absolute; left: 50%; top: 40%; width: 120px; height: 50px;
+      border-radius: 8px; border: 2px dashed rgba(255,183,77,0.9);
+      background: rgba(255,183,77,0.12); box-shadow: 0 8px 22px rgba(0,0,0,0.28);
+      cursor: grab; touch-action:none; display:none; z-index: 10; transition: left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), top 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .selectBox:active{ cursor: grabbing; transition: none; }
+    .selectLabel{
+      position:absolute; left: 0; top: -20px; width: 100%; text-align: left;
+      font-size: 11px; color: rgba(255,255,255,0.92);
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8); white-space: nowrap;
+    }
+    .miniCtrl{ display:grid; grid-template-columns: 1fr; gap: 8px; margin-top: auto; }
+    .ctrlRow{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06); flex-wrap: wrap;
+    }
+    .ctrlLeft{ display:flex; align-items:center; gap:8px; }
+    .pill{
+      padding: 4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.18); font-size: 11px; color: var(--muted); white-space:nowrap;
+    }
+    .tempBig{ font-weight:900; letter-spacing: .3px; color: #fff;}
+    .switch{ display:flex; gap: 8px; align-items:center; flex: 1; justify-content:flex-end; }
+    input[type="range"]{ width: 80px; accent-color: var(--accent); }
+    .toolbar{
+      display:flex; gap:10px; width:100%; max-width:900px; margin-top: 10px; justify-content:flex-start; flex-wrap: wrap;
+    }
+    .toolbar button, .switch button{
+      background: rgba(255,255,255,0.10); border:1px solid rgba(255,255,255,0.16);
+      color: var(--fg); padding: 8px 12px; border-radius: 8px; cursor:pointer;
+      font-weight: 700; letter-spacing: .2px; font-size: 13px;
+      transition: all .12s ease;
+    }
+    .switch button { padding: 6px 10px; font-size: 12px; }
+    .toolbar button:hover, .switch button:hover{ background: rgba(255,255,255,0.18); }
+    .toolbar button:disabled, .switch button:disabled{ opacity:.45; cursor:not-allowed; }
+    
+    .toast{
+      position:fixed; left:50%; bottom: 80px; transform: translateX(-50%);
+      background: rgba(0,0,0,0.85); border:1px solid rgba(255,255,255,0.18);
+      color: #fff; padding: 10px 16px; border-radius: 999px;
+      font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      opacity:0; pointer-events:none; transition: opacity .18s ease, transform .18s ease;
+      z-index: 100; max-width: 80vw; text-align: center;
+    }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(-10px); }
+    
+    .modal-mask{
+      position:fixed; inset:0; background: rgba(0,0,0,0.65); display:none;
+      align-items:center; justify-content:center; z-index: 60; padding: 18px; backdrop-filter: blur(2px);
+    }
+    .modal{
+      width:min(90vw, 380px); background: #1e222e;
+      border:1px solid rgba(255,255,255,0.16); border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.65); padding: 20px;
+    }
+    .modal h3{ margin: 0 0 10px; color: var(--accent); }
+    .modal p{ margin: 0 0 20px; color: rgba(234,242,255,0.82); line-height: 1.5; font-size: 14px;}
+    .modal .ok{
+      background: var(--accent); color:#081a12; font-weight:800;
+      border:none; padding: 12px; border-radius: 10px; width:100%; cursor:pointer; font-size: 14px;
+    }
+    .checkmark{
+      position:absolute; right: 14px; top: 12px; width: 44px; height: 44px;
+      border-radius: 50%; background: rgba(61,220,151,0.18); border: 1px solid rgba(61,220,151,0.45);
+      display:flex; align-items:center; justify-content:center; opacity:0;
+      transform: scale(0.95); transition: opacity .18s ease, transform .18s ease;
+      pointer-events:none; z-index: 20;
+    }
+    .checkmark.active{ opacity:1; transform: scale(1); }
+    .checkmark div{
+      width: 18px; height: 10px; border-left: 4px solid rgba(61,220,151,0.95);
+      border-bottom: 4px solid rgba(61,220,151,0.95); transform: rotate(-45deg);
+      margin-top: -2px; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+    }
+
+    .hud{
+      position:absolute; left:12px; top:12px; z-index: 8;
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+      pointer-events:none;
+    }
+    .hud .tag{
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.30);
+      backdrop-filter: blur(8px);
+      font-size:12px; font-weight:900; color:var(--fg);
+      white-space:nowrap;
+    }
+    .hud .tag.mode-auto{
+      border-color: rgba(61,220,151,0.42);
+      color:#b8ffd6;
+      background: rgba(61,220,151,0.14);
+    }
+
+    .dock{
+      position:absolute;
+      pointer-events:auto;
+      user-select:none;
+      transition: box-shadow .12s ease, transform .12s ease;
+    }
+    .dock.dragging{
+      box-shadow: 0 14px 28px rgba(0,0,0,0.42);
+      transform: scale(1.01);
+      transition:none;
+    }
+    .panelDock{
+      z-index: var(--zPanel);
+      width:min(340px, 72%);
+    }
+    .panelHead{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:8px;
+      background: rgba(15,15,15,0.58);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:14px;
+      padding:10px;
+      backdrop-filter: blur(8px);
+      cursor:grab;
+      touch-action:none;
+    }
+    .panelHead:active{ cursor:grabbing; }
+    .panelHead .title{
+      font-weight:900; font-size:13px; color:#9bd3ff;
+      display:flex; align-items:center; gap:8px;
+    }
+    .iconBtn{
+      border:none; cursor:pointer;
+      padding:8px 10px;
+      border-radius:12px;
+      background: rgba(255,255,255,0.12);
+      color:#fff;
+      font-weight:900;
+      transition:.15s;
+      white-space:nowrap;
+    }
+    .iconBtn:hover{ background: rgba(255,255,255,0.18); }
+    .iconBtn:disabled{ opacity:.55; cursor:not-allowed; }
+
+    .panelBody{
+      margin-top:8px;
+      background: rgba(15,15,15,0.58);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:14px;
+      padding:10px;
+      backdrop-filter: blur(8px);
+      transform-origin: top right;
+      transition: max-height .22s ease, opacity .22s ease, transform .22s ease, padding .22s ease;
+      overflow:hidden;
+      max-height: 420px;
+      user-select:text;
+    }
+    .panelBody.collapsed{
+      max-height:0;
+      padding-top:0; padding-bottom:0;
+      opacity:0;
+      transform: translateY(-6px) scale(0.98);
+      border-color: transparent;
+    }
+    .row{
+      display:grid; grid-template-columns: 70px 1fr 52px; gap:8px; align-items:center;
+      margin:8px 0;
+    }
+    .row label{ font-size:12px; color:#cfe2ff; opacity:.92; font-weight:800; }
+    .val{
+      text-align:right;
+      font-variant-numeric: tabular-nums;
+      font-size:12px; color:#eaf2ff;
+      opacity:.95; white-space:nowrap;
+    }
+    .miniBtns{
+      display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
+    }
+    .miniBtns button{
+      padding:8px 10px;
+      background:#3a3d45;
+      color:#fff; border:none; border-radius:10px;
+      cursor:pointer; transition:.15s;
+      user-select:none;
+      flex: 1 1 110px;
+      white-space:nowrap;
+      font-weight:900;
+      font-size:12px;
+    }
+    .miniBtns button:hover{ background:#4b4f59; }
+    .miniBtns button:active{ transform:scale(.98); }
+    .miniBtns button.primary{ background:#2e7d32; }
+    .miniBtns button.primary:hover{ background:#338a37; }
+    .miniBtns button.ghost{ background:transparent; border:1px solid rgba(255,255,255,0.25); }
+    .miniBtns button:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+    .readPills{
+      display:flex; gap:6px; flex-wrap:wrap;
+    }
+    .readPills .pill{
+      background: rgba(0,0,0,0.32);
+      color: #eaf2ff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .readPills .k{
+      color:#9bd3ff;
+      margin-right:4px;
+      opacity:.92;
+    }
+
+    .resultsDock{
+      z-index: var(--zResults);
+      width:min(360px, 76%);
+    }
+    .resultsHead{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      background: rgba(15,15,15,0.58);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:14px;
+      padding:10px;
+      backdrop-filter: blur(8px);
+      cursor:grab;
+      touch-action:none;
+    }
+    .resultsHead:active{ cursor:grabbing; }
+    .resultsBody{
+      margin-top:8px;
+      background: rgba(15,15,15,0.58);
+      border:1px solid rgba(255,255,255,0.16);
+      border-radius:14px;
+      padding:10px;
+      backdrop-filter: blur(8px);
+      transform-origin: top right;
+      transition: max-height .22s ease, opacity .22s ease, transform .22s ease, padding .22s ease;
+      overflow:hidden;
+      max-height: 290px;
+    }
+    .resultsBody.collapsed{
+      max-height:0;
+      padding-top:0; padding-bottom:0;
+      opacity:0;
+      transform: translateY(-6px) scale(0.98);
+      border-color: transparent;
+    }
+    .resultsBody h4{
+      margin:0 0 8px;
+      font-size:12px;
+      color:#9bd3ff;
+      font-weight:900;
+    }
+    .table{
+      width:100%;
+      border-collapse: collapse;
+      font-size:12px;
+      color:#eaf2ff;
+    }
+    .table th, .table td{
+      border-bottom:1px solid rgba(255,255,255,0.10);
+      padding:6px 4px;
+      text-align:left;
+      font-variant-numeric: tabular-nums;
+    }
+    .table th{ color:#cfe2ff; font-weight:900; }
+    .notice-badge{
+      min-width:18px; height:18px; padding:0 5px;
+      border-radius:999px;
+      display:inline-flex; align-items:center; justify-content:center;
+      background:#ff5f66; color:#fff;
+      font-size:11px; font-weight:900;
+      border:1px solid rgba(255,255,255,0.16);
+      opacity:0; transform:scale(.7);
+      transition:.18s;
+    }
+    .notice-badge.show{
+      opacity:1; transform:scale(1);
+      animation: pulseBadge .75s ease-in-out infinite alternate;
+    }
+    @keyframes pulseBadge{
+      from{ box-shadow:0 0 0 0 rgba(255,95,102,.4); }
+      to{ box-shadow:0 0 0 6px rgba(255,95,102,0); }
+    }
+    .explanation{
+      width:100%; max-width:900px; box-sizing: border-box; margin: 14px 0 20px;
+      line-height:1.6; font-size: 14px; color: #e9f2ff;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px; padding: 12px 14px;
+    }
+    .explanation h2{ margin:0 0 8px; color:#9bd3ff; font-size: 16px; }
+    .explanation ul { padding-left: 20px; margin: 0; }
+    .explanation li { margin-bottom: 4px; }
+    
+    @media (max-width: 700px){
+      .stage{ grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+      .bench{ height: 200px; }
+      .task-card { grid-template-columns: 1fr; gap: 8px; text-align: center; }
+      .progress-dots { justify-content: center; }
+      .task-step { display: inline-block; }
+      input[type="range"]{ width: 60px; }
+      .switch { justify-content: space-between; width: 100%; margin-top: 6px;}
+      .panelDock, .resultsDock{ width:min(92%, 360px); }
+    }
+  
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">启动<strong>水浴加热</strong>，让温度升至接近 100℃（全过程）</div>
+      <div class="task-hint" id="taskHint">提示：温度计已置于水浴中，等待温度升到 95℃ 以上，步骤将自动完成。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+    
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+<div class="stage">
+      <div class="panel" id="leftPanel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">实验装置</div>
+            <div class="panel-sub">晶体：海波（硫代硫酸钠，水浴法）</div>
+          </div>
+          <div class="pill" id="statePill">状态：固体</div>
+        </div>
+        <div class="apparatus">
+          <div class="bench">
+            <div class="waterBath">
+              <div class="bathLabel">水浴槽</div>
+              <div class="bathWater"></div>
+              <div class="bathSurface"></div>
+              <div class="beaker">
+                <div class="sample" id="sample">
+                  <div class="sampleLabel">海波晶体</div>
+                  <div class="solidLayer" id="solidLayer"></div>
+                  <div class="liquidLayer" id="liquidLayer"></div>
+                </div>
+              </div>
+            </div>
+            <div class="thermo" id="thermo">
+              <div class="mercury" id="mercury"></div>
+            </div>
+            <div class="heater">
+              <div class="flame" id="flame"></div>
+              <div class="statusChip" id="hintChip">点击“开始”进行水浴加热/冷却</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" id="rightPanel">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">温度—时间图像</div>
+            <div class="panel-sub">注意：需“暂停”后才能拖动标记框</div>
+          </div>
+          <div class="pill"><span class="tempBig" id="tempText">20.0℃</span> · <span id="timeText">t=0s</span></div>
+        </div>
+        <div class="graphWrap">
+          <div class="graphArea" id="graphArea">
+            <canvas id="graph"></canvas>
+            <div class="selectBox" id="selectBox">
+              <div class="selectLabel" id="selectLabel">先点击暂停</div>
+            </div>
+            <div class="checkmark" id="checkmark"><div></div></div>
+          </div>
+          <div class="miniCtrl">
+            <div class="ctrlRow">
+              <div class="ctrlLeft">
+                <span class="pill">图像区用于观察温度-时间变化</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dock panelDock drawer control" id="controlDock">
+      <div class="panelHead drawer-header" id="controlHead" data-drag-handle>
+        <div class="title">实验控制 <span class="pill" id="modePill">模式：加热</span></div>
+        <button class="iconBtn" id="controlToggleBtn" title="折叠/展开">展开</button>
+      </div>
+      <div class="panelBody collapsed drawer-body" id="controlBody">
+        <div class="readPills" id="readPills"></div>
+        <div class="row">
+          <label>功率</label>
+          <input id="power" type="range" min="0" max="100" value="60" aria-label="功率调节" />
+          <div class="val" id="powerText">60%</div>
+        </div>
+        <div class="miniBtns">
+          <button id="toggleMode">切换到冷却</button>
+          <button id="startBtn" class="primary">开始</button>
+          <button id="recordBtn" class="ghost">记录一次</button>
+          <button id="clearRecordsBtn" class="ghost">清空记录</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dock resultsDock drawer data" id="dataDock">
+      <div class="resultsHead drawer-header" id="dataHead" data-drag-handle>
+        <div class="title" style="font-weight:900; color:#9bd3ff; display:flex; align-items:center; gap:8px;">
+          数据面板
+          <span class="notice-badge" id="dataNotice">0</span>
+        </div>
+        <button class="iconBtn" id="dataToggleBtn">展开</button>
+      </div>
+      <div class="resultsBody collapsed drawer-body" id="dataBody">
+        <h4>记录表</h4>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>步骤</th>
+              <th>读数(℃)</th>
+              <th>t(s)</th>
+            </tr>
+          </thead>
+          <tbody id="recordBody">
+            <tr><td colspan="4" style="opacity:.72;">当前无记录。建议在关键节点点击“记录一次”。</td></tr>
+          </tbody>
+        </table>
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3 id="doneTitle">实验完成</h3>
+      <p id="doneDesc">你成功圈出了“熔化平台”和“凝固平台”。注意：实际操作中必须先暂停实验，仔细分析数据再做标记。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：探究晶体熔化和凝固的过程及特点</h2>
+    <ul>
+      <li><strong>关键操作</strong>：先加热并记录升温过程，再在暂停状态下圈出熔化平台；切换冷却后重复圈出凝固平台。</li>
+      <li><strong>可观察现象</strong>：海波在约 48℃附近会出现“温度基本不变”的平台段，熔化和凝固阶段都可看到。</li>
+      <li><strong>原理与结论</strong>：晶体在熔化时吸热破坏晶格、在凝固时放热形成晶格，因此同种晶体熔点与凝固点相同（海波约 48℃）。</li>
+    </ul>
+  </div>
+
+  <script>
+    const AUTO_DEMO_FACTOR = 1.2;
+    const MP = 48;
+    const Tmin = 20;
+    const Tmax = 100;
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    const state = {
+      currentTask: 0,
+      completed: false,
+      freeMode: false,
+      autoPlaying: false,
+      warningStep: -1,
+      successCooldown: false,
+      draggingBox: false,
+      dragPointerId: null,
+      boxOffset: { x: 0, y: 0 },
+      dataCollapsed: true,
+      controlCollapsed: true,
+      unseenRecordCount: 0,
+      records: [],
+      demoRunId: 0,
+      timers: new Set(),
+      rafId: 0,
+      lastTs: performance.now(),
+      dockMoved: { control: false, data: false },
+      demoDriving: false
+    };
+
+    function createSim() {
+      return {
+        t: 0,
+        T: Tmin,
+        running: false,
+        mode: 'heat',
+        power: 0.6,
+        meltFrac: 0,
+        freezeFrac: 0,
+        phase: 'solid',
+        data: []
+      };
+    }
+    let sim = createSim();
+    let resizeTimer = 0;
+    let graphMapper = null;
+
+    const taskCard = document.getElementById('taskCard');
+    const taskStepEl = document.getElementById('taskStep');
+    const taskTextEl = document.getElementById('taskText');
+    const taskHintEl = document.getElementById('taskHint');
+    const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+
+    const stage = document.getElementById('stage');
+    const modeTag = document.getElementById('modeTag');
+    const statusTag = document.getElementById('statusTag');
+
+    const toast = document.getElementById('toast');
+    const doneMask = document.getElementById('doneMask');
+    const okBtn = document.getElementById('okBtn');
+    const autoDemoBtn = document.getElementById('autoDemoBtn');
+    const freeBtn = document.getElementById('freeBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    const graphCanvas = document.getElementById('graph');
+    const graphArea = document.getElementById('graphArea');
+    const selectBox = document.getElementById('selectBox');
+    const selectLabel = document.getElementById('selectLabel');
+    const checkmark = document.getElementById('checkmark');
+    const ctx = graphCanvas.getContext('2d');
+
+    const powerRange = document.getElementById('power');
+    const powerText = document.getElementById('powerText');
+    const toggleModeBtn = document.getElementById('toggleMode');
+    const startBtn = document.getElementById('startBtn');
+    const modePill = document.getElementById('modePill');
+    const readPills = document.getElementById('readPills');
+    const recordBtn = document.getElementById('recordBtn');
+    const clearRecordsBtn = document.getElementById('clearRecordsBtn');
+
+    const tempText = document.getElementById('tempText');
+    const timeText = document.getElementById('timeText');
+    const statePill = document.getElementById('statePill');
+    const hintChip = document.getElementById('hintChip');
+    const solidLayer = document.getElementById('solidLayer');
+    const liquidLayer = document.getElementById('liquidLayer');
+    const mercury = document.getElementById('mercury');
+    const flame = document.getElementById('flame');
+
+    const controlDock = document.getElementById('controlDock');
+    const controlHead = document.getElementById('controlHead');
+    const controlBody = document.getElementById('controlBody');
+    const controlToggleBtn = document.getElementById('controlToggleBtn');
+    const dataDock = document.getElementById('dataDock');
+    const dataHead = document.getElementById('dataHead');
+    const dataBody = document.getElementById('dataBody');
+    const dataToggleBtn = document.getElementById('dataToggleBtn');
+    const dataNotice = document.getElementById('dataNotice');
+    const recordBody = document.getElementById('recordBody');
+
+    function trackTimer(id) {
+      state.timers.add(id);
+      return id;
+    }
+    function untrackTimer(id) {
+      state.timers.delete(id);
+    }
+    function clearTrackedTimers() {
+      state.timers.forEach((id) => clearTimeout(id));
+      state.timers.clear();
+      if (showToast.timerId) {
+        clearTimeout(showToast.timerId);
+        showToast.timerId = 0;
+      }
+      if (showCheck.timerId) {
+        clearTimeout(showCheck.timerId);
+        showCheck.timerId = 0;
+      }
+    }
+    function wait(ms) {
+      const scaled = Math.max(0, Math.round(ms * AUTO_DEMO_FACTOR));
+      return new Promise((resolve) => {
+        const id = setTimeout(() => {
+          untrackTimer(id);
+          resolve();
+        }, scaled);
+        trackTimer(id);
+      });
+    }
+
+    function setStatusTag(text) {
+      statusTag.textContent = `状态：${text || '待操作'}`;
+    }
+    function updateModeHud() {
+      modeTag.classList.remove('mode-auto');
+      if (state.autoPlaying) {
+        modeTag.textContent = '模式：自动演示';
+        modeTag.classList.add('mode-auto');
+      } else if (state.freeMode) {
+        modeTag.textContent = '模式：自由';
+      } else {
+        modeTag.textContent = '模式：引导';
+      }
+    }
+
+    function showToast(text) {
+      toast.textContent = text || '提示';
+      toast.classList.add('show');
+      if (showToast.timerId) {
+        clearTimeout(showToast.timerId);
+        untrackTimer(showToast.timerId);
+      }
+      showToast.timerId = trackTimer(setTimeout(() => {
+        toast.classList.remove('show');
+        if (showToast.timerId) {
+          untrackTimer(showToast.timerId);
+          showToast.timerId = 0;
+        }
+      }, 1450));
+    }
+    showToast.timerId = 0;
+
+    function showCheck() {
+      checkmark.classList.add('active');
+      if (showCheck.timerId) {
+        clearTimeout(showCheck.timerId);
+        untrackTimer(showCheck.timerId);
+      }
+      showCheck.timerId = trackTimer(setTimeout(() => {
+        checkmark.classList.remove('active');
+        if (showCheck.timerId) {
+          untrackTimer(showCheck.timerId);
+          showCheck.timerId = 0;
+        }
+      }, 520));
+    }
+    showCheck.timerId = 0;
+
+    function lockSuccess() {
+      state.successCooldown = true;
+      const id = setTimeout(() => {
+        state.successCooldown = false;
+        untrackTimer(id);
+      }, 600);
+      trackTimer(id);
+    }
+
+    function phaseText() {
+      if (sim.phase === 'solid') return '固体';
+      if (sim.phase === 'melting') return '熔化中';
+      if (sim.phase === 'liquid') return '液体';
+      if (sim.phase === 'freezing') return '凝固中';
+      return '未知';
+    }
+
+    function updateVisual() {
+      tempText.textContent = `${sim.T.toFixed(1)}℃`;
+      timeText.textContent = `t=${Math.round(sim.t)}s`;
+      statePill.textContent = `状态：${phaseText()}`;
+      modePill.textContent = `模式：${sim.mode === 'heat' ? '加热' : '冷却'}`;
+      readPills.innerHTML = [
+        `<span class="pill"><span class="k">阶段</span>${phaseText()}</span>`,
+        `<span class="pill"><span class="k">读数</span>${sim.T.toFixed(1)}℃</span>`,
+        `<span class="pill"><span class="k">时间</span>${Math.round(sim.t)}s</span>`,
+        `<span class="pill"><span class="k">模式</span>${sim.mode === 'heat' ? '加热' : '冷却'}</span>`
+      ].join('');
+
+      flame.style.opacity = sim.running && sim.mode === 'heat' ? (0.1 + sim.power * 0.8) : 0.08;
+      flame.style.transform = sim.running && sim.mode === 'heat'
+        ? `translate(-50%,-50%) scale(${0.95 + sim.power * 0.35})`
+        : 'translate(-50%,-50%) scale(0.95)';
+
+      const solidH = clamp(70 * (1 - sim.meltFrac) + 70 * sim.freezeFrac, 0, 70);
+      const liquidH = clamp(70 - solidH, 0, 70);
+      solidLayer.style.height = `${solidH}%`;
+      liquidLayer.style.height = `${liquidH}%`;
+
+      const mercuryH = clamp((sim.T - Tmin) / (Tmax - Tmin), 0, 1);
+      mercury.style.height = `${10 + mercuryH * 78}%`;
+
+      if (!sim.running) {
+        hintChip.textContent = '已暂停，现在可以操作标记框';
+      } else {
+        hintChip.textContent = sim.mode === 'heat' ? '水浴加热中…请等待温度升高' : '水浴冷却中…请等待温度降低';
+      }
+    }
+
+    function stepSim(dt) {
+      const p = sim.power;
+      const heatRate = 18 * (0.35 + 0.65 * p);
+      const coolRate = 14 * (0.4 + (1 - p) * 0.6);
+      const latentRate = 0.18 + 0.25 * p;
+
+      if (sim.mode === 'heat') {
+        if (sim.phase === 'solid') {
+          sim.T += heatRate * dt;
+          if (sim.T >= MP) {
+            sim.T = MP;
+            sim.phase = 'melting';
+          }
+        } else if (sim.phase === 'melting') {
+          sim.T = MP;
+          sim.meltFrac += latentRate * dt;
+          if (sim.meltFrac >= 1) {
+            sim.meltFrac = 1;
+            sim.phase = 'liquid';
+          }
+        } else if (sim.phase === 'liquid') {
+          sim.T += heatRate * 0.55 * dt;
+          if (sim.T >= Tmax) sim.T = Tmax;
+        } else if (sim.phase === 'freezing') {
+          sim.phase = 'melting';
+          sim.freezeFrac = 0;
+        }
+      } else if (sim.phase === 'liquid') {
+        sim.T -= coolRate * dt;
+        if (sim.T <= MP) {
+          sim.T = MP;
+          sim.phase = 'freezing';
+        }
+      } else if (sim.phase === 'freezing') {
+        sim.T = MP;
+        sim.freezeFrac += latentRate * dt;
+        if (sim.freezeFrac >= 1) {
+          sim.freezeFrac = 1;
+          sim.phase = 'solid';
+          sim.meltFrac = 0;
+        }
+      } else if (sim.phase === 'solid') {
+        sim.T -= coolRate * 0.65 * dt;
+        if (sim.T <= Tmin) sim.T = Tmin;
+      } else if (sim.phase === 'melting') {
+        sim.phase = 'freezing';
+        sim.meltFrac = 1 - sim.freezeFrac;
+      }
+
+      sim.t += dt;
+      sim.data.push({ t: sim.t, T: sim.T });
+      if (sim.data.length > 5000) sim.data.shift();
+    }
+
+    function fitCanvas() {
+      const r = graphArea.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      if (graphCanvas.width !== Math.round(r.width * dpr) || graphCanvas.height !== Math.round(r.height * dpr)) {
+        graphCanvas.width = Math.round(r.width * dpr);
+        graphCanvas.height = Math.round(r.height * dpr);
+        graphCanvas.style.width = `${r.width}px`;
+        graphCanvas.style.height = `${r.height}px`;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      drawGraph();
+    }
+
+    function drawGraph() {
+      const w = parseFloat(graphCanvas.style.width);
+      const h = parseFloat(graphCanvas.style.height);
+      if (!w || !h) return;
+      ctx.clearRect(0, 0, w, h);
+
+      const padL = 40;
+      const padR = 10;
+      const padT = 20;
+      const padB = 30;
+      const gw = w - padL - padR;
+      const gh = h - padT - padB;
+
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(padL, padT);
+      ctx.lineTo(padL, padT + gh);
+      ctx.lineTo(padL + gw, padT + gh);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(234,242,255,0.75)';
+      ctx.font = '11px -apple-system, sans-serif';
+      [20, 40, 60, 80, 100].forEach((v) => {
+        const y = padT + (Tmax - v) / (Tmax - Tmin) * gh;
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + gw, y);
+        ctx.stroke();
+        ctx.fillText(String(v), 8, y + 4);
+      });
+
+      const tMax = sim.data.length ? sim.data[sim.data.length - 1].t : 0;
+      const tMin = Math.max(0, tMax - 180);
+      const xTicks = 6;
+      for (let i = 0; i <= xTicks; i += 1) {
+        const t = tMin + i / xTicks * (tMax - tMin || 1);
+        const x = padL + i / xTicks * gw;
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, padT + gh);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(234,242,255,0.55)';
+        ctx.fillText(`${Math.round(t)}s`, x - 10, padT + gh + 18);
+      }
+
+      const yMP = padT + (Tmax - MP) / (Tmax - Tmin) * gh;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(255,183,77,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(padL, yMP);
+      ctx.lineTo(padL + gw, yMP);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,183,77,0.85)';
+      ctx.fillText('熔点 48℃', padL + 6, yMP - 6);
+
+      const seg = sim.data.filter((p) => p.t >= tMin && p.t <= tMax);
+      if (seg.length > 1) {
+        ctx.lineWidth = 2.5;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#3ddc97';
+        ctx.beginPath();
+        for (let i = 0; i < seg.length; i += 1) {
+          const px = padL + (seg[i].t - tMin) / (tMax - tMin || 1) * gw;
+          const py = padT + (Tmax - seg[i].T) / (Tmax - Tmin) * gh;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      graphMapper = { padL, padT, padB, gw, gh, tMin, tMax };
+    }
+
+    function getBoxRect() {
+      return {
+        x: parseFloat(selectBox.style.left) || 0,
+        y: parseFloat(selectBox.style.top) || 0,
+        w: selectBox.offsetWidth,
+        h: selectBox.offsetHeight
+      };
+    }
+
+    function analyzeBoxData() {
+      if (!graphMapper || sim.data.length < 5) return { ok: false };
+      const { padL, padT, gw, gh, tMin, tMax } = graphMapper;
+      const br = getBoxRect();
+      const x1 = clamp(br.x, 0, graphArea.clientWidth);
+      const x2 = clamp(br.x + br.w, 0, graphArea.clientWidth);
+      const gx1 = clamp(x1 - padL, 0, gw);
+      const gx2 = clamp(x2 - padL, 0, gw);
+      const tt1 = tMin + gx1 / gw * (tMax - tMin);
+      const tt2 = tMin + gx2 / gw * (tMax - tMin);
+      const seg = sim.data.filter((p) => p.t >= tt1 && p.t <= tt2);
+      if (seg.length < 3) return { ok: false };
+      const plateauPoints = seg.filter((p) => Math.abs(p.T - MP) < 2.0);
+      const yMP = padT + (Tmax - MP) / (Tmax - Tmin) * gh;
+      const includesMP = yMP >= br.y && yMP <= br.y + br.h;
+      let timeSpan = 0;
+      if (plateauPoints.length > 2) {
+        timeSpan = plateauPoints[plateauPoints.length - 1].t - plateauPoints[0].t;
+      }
+      return { ok: true, includesMP, validPointCount: plateauPoints.length, timeSpan };
+    }
+
+    const tasks = [
+      {
+        text: '启动<strong>水浴加热</strong>，让温度升至 95℃ 以上',
+        hint: '提示：观察温度计在水浴中的读数上升；达到条件后会自动进入下一步。',
+        check: () => sim.T > 95
+      },
+      {
+        text: '点击<strong>暂停</strong>，拖动标记框圈出<strong>熔化平台</strong>（48℃附近）',
+        hint: '提示：先暂停，再圈画；框需要覆盖 48℃ 虚线并包含足够平台数据。',
+        check: () => {
+          if (sim.running) return false;
+          const r = analyzeBoxData();
+          return r.ok && r.includesMP && r.validPointCount > 5 && r.timeSpan > 1.0;
+        }
+      },
+      {
+        text: '切换到<strong>冷却</strong>并再次暂停，圈出<strong>凝固平台</strong>',
+        hint: '提示：切到冷却并运行一段时间，再暂停后圈画凝固平台。',
+        check: () => {
+          if (sim.running) return false;
+          if (sim.mode === 'heat') return false;
+          const r = analyzeBoxData();
+          return r.ok && r.includesMP && r.validPointCount > 5 && r.timeSpan > 1.0;
+        }
+      }
+    ];
+
+    function updateSelectBoxVisibility() {
+      if (state.completed) {
+        selectBox.style.display = 'none';
+        return;
+      }
+      if (state.freeMode) {
+        showSelectBox('自由模式');
+        return;
+      }
+      if (state.currentTask === 1) showSelectBox('圈出熔化平台');
+      else if (state.currentTask === 2) showSelectBox('圈出凝固平台');
+      else selectBox.style.display = 'none';
+    }
+
+    function renderStepUI() {
+      const idx = state.currentTask;
+      const last = tasks.length - 1;
+      taskStepEl.textContent = `步骤 ${idx + 1} / ${tasks.length}`;
+      taskTextEl.innerHTML = tasks[idx].text;
+      taskHintEl.textContent = tasks[idx].hint;
+      dots.forEach((d, i) => {
+        const isDone = i < idx || (state.completed && i === last);
+        const isActive = i === idx && !state.completed;
+        d.classList.toggle('done', isDone);
+        d.classList.toggle('active', isActive);
+        d.classList.toggle('warn', isActive && state.warningStep === idx);
+      });
+      updateSelectBoxVisibility();
+    }
+
+    function setStepUI(stepIndex) {
+      state.currentTask = clamp(stepIndex, 0, tasks.length - 1);
+      renderStepUI();
+    }
+
+    function markStepWarning(msg) {
+      if (state.freeMode || state.completed) return;
+      state.warningStep = state.currentTask;
+      renderStepUI();
+      showToast(msg);
+    }
+
+    function showTaskFailHint(endGesture, silent) {
+      if (silent || state.autoPlaying || state.freeMode || state.completed || !endGesture) return;
+      if ((state.currentTask === 1 || state.currentTask === 2) && sim.running) {
+        markStepWarning('请先点击“暂停”，再进行圈画分析。');
+        return;
+      }
+      if (state.currentTask === 1 || state.currentTask === 2) {
+        const r = analyzeBoxData();
+        if (!r.includesMP) markStepWarning('位置不对，框必须覆盖 48℃ 虚线。');
+        else if (r.validPointCount < 3) markStepWarning('框内没有包含足够的平台数据。');
+        else markStepWarning('请圈出“温度基本不变”的平台段。');
+      }
+    }
+
+    function completeChallenge() {
+      if (state.completed) return;
+      state.completed = true;
+      state.warningStep = -1;
+      renderStepUI();
+      doneMask.style.display = 'flex';
+      setStatusTag('挑战完成');
+      showCheck();
+    }
+
+    function tryPassCurrentStep(endGesture = false, silent = false) {
+      if (state.freeMode || state.successCooldown || state.completed) return false;
+      const task = tasks[state.currentTask];
+      if (!task || !task.check()) {
+        showTaskFailHint(endGesture, silent);
+        return false;
+      }
+      if (state.warningStep === state.currentTask) state.warningStep = -1;
+      showCheck();
+      lockSuccess();
+      if (state.currentTask >= tasks.length - 1) {
+        completeChallenge();
+      } else {
+        setStepUI(state.currentTask + 1);
+      }
+      return true;
+    }
+
+    function refreshDataNotice() {
+      const n = state.unseenRecordCount;
+      dataNotice.textContent = n > 99 ? '99+' : String(n);
+      dataNotice.classList.toggle('show', state.dataCollapsed && n > 0);
+    }
+
+    function renderRecordTable() {
+      if (!state.records.length) {
+        recordBody.innerHTML = '<tr><td colspan="4" style="opacity:.72;">当前无记录。建议在关键节点点击“记录一次”。</td></tr>';
+        return;
+      }
+      recordBody.innerHTML = state.records.map((r, i) => (
+        `<tr><td>${i + 1}</td><td>${r.step}</td><td>${r.temp.toFixed(1)}</td><td>${r.t}</td></tr>`
+      )).join('');
+    }
+
+    function addRecord(step = `步骤${state.currentTask + 1}`, note = '') {
+      state.records.push({
+        step: note ? `${step}(${note})` : step,
+        temp: sim.T,
+        t: Math.round(sim.t)
+      });
+      if (state.records.length > 80) state.records.shift();
+      if (state.dataCollapsed) state.unseenRecordCount = Math.min(999, state.unseenRecordCount + 1);
+      else state.unseenRecordCount = 0;
+      refreshDataNotice();
+      renderRecordTable();
+    }
+
+    function addRecordWithAssert(step, note) {
+      const before = state.records.length;
+      addRecord(step, note);
+      if (state.records.length <= before) {
+        throw new Error('AUTO_RECORD_NOT_PERSISTED');
+      }
+    }
+
+    function showSelectBox(label) {
+      selectBox.style.display = 'block';
+      if (label) selectLabel.textContent = label;
+      const area = graphArea.getBoundingClientRect();
+      const currentL = parseFloat(selectBox.style.left) || 0;
+      const currentT = parseFloat(selectBox.style.top) || 0;
+      if (currentL < 0 || currentL > area.width || currentT < 0 || currentT > area.height) {
+        selectBox.style.left = `${area.width / 2 - 60}px`;
+        selectBox.style.top = `${area.height / 2 - 25}px`;
+      }
+    }
+
+    function moveSelectBoxTo(x, y) {
+      const area = graphArea.getBoundingClientRect();
+      const nx = clamp(x, 0, area.width - selectBox.offsetWidth);
+      const ny = clamp(y, 0, area.height - selectBox.offsetHeight);
+      selectBox.style.left = `${nx}px`;
+      selectBox.style.top = `${ny}px`;
+    }
+
+    function calcBoxTargetAtMP(kind = 'auto') {
+      const areaW = graphArea.clientWidth;
+      const areaH = graphArea.clientHeight;
+      const bw = selectBox.offsetWidth || 120;
+      const bh = selectBox.offsetHeight || 50;
+      const padT = 20;
+      const padB = 30;
+      const gh = areaH - padT - padB;
+      const yMP = padT + (Tmax - MP) / (Tmax - Tmin) * gh;
+      let xCenter = areaW * 0.7;
+      if (graphMapper && sim.data.length > 10) {
+        const near = sim.data.filter((p) => Math.abs(p.T - MP) < 1.2);
+        if (near.length) {
+          let chosen = near;
+          if (kind === 'melting') {
+            chosen = near.slice(0, Math.max(6, Math.floor(near.length * 0.45)));
+          } else if (kind === 'freezing') {
+            chosen = near.slice(Math.max(0, Math.floor(near.length * 0.55)));
+          }
+          const mid = chosen[Math.floor(chosen.length / 2)] || near[Math.floor(near.length / 2)];
+          const { padL, gw, tMin, tMax } = graphMapper;
+          xCenter = padL + (mid.t - tMin) / (tMax - tMin || 1) * gw;
+        }
+      }
+      return {
+        x: clamp(xCenter - bw / 2, 0, areaW - bw),
+        y: clamp(yMP - bh / 2, 0, areaH - bh)
+      };
+    }
+
+    function startDragBox(e) {
+      if (state.autoPlaying && !state.demoDriving) return;
+      if (!state.freeMode && !state.completed && state.currentTask === 0) {
+        markStepWarning('请先完成步骤1，再圈画平台。');
+        return;
+      }
+      if (!state.freeMode && sim.running) {
+        markStepWarning('请先点击“暂停”，再拖动标记框。');
+        return;
+      }
+      state.draggingBox = true;
+      state.dragPointerId = e.pointerId;
+      const r = selectBox.getBoundingClientRect();
+      state.boxOffset = { x: e.clientX - r.left, y: e.clientY - r.top };
+      selectBox.style.cursor = 'grabbing';
+      try { selectBox.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault();
+    }
+
+    function dragBox(e) {
+      if ((state.autoPlaying && !state.demoDriving) || !state.draggingBox || e.pointerId !== state.dragPointerId) return;
+      const area = graphArea.getBoundingClientRect();
+      moveSelectBoxTo(e.clientX - area.left - state.boxOffset.x, e.clientY - area.top - state.boxOffset.y);
+      e.preventDefault();
+    }
+
+    function endDragBox(e) {
+      if (!state.draggingBox) return;
+      if (e && state.dragPointerId !== null && e.pointerId !== state.dragPointerId) return;
+      selectBox.style.cursor = 'grab';
+      try {
+        if (state.dragPointerId !== null) selectBox.releasePointerCapture(state.dragPointerId);
+      } catch (_) {}
+      state.draggingBox = false;
+      state.dragPointerId = null;
+      if (!state.freeMode && !state.completed) tryPassCurrentStep(true, false);
+    }
+
+    selectBox.addEventListener('pointerdown', startDragBox);
+    selectBox.addEventListener('pointermove', dragBox);
+    selectBox.addEventListener('pointerup', endDragBox);
+    selectBox.addEventListener('pointercancel', endDragBox);
+
+    powerRange.addEventListener('input', () => {
+      sim.power = parseInt(powerRange.value, 10) / 100;
+      powerText.textContent = `${Math.round(sim.power * 100)}%`;
+    });
+
+    function toggleModeAction(fromAuto = false) {
+      if (state.autoPlaying && !fromAuto) return;
+      const nextMode = sim.mode === 'heat' ? 'cool' : 'heat';
+      if (!fromAuto && !state.freeMode && !state.completed) {
+        if (state.currentTask < 2 && nextMode === 'cool') {
+          markStepWarning('当前步骤未完成，暂不能切到冷却。');
+          return;
+        }
+        if (state.currentTask === 2 && nextMode !== 'cool') {
+          markStepWarning('步骤3需要保持冷却模式。');
+          return;
+        }
+      }
+      sim.mode = nextMode;
+      toggleModeBtn.textContent = sim.mode === 'heat' ? '切换到冷却' : '切换到加热';
+      if (!sim.running) updateVisual();
+      setStatusTag(sim.mode === 'heat' ? '准备加热' : '准备冷却');
+    }
+
+    function toggleRunAction(fromAuto = false) {
+      if (state.autoPlaying && !fromAuto) return;
+      const nextRunning = !sim.running;
+      if (!fromAuto && !state.freeMode && !state.completed && state.currentTask === 2 && nextRunning && sim.mode !== 'cool') {
+        markStepWarning('请先切到冷却，再开始步骤3。');
+        return;
+      }
+      sim.running = nextRunning;
+      startBtn.textContent = sim.running ? '暂停' : '开始';
+      if (!sim.running && !state.freeMode && (state.currentTask === 1 || state.currentTask === 2)) {
+        showToast('已暂停，现在拖动框去圈出平台。');
+      }
+      setStatusTag(sim.running ? (sim.mode === 'heat' ? '加热中' : '冷却中') : '待分析');
+      updateVisual();
+    }
+
+    toggleModeBtn.addEventListener('click', () => {
+      toggleModeAction(false);
+    });
+    startBtn.addEventListener('click', () => {
+      toggleRunAction(false);
+    });
+
+    recordBtn.addEventListener('click', () => {
+      if (state.autoPlaying) return;
+      if (!state.freeMode && !state.completed && state.currentTask === 0) {
+        markStepWarning('请先完成步骤1，再记录数据。');
+        return;
+      }
+      addRecord(`步骤${state.currentTask + 1}`, phaseText());
+      showToast('记录成功。');
+    });
+
+    clearRecordsBtn.addEventListener('click', () => {
+      if (state.autoPlaying) return;
+      state.records = [];
+      state.unseenRecordCount = 0;
+      refreshDataNotice();
+      renderRecordTable();
+      showToast('记录已清空。');
+    });
+
+    function setFreeMode(on) {
+      if (state.autoPlaying) return;
+      state.freeMode = !!on;
+      state.warningStep = -1;
+      if (state.freeMode) {
+        taskCard.style.opacity = '0.28';
+        taskCard.style.filter = 'grayscale(0.65)';
+        doneMask.style.display = 'none';
+        setStatusTag('自由探索');
+      } else {
+        taskCard.style.opacity = '1';
+        taskCard.style.filter = 'none';
+        setStatusTag('待操作');
+      }
+      freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+      updateModeHud();
+      refreshInteractionLocks();
+      renderStepUI();
+    }
+
+    function getStageRect() {
+      return stage.getBoundingClientRect();
+    }
+    function setDockPos(el, x, y) {
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    }
+    function clampDockPos(el, x, y) {
+      const s = getStageRect();
+      const r = el.getBoundingClientRect();
+      const pad = 10;
+      return {
+        x: clamp(x, pad, s.width - r.width - pad),
+        y: clamp(y, pad, s.height - r.height - pad)
+      };
+    }
+    function overlapArea(a, b) {
+      const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+      const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+      return x * y;
+    }
+    function bringToFront(which) {
+      if (which === 'control') {
+        document.documentElement.style.setProperty('--zPanel', '14');
+        document.documentElement.style.setProperty('--zResults', '11');
+      } else {
+        document.documentElement.style.setProperty('--zResults', '14');
+        document.documentElement.style.setProperty('--zPanel', '11');
+      }
+    }
+    function defaultDockPositions(force = false) {
+      const s = getStageRect();
+      const pad = 10;
+      const controlRect = controlDock.getBoundingClientRect();
+      const dataRect = dataDock.getBoundingClientRect();
+      if (force || !state.dockMoved.control) {
+        setDockPos(controlDock, s.width - controlRect.width - pad, pad);
+      }
+      const cNow = controlDock.getBoundingClientRect();
+      const baseDataY = cNow.bottom - s.top + 10;
+      if (force || !state.dockMoved.data) {
+        const next = clampDockPos(dataDock, s.width - dataRect.width - pad, baseDataY);
+        setDockPos(dataDock, next.x, next.y);
+      }
+      resolveDrawerOverlap();
+    }
+    function resolveDrawerOverlap(force = false) {
+      const narrow = window.innerWidth <= 760;
+      const enforce = !!force || state.autoPlaying;
+      if (!enforce && (!narrow || state.controlCollapsed || state.dataCollapsed)) return;
+      const s = getStageRect();
+      const c = controlDock.getBoundingClientRect();
+      const d = dataDock.getBoundingClientRect();
+      if (overlapArea(c, d) <= 0) return;
+      const pad = 10;
+      const rightX = s.width - d.width - pad;
+      const leftX = pad;
+      const belowY = c.bottom - s.top + 10;
+      const aboveY = c.top - s.top - d.height - 10;
+      const maxY = s.height - d.height - pad;
+      const candidates = [
+        { x: rightX, y: belowY },
+        { x: rightX, y: aboveY },
+        { x: leftX, y: belowY },
+        { x: leftX, y: aboveY },
+        { x: leftX, y: maxY }
+      ];
+      if (enforce) {
+        candidates.unshift(
+          { x: leftX, y: pad },
+          { x: rightX, y: pad },
+          { x: leftX, y: maxY },
+          { x: rightX, y: maxY }
+        );
+      }
+      let best = null;
+      let bestOverlap = Infinity;
+      for (const raw of candidates) {
+        const next = clampDockPos(dataDock, raw.x, raw.y);
+        const rect = {
+          left: s.left + next.x,
+          top: s.top + next.y,
+          right: s.left + next.x + d.width,
+          bottom: s.top + next.y + d.height
+        };
+        const ov = overlapArea(c, rect);
+        if (ov < bestOverlap) {
+          bestOverlap = ov;
+          best = next;
+        }
+        if (ov <= 0) break;
+      }
+      if (best) setDockPos(dataDock, best.x, best.y);
+    }
+    function setControlCollapsed(on) {
+      state.controlCollapsed = !!on;
+      controlBody.classList.toggle('collapsed', state.controlCollapsed);
+      controlToggleBtn.textContent = state.controlCollapsed ? '展开' : '收起';
+      if (!state.controlCollapsed) bringToFront('control');
+      resolveDrawerOverlap();
+    }
+    function setDataCollapsed(on) {
+      state.dataCollapsed = !!on;
+      dataBody.classList.toggle('collapsed', state.dataCollapsed);
+      dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+      if (!state.dataCollapsed) {
+        state.unseenRecordCount = 0;
+      }
+      refreshDataNotice();
+      if (!state.dataCollapsed) bringToFront('data');
+      resolveDrawerOverlap();
+    }
+    function setDataCollapsedByUser(on) {
+      if (!on && window.innerWidth <= 760 && !state.controlCollapsed) {
+        setControlCollapsed(true);
+      }
+      setDataCollapsed(on);
+    }
+    function bindDockDrag(el, headEl, kind) {
+      let dragging = false;
+      let sx = 0;
+      let sy = 0;
+      let bx = 0;
+      let by = 0;
+      function currentPos() {
+        const s = getStageRect();
+        const r = el.getBoundingClientRect();
+        return { x: r.left - s.left, y: r.top - s.top };
+      }
+      function finishDrag(e) {
+        if (!dragging) return;
+        dragging = false;
+        el.classList.remove('dragging');
+        try {
+          if (e && e.pointerId !== undefined) headEl.releasePointerCapture(e.pointerId);
+        } catch (_) {}
+        resolveDrawerOverlap();
+        if (state.autoPlaying) setStatusTag('自动演示中');
+      }
+      headEl.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button')) return;
+        bringToFront(kind);
+        dragging = true;
+        el.classList.add('dragging');
+        try { headEl.setPointerCapture(e.pointerId); } catch (_) {}
+        const p = currentPos();
+        bx = p.x;
+        by = p.y;
+        sx = e.clientX;
+        sy = e.clientY;
+        e.preventDefault();
+      });
+      headEl.addEventListener('pointermove', (e) => {
+        if (!dragging) return;
+        const s = getStageRect();
+        const r = el.getBoundingClientRect();
+        const pad = 10;
+        const x = clamp(bx + e.clientX - sx, pad, s.width - r.width - pad);
+        const y = clamp(by + e.clientY - sy, pad, s.height - r.height - pad);
+        setDockPos(el, x, y);
+        state.dockMoved[kind] = true;
+        if (state.autoPlaying) setStatusTag('自动演示中');
+        e.preventDefault();
+      });
+      headEl.addEventListener('pointerup', finishDrag);
+      headEl.addEventListener('pointercancel', finishDrag);
+    }
+
+    controlToggleBtn.addEventListener('click', () => setControlCollapsed(!state.controlCollapsed));
+    dataToggleBtn.addEventListener('click', () => setDataCollapsedByUser(!state.dataCollapsed));
+    bindDockDrag(controlDock, controlHead, 'control');
+    bindDockDrag(dataDock, dataHead, 'data');
+
+    function refreshInteractionLocks() {
+      const autoLocked = state.autoPlaying;
+      startBtn.disabled = autoLocked;
+      toggleModeBtn.disabled = autoLocked;
+      powerRange.disabled = autoLocked;
+      recordBtn.disabled = autoLocked;
+      clearRecordsBtn.disabled = autoLocked;
+      resetBtn.disabled = autoLocked;
+      freeBtn.disabled = autoLocked;
+      if (autoLocked) {
+        autoDemoBtn.textContent = '退出自动演示';
+        autoDemoBtn.disabled = false;
+      } else {
+        autoDemoBtn.textContent = '自动演示';
+        autoDemoBtn.disabled = state.freeMode;
+      }
+    }
+
+    function stopMainLoop() {
+      if (state.rafId) cancelAnimationFrame(state.rafId);
+      state.rafId = 0;
+    }
+    function startMainLoop() {
+      stopMainLoop();
+      state.lastTs = performance.now();
+      const loop = (ts) => {
+        const dt = clamp((ts - state.lastTs) / 1000, 0, 0.08);
+        state.lastTs = ts;
+        if (sim.running) {
+          stepSim(dt);
+          drawGraph();
+          if (!state.freeMode && !state.completed && state.currentTask === 0 && tasks[0].check()) {
+            if (tryPassCurrentStep(false, true)) {
+              setStatusTag('已达到高温，进入平台分析');
+            }
+          }
+        }
+        updateVisual();
+        state.rafId = requestAnimationFrame(loop);
+      };
+      state.rafId = requestAnimationFrame(loop);
+    }
+
+    const demoCursor = document.createElement('div');
+    demoCursor.style.position = 'absolute';
+    demoCursor.style.zIndex = '140';
+    demoCursor.style.width = '26px';
+    demoCursor.style.height = '26px';
+    demoCursor.style.left = '-200px';
+    demoCursor.style.top = '-200px';
+    demoCursor.style.opacity = '0';
+    demoCursor.style.pointerEvents = 'none';
+    demoCursor.style.transition = 'left .48s cubic-bezier(.22,.61,.36,1), top .48s cubic-bezier(.22,.61,.36,1), opacity .2s ease, transform .12s ease';
+    demoCursor.style.filter = 'drop-shadow(0 1px 2px rgba(0,0,0,.55))';
+    demoCursor.innerHTML = '<svg viewBox="0 0 24 24" role="img" aria-label="自动演示鼠标"><path d="M3 2.5L10.2 20.8L12.7 12.9L20.8 10.3L3 2.5Z" fill="#ffffff" stroke="#111820" stroke-width="1.3" /></svg>';
+    stage.appendChild(demoCursor);
+
+    const demoCursorPulse = document.createElement('div');
+    demoCursorPulse.style.position = 'absolute';
+    demoCursorPulse.style.zIndex = '139';
+    demoCursorPulse.style.width = '24px';
+    demoCursorPulse.style.height = '24px';
+    demoCursorPulse.style.borderRadius = '50%';
+    demoCursorPulse.style.border = '2px solid rgba(255,195,74,.95)';
+    demoCursorPulse.style.left = '-200px';
+    demoCursorPulse.style.top = '-200px';
+    demoCursorPulse.style.opacity = '0';
+    demoCursorPulse.style.pointerEvents = 'none';
+    demoCursorPulse.style.transform = 'translate(-50%,-50%) scale(.35)';
+    stage.appendChild(demoCursorPulse);
+
+    const demoCursorCss = document.createElement('style');
+    demoCursorCss.textContent = `
+      @keyframes cursorPulse{
+        0%{ opacity:.95; transform:translate(-50%,-50%) scale(.35); }
+        100%{ opacity:0; transform:translate(-50%,-50%) scale(1.5); }
+      }
+      .demo-cursor-show{ opacity:1 !important; }
+      .demo-cursor-clicking{ transform:scale(.9); }
+      .demo-cursor-dragging{ filter:drop-shadow(0 2px 4px rgba(61,220,151,.7)); }
+      .demo-cursor-pulse-active{ animation:cursorPulse .45s ease-out; }
+    `;
+    document.head.appendChild(demoCursorCss);
+
+    function setDemoCursor(x, y) {
+      demoCursor.classList.add('demo-cursor-show');
+      demoCursor.style.left = `${x}px`;
+      demoCursor.style.top = `${y}px`;
+    }
+    function hideDemoCursor() {
+      demoCursor.classList.remove('demo-cursor-show', 'demo-cursor-clicking', 'demo-cursor-dragging');
+      demoCursorPulse.classList.remove('demo-cursor-pulse-active');
+      demoCursor.style.left = '-200px';
+      demoCursor.style.top = '-200px';
+      demoCursorPulse.style.left = '-200px';
+      demoCursorPulse.style.top = '-200px';
+    }
+    async function clickDemoCursor(ms = 220, runId = state.demoRunId) {
+      if (runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+      demoCursor.classList.add('demo-cursor-clicking');
+      const x = Number.parseFloat(demoCursor.style.left || '0');
+      const y = Number.parseFloat(demoCursor.style.top || '0');
+      demoCursorPulse.style.left = `${x}px`;
+      demoCursorPulse.style.top = `${y}px`;
+      demoCursorPulse.classList.remove('demo-cursor-pulse-active');
+      void demoCursorPulse.offsetWidth;
+      demoCursorPulse.classList.add('demo-cursor-pulse-active');
+      await waitAuto(ms, runId);
+      demoCursor.classList.remove('demo-cursor-clicking');
+    }
+    async function waitAuto(ms, runId) {
+      await wait(ms);
+      if (runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    }
+    async function waitUntilAuto(predicate, timeoutMs, runId, interval = 120) {
+      let elapsed = 0;
+      while (elapsed < timeoutMs) {
+        if (runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+        if (predicate()) return true;
+        await waitAuto(interval, runId);
+        elapsed += interval;
+      }
+      return false;
+    }
+    function elemCenterInStage(el) {
+      const s = stage.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return {
+        x: r.left - s.left + r.width / 2,
+        y: r.top - s.top + r.height / 2
+      };
+    }
+    async function demoClickElement(el, runId, action = null) {
+      const p = elemCenterInStage(el);
+      setDemoCursor(p.x, p.y);
+      await waitAuto(260, runId);
+      await clickDemoCursor(180, runId);
+      if (action) action(true);
+      else el.click();
+      await waitAuto(260, runId);
+    }
+    function dispatchSelectPointer(type, clientX, clientY, pointerId = 71) {
+      const ev = new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        pointerId,
+        pointerType: 'mouse',
+        isPrimary: true,
+        clientX,
+        clientY,
+        button: 0,
+        buttons: type === 'pointerup' ? 0 : 1
+      });
+      selectBox.dispatchEvent(ev);
+    }
+    async function demoDragSelectBoxTo(targetX, targetY, runId) {
+      const area = graphArea.getBoundingClientRect();
+      const startX = (parseFloat(selectBox.style.left) || 0) + selectBox.offsetWidth / 2;
+      const startY = (parseFloat(selectBox.style.top) || 0) + selectBox.offsetHeight / 2;
+      const pid = 71;
+      const stageRect = stage.getBoundingClientRect();
+      setDemoCursor(startX + area.left - stageRect.left, startY + area.top - stageRect.top);
+      demoCursor.classList.add('demo-cursor-dragging');
+      state.demoDriving = true;
+      try {
+        startDragBox({ pointerId: pid, clientX: area.left + startX, clientY: area.top + startY, preventDefault() {} });
+        for (let i = 1; i <= 14; i += 1) {
+          const k = i / 14;
+          const x = startX + (targetX + selectBox.offsetWidth / 2 - startX) * k;
+          const y = startY + (targetY + selectBox.offsetHeight / 2 - startY) * k;
+          dragBox({ pointerId: pid, clientX: area.left + x, clientY: area.top + y, preventDefault() {} });
+          setDemoCursor(x + area.left - stageRect.left, y + area.top - stageRect.top);
+          await waitAuto(34, runId);
+        }
+        endDragBox({ pointerId: pid });
+      } finally {
+        state.demoDriving = false;
+      }
+      demoCursor.classList.remove('demo-cursor-dragging');
+      await clickDemoCursor(150, runId);
+      await waitAuto(220, runId);
+    }
+
+    function ensureAutoDrawerLayout() {
+      setControlCollapsed(false);
+      setDataCollapsed(true);
+      state.dockMoved.control = false;
+      state.dockMoved.data = false;
+      defaultDockPositions(true);
+      resolveDrawerOverlap(true);
+      const settle = setTimeout(() => {
+        if (!state.autoPlaying) return;
+        defaultDockPositions();
+        resolveDrawerOverlap(true);
+      }, 240);
+      trackTimer(settle);
+    }
+
+    function stopAutoDemo(byUser = false) {
+      if (!state.autoPlaying) return;
+      state.demoRunId += 1;
+      state.autoPlaying = false;
+      state.demoDriving = false;
+      sim.running = false;
+      startBtn.textContent = '开始';
+      hideDemoCursor();
+      updateVisual();
+      updateModeHud();
+      refreshInteractionLocks();
+      if (!state.completed) setStatusTag('待操作');
+      if (byUser) showToast('已退出自动演示。');
+    }
+
+    async function startAutoDemo() {
+      if (state.autoPlaying || state.freeMode) return;
+      state.autoPlaying = true;
+      const runId = ++state.demoRunId;
+      updateModeHud();
+      refreshInteractionLocks();
+      resetAll({ preserveAuto: true, showTip: false });
+      ensureAutoDrawerLayout();
+      setStatusTag('自动演示中');
+
+      try {
+        await waitAuto(460, runId);
+        await demoClickElement(startBtn, runId, toggleRunAction);
+        setStatusTag('升温至95℃以上');
+        const heated = await waitUntilAuto(() => sim.T > 95, 22000, runId, 120);
+        if (!heated) throw new Error('AUTO_HEAT_TIMEOUT');
+        if (state.currentTask === 0 && !tryPassCurrentStep(false, true)) throw new Error('AUTO_STEP1_FAIL');
+        if (state.currentTask < 1) throw new Error('AUTO_STEP1_FAIL');
+        addRecordWithAssert('步骤1', '升温达标');
+        await waitAuto(700, runId);
+
+        await demoClickElement(startBtn, runId, toggleRunAction);
+        showSelectBox('圈出熔化平台');
+        await waitAuto(300, runId);
+        const mp1 = calcBoxTargetAtMP('melting');
+        await demoDragSelectBoxTo(mp1.x, mp1.y, runId);
+        moveSelectBoxTo(mp1.x, mp1.y);
+        await waitAuto(120, runId);
+        if (state.currentTask === 1 && !tryPassCurrentStep(true, true)) throw new Error('AUTO_STEP2_FAIL');
+        if (state.currentTask < 2) throw new Error('AUTO_STEP2_FAIL');
+        addRecordWithAssert('步骤2', '熔化平台');
+        await waitAuto(680, runId);
+
+        await demoClickElement(toggleModeBtn, runId, toggleModeAction);
+        await waitAuto(260, runId);
+        await demoClickElement(startBtn, runId, toggleRunAction);
+        setStatusTag('冷却并观察凝固平台');
+        const cooled = await waitUntilAuto(() => sim.T < 22, 26000, runId, 120);
+        if (!cooled) throw new Error('AUTO_COOL_TIMEOUT');
+        await demoClickElement(startBtn, runId, toggleRunAction);
+        showSelectBox('圈出凝固平台');
+        await waitAuto(300, runId);
+        const mp2 = calcBoxTargetAtMP('freezing');
+        await demoDragSelectBoxTo(mp2.x, mp2.y, runId);
+        moveSelectBoxTo(mp2.x, mp2.y);
+        await waitAuto(120, runId);
+        addRecordWithAssert('步骤3', '凝固平台');
+        if (state.records.length < 3) throw new Error('AUTO_RECORD_INCOMPLETE');
+        if (!state.completed && !tryPassCurrentStep(true, true)) throw new Error('AUTO_STEP3_FAIL');
+        if (!state.completed) throw new Error('AUTO_STEP3_FAIL');
+        setStatusTag('演示完成');
+      } catch (error) {
+        if (String(error && error.message) !== 'AUTO_DEMO_CANCELLED') {
+          console.error('auto demo failed', error);
+          if (String(error && error.message).startsWith('AUTO_RECORD')) {
+            showToast('自动演示记录失败：请重试。');
+            setStatusTag('记录失败');
+          } else {
+            showToast('自动演示中断，已恢复可操作状态。');
+            setStatusTag('待操作');
+          }
+        }
+      } finally {
+        hideDemoCursor();
+        if (runId === state.demoRunId) {
+          state.autoPlaying = false;
+          updateModeHud();
+          refreshInteractionLocks();
+          if (doneMask.style.display === 'none') {
+            setStatusTag('待操作');
+          }
+        }
+      }
+    }
+
+    function resetSim() {
+      sim = createSim();
+      powerRange.value = '60';
+      powerText.textContent = '60%';
+      toggleModeBtn.textContent = '切换到冷却';
+      startBtn.textContent = '开始';
+      updateVisual();
+      drawGraph();
+    }
+
+    function resetAll(opts = {}) {
+      const { preserveAuto = false, showTip = true } = opts;
+      clearTrackedTimers();
+      if (!preserveAuto) {
+        state.autoPlaying = false;
+        state.demoRunId += 1;
+      }
+      state.completed = false;
+      state.warningStep = -1;
+      state.successCooldown = false;
+      state.currentTask = 0;
+      state.draggingBox = false;
+      state.dragPointerId = null;
+      state.records = [];
+      state.unseenRecordCount = 0;
+      doneMask.style.display = 'none';
+      hideDemoCursor();
+      refreshDataNotice();
+      renderRecordTable();
+      resetSim();
+      setStepUI(0);
+      setControlCollapsed(true);
+      setDataCollapsed(true);
+      state.dockMoved.control = false;
+      state.dockMoved.data = false;
+      defaultDockPositions(true);
+      updateModeHud();
+      refreshInteractionLocks();
+      if (!preserveAuto) setStatusTag('待操作');
+      stopMainLoop();
+      startMainLoop();
+      if (showTip && !state.freeMode && !state.autoPlaying) {
+        showToast('步骤重置成功：从步骤1开始。');
+      }
+    }
+
+    okBtn.addEventListener('click', () => {
+      doneMask.style.display = 'none';
+      showToast('可继续练习：重置后再次测量。');
+    });
+    resetBtn.addEventListener('click', () => {
+      if (state.autoPlaying) return;
+      resetAll({ preserveAuto: false, showTip: true });
+    });
+    autoDemoBtn.addEventListener('click', () => {
+      if (state.autoPlaying) stopAutoDemo(true);
+      else {
+        if (state.freeMode) {
+          showToast('请先退出自由模式，再启动自动演示。');
+          return;
+        }
+        startAutoDemo();
+      }
+    });
+    freeBtn.addEventListener('click', () => setFreeMode(!state.freeMode));
+
+    function safeResize() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        fitCanvas();
+        if (selectBox.style.display !== 'none') {
+          moveSelectBoxTo(parseFloat(selectBox.style.left) || 0, parseFloat(selectBox.style.top) || 0);
+        }
+        defaultDockPositions();
+      }, 120);
+    }
+    window.addEventListener('resize', safeResize);
+    window.addEventListener('orientationchange', safeResize);
+
+    function init() {
+      fitCanvas();
+      renderRecordTable();
+      refreshDataNotice();
+      updateModeHud();
+      setStatusTag('待操作');
+      resetAll({ preserveAuto: false, showTip: false });
+    }
+    init();
+  </script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

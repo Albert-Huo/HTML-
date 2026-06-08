@@ -1,0 +1,1554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验19｜观察力使物体产生形变（交互版）</title>
+  <style>
+    :root{
+      --bg:#1b1b1b;
+      --ink:#fff;
+      --card-bg:rgba(255,255,255,.08);
+      --panel-bg:rgba(14,18,24,.56);
+      --line:rgba(255,255,255,.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --danger:#ff6b6b;
+      --shadow:0 14px 36px rgba(0,0,0,.42);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:980px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{0%{background-position:0 0}100%{background-position:-100% 0}}
+
+    .task-card{
+      width:100%;
+      max-width:980px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition:opacity .2s,filter .2s;
+    }
+    .task-step{background:rgba(255,255,255,.16);border-radius:8px;padding:6px 10px;font-weight:700;white-space:nowrap}
+    .task-text{line-height:1.55}
+    .task-hint{color:#ffd54f;font-size:12px;opacity:.95;margin-top:2px}
+    .progress-dots{display:flex;gap:6px}
+    .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.26);outline:2px solid rgba(255,255,255,.12)}
+    .dot.active{background:var(--warn)}
+    .dot.done{background:var(--accent);outline-color:rgba(61,220,151,.45)}
+    .dot.warn{background:var(--danger);outline-color:rgba(255,107,107,.45)}
+
+    #stage{
+      width:100%;
+      max-width:980px;
+      height:68vh;
+      min-height:520px;
+      max-height:700px;
+      margin-top:10px;
+      border-radius:12px;
+      position:relative;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      background:#0b0f14;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 75% 26%, rgba(255,255,255,.06), transparent 40%),
+        radial-gradient(circle at 22% 76%, rgba(61,220,151,.05), transparent 42%);
+    }
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      background:rgba(0,0,0,.48);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:7px 10px;
+      font-size:12px;
+    }
+    .tag{border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:2px 8px;font-weight:700;color:#dce9ff;background:rgba(255,255,255,.06)}
+
+    .lab-area{
+      position:absolute;
+      inset:54px 10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.84);
+      overflow:hidden;
+    }
+    #scene{width:100%;height:100%;display:block;touch-action:none}
+
+    .dock{
+      position:absolute;
+      width:min(94%, 356px);
+      border-radius:12px;
+      border:1px solid rgba(214,229,255,.22);
+      background:linear-gradient(180deg, rgba(16,22,30,.58), rgba(10,15,22,.48));
+      backdrop-filter:blur(10px);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      touch-action:none;
+      z-index:30;
+    }
+    .dock.dragging{box-shadow:0 20px 48px rgba(0,0,0,.55)}
+    .dockHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none;
+    }
+    .dockHead:active{cursor:grabbing}
+    .dockTitle{font-size:13px;font-weight:700;color:#e7f0ff;display:flex;align-items:center;gap:8px}
+    .dataNotice{
+      display:none;
+      min-width:18px;
+      height:18px;
+      padding:0 5px;
+      border-radius:999px;
+      align-items:center;
+      justify-content:center;
+      background:#ff4d5e;
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      box-shadow:0 0 12px rgba(255,77,94,.45);
+      animation:blinkBadge 1s ease-in-out infinite;
+    }
+    .dataNotice.show{display:inline-flex}
+    @keyframes blinkBadge{0%,100%{opacity:1}50%{opacity:.45}}
+    .dockBtns{display:flex;gap:6px}
+    .iconBtn{border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8f1ff;border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer}
+    .dockBody{padding:10px;max-height:360px;overflow:auto;-webkit-overflow-scrolling:touch}
+    .dockBody.collapsed{display:none}
+
+    .row{margin-bottom:8px;font-size:12px}
+    .status-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+    .pill{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:4px 8px;font-size:11px;color:#e8f1ff;background:rgba(0,0,0,.28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .btnRow{display:flex;gap:8px;flex-wrap:wrap}
+    .sampleRow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+    button.main,button.sub,button.sampleBtn{
+      border:none;
+      border-radius:8px;
+      padding:8px 12px;
+      color:#fff;
+      cursor:pointer;
+      transition:background .2s,transform .05s,opacity .2s,border-color .2s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      font-size:13px;
+    }
+    button.main{background:#2e7d32}
+    button.sub{background:#444}
+    button.sampleBtn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)}
+    button.sampleBtn.active{background:rgba(61,220,151,.18);border-color:rgba(61,220,151,.45);color:#eafff3}
+    button.main:hover,button.sub:hover,button.sampleBtn:hover{background:#5a5a5a}
+    button.main:active,button.sub:active,button.sampleBtn:active{transform:scale(.98)}
+    button.main:disabled,button.sub:disabled,button.sampleBtn:disabled{opacity:.5;cursor:not-allowed}
+
+    .analysis{font-size:12px;line-height:1.6;color:#e3efff;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;background:rgba(0,0,0,.24);margin-top:8px}
+    .analysis.ok{border-color:rgba(61,220,151,.4)}
+    table.record{width:100%;border-collapse:collapse;font-size:12px}
+    table.record th,table.record td{border:1px solid rgba(255,255,255,.12);padding:4px 5px;text-align:center}
+    table.record th{background:rgba(255,255,255,.08);color:#dce9ff;font-weight:700}
+
+    .checkmark{
+      position:absolute;z-index:60;left:50%;top:18%;transform:translate(-50%,-50%) scale(.6);width:120px;height:120px;border-radius:50%;background:rgba(61,220,151,.15);border:3px solid var(--accent);display:none;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);animation:pop .55s ease-out;pointer-events:none;
+    }
+    .checkmark.active{display:flex}
+    .checkmark>div{width:60px;height:30px;border-left:8px solid var(--accent);border-bottom:8px solid var(--accent);transform:rotate(-45deg) translateY(-6px)}
+    @keyframes pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+
+    .toolbar{width:100%;max-width:980px;margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,.82);color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:200}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .modal-mask{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:300;background:rgba(0,0,0,.5)}
+    .modal{width:min(90vw,380px);background:#111;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:18px 16px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+    .modal h3{margin:8px 0 6px;font-size:20px}
+    .modal p{margin-top:0;line-height:1.55;color:#cfd8dc}
+    .modal .ok{margin-top:12px;background:var(--accent);color:#081a12;font-weight:700}
+    .explanation{width:100%;max-width:980px;margin:14px 0 20px;line-height:1.65;font-size:.95em;color:#e9f2ff}
+    .explanation h2{margin:.2em 0 .4em;color:#9bd3ff;font-size:1.15em}
+
+    #demoCursor{
+      position:absolute;
+      left:0;top:0;
+      width:20px;height:20px;
+      border-radius:50%;
+      border:2px solid rgba(255,255,255,.92);
+      background:rgba(122,209,255,.22);
+      box-shadow:0 0 18px rgba(122,209,255,.35);
+      transform:translate(-50%,-50%);
+      opacity:0;
+      z-index:80;
+      pointer-events:none;
+    }
+    #demoCursor::after{
+      content:"";
+      position:absolute;
+      inset:4px;
+      border-radius:50%;
+      background:rgba(255,255,255,.95);
+    }
+    #demoCursor.pulse{animation:cursorPulse .26s ease-out}
+    @keyframes cursorPulse{0%{transform:translate(-50%,-50%) scale(1)}60%{transform:translate(-50%,-50%) scale(1.5)}100%{transform:translate(-50%,-50%) scale(1)}}
+
+    @media (max-width:760px){
+      .task-card{grid-template-columns:1fr}
+      .task-step{width:fit-content}
+      #stage{height:78vh;max-height:960px}
+      .dock{width:min(96%, 356px)}
+      .hud{left:8px;right:8px}
+    }
+  
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText"></div>
+      <div class="task-hint" id="taskHint"></div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待开始</span>
+    </div>
+
+    
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+<div class="lab-area">
+      <canvas id="scene"></canvas>
+    </div>
+
+    <div class="dock drawer control" id="controlDock">
+      <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">控制面板</div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="controlBody">
+        <div class="status-grid">
+          <div class="pill" id="pillA">样件：弹簧</div>
+          <div class="pill" id="pillB">施力：0N</div>
+          <div class="pill" id="pillC">形变：0.0mm</div>
+          <div class="pill" id="pillD">恢复：100%</div>
+        </div>
+        <div class="sampleRow">
+          <button class="sampleBtn active" id="sampleSpringBtn">弹簧</button>
+          <button class="sampleBtn" id="sampleSpongeBtn">海绵</button>
+          <button class="sub" id="releaseBtn">松开施力</button>
+        </div>
+        <div class="row" id="stageGuide">拖动舞台中的压板向下施力；压板会按整数牛顿吸附。</div>
+        <div class="btnRow" style="margin-top:8px;">
+          <button class="sub" id="recordBtn">记录当前数据</button>
+          <button class="sub" id="checkBtn">确认观察 ✅</button>
+          <button class="sub" id="analyzeBtn">分析结论</button>
+        </div>
+        <div class="analysis" id="analysisText">暂无。请按步骤操作器材并记录数据后分析。</div>
+      </div>
+    </div>
+
+    <div class="dock drawer data" id="dataDock">
+      <div class="dockHead drawer-header" id="dataHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">数据面板 <span class="dataNotice" id="dataNotice">0</span></div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="dataToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="dataBody">
+        <table class="record">
+          <thead>
+            <tr><th>样件+力</th><th>形变量(mm)</th><th>恢复情况</th><th>备注</th></tr>
+          </thead>
+          <tbody id="recordBody"></tbody>
+        </table>
+      
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+    <div id="demoCursor"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="sub" id="resetBtn">步骤重置</button>
+    <button class="sub" id="autoDemoBtn">自动演示</button>
+    <button class="sub" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">实验完成</h3>
+      <p id="doneText">你已完成“观察力使物体产生形变”的核心操作链与数据分析。</p>
+      <button class="sub ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：观察力使物体产生形变</h2>
+    <ul>
+      <li>关键操作与现象：拖动压板向下施力，可观察到弹簧或海绵发生形变；力越大，形变通常越明显。</li>
+      <li>关键操作与现象：切换不同样件后，在相近施力条件下可比较不同材料的形变特点。</li>
+      <li>原理与结论：力可以使物体产生形变；同一样件受力增大时，形变一般增大；不同材料的形变表现也可能不同。</li>
+    </ul>
+  </div>
+
+  <script>
+    const TASKS = [
+      { text:'拖动压板，对<b>弹簧</b>施加 <b>3N</b> 力，观察形变并记录后，再点“确认观察”。', hint:'提示：压板会按整数牛顿吸附，先完成“弹簧 3N”记录。'},
+      { text:'继续对<b>弹簧</b>施加 <b>7N</b> 力，再记录对比后，再点“确认观察”。', hint:'提示：保持弹簧样件，增大施力后再次记录。'},
+      { text:'切换到<b>海绵</b>，施加 <b>5N</b> 力并记录后，再点“确认观察”。', hint:'提示：样件需切换为海绵，再完成“海绵 5N”记录。'},
+      { text:'点击“分析结论”后，还需点击“确认观察”才能完成本实验。', hint:'提示：结论要体现“力会使物体形变，且一般力越大形变越明显”。'}
+    ];
+
+    const $ = (s)=>document.querySelector(s);
+    const stageEl = $('#stage');
+    const scene = $('#scene');
+    const taskCard = $('#taskCard');
+    const taskStepEl = $('#taskStep');
+    const taskTextEl = $('#taskText');
+    const taskHintEl = $('#taskHint');
+    const dotsEl = $('#dots');
+    const modeTag = $('#modeTag');
+    const statusTag = $('#statusTag');
+    const pillA = $('#pillA');
+    const pillB = $('#pillB');
+    const pillC = $('#pillC');
+    const pillD = $('#pillD');
+    const stageGuide = $('#stageGuide');
+    const controlDock = $('#controlDock');
+    const controlHead = $('#controlHead');
+    const controlBody = $('#controlBody');
+    const controlToggleBtn = $('#controlToggleBtn');
+    const dataDock = $('#dataDock');
+    const dataHead = $('#dataHead');
+    const dataBody = $('#dataBody');
+    const dataToggleBtn = $('#dataToggleBtn');
+    const dataNotice = $('#dataNotice');
+    const sampleSpringBtn = $('#sampleSpringBtn');
+    const sampleSpongeBtn = $('#sampleSpongeBtn');
+    const releaseBtn = $('#releaseBtn');
+    const recordBtn = $('#recordBtn');
+    const checkBtn = $('#checkBtn');
+    const analyzeBtn = $('#analyzeBtn');
+    const resetBtn = $('#resetBtn');
+    const autoDemoBtn = $('#autoDemoBtn');
+    const freeBtn = $('#freeBtn');
+    const analysisText = $('#analysisText');
+    const recordBody = $('#recordBody');
+    const checkmarkEl = $('#checkmark');
+    const toastEl = $('#toast');
+    const doneMaskEl = $('#doneMask');
+    const okBtn = $('#okBtn');
+    const demoCursor = $('#demoCursor');
+
+    const state = {
+      currentTask:0,
+      completed:false,
+      freeMode:false,
+      autoPlaying:false,
+      autoRunId:0,
+      successCooldown:false,
+      stepWarnIdx:-1,
+      records:[],
+      unseenRecordCount:0,
+      analysisOk:false,
+      analysisMode:null,
+      guidedAnalysisOk:false,
+      controlCollapsed:true,
+      dataCollapsed:true,
+      dockMoved:{control:false,data:false},
+      zTop:40,
+      timers:new Set(),
+      rafId:0,
+      lastTs:0,
+      draggingId:null,
+      apparatus:null
+    };
+
+    const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
+    const round = (n,p=1)=>Number(n.toFixed(p));
+    const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+    const sampleName = (s)=>s === 'spring' ? '弹簧' : '海绵';
+    const recoveryOf = (s)=> s === 'spring' ? 99 : 86;
+    const guidedRecords = ()=> state.records.filter(r=>r.mode === 'guided');
+    const guidedConclusionText = '结论：力可以使物体发生形变；同一样件受力越大，形变通常越明显；不同材料在相近施力下的形变表现也可能不同。';
+    const deformOf = (sample, force)=>{
+      const f = Number(force) || 0;
+      if(sample === 'spring') return round(Math.min(34, f * 3.2), 1);
+      return round(Math.min(42, f * 5.0), 1);
+    };
+
+    function trackTimeout(fn, ms){
+      const id = setTimeout(()=>{ state.timers.delete(id); fn(); }, ms);
+      state.timers.add(id);
+      return id;
+    }
+    function clearAllTimers(){
+      for(const id of state.timers) clearTimeout(id);
+      state.timers.clear();
+    }
+
+    function showToast(msg){
+      toastEl.textContent = msg || '请继续尝试';
+      toastEl.classList.add('show');
+      clearTimeout(showToast.t);
+      showToast.t = setTimeout(()=>toastEl.classList.remove('show'), 1500);
+    }
+    function showCheck(){
+      checkmarkEl.classList.add('active');
+      clearTimeout(showCheck.t);
+      showCheck.t = setTimeout(()=>checkmarkEl.classList.remove('active'), 520);
+    }
+
+    function makeInitialApparatus(){
+      return {
+        sample:'spring',
+        forceN:0,
+        deformMm:0,
+        recoverPct:100,
+        draggingPress:false,
+        applyCount:0,
+        lastRecordKey:null,
+        releaseAnim:null
+      };
+    }
+
+    function cancelReleaseAnimation(){
+      if(state.apparatus) state.apparatus.releaseAnim = null;
+    }
+
+    function get19Geometry(W, H){
+      const frameX = W * 0.36;
+      const topY = 84;
+      const baseY = H - 126;
+      const headW = 132;
+      const headH = 26;
+      const mmPx = 2.2;
+      const restHeight = state.apparatus.sample === 'spring' ? 150 : 88;
+      const topRestY = baseY - restHeight;
+      const maxDeformPx = deformOf(state.apparatus.sample, 10) * mmPx;
+      const forceMinY = topRestY - headH;
+      const forceMaxY = topRestY + maxDeformPx - headH;
+      return { frameX, topY, baseY, headW, headH, mmPx, restHeight, topRestY, maxDeformPx, forceMinY, forceMaxY };
+    }
+
+    function currentHeadY(W, H){
+      const g = get19Geometry(W, H);
+      return g.topRestY + state.apparatus.deformMm * g.mmPx - g.headH;
+    }
+
+    function setStatus(msg){ statusTag.textContent = `状态：${msg}`; }
+    function updateModeHud(){ modeTag.textContent = `模式：${state.autoPlaying ? '自动演示' : (state.freeMode ? '自由' : '引导')}`; }
+    function updateAutoDemoBtn(){
+      autoDemoBtn.textContent = state.autoPlaying ? '退出自动演示' : '自动演示';
+      autoDemoBtn.disabled = state.freeMode && !state.autoPlaying;
+      freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+    }
+
+    function setStepUI(i){
+      const idx = clamp(i,0,TASKS.length-1);
+      state.currentTask = idx;
+      taskStepEl.textContent = `步骤 ${idx+1} / ${TASKS.length}`;
+      taskTextEl.innerHTML = TASKS[idx].text;
+      taskHintEl.textContent = TASKS[idx].hint;
+      [...dotsEl.children].forEach((d,n)=>{
+        d.classList.toggle('active', n===idx && !state.completed);
+        d.classList.toggle('done', n<idx || state.completed);
+        d.classList.toggle('warn', !state.completed && n===state.stepWarnIdx);
+      });
+    }
+
+    function initTaskUI(){
+      dotsEl.innerHTML = TASKS.map(()=>'<span class="dot"></span>').join('');
+      setStepUI(0);
+    }
+
+    function finishLab(){
+      if(state.completed) return;
+      state.completed = true;
+      state.stepWarnIdx = -1;
+      state.currentTask = TASKS.length - 1;
+      setStepUI(state.currentTask);
+      setStatus('挑战完成');
+      doneMaskEl.style.display = 'flex';
+    }
+
+    function setSample(sample, announce=true){
+      if(state.apparatus.sample === sample && !announce) return;
+      cancelReleaseAnimation();
+      state.apparatus.sample = sample;
+      state.apparatus.forceN = 0;
+      state.apparatus.deformMm = 0;
+      state.apparatus.recoverPct = 100;
+      state.apparatus.draggingPress = false;
+      sampleSpringBtn.classList.toggle('active', sample === 'spring');
+      sampleSpongeBtn.classList.toggle('active', sample === 'sponge');
+      updatePills();
+      if(announce) setStatus(`已切换样件：${sampleName(sample)}`);
+    }
+
+    function setForce(force, announce=true){
+      cancelReleaseAnimation();
+      const f = clamp(Math.round(force), 0, 10);
+      state.apparatus.forceN = f;
+      state.apparatus.deformMm = f === 0 ? 0 : deformOf(state.apparatus.sample, f);
+      state.apparatus.recoverPct = f === 0 ? 100 : recoveryOf(state.apparatus.sample);
+      updatePills();
+      if(announce){
+        setStatus(f === 0 ? '已松开施力' : `当前施力：${f}N`);
+      }
+    }
+
+    function releaseForce(announce=true){
+      const ap = state.apparatus;
+      cancelReleaseAnimation();
+      if(ap.forceN > 0){
+        const currentDeform = ap.deformMm;
+        const residual = round(currentDeform * (1 - recoveryOf(ap.sample) / 100), 1);
+        ap.forceN = 0;
+        ap.deformMm = currentDeform;
+        ap.recoverPct = recoveryOf(ap.sample);
+        ap.releaseAnim = {
+          from: currentDeform,
+          to: residual,
+          start: performance.now(),
+          duration: ap.sample === 'spring' ? 380 : 280,
+          sample: ap.sample
+        };
+        updatePills();
+        if(announce) setStatus('已松开施力');
+        return true;
+      }
+      ap.forceN = 0;
+      ap.recoverPct = ap.deformMm > 0 ? recoveryOf(ap.sample) : 100;
+      updatePills();
+      if(announce) setStatus('已松开施力');
+      return true;
+    }
+
+    function tickReleaseAnimation(ts){
+      const ap = state.apparatus;
+      const anim = ap.releaseAnim;
+      if(!anim) return;
+      const p = clamp((ts - anim.start) / anim.duration, 0, 1);
+      let value;
+      if(anim.sample === 'spring'){
+        const decay = Math.exp(-4.8 * p);
+        const oscillation = Math.cos(8.2 * Math.PI * p);
+        value = anim.to + (anim.from - anim.to) * decay * oscillation;
+        const minBound = Math.min(anim.from, anim.to) - 0.08;
+        const maxBound = Math.max(anim.from, anim.to) + 0.45;
+        value = clamp(value, minBound, maxBound);
+      }else{
+        const eased = 1 - Math.pow(1 - p, 2.4);
+        value = anim.from + (anim.to - anim.from) * eased;
+      }
+      ap.deformMm = round(value, 1);
+      updatePills();
+      if(p >= 1){
+        ap.deformMm = anim.to;
+        ap.releaseAnim = null;
+        updatePills();
+      }
+    }
+
+    function buildRecord(){
+      const ap = state.apparatus;
+      if(ap.forceN <= 0 || ap.deformMm <= 0){ showToast('请先拖动压板施加力'); return null; }
+      const note = ap.deformMm >= 24 ? '形变明显' : (ap.deformMm >= 10 ? '形变较明显' : '形变较小');
+      return {
+        c1:`${sampleName(ap.sample)} ${ap.forceN}N`,
+        c2:String(ap.deformMm),
+        c3:`恢复${ap.recoverPct}%`,
+        c4: state.freeMode ? `自由模式 · ${note}` : `引导模式 · ${note}`,
+        y: ap.deformMm,
+        sample: ap.sample,
+        force: ap.forceN,
+        recoverPct: ap.recoverPct,
+        mode: state.freeMode ? 'free' : 'guided'
+      };
+    }
+
+    function pushRecord(rec){
+      state.records.push(rec);
+      if(state.records.length > 40) state.records.shift();
+      if(state.dataCollapsed){
+        state.unseenRecordCount += 1;
+        updateBadge();
+      }
+      renderRecords();
+    }
+
+    function addRecord(){
+      const rec = buildRecord();
+      if(!rec) return false;
+      if(!state.freeMode){
+        if(!(state.currentTask===0 || state.currentTask===1 || state.currentTask===2)){
+          showToast('请在需要记录的步骤中再记录数据');
+          return false;
+        }
+        const target = state.currentTask===0
+          ? { sample:'spring', force:3, label:'弹簧 3N' }
+          : state.currentTask===1
+            ? { sample:'spring', force:7, label:'弹簧 7N' }
+            : { sample:'sponge', force:5, label:'海绵 5N' };
+        if(rec.sample !== target.sample || rec.force !== target.force){
+          showToast(`当前步骤需要记录“${target.label}”`);
+          return false;
+        }
+      }
+      pushRecord(rec);
+      releaseForce(false);
+      setStatus(state.freeMode ? '已记录并回位，可继续自由探索' : '已记录并回位，等待确认');
+      return true;
+    }
+
+    function renderRecords(){
+      recordBody.innerHTML = '';
+      if(!state.records.length){
+        recordBody.innerHTML = '<tr><td colspan="4" style="color:#9db4d6;">暂无记录</td></tr>';
+        return;
+      }
+      for(const r of [...state.records].slice(-12).reverse()){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.c1}</td><td>${r.c2}</td><td>${r.c3}</td><td>${r.c4}</td>`;
+        recordBody.appendChild(tr);
+      }
+    }
+
+    function analyzeConclusion(showToastMsg=true){
+      const rs = state.records;
+      let ok = false;
+      let msg = '';
+      if(state.freeMode){
+        ok = rs.length >= 2;
+        msg = ok
+          ? '结论：在自由模式下，至少两组记录已经说明力能使物体产生形变；继续比较不同施力或不同样件，还能发现形变程度存在差异。'
+          : '请至少获得2组记录后再分析。';
+        state.analysisMode = ok ? 'free' : null;
+      }else{
+        const rsGuided = guidedRecords();
+        const spring3 = rsGuided.find(r=>r.sample==='spring' && r.force===3);
+        const spring7 = rsGuided.find(r=>r.sample==='spring' && r.force===7);
+        const sponge5 = rsGuided.find(r=>r.sample==='sponge' && r.force===5);
+        ok = !!(spring3 && spring7 && sponge5 && Number(spring7.c2) > Number(spring3.c2));
+        msg = ok
+          ? guidedConclusionText
+          : '请先完成“弹簧 3N、弹簧 7N、海绵 5N”三组记录后再分析。';
+        state.guidedAnalysisOk = ok;
+        state.analysisMode = ok ? 'guided' : null;
+      }
+      state.analysisOk = ok;
+      analysisText.textContent = msg;
+      analysisText.classList.toggle('ok', ok);
+      if(showToastMsg) showToast(ok ? '分析完成：结论成立' : '分析未通过，请补充实验记录');
+      setStatus(ok ? '分析完成，等待确认' : '分析未通过');
+      return ok;
+    }
+
+    function checkStepPass(step){
+      const rs = guidedRecords();
+      if(step===0) return rs.some(r=>r.sample==='spring' && r.force===3);
+      if(step===1){
+        const s3 = rs.find(r=>r.sample==='spring' && r.force===3);
+        const s7 = rs.find(r=>r.sample==='spring' && r.force===7);
+        return !!(s3 && s7 && s7.y > s3.y);
+      }
+      if(step===2) return rs.some(r=>r.sample==='sponge' && r.force===5);
+      if(step===3) return state.guidedAnalysisOk && state.analysisMode === 'guided';
+      return false;
+    }
+
+    function tryPassStep(showFailToast=true, fromAuto=false){
+      if(state.freeMode || state.completed || state.successCooldown) return false;
+      const ok = checkStepPass(state.currentTask);
+      if(!ok){
+        state.stepWarnIdx = state.currentTask;
+        setStepUI(state.currentTask);
+        if(showFailToast){
+          const msg = state.currentTask===0
+            ? '请先完成“弹簧 3N”记录，再点击“确认观察”。'
+            : state.currentTask===1
+              ? '请先完成“弹簧 7N”记录并与 3N 对比，再点击“确认观察”。'
+              : state.currentTask===2
+                ? '请先切换到海绵并完成“海绵 5N”记录，再点击“确认观察”。'
+                : '请先完成分析结论，再点击“确认观察”。';
+          showToast(msg);
+        }
+        return false;
+      }
+      state.stepWarnIdx = -1;
+      showCheck();
+      if(state.currentTask >= TASKS.length - 1){
+        finishLab();
+        return true;
+      }
+      if(fromAuto){
+        setStepUI(state.currentTask + 1);
+        return true;
+      }
+      state.successCooldown = true;
+      trackTimeout(()=>{
+        setStepUI(state.currentTask + 1);
+        state.successCooldown = false;
+      }, 360);
+      return true;
+    }
+
+    function recalcProgress(){
+      if(state.completed || state.freeMode) return;
+      let idx = 0;
+      while(idx < TASKS.length && checkStepPass(idx)) idx += 1;
+      if(idx >= TASKS.length) finishLab();
+      else setStepUI(idx);
+    }
+
+    function updatePills(){
+      const ap = state.apparatus;
+      pillA.textContent = `样件：${sampleName(ap.sample)}`;
+      pillB.textContent = `施力：${ap.forceN}N`;
+      pillC.textContent = `形变：${ap.deformMm.toFixed(1)}mm`;
+      pillD.textContent = `恢复：${ap.recoverPct}%`;
+      stageGuide.textContent = state.freeMode
+        ? '自由模式：可任意切换样件并探索不同施力导致的形变，再记录与分析。'
+        : '拖动舞台中的压板向下施力；本关卡要求依次完成“弹簧 3N / 弹簧 7N / 海绵 5N”记录。';
+      sampleSpringBtn.classList.toggle('active', ap.sample === 'spring');
+      sampleSpongeBtn.classList.toggle('active', ap.sample === 'sponge');
+    }
+
+    function clearBadge(){
+      state.unseenRecordCount = 0;
+      updateBadge();
+    }
+    function updateBadge(){
+      const v = state.unseenRecordCount;
+      dataNotice.textContent = v > 99 ? '99+' : String(v);
+      dataNotice.classList.toggle('show', v > 0);
+    }
+
+    function clearData(showTip=true){
+      state.records = [];
+      state.analysisOk = false;
+      state.analysisMode = null;
+      state.guidedAnalysisOk = false;
+      clearBadge();
+      analysisText.classList.remove('ok');
+      analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
+      renderRecords();
+      if(showTip) showToast('数据已清空');
+    }
+
+    function bringToFront(kind){
+      state.zTop += 1;
+      if(kind==='control') controlDock.style.zIndex = String(state.zTop);
+      if(kind==='data') dataDock.style.zIndex = String(state.zTop);
+    }
+    function setDockPos(el, x, y){
+      const stage = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const nx = clamp(x, 4, stage.width - r.width - 4);
+      const ny = clamp(y, 4, stage.height - r.height - 4);
+      el.style.left = `${nx}px`;
+      el.style.top = `${ny}px`;
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    }
+    function snapDockToEdges(el){
+      const stage = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const x = r.left - stage.left;
+      const y = r.top - stage.top;
+      const leftGap = x;
+      const rightGap = stage.width - (x + r.width);
+      const topGap = y;
+      const bottomGap = stage.height - (y + r.height);
+      const m = 14;
+      let nx = x, ny = y;
+      if(leftGap < m) nx = 4;
+      else if(rightGap < m) nx = stage.width - r.width - 4;
+      if(topGap < m) ny = 4;
+      else if(bottomGap < m) ny = stage.height - r.height - 4;
+      setDockPos(el, nx, ny);
+    }
+    function makeDockDraggable(el, head, kind){
+      let dragging = false, offX = 0, offY = 0;
+      head.addEventListener('pointerdown', (e)=>{
+        if(e.target.closest('button')) return;
+        dragging = true;
+        el.classList.add('dragging');
+        bringToFront(kind);
+        const r = el.getBoundingClientRect();
+        offX = e.clientX - r.left;
+        offY = e.clientY - r.top;
+        state.dockMoved[kind] = true;
+        head.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      head.addEventListener('pointermove', (e)=>{
+        if(!dragging) return;
+        const stage = stageEl.getBoundingClientRect();
+        setDockPos(el, e.clientX - stage.left - offX, e.clientY - stage.top - offY);
+        e.preventDefault();
+      });
+      const end = ()=>{
+        if(!dragging) return;
+        dragging = false;
+        el.classList.remove('dragging');
+        snapDockToEdges(el);
+      };
+      head.addEventListener('pointerup', end);
+      head.addEventListener('pointercancel', end);
+    }
+
+    function setControlCollapsed(on){
+      state.controlCollapsed = !!on;
+      controlBody.classList.toggle('collapsed', on);
+      controlToggleBtn.textContent = on ? '展开' : '收起';
+      bringToFront('control');
+    }
+    function setDataCollapsed(on){
+      state.dataCollapsed = !!on;
+      dataBody.classList.toggle('collapsed', on);
+      dataToggleBtn.textContent = on ? '展开' : '收起';
+      bringToFront('data');
+      if(!on) clearBadge();
+    }
+    function initDockPositions(force=false){
+      const stage = stageEl.getBoundingClientRect();
+      const cr = controlDock.getBoundingClientRect();
+      const dr = dataDock.getBoundingClientRect();
+      const pad = 10;
+      if(force || !state.dockMoved.control) setDockPos(controlDock, stage.width - cr.width - pad, pad);
+      if(force || !state.dockMoved.data) setDockPos(dataDock, stage.width - dr.width - pad, Math.min(pad + cr.height + 12, stage.height - dr.height - pad));
+    }
+
+    function setFreeMode(on){
+      state.freeMode = !!on;
+      updateModeHud();
+      updateAutoDemoBtn();
+      if(state.freeMode){
+        taskCard.style.opacity = '.74';
+        taskCard.style.filter = 'saturate(.8)';
+        setStatus('自由探索');
+      }else{
+        setSample('spring', false);
+        setForce(0, false);
+        if(state.analysisMode === 'free'){
+          state.analysisOk = false;
+          state.analysisMode = state.guidedAnalysisOk ? 'guided' : null;
+          analysisText.classList.toggle('ok', state.guidedAnalysisOk);
+          analysisText.textContent = state.guidedAnalysisOk
+            ? guidedConclusionText
+            : '暂无。请按步骤操作器材并记录数据后分析。';
+        }
+        taskCard.style.opacity = '1';
+        taskCard.style.filter = 'none';
+        recalcProgress();
+        setStatus(state.completed ? '挑战完成' : '待开始');
+      }
+      updatePills();
+    }
+
+    function centerOf(el){
+      const stageRect = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return { x:r.left - stageRect.left + r.width/2, y:r.top - stageRect.top + r.height/2 };
+    }
+    function setDemoCursorVisible(on){ demoCursor.style.opacity = on ? '1' : '0'; }
+    async function moveDemoCursorTo(x, y, ms=220){
+      demoCursor.style.transition = `left ${ms}ms linear, top ${ms}ms linear`;
+      demoCursor.style.left = `${x}px`;
+      demoCursor.style.top = `${y}px`;
+      await sleep(ms);
+    }
+    async function pulseDemoCursor(ms=160){
+      demoCursor.classList.remove('pulse');
+      void demoCursor.offsetWidth;
+      demoCursor.classList.add('pulse');
+      await sleep(ms);
+      demoCursor.classList.remove('pulse');
+    }
+    function restoreAutoDemoUI(){
+      state.autoPlaying = false;
+      updateModeHud();
+      updateAutoDemoBtn();
+      recordBtn.disabled = false;
+      checkBtn.disabled = false;
+      analyzeBtn.disabled = false;
+      resetBtn.disabled = false;
+      freeBtn.disabled = false;
+      sampleSpringBtn.disabled = false;
+      sampleSpongeBtn.disabled = false;
+      releaseBtn.disabled = false;
+      setDemoCursorVisible(false);
+    }
+    function requestStopAutoDemo(){
+      if(!state.autoPlaying) return;
+      state.autoPlaying = false;
+      state.autoRunId += 1;
+      restoreAutoDemoUI();
+      setStatus('已退出自动演示');
+      showToast('已退出自动演示');
+    }
+
+    function resetFlow(showTip=true){
+      clearAllTimers();
+      state.completed = false;
+      state.successCooldown = false;
+      state.stepWarnIdx = -1;
+      doneMaskEl.style.display = 'none';
+      state.apparatus = makeInitialApparatus();
+      clearData(false);
+      setStepUI(0);
+      setStatus(state.freeMode ? '自由探索' : '待开始');
+      updatePills();
+      if(showTip) showToast('实验已重置');
+    }
+
+    function drawRoundedRect(ctx, x, y, w, h, r, fillStyle, strokeStyle){
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.arcTo(x+w, y, x+w, y+h, r);
+      ctx.arcTo(x+w, y+h, x, y+h, r);
+      ctx.arcTo(x, y+h, x, y, r);
+      ctx.arcTo(x, y, x+w, y, r);
+      ctx.closePath();
+      if(fillStyle){ ctx.fillStyle = fillStyle; ctx.fill(); }
+      if(strokeStyle){ ctx.strokeStyle = strokeStyle; ctx.stroke(); }
+    }
+
+    function drawSpring(ctx, x, topY, baseY){
+      const turns = 10;
+      ctx.strokeStyle = '#c9d8ea';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      const usableH = Math.max(24, baseY - topY);
+      for(let i=0;i<=turns;i++){
+        const t = i/turns;
+        const yy = topY + usableH * t;
+        const xx = x + (i%2===0 ? -18 : 18);
+        if(i===0) ctx.moveTo(x, yy); else ctx.lineTo(xx, yy);
+      }
+      ctx.stroke();
+    }
+
+    function drawSponge(ctx, x, topY, baseY, deformPx){
+      const h = Math.max(34, baseY - topY);
+      const w = 120 + Math.min(24, deformPx * 0.22);
+      const left = x - w/2;
+      drawRoundedRect(ctx, left, topY, w, h, 14, '#7fd6a7', '#baf1d1');
+      ctx.fillStyle = 'rgba(255,255,255,.15)';
+      ctx.fillRect(left+8, topY+8, w-16, 10);
+      ctx.strokeStyle = 'rgba(255,255,255,.16)';
+      for(let i=0;i<4;i++){
+        ctx.beginPath();
+        ctx.moveTo(left+16 + i*24, topY+12);
+        ctx.lineTo(left+22 + i*24, topY+h-12);
+        ctx.stroke();
+      }
+    }
+
+    function draw19(ctx, W, H){
+      const ap = state.apparatus;
+      const g = get19Geometry(W, H);
+      const floorY = H - 70;
+
+      ctx.fillStyle = '#2f343a';
+      ctx.fillRect(0, floorY, W, 70);
+      ctx.fillStyle = 'rgba(255,255,255,.08)';
+      ctx.fillRect(0, floorY, W, 2);
+
+      ctx.fillStyle = '#6e7986';
+      ctx.fillRect(g.frameX - 130, g.topY, 260, 12);
+      ctx.fillRect(g.frameX - 60, g.topY, 10, g.baseY - g.topY + 36);
+      ctx.fillRect(g.frameX + 50, g.topY, 10, g.baseY - g.topY + 36);
+      ctx.fillRect(g.frameX - 150, g.baseY + 24, 300, 12);
+
+      ctx.fillStyle = '#4d5663';
+      ctx.fillRect(g.frameX - 170, g.baseY + 36, 340, 18);
+
+      const headY = currentHeadY(W, H);
+      drawRoundedRect(ctx, g.frameX - g.headW/2, headY, g.headW, g.headH, 10, '#c7d4e8', '#ecf3ff');
+      drawRoundedRect(ctx, g.frameX - 18, headY - 20, 36, 18, 8, '#dce6f5', '#eef5ff');
+      ctx.fillStyle = '#e7f0ff';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText('拖动压板施力', g.frameX - 46, g.topY - 12);
+
+      const deformPx = ap.deformMm * g.mmPx;
+      if(ap.sample === 'spring'){
+        drawSpring(ctx, g.frameX, g.topRestY + deformPx, g.baseY + 24);
+      }else{
+        drawSponge(ctx, g.frameX, g.topRestY + deformPx, g.baseY + 24, deformPx);
+      }
+
+      ctx.fillStyle = '#f3c98b';
+      drawRoundedRect(ctx, g.frameX - 110, g.baseY + 10, 220, 24, 10, '#c99863', '#f3c98b');
+      ctx.fillStyle = '#eaf2ff';
+      ctx.font = '14px -apple-system,Segoe UI';
+      ctx.fillText(ap.sample === 'spring' ? '当前样件：弹簧' : '当前样件：海绵', g.frameX - 64, g.baseY + 68);
+
+      const rulerX = g.frameX + 190;
+      const rulerTop = g.topRestY - 6;
+      const rulerBottom = g.topRestY + g.maxDeformPx + 18;
+      ctx.strokeStyle = '#b8cade';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(rulerX, rulerTop);
+      ctx.lineTo(rulerX, rulerBottom);
+      ctx.stroke();
+      for(let mm=0; mm<=40; mm+=2){
+        const y = rulerTop + mm * g.mmPx;
+        const tick = mm % 10 === 0 ? 22 : (mm % 5 === 0 ? 16 : 9);
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = 'rgba(220,232,250,.75)';
+        ctx.beginPath();
+        ctx.moveTo(rulerX, y);
+        ctx.lineTo(rulerX + tick, y);
+        ctx.stroke();
+        if(mm % 10 === 0){
+          ctx.fillStyle = '#dce8fa';
+          ctx.font = '12px -apple-system,Segoe UI';
+          ctx.fillText(String(mm), rulerX + 28, y + 4);
+        }
+      }
+      ctx.fillStyle = '#dce8fa';
+      ctx.font = '13px -apple-system,Segoe UI';
+      ctx.fillText('形变尺(mm)', rulerX - 18, rulerTop - 18);
+      const pointerY = rulerTop + ap.deformMm * g.mmPx;
+      ctx.fillStyle = '#7fd1ff';
+      ctx.beginPath();
+      ctx.moveTo(rulerX - 16, pointerY);
+      ctx.lineTo(rulerX - 3, pointerY - 7);
+      ctx.lineTo(rulerX - 3, pointerY + 7);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillText(`当前形变 ${ap.deformMm.toFixed(1)} mm`, rulerX - 70, rulerBottom + 24);
+      ctx.fillText(`当前施力 ${ap.forceN} N`, rulerX - 52, rulerBottom + 44);
+
+    }
+
+    function drawScene(){
+      const rect = scene.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(1, Math.floor(rect.width * dpr));
+      const h = Math.max(1, Math.floor(rect.height * dpr));
+      if(scene.width !== w || scene.height !== h){ scene.width = w; scene.height = h; }
+      const ctx = scene.getContext('2d');
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,w,h);
+      ctx.scale(dpr,dpr);
+      draw19(ctx, rect.width, rect.height);
+    }
+
+    function updateDynamic(){ drawScene(); }
+    function loop(ts){
+      state.lastTs = ts;
+      tickReleaseAnimation(ts);
+      updateDynamic();
+      state.rafId = requestAnimationFrame(loop);
+    }
+
+    function getScenePoint(e){
+      const r = scene.getBoundingClientRect();
+      return { x:e.clientX - r.left, y:e.clientY - r.top };
+    }
+    function pressHeadCenter(){
+      const rect = scene.getBoundingClientRect();
+      const W = rect.width, H = rect.height;
+      return { x:get19Geometry(W, H).frameX, y: currentHeadY(W, H) + get19Geometry(W, H).headH/2 };
+    }
+    function updatePressFromPoint(pt, announce=false){
+      const rect = scene.getBoundingClientRect();
+      const g = get19Geometry(rect.width, rect.height);
+      const ratio = clamp((pt.y - g.forceMinY) / Math.max(1, (g.forceMaxY - g.forceMinY)), 0, 1);
+      setForce(Math.round(ratio * 10), announce);
+    }
+
+    async function autoDemo(){
+      if(state.autoPlaying){
+        requestStopAutoDemo();
+        return;
+      }
+      if(state.freeMode) return;
+      const runId = ++state.autoRunId;
+      state.autoPlaying = true;
+      updateModeHud();
+      updateAutoDemoBtn();
+      recordBtn.disabled = true;
+      checkBtn.disabled = true;
+      analyzeBtn.disabled = true;
+      resetBtn.disabled = true;
+      freeBtn.disabled = true;
+      sampleSpringBtn.disabled = true;
+      sampleSpongeBtn.disabled = true;
+      releaseBtn.disabled = true;
+
+      const ensure = ()=>{ if(!state.autoPlaying || runId !== state.autoRunId) throw new Error('auto-cancelled'); };
+      const wait = async (ms)=>{ await sleep(ms); ensure(); };
+      const clickEl = async (el, ms=220)=>{
+        const {x,y} = centerOf(el);
+        await moveDemoCursorTo(x, y, 220);
+        await pulseDemoCursor(120);
+        await wait(ms);
+      };
+      const doAction = async (el, action, ms=220)=>{
+        await clickEl(el, 0);
+        action();
+        await wait(ms);
+      };
+      const doRecord = async (ms=280)=>{
+        const before = state.records.length;
+        await doAction(recordBtn, ()=>{
+          if(!addRecord()) throw new Error('AUTO_RECORD_FAILED');
+        }, 140);
+        if(state.records.length <= before) throw new Error('AUTO_RECORD_NOT_PERSISTED');
+        await wait(ms);
+      };
+      const dragForceTo = async (force)=>{
+        const rect = scene.getBoundingClientRect();
+        const g = get19Geometry(rect.width, rect.height);
+        const start = pressHeadCenter();
+        const targetRatio = clamp(force / 10, 0, 1);
+        const targetY = g.forceMinY + (g.forceMaxY - g.forceMinY) * targetRatio + g.headH/2;
+        await moveDemoCursorTo(start.x, start.y, 180);
+        await pulseDemoCursor(120);
+        const steps = 8;
+        for(let i=1;i<=steps;i++){
+          const y = start.y + (targetY - start.y) * (i/steps);
+          await moveDemoCursorTo(start.x, y, 55);
+          updatePressFromPoint({ x:start.x, y }, false);
+        }
+        setForce(force, false);
+        setStatus(`当前施力：${force}N`);
+        await wait(220);
+      };
+
+      try{
+        resetFlow(false);
+        setFreeMode(false);
+        setControlCollapsed(false);
+        setDataCollapsed(true);
+        initDockPositions(true);
+        setDemoCursorVisible(true);
+        updateModeHud();
+        updateAutoDemoBtn();
+
+        setStepUI(0);
+        setStatus('自动演示：弹簧 3N');
+        await doAction(sampleSpringBtn, ()=>setSample('spring', false), 180);
+        await dragForceTo(3);
+        await doRecord();
+        await doAction(checkBtn, ()=>{
+          if(!tryPassStep(false, true)) throw new Error('AUTO_STEP1_NOT_PASSED');
+        }, 160);
+
+        setStepUI(1);
+        setStatus('自动演示：弹簧 7N');
+        await dragForceTo(7);
+        await doRecord();
+        await doAction(checkBtn, ()=>{
+          if(!tryPassStep(false, true)) throw new Error('AUTO_STEP2_NOT_PASSED');
+        }, 160);
+
+        setStepUI(2);
+        setStatus('自动演示：海绵 5N');
+        await doAction(sampleSpongeBtn, ()=>setSample('sponge', false), 180);
+        await dragForceTo(5);
+        await doRecord();
+        await doAction(checkBtn, ()=>{
+          if(!tryPassStep(false, true)) throw new Error('AUTO_STEP3_NOT_PASSED');
+        }, 160);
+
+        setStepUI(3);
+        setStatus('自动演示：分析结论');
+        await doAction(analyzeBtn, ()=>{
+          if(!analyzeConclusion(false)) throw new Error('AUTO_ANALYSIS_NOT_READY');
+        }, 220);
+        await doAction(checkBtn, ()=>{
+          if(!tryPassStep(false, true)) throw new Error('AUTO_STEP4_NOT_PASSED');
+        }, 160);
+      }catch(err){
+        if(err && err.message !== 'auto-cancelled'){
+          console.error('[autoDemo] failed:', err);
+          setStatus('自动演示失败');
+          showToast('自动演示失败，请重试');
+        }
+      }finally{
+        if(runId === state.autoRunId) restoreAutoDemoUI();
+      }
+    }
+
+    function bindEvents(){
+      controlToggleBtn.addEventListener('click', ()=>setControlCollapsed(!state.controlCollapsed));
+      dataToggleBtn.addEventListener('click', ()=>setDataCollapsed(!state.dataCollapsed));
+      sampleSpringBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setSample('spring', true); });
+      sampleSpongeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setSample('sponge', true); });
+      releaseBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) releaseForce(true); });
+      recordBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) addRecord(); });
+      checkBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) tryPassStep(true, false); });
+      analyzeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) analyzeConclusion(true); });
+      resetBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) resetFlow(true); });
+      autoDemoBtn.addEventListener('click', autoDemo);
+      freeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setFreeMode(!state.freeMode); });
+      okBtn.addEventListener('click', ()=>{ doneMaskEl.style.display = 'none'; });
+
+      const onResize = (()=>{
+        let t = 0;
+        return ()=>{
+          clearTimeout(t);
+          t = setTimeout(()=>{
+            if(!state.dockMoved.control || !state.dockMoved.data) initDockPositions(false);
+            snapDockToEdges(controlDock);
+            snapDockToEdges(dataDock);
+            drawScene();
+          }, 130);
+        };
+      })();
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
+      document.addEventListener('gesturestart', e=>e.preventDefault(), { passive:false });
+      controlDock.addEventListener('pointerdown', ()=>bringToFront('control'));
+      dataDock.addEventListener('pointerdown', ()=>bringToFront('data'));
+      makeDockDraggable(controlDock, controlHead, 'control');
+      makeDockDraggable(dataDock, dataHead, 'data');
+
+      scene.addEventListener('pointerdown', (e)=>{
+        if(state.autoPlaying) return;
+        const pt = getScenePoint(e);
+        const rect = scene.getBoundingClientRect();
+        const g = get19Geometry(rect.width, rect.height);
+        const headY = currentHeadY(rect.width, rect.height);
+        const inHead = Math.abs(pt.x - g.frameX) <= g.headW/2 + 8 && pt.y >= headY - 18 && pt.y <= headY + g.headH + 12;
+        if(inHead){
+          state.draggingId = 'press';
+          state.apparatus.draggingPress = true;
+          scene.setPointerCapture(e.pointerId);
+          e.preventDefault();
+        }
+      });
+      scene.addEventListener('pointermove', (e)=>{
+        if(state.draggingId !== 'press') return;
+        updatePressFromPoint(getScenePoint(e), false);
+        e.preventDefault();
+      });
+      const end = ()=>{
+        if(state.draggingId !== 'press') return;
+        state.draggingId = null;
+        state.apparatus.draggingPress = false;
+        setStatus(state.apparatus.forceN === 0 ? '已松开施力' : `当前施力：${state.apparatus.forceN}N`);
+      };
+      scene.addEventListener('pointerup', end);
+      scene.addEventListener('pointercancel', end);
+    }
+
+    function init(){
+      doneText.textContent = '你已完成“观察力使物体产生形变”的核心操作链与数据分析。';
+      state.apparatus = makeInitialApparatus();
+      initTaskUI();
+      updateModeHud();
+      updateAutoDemoBtn();
+      updatePills();
+      renderRecords();
+      setControlCollapsed(true);
+      setDataCollapsed(true);
+      bindEvents();
+      initDockPositions(true);
+      setStatus('待开始');
+      if(state.rafId) cancelAnimationFrame(state.rafId);
+      state.rafId = requestAnimationFrame(loop);
+    }
+
+    init();
+  </script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

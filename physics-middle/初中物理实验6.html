@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>初中物理实验6｜体验不同物质的弹性（交互闯关版）</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+    --ink:#e9f2ff;
+    --panel-bg: rgba(15,15,15,0.58);
+    --line: rgba(255,255,255,0.12);
+    --shadow: 0 18px 48px rgba(0,0,0,0.55);
+    --zPanel: 36;
+    --zResults: 35;
+    --spring-color:#a0aec0;
+    --rubber-color:#ffb74d;
+    --clay-color:#ff6b6b;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    padding:10px;
+    background:#1a1a1a;
+    color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+
+  #spectrum{
+    position:relative;
+    width:100%;
+    max-width:900px;
+    height:40px;
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:0 0 15px rgba(255,255,255,.15);
+    margin:0 0 12px;
+    background:#000;
+    flex-shrink:0;
+  }
+  #spectrum::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:linear-gradient(90deg,
+      #ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,
+      #ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000
+    );
+    background-size:200% 100%;
+    animation:flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow{0%{background-position:0 0;}100%{background-position:-100% 0;}}
+
+  .task-card{
+    width:100%;
+    max-width:900px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:12px 14px;
+    backdrop-filter:blur(6px);
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:10px;
+    align-items:center;
+    transition:opacity .2s, filter .2s;
+  }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:700; white-space:nowrap; }
+  .task-text{ line-height:1.55; }
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.25); outline:2px solid rgba(255,255,255,.12); }
+  .dot.active{ background:var(--warn); }
+  .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.5); }
+  .dot.warn{ background:var(--error); outline-color:rgba(255,107,107,.45); }
+
+  #stage{
+    width:100%;
+    max-width:900px;
+    height:62vh;
+    max-height:620px;
+    min-height:500px;
+    margin-top:10px;
+    border-radius:12px;
+    position:relative;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.08);
+    background:#0b0e14;
+    box-shadow:0 10px 26px rgba(0,0,0,.35);
+    touch-action:none;
+    background-image:
+      radial-gradient(circle at 76% 25%, rgba(255,255,255,.06), transparent 42%),
+      radial-gradient(circle at 22% 78%, rgba(0,255,255,.05), transparent 46%);
+  }
+
+  .hud{
+    position:absolute;
+    left:10px;
+    top:10px;
+    z-index:30;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    pointer-events:none;
+  }
+  .hud .tag{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.3);
+    backdrop-filter:blur(8px);
+    color:#eaf2ff;
+    font-weight:900;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .hud .tag.mode-auto{
+    border-color:rgba(61,220,151,.42);
+    color:#b8ffd6;
+    background:rgba(61,220,151,.14);
+  }
+
+  .lab-area{
+    position:absolute;
+    inset:54px 10px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(5,10,16,.82);
+    overflow:hidden;
+    padding:14px 16px 56px;
+    display:flex;
+    justify-content:space-evenly;
+    align-items:flex-start;
+  }
+
+  .ceiling{
+    position:absolute;
+    left:0;
+    top:0;
+    width:100%;
+    height:40px;
+    background:linear-gradient(180deg,#343840,#15191f);
+    border-bottom:2px solid #555c66;
+    z-index:1;
+    display:flex;
+    justify-content:space-evenly;
+    align-items:flex-end;
+    padding-bottom:4px;
+  }
+  .hook{
+    width:8px;
+    height:12px;
+    border-radius:0 0 4px 4px;
+    background:#8a92a0;
+  }
+
+  .target-line{
+    position:absolute;
+    left:0;
+    width:100%;
+    border-top:2px dashed rgba(255,255,255,.3);
+    top:286px;
+    z-index:0;
+    opacity:.9;
+  }
+  .target-line::after{
+    content:'目标拉伸位置';
+    position:absolute;
+    right:10px;
+    top:-20px;
+    color:rgba(255,255,255,.65);
+    font-size:12px;
+    background:rgba(0,0,0,.45);
+    padding:2px 6px;
+    border-radius:4px;
+    border:1px solid rgba(255,255,255,.12);
+  }
+
+  .material-group{
+    position:relative;
+    width:90px;
+    height:100%;
+    margin-top:26px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    opacity:.45;
+    transition:opacity .25s;
+  }
+  .material-group.active{ opacity:1; }
+  .material-group .label{
+    margin-top:12px;
+    font-size:13px;
+    color:#b8c6db;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.4);
+    border-radius:999px;
+    padding:4px 10px;
+  }
+
+  .body-wrap{
+    position:relative;
+    width:28px;
+    height:120px;
+    transform-origin:top center;
+    display:flex;
+    justify-content:center;
+    transition:height .15s;
+  }
+  .visual{ height:100%; }
+
+  .body-wrap.rubber .visual{
+    width:7px;
+    border-radius:4px;
+    background:var(--rubber-color);
+    box-shadow:0 0 6px rgba(255,183,77,.3);
+  }
+  .body-wrap.spring .visual{
+    width:20px;
+    border-left:2px solid rgba(255,255,255,.1);
+    border-right:2px solid rgba(255,255,255,.1);
+    background:repeating-linear-gradient(45deg, transparent, transparent 4px, var(--spring-color) 4px, var(--spring-color) 7px);
+  }
+  .body-wrap.clay .visual{
+    width:16px;
+    border-radius:8px;
+    background:var(--clay-color);
+    filter:blur(.4px);
+  }
+
+  .handle{
+    position:absolute;
+    left:50%;
+    bottom:-24px;
+    transform:translateX(-50%);
+    width:44px;
+    height:24px;
+    border-radius:4px;
+    border:1px solid #666;
+    background:#444;
+    box-shadow:0 4px 6px rgba(0,0,0,.5);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:10px;
+    color:#b6c6d9;
+    letter-spacing:1px;
+    user-select:none;
+    touch-action:none;
+    cursor:grab;
+    z-index:3;
+  }
+  .handle:active{ cursor:grabbing; }
+
+  .lab-note{
+    position:absolute;
+    left:10px;
+    bottom:10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.15);
+    background:rgba(0,0,0,.32);
+    color:#d5e6ff;
+    font-size:12px;
+    padding:6px 10px;
+    z-index:12;
+  }
+
+  .dock{
+    position:absolute;
+    width:min(350px, 90%);
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    box-shadow:0 10px 24px rgba(0,0,0,.35);
+    backdrop-filter:blur(8px);
+    z-index:var(--zPanel);
+    user-select:none;
+  }
+  .resultsDock{ z-index:var(--zResults); }
+  .dockHead{
+    background:var(--panel-bg);
+    padding:10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    cursor:grab;
+    touch-action:none;
+  }
+  .dockHead:active{ cursor:grabbing; }
+  .dockTitle{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:800; color:#eaf2ff; }
+  .dockBadge{
+    font-size:11px;
+    color:#0b1220;
+    background:rgba(61,220,151,.95);
+    border-radius:999px;
+    padding:3px 8px;
+    font-weight:900;
+  }
+  .dockBtns{ display:flex; gap:8px; align-items:center; }
+  .iconBtn{
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:#eaf2ff;
+    cursor:pointer;
+    font-weight:800;
+    font-size:12px;
+  }
+  .iconBtn:hover{ background:rgba(255,255,255,.10); }
+  .dockBody{
+    background:var(--panel-bg);
+    padding:10px;
+    border-top:1px solid rgba(255,255,255,.10);
+    max-height:340px;
+    overflow:auto;
+  }
+  .dockBody.collapsed{ display:none; }
+
+  .dockNotice{
+    min-width:18px;
+    height:18px;
+    padding:0 5px;
+    border-radius:999px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#ff5f66;
+    color:#fff;
+    font-size:11px;
+    font-weight:900;
+    border:1px solid rgba(255,255,255,.16);
+    opacity:0;
+    transform:scale(.7);
+    transition:.18s;
+  }
+  .dockNotice.show{
+    opacity:1;
+    transform:scale(1);
+    animation:pulseBadge .75s ease-in-out infinite alternate;
+  }
+  @keyframes pulseBadge{from{box-shadow:0 0 0 0 rgba(255,95,102,.4);}to{box-shadow:0 0 0 6px rgba(255,95,102,0);}}
+
+  .secTitle{ font-size:12px; color:#cfe2ff; opacity:.95; font-weight:900; margin:0 0 8px; }
+  .mini{ font-size:12px; color:#cfe3ff; opacity:.95; }
+  .readout{
+    margin-top:8px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.08);
+    color:#e9f2ff;
+    font-size:12px;
+    padding:6px 10px;
+    white-space:nowrap;
+  }
+
+  .btnRow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btnRow button{
+    flex:1 1 120px;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    cursor:pointer;
+    font-weight:900;
+    transition:.15s;
+  }
+  .btnRow button:hover{ background:rgba(255,255,255,.12); }
+  .btnRow button:disabled{ opacity:.55; cursor:not-allowed; }
+
+  .table{ width:100%; border-collapse:collapse; font-size:12px; color:#eaf2ff; }
+  .table th,.table td{ border-bottom:1px solid rgba(255,255,255,.10); padding:6px 4px; text-align:left; font-variant-numeric:tabular-nums; }
+  .table th{ color:#cfe2ff; font-weight:900; }
+
+  .checkmark{
+    position:absolute;
+    z-index:60;
+    left:50%;
+    top:20%;
+    transform:translate(-50%,-50%) scale(.6);
+    width:120px;
+    height:120px;
+    border-radius:50%;
+    background:rgba(61,220,151,.15);
+    border:3px solid var(--accent);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 0 40px rgba(61,220,151,.35), inset 0 0 18px rgba(61,220,151,.18);
+    animation:pop .55s ease-out;
+    pointer-events:none;
+  }
+  .checkmark.active{ display:flex; }
+  .checkmark > div{
+    width:60px;
+    height:30px;
+    border-left:8px solid var(--accent);
+    border-bottom:8px solid var(--accent);
+    transform:rotate(-45deg) translateY(-6px);
+  }
+  @keyframes pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+
+  .demoCursor{
+    position:absolute;
+    z-index:140;
+    width:26px;
+    height:26px;
+    left:-200px;
+    top:-200px;
+    opacity:0;
+    pointer-events:none;
+    transition:left .48s cubic-bezier(.22,.61,.36,1), top .48s cubic-bezier(.22,.61,.36,1), opacity .2s ease, transform .12s ease;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));
+  }
+  .demoCursor.show{ opacity:1; }
+  .demoCursor.clicking{ transform:scale(.9); }
+  .demoCursorPulse{
+    position:absolute;
+    z-index:139;
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    border:2px solid rgba(255,195,74,.95);
+    left:-200px;
+    top:-200px;
+    opacity:0;
+    pointer-events:none;
+    transform:translate(-50%,-50%) scale(.35);
+  }
+  .demoCursorPulse.active{ animation:cursorPulse .45s ease-out; }
+  @keyframes cursorPulse{0%{opacity:.95;transform:translate(-50%,-50%) scale(.35)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
+
+  .toolbar{
+    width:100%;
+    max-width:900px;
+    margin-top:12px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:flex-start;
+  }
+  button.main{
+    padding:10px 16px;
+    border:none;
+    border-radius:8px;
+    background:#444;
+    color:#fff;
+    cursor:pointer;
+    transition:background .25s, transform .05s, opacity .2s;
+  }
+  button.main:hover{ background:#5a5a5a; }
+  button.main:active{ transform:scale(.98); }
+  button.main:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:24px;
+    transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,.82);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s, transform .25s;
+    z-index:200;
+    box-shadow:0 8px 18px rgba(0,0,0,.35);
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{
+    width:min(90vw,380px);
+    background:#111;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:14px;
+    padding:18px 16px;
+    text-align:center;
+    box-shadow:0 12px 30px rgba(0,0,0,.5);
+  }
+  .modal h3{ margin:8px 0 6px; font-size:20px; }
+  .modal p{ margin-top:0; color:#cfd8dc; line-height:1.6; }
+  .modal .ok{
+    margin-top:12px;
+    background:var(--accent);
+    color:#081a12;
+    font-weight:800;
+    border:none;
+    border-radius:10px;
+    padding:10px 18px;
+    cursor:pointer;
+  }
+
+  .explanation{
+    width:100%;
+    max-width:900px;
+    margin:14px 0 20px;
+    line-height:1.65;
+    font-size:.95em;
+    color:var(--ink);
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:12px;
+    padding:14px 16px;
+  }
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; }
+  .explanation ul{ margin:.2em 0 .2em 1.1em; }
+  .explanation li{ margin:6px 0; }
+
+  @media (max-width:560px){
+    .task-card{ grid-template-columns:1fr; gap:6px; }
+    .task-step{ width:fit-content; }
+    .progress-dots{ justify-content:flex-start; }
+    .material-group{ width:84px; }
+    .dock{ width:min(92%, 360px); }
+    #stage{ min-height:560px; }
+    .target-line::after{ right:6px; font-size:11px; }
+  }
+
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">拉动橡皮筋到虚线处并松手，观察是否回到原状。</div>
+      <div class="task-hint" id="taskHint">提示：抓住“⬇ 拉”向下拖动，再松手。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+
+    
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+<div class="lab-area" id="labArea">
+      <div class="ceiling">
+        <div class="hook"></div>
+        <div class="hook"></div>
+        <div class="hook"></div>
+      </div>
+      <div class="target-line" id="targetLine"></div>
+
+      <div class="material-group" id="group-rubber">
+        <div class="body-wrap rubber" id="material-rubber" data-key="rubber" style="height:120px;">
+          <div class="visual"></div>
+          <div class="handle" data-key="rubber">⬇ 拉</div>
+        </div>
+        <div class="label">橡皮筋</div>
+      </div>
+
+      <div class="material-group" id="group-spring">
+        <div class="body-wrap spring" id="material-spring" data-key="spring" style="height:120px;">
+          <div class="visual"></div>
+          <div class="handle" data-key="spring">⬇ 拉</div>
+        </div>
+        <div class="label">钢弹簧</div>
+      </div>
+
+      <div class="material-group" id="group-clay">
+        <div class="body-wrap clay" id="material-clay" data-key="clay" style="height:120px;">
+          <div class="visual"></div>
+          <div class="handle" data-key="clay">⬇ 拉</div>
+        </div>
+        <div class="label">橡皮泥</div>
+      </div>
+
+      <div class="lab-note" id="labNote">实验状态：待操作</div>
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+
+    <div class="dock drawer control" id="controlDock" style="right:10px; top:10px;">
+      <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">实验控制 <span class="dockBadge" id="modeBadge">步骤</span></div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="controlBody">
+        <div class="secTitle">过程读数</div>
+        <div class="mini">比较橡皮筋、钢弹簧、橡皮泥在受力后是否恢复原状及“软硬”差异。</div>
+
+        <div class="readout">
+          <span class="pill">当前材料：<b id="activePill">橡皮筋</b></span>
+          <span class="pill">当前长度：<b id="currentPill">120.0</b>px</span>
+          <span class="pill">最大长度：<b id="maxPill">120.0</b>px</span>
+          <span class="pill">回弹状态：<b id="reboundPill">待拉伸</b></span>
+          <span class="pill">判定：<b id="resultPill">未达标</b></span>
+        </div>
+
+        <div class="btnRow">
+          <button id="trialResetBtn">重置本轮</button>
+          <button id="checkBtn">确认观察 ✅</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dock resultsDock drawer data" id="dataDock" style="right:10px; top:70px;">
+      <div class="dockHead drawer-header" id="dataHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">数据面板 <span class="dockNotice" id="dataNotice">0</span></div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="dataToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="dataBody">
+        <div class="secTitle">数据记录</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>步骤</th>
+              <th>材料</th>
+              <th>最大长度(px)</th>
+              <th>回弹</th>
+            </tr>
+          </thead>
+          <tbody id="recordBody">
+            <tr><td colspan="5" style="opacity:.72;">当前无记录。达成步骤后会自动记录。</td></tr>
+          </tbody>
+        </table>
+      
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="demoCursor" id="demoCursor" aria-hidden="true">
+      <svg viewBox="0 0 24 24" role="img" aria-label="自动演示鼠标">
+        <path d="M3 2.5L10.2 20.8L12.7 12.9L20.8 10.3L3 2.5Z" fill="#ffffff" stroke="#111820" stroke-width="1.3" />
+      </svg>
+    </div>
+    <div class="demoCursorPulse" id="demoCursorPulse" aria-hidden="true"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="main" id="resetBtn">步骤重置</button>
+    <button class="main" id="autoDemoBtn">自动演示</button>
+    <button class="main" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>实验完成</h3>
+      <p>你已体验：橡皮筋和钢弹簧可回弹（弹性形变），橡皮泥难恢复原状（塑性形变）。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：体验不同物质的弹性</h2>
+    <ul>
+      <li><b>关键操作</b>：分别拉伸橡皮筋、钢弹簧、橡皮泥到目标位置并松手，观察其恢复情况。</li>
+      <li><b>可观察现象</b>：橡皮筋和钢弹簧松手后明显回弹；橡皮泥会保留较大变形。</li>
+      <li><b>原理与结论</b>：能恢复原状的是弹性形变，不能恢复原状的是塑性形变；在相同位移下，钢弹簧更“硬”，需要更大拉力。</li>
+    </ul>
+  </div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const AUTO_DEMO_FACTOR = 1.2;
+const BASE_HEIGHT = 120;
+
+const MATERIAL_NAMES = {
+  rubber: '橡皮筋',
+  spring: '钢弹簧',
+  clay: '橡皮泥'
+};
+
+const state = {
+  currentTask: 0,
+  completed: false,
+  freeMode: false,
+  autoPlaying: false,
+  warningStep: -1,
+  successCooldown: false,
+  panelCollapsed: true,
+  dataCollapsed: true,
+  unseenRecordCount: 0,
+  records: [],
+  demoRunId: 0,
+  timers: new Set(),
+  draggingKey: '',
+  dragStartY: 0,
+  dragStartHeight: 0,
+  dragHandle: null,
+  dragPointerId: -1,
+  dragFromAuto: false,
+  dockMoved: { control: false, data: false }
+};
+
+const materials = {
+  rubber: {
+    key: 'rubber',
+    el: $('#material-rubber'),
+    group: $('#group-rubber'),
+    visual: $('#material-rubber .visual'),
+    handle: $('#material-rubber .handle'),
+    stiffness: 1.0,
+    elastic: true,
+    threshold: 258,
+    height: BASE_HEIGHT,
+    maxHeight: BASE_HEIGHT,
+    released: false,
+    recovered: false,
+    status: '待拉伸',
+    animating: false,
+    rafId: 0
+  },
+  spring: {
+    key: 'spring',
+    el: $('#material-spring'),
+    group: $('#group-spring'),
+    visual: $('#material-spring .visual'),
+    handle: $('#material-spring .handle'),
+    stiffness: 2.1,
+    elastic: true,
+    threshold: 232,
+    height: BASE_HEIGHT,
+    maxHeight: BASE_HEIGHT,
+    released: false,
+    recovered: false,
+    status: '待拉伸',
+    animating: false,
+    rafId: 0
+  },
+  clay: {
+    key: 'clay',
+    el: $('#material-clay'),
+    group: $('#group-clay'),
+    visual: $('#material-clay .visual'),
+    handle: $('#material-clay .handle'),
+    stiffness: 1.2,
+    elastic: false,
+    threshold: 258,
+    plasticTarget: 182,
+    height: BASE_HEIGHT,
+    maxHeight: BASE_HEIGHT,
+    released: false,
+    recovered: false,
+    status: '待拉伸',
+    animating: false,
+    rafId: 0
+  }
+};
+
+const tasks = [
+  {
+    text: '拉动橡皮筋到虚线处并松手，观察是否回到原状。',
+    hint: '提示：抓住“⬇ 拉”向下拖动，再松手。',
+    material: 'rubber',
+    check: () => passElastic('rubber')
+  },
+  {
+    text: '拉动钢弹簧到虚线处并松手，体验它更“硬”但仍回弹。',
+    hint: '提示：同样位移下，弹簧更难拉长。',
+    material: 'spring',
+    check: () => passElastic('spring')
+  },
+  {
+    text: '拉动橡皮泥到虚线处并松手，观察其是否难以恢复原状。',
+    hint: '提示：如果仍有明显残余形变，说明为塑性形变。',
+    material: 'clay',
+    check: () => passClay('clay')
+  }
+];
+
+const taskStepEl = $('#taskStep');
+const taskTextEl = $('#taskText');
+const taskHintEl = $('#taskHint');
+const dots = [$('#dot1'), $('#dot2'), $('#dot3')];
+
+const modeTag = $('#modeTag');
+const statusTag = $('#statusTag');
+const modeBadge = $('#modeBadge');
+
+const stage = $('#stage');
+const labArea = $('#labArea');
+const labNote = $('#labNote');
+
+const controlDock = $('#controlDock');
+const controlHead = $('#controlHead');
+const controlBody = $('#controlBody');
+const controlToggleBtn = $('#controlToggleBtn');
+const dataDock = $('#dataDock');
+const dataHead = $('#dataHead');
+const dataBody = $('#dataBody');
+const dataToggleBtn = $('#dataToggleBtn');
+const dataNotice = $('#dataNotice');
+const recordBody = $('#recordBody');
+
+const activePill = $('#activePill');
+const currentPill = $('#currentPill');
+const maxPill = $('#maxPill');
+const reboundPill = $('#reboundPill');
+const resultPill = $('#resultPill');
+
+const trialResetBtn = $('#trialResetBtn');
+const checkBtn = $('#checkBtn');
+const resetBtn = $('#resetBtn');
+const autoDemoBtn = $('#autoDemoBtn');
+const freeBtn = $('#freeBtn');
+
+const toastEl = $('#toast');
+const checkmark = $('#checkmark');
+const doneMask = $('#doneMask');
+const okBtn = $('#okBtn');
+
+const demoCursor = $('#demoCursor');
+const demoCursorPulse = $('#demoCursorPulse');
+
+function trackTimer(id){ state.timers.add(id); return id; }
+function untrackTimer(id){ state.timers.delete(id); }
+function clearTrackedTimers(){
+  state.timers.forEach((id)=>clearTimeout(id));
+  state.timers.clear();
+}
+function wait(ms){
+  return new Promise((resolve)=>{
+    const id = setTimeout(()=>{ untrackTimer(id); resolve(); }, ms);
+    trackTimer(id);
+  });
+}
+async function waitAuto(ms, runId){
+  await wait(Math.round(ms * AUTO_DEMO_FACTOR));
+  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+}
+
+function showToast(msg){
+  toastEl.textContent = msg || '提示';
+  toastEl.classList.add('show');
+  if(showToast.t){
+    clearTimeout(showToast.t);
+    untrackTimer(showToast.t);
+  }
+  showToast.t = trackTimer(setTimeout(()=>{
+    toastEl.classList.remove('show');
+    if(showToast.t){
+      untrackTimer(showToast.t);
+      showToast.t = 0;
+    }
+  }, 1500));
+}
+showToast.t = 0;
+
+function showCheck(){
+  checkmark.classList.add('active');
+  if(showCheck.t){
+    clearTimeout(showCheck.t);
+    untrackTimer(showCheck.t);
+  }
+  showCheck.t = trackTimer(setTimeout(()=>{
+    checkmark.classList.remove('active');
+    if(showCheck.t){
+      untrackTimer(showCheck.t);
+      showCheck.t = 0;
+    }
+  }, 520));
+}
+showCheck.t = 0;
+
+function setStatusTag(text){
+  statusTag.textContent = `状态：${text || '待操作'}`;
+}
+function updateModeHud(){
+  modeTag.classList.remove('mode-auto');
+  if(state.autoPlaying){
+    modeTag.textContent = '模式：自动演示';
+    modeTag.classList.add('mode-auto');
+    modeBadge.textContent = '自动';
+    modeBadge.style.background = 'rgba(61,220,151,.95)';
+  }else if(state.freeMode){
+    modeTag.textContent = '模式：自由';
+    modeBadge.textContent = '自由';
+    modeBadge.style.background = 'rgba(255,183,77,.95)';
+  }else{
+    modeTag.textContent = '模式：引导';
+    modeBadge.textContent = '步骤';
+    modeBadge.style.background = 'rgba(61,220,151,.95)';
+  }
+}
+
+function materialOfStep(){
+  return tasks[state.currentTask].material;
+}
+
+function passElastic(key){
+  const m = materials[key];
+  return m.maxHeight >= m.threshold && m.released && !m.animating && m.recovered;
+}
+function passClay(key){
+  const m = materials[key];
+  return m.maxHeight >= m.threshold && m.released && !m.animating && !m.recovered && m.height >= BASE_HEIGHT + 45;
+}
+
+function materialResultText(key){
+  if(passElastic(key) || passClay(key)) return '达标';
+  return '未达标';
+}
+
+function renderRecordTable(){
+  if(!state.records.length){
+    recordBody.innerHTML = '<tr><td colspan="5" style="opacity:.72;">当前无记录。达成步骤后会自动记录。</td></tr>';
+    return;
+  }
+  recordBody.innerHTML = state.records.map((r, i)=>(
+    `<tr><td>${i + 1}</td><td>${r.step}</td><td>${r.material}</td><td>${r.maxLen.toFixed(1)}</td><td>${r.rebound}</td></tr>`
+  )).join('');
+}
+function refreshDataNotice(){
+  const n = state.unseenRecordCount;
+  dataNotice.textContent = n > 99 ? '99+' : String(n);
+  dataNotice.classList.toggle('show', state.dataCollapsed && n > 0);
+}
+function addRecord(step, materialKey){
+  const m = materials[materialKey];
+  state.records.push({
+    step,
+    material: MATERIAL_NAMES[materialKey],
+    maxLen: m.maxHeight,
+    rebound: m.recovered ? '回弹' : '不回弹'
+  });
+  if(state.records.length > 120) state.records.shift();
+  if(state.dataCollapsed) state.unseenRecordCount = Math.min(999, state.unseenRecordCount + 1);
+  else state.unseenRecordCount = 0;
+  refreshDataNotice();
+  renderRecordTable();
+}
+
+function highlightTarget(key){
+  Object.values(materials).forEach((m)=>{
+    m.group.classList.toggle('active', state.freeMode || state.completed || m.key === key);
+  });
+}
+
+function setMaterialHeight(key, h){
+  const m = materials[key];
+  const next = clamp(h, BASE_HEIGHT, getMaxMaterialHeight());
+  m.height = next;
+  m.el.style.height = `${next}px`;
+  if(key === 'rubber'){
+    const ratio = clamp(BASE_HEIGHT / next, 0.28, 1);
+    m.visual.style.width = `${Math.max(2, 7 * ratio)}px`;
+  }
+}
+
+function getMaxMaterialHeight(){
+  const r = labArea.getBoundingClientRect();
+  return Math.max(BASE_HEIGHT + 20, r.height - 82);
+}
+
+function cancelMaterialAnim(key){
+  const m = materials[key];
+  if(m.rafId){
+    cancelAnimationFrame(m.rafId);
+    m.rafId = 0;
+  }
+  m.animating = false;
+}
+function cancelAllMaterialAnim(){
+  Object.keys(materials).forEach(cancelMaterialAnim);
+}
+
+function resetMaterialTrial(key){
+  const m = materials[key];
+  cancelMaterialAnim(key);
+  m.height = BASE_HEIGHT;
+  m.maxHeight = BASE_HEIGHT;
+  m.released = false;
+  m.recovered = false;
+  m.status = '待拉伸';
+  m.animating = false;
+  m.el.style.transition = 'height .15s';
+  setMaterialHeight(key, BASE_HEIGHT);
+  if(key === 'rubber') m.visual.style.width = '7px';
+}
+function resetAllMaterials(){
+  Object.keys(materials).forEach(resetMaterialTrial);
+}
+
+function refreshReadouts(){
+  const key = state.completed ? tasks[tasks.length - 1].material : materialOfStep();
+  const m = materials[key];
+  activePill.textContent = MATERIAL_NAMES[key];
+  currentPill.textContent = m.height.toFixed(1);
+  maxPill.textContent = m.maxHeight.toFixed(1);
+  reboundPill.textContent = m.status;
+  resultPill.textContent = materialResultText(key);
+
+  if(!state.completed){
+    if(state.draggingKey) labNote.textContent = `实验状态：正在拉伸${MATERIAL_NAMES[state.draggingKey]}`;
+    else labNote.textContent = `实验状态：当前任务 ${MATERIAL_NAMES[materialOfStep()]}`;
+  } else {
+    labNote.textContent = '实验状态：挑战完成';
+  }
+}
+
+function renderStepUI(){
+  const i = state.currentTask;
+  const last = tasks.length - 1;
+  taskStepEl.textContent = `步骤 ${i + 1} / ${tasks.length}`;
+  taskTextEl.textContent = tasks[i].text;
+  taskHintEl.textContent = tasks[i].hint;
+  dots.forEach((d, idx)=>{
+    const isDone = idx < i || (state.completed && idx === last);
+    const isActive = idx === i && !state.completed;
+    d.classList.toggle('done', isDone);
+    d.classList.toggle('active', isActive);
+    d.classList.toggle('warn', isActive && state.warningStep === i);
+  });
+  highlightTarget(tasks[i].material);
+  refreshReadouts();
+}
+function setStepUI(i){
+  state.currentTask = clamp(i, 0, tasks.length - 1);
+  if(!state.freeMode) resetAllMaterials();
+  renderStepUI();
+}
+function markStepWarning(msg){
+  if(state.freeMode || state.completed) return;
+  state.warningStep = state.currentTask;
+  renderStepUI();
+  showToast(msg);
+}
+function lockSuccess(){
+  state.successCooldown = true;
+  const id = setTimeout(()=>{
+    state.successCooldown = false;
+    untrackTimer(id);
+  }, 600);
+  trackTimer(id);
+}
+
+function canOperateMaterial(key, fromAuto = false){
+  if(state.autoPlaying && !fromAuto) return false;
+  if(!state.freeMode && !state.completed){
+    const target = tasks[state.currentTask].material;
+    if(key !== target){
+      if(!fromAuto) markStepWarning(`当前步骤请先操作${MATERIAL_NAMES[target]}。`);
+      return false;
+    }
+  }
+  return true;
+}
+
+function beginDrag(key, clientY, opts = {}){
+  const { fromAuto = false, handle = null } = opts;
+  if(!canOperateMaterial(key, fromAuto)) return false;
+
+  const m = materials[key];
+  cancelMaterialAnim(key);
+  m.released = false;
+  m.recovered = false;
+  m.status = '拉伸中';
+
+  state.draggingKey = key;
+  state.dragStartY = clientY;
+  state.dragStartHeight = m.height;
+  state.dragFromAuto = fromAuto;
+  state.dragHandle = handle;
+  if(!fromAuto) setStatusTag('拉伸中');
+
+  m.group.classList.add('active');
+  refreshReadouts();
+  return true;
+}
+
+function updateDrag(clientY){
+  if(!state.draggingKey) return;
+  const key = state.draggingKey;
+  const m = materials[key];
+  const dy = clientY - state.dragStartY;
+  const effectiveDy = Math.max(0, dy / m.stiffness);
+  const next = state.dragStartHeight + effectiveDy;
+  setMaterialHeight(key, next);
+  m.maxHeight = Math.max(m.maxHeight, m.height);
+  refreshReadouts();
+}
+
+function animateRelease(key){
+  const m = materials[key];
+  cancelMaterialAnim(key);
+  m.animating = true;
+  m.released = true;
+
+  if(m.elastic){
+    m.status = '回弹中';
+    const target = BASE_HEIGHT;
+    let x = m.height;
+    let v = 0;
+    const k = key === 'spring' ? 0.13 : 0.11;
+    const damp = key === 'spring' ? 0.82 : 0.78;
+
+    const step = () => {
+      const force = (target - x) * k;
+      v = (v + force) * damp;
+      x += v;
+      setMaterialHeight(key, x);
+      m.maxHeight = Math.max(m.maxHeight, m.height);
+      refreshReadouts();
+
+      if(Math.abs(v) < 0.08 && Math.abs(x - target) < 0.6){
+        setMaterialHeight(key, target);
+        m.animating = false;
+        m.recovered = true;
+        m.status = '已回弹';
+        m.rafId = 0;
+        refreshReadouts();
+        return;
+      }
+      m.rafId = requestAnimationFrame(step);
+    };
+    m.rafId = requestAnimationFrame(step);
+  } else {
+    m.status = '塑性定型中';
+    const from = m.height;
+    const target = m.plasticTarget;
+    const start = performance.now();
+    const dur = 320;
+
+    const step = (now) => {
+      const t = clamp((now - start) / dur, 0, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      const x = from + (target - from) * ease;
+      setMaterialHeight(key, x);
+      m.maxHeight = Math.max(m.maxHeight, m.height);
+      refreshReadouts();
+
+      if(t >= 1){
+        setMaterialHeight(key, target);
+        m.animating = false;
+        m.recovered = false;
+        m.status = '塑性残余';
+        m.rafId = 0;
+        refreshReadouts();
+        return;
+      }
+      m.rafId = requestAnimationFrame(step);
+    };
+    m.rafId = requestAnimationFrame(step);
+  }
+}
+
+function finishDrag(){
+  if(!state.draggingKey) return;
+  const key = state.draggingKey;
+  const m = materials[key];
+
+  state.draggingKey = '';
+  state.dragStartY = 0;
+  state.dragStartHeight = 0;
+  state.dragFromAuto = false;
+  state.dragPointerId = -1;
+  state.dragHandle = null;
+
+  m.group.classList.remove('active');
+  animateRelease(key);
+  if(!state.autoPlaying) setStatusTag('待操作');
+}
+
+function passCurrentTask(fromAuto = false){
+  if(state.successCooldown || state.completed) return false;
+
+  if(state.freeMode && !fromAuto){
+    showToast('自由模式下可继续对比，不进行闯关判定。');
+    return false;
+  }
+
+  const ok = tasks[state.currentTask].check();
+  if(!ok){
+    if(!fromAuto) markStepWarning('当前条件未满足：请拉到虚线并观察松手后的恢复情况。');
+    return false;
+  }
+
+  if(state.warningStep === state.currentTask) state.warningStep = -1;
+  const key = tasks[state.currentTask].material;
+  addRecord(`步骤${state.currentTask + 1}`, key);
+  showCheck();
+  lockSuccess();
+
+  if(state.currentTask >= tasks.length - 1){
+    state.completed = true;
+    renderStepUI();
+    setStatusTag('挑战完成');
+    doneMask.style.display = 'flex';
+  } else {
+    setStepUI(state.currentTask + 1);
+    if(!fromAuto) showToast('✅ 过关，进入下一步。');
+  }
+  return true;
+}
+
+function bindHandles(){
+  Object.values(materials).forEach((m) => {
+    const handle = m.handle;
+
+    handle.addEventListener('pointerdown', (e) => {
+      if(e.button !== 0) return;
+      if(!beginDrag(m.key, e.clientY, { fromAuto: false, handle })) return;
+      state.dragPointerId = e.pointerId;
+      try { handle.setPointerCapture(e.pointerId); }
+      catch (err) { console.warn('setPointerCapture failed', err); }
+      e.preventDefault();
+    });
+
+    handle.addEventListener('pointermove', (e) => {
+      if(state.draggingKey !== m.key || state.dragPointerId !== e.pointerId) return;
+      updateDrag(e.clientY);
+      e.preventDefault();
+    });
+
+    const finish = (e) => {
+      if(state.draggingKey !== m.key || state.dragPointerId !== e.pointerId) return;
+      try { handle.releasePointerCapture(e.pointerId); }
+      catch (err) { console.warn('releasePointerCapture failed', err); }
+      finishDrag();
+    };
+
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
+  });
+}
+
+trialResetBtn.onclick = () => {
+  if(state.autoPlaying) return;
+  if(state.freeMode){
+    resetAllMaterials();
+    refreshReadouts();
+    showToast('已重置三种材料。');
+    return;
+  }
+  const key = tasks[state.currentTask].material;
+  resetMaterialTrial(key);
+  highlightTarget(key);
+  refreshReadouts();
+  showToast(`已重置${MATERIAL_NAMES[key]}本轮。`);
+};
+
+checkBtn.onclick = () => {
+  passCurrentTask(false);
+};
+
+function setControlCollapsed(on){
+  state.panelCollapsed = !!on;
+  controlBody.classList.toggle('collapsed', state.panelCollapsed);
+  controlToggleBtn.textContent = state.panelCollapsed ? '展开' : '收起';
+}
+function setDataCollapsed(on){
+  state.dataCollapsed = !!on;
+  dataBody.classList.toggle('collapsed', state.dataCollapsed);
+  dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+  if(!state.dataCollapsed) state.unseenRecordCount = 0;
+  refreshDataNotice();
+}
+controlToggleBtn.onclick = () => {
+  setControlCollapsed(!state.panelCollapsed);
+  resolveDrawerOverlap(true);
+};
+dataToggleBtn.onclick = () => {
+  setDataCollapsed(!state.dataCollapsed);
+  resolveDrawerOverlap(true);
+};
+
+function getStageRect(){ return stage.getBoundingClientRect(); }
+function setDockPos(el, x, y){
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.style.right = 'auto';
+  el.style.bottom = 'auto';
+}
+function clampDockPos(el, x, y){
+  const s = getStageRect();
+  const r = el.getBoundingClientRect();
+  const pad = 10;
+  return { x: clamp(x, pad, s.width - r.width - pad), y: clamp(y, pad, s.height - r.height - pad) };
+}
+function overlapArea(a, b){
+  const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+  const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+  return x * y;
+}
+function bringToFront(which){
+  if(which === 'control'){
+    document.documentElement.style.setProperty('--zPanel', '42');
+    document.documentElement.style.setProperty('--zResults', '39');
+  }else{
+    document.documentElement.style.setProperty('--zResults', '42');
+    document.documentElement.style.setProperty('--zPanel', '39');
+  }
+}
+function resolveDrawerOverlap(force = false){
+  const narrow = window.innerWidth <= 560;
+  const enforce = force || state.autoPlaying;
+  if(!enforce && !narrow) return;
+  if(state.panelCollapsed || state.dataCollapsed) return;
+
+  const s = getStageRect();
+  const c = controlDock.getBoundingClientRect();
+  const d = dataDock.getBoundingClientRect();
+  if(overlapArea(c, d) <= 0) return;
+
+  const pad = 10;
+  const rightX = s.width - d.width - pad;
+  const leftX = pad;
+  const belowY = c.bottom - s.top + 8;
+  const aboveY = c.top - s.top - d.height - 8;
+  const candidates = [
+    { x: rightX, y: belowY },
+    { x: rightX, y: aboveY },
+    { x: leftX, y: belowY },
+    { x: leftX, y: aboveY }
+  ];
+
+  let best = null;
+  let bestOv = Infinity;
+  for(const raw of candidates){
+    const next = clampDockPos(dataDock, raw.x, raw.y);
+    const rect = { left: s.left + next.x, top: s.top + next.y, right: s.left + next.x + d.width, bottom: s.top + next.y + d.height };
+    const ov = overlapArea(c, rect);
+    if(ov < bestOv){ bestOv = ov; best = next; }
+    if(ov <= 0) break;
+  }
+  if(best) setDockPos(dataDock, best.x, best.y);
+}
+function defaultDockPositions(force = false){
+  const s = getStageRect();
+  const pad = 10;
+  const cr = controlDock.getBoundingClientRect();
+  const dr = dataDock.getBoundingClientRect();
+
+  if(force || !state.dockMoved.control) setDockPos(controlDock, s.width - cr.width - pad, pad);
+  const cNow = controlDock.getBoundingClientRect();
+  const baseY = cNow.bottom - s.top + 8;
+  if(force || !state.dockMoved.data){
+    const next = clampDockPos(dataDock, s.width - dr.width - pad, baseY);
+    setDockPos(dataDock, next.x, next.y);
+  }
+  resolveDrawerOverlap();
+}
+function bindDockDrag(el, headEl, kind){
+  let dragging = false;
+  let sx = 0;
+  let sy = 0;
+  let bx = 0;
+  let by = 0;
+
+  function currentPos(){
+    const s = getStageRect();
+    const r = el.getBoundingClientRect();
+    return { x: r.left - s.left, y: r.top - s.top };
+  }
+  function finishDrag(e){
+    if(!dragging) return;
+    dragging = false;
+    el.style.boxShadow = '';
+    try { headEl.releasePointerCapture(e.pointerId); }
+    catch (err) { console.warn('releasePointerCapture failed', err); }
+    resolveDrawerOverlap();
+  }
+
+  headEl.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('button')) return;
+    dragging = true;
+    bringToFront(kind);
+    el.style.boxShadow = getComputedStyle(document.documentElement).getPropertyValue('--shadow');
+    const p = currentPos();
+    bx = p.x;
+    by = p.y;
+    sx = e.clientX;
+    sy = e.clientY;
+    state.dockMoved[kind] = true;
+    try { headEl.setPointerCapture(e.pointerId); }
+    catch (err) { console.warn('setPointerCapture failed', err); }
+    e.preventDefault();
+  });
+  headEl.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    const p = clampDockPos(el, bx + (e.clientX - sx), by + (e.clientY - sy));
+    setDockPos(el, p.x, p.y);
+    e.preventDefault();
+  });
+  headEl.addEventListener('pointerup', finishDrag);
+  headEl.addEventListener('pointercancel', finishDrag);
+}
+bindDockDrag(controlDock, controlHead, 'control');
+bindDockDrag(dataDock, dataHead, 'data');
+
+function refreshInteractionLocks(){
+  const autoLocked = state.autoPlaying;
+  trialResetBtn.disabled = autoLocked;
+  checkBtn.disabled = autoLocked;
+  resetBtn.disabled = autoLocked;
+  freeBtn.disabled = autoLocked;
+
+  if(autoLocked){
+    autoDemoBtn.textContent = '退出自动演示';
+    autoDemoBtn.disabled = false;
+  }else{
+    autoDemoBtn.textContent = '自动演示';
+    autoDemoBtn.disabled = state.freeMode;
+  }
+}
+
+function refreshModeStyle(){
+  modeBadge.textContent = state.freeMode ? '自由' : '步骤';
+  modeBadge.style.background = state.freeMode ? 'rgba(255,183,77,.95)' : 'rgba(61,220,151,.95)';
+}
+
+function setFreeMode(on){
+  if(state.autoPlaying) return;
+  state.freeMode = !!on;
+  state.warningStep = -1;
+  const card = $('#taskCard');
+  if(state.freeMode){
+    card.style.opacity = '.25';
+    card.style.filter = 'grayscale(.6)';
+    freeBtn.textContent = '退出自由模式';
+    doneMask.style.display = 'none';
+    setStatusTag('自由探索');
+  }else{
+    card.style.opacity = '1';
+    card.style.filter = 'none';
+    freeBtn.textContent = '自由模式';
+    setStatusTag('待操作');
+  }
+
+  if(state.freeMode){
+    resetAllMaterials();
+    Object.values(materials).forEach((m)=>{ m.group.classList.add('active'); });
+    labNote.textContent = '实验状态：自由探索';
+    showToast('自由模式：可任意拉动三种材料。');
+  } else {
+    setStepUI(state.currentTask);
+  }
+
+  refreshModeStyle();
+  updateModeHud();
+  refreshInteractionLocks();
+  refreshReadouts();
+}
+
+function resetAll(opts = {}){
+  const { preserveAuto = false, showTip = true, preserveFreeMode = false } = opts;
+  clearTrackedTimers();
+  cancelAllMaterialAnim();
+
+  const keepFree = preserveFreeMode && state.freeMode;
+
+  if(!preserveAuto){
+    state.autoPlaying = false;
+    state.demoRunId += 1;
+  }
+
+  state.completed = false;
+  state.warningStep = -1;
+  state.successCooldown = false;
+  state.currentTask = 0;
+  state.records = [];
+  state.unseenRecordCount = 0;
+  state.draggingKey = '';
+  state.dragPointerId = -1;
+  state.dragHandle = null;
+  doneMask.style.display = 'none';
+
+  setControlCollapsed(true);
+  setDataCollapsed(true);
+  state.dockMoved.control = false;
+  state.dockMoved.data = false;
+  defaultDockPositions(true);
+
+  resetAllMaterials();
+  renderRecordTable();
+  refreshDataNotice();
+  setStepUI(0);
+
+  if(!preserveAuto && !keepFree){
+    state.freeMode = false;
+    freeBtn.textContent = '自由模式';
+    $('#taskCard').style.opacity = '1';
+    $('#taskCard').style.filter = 'none';
+    setStatusTag('待操作');
+  } else if (keepFree) {
+    state.freeMode = true;
+    freeBtn.textContent = '退出自由模式';
+    $('#taskCard').style.opacity = '.25';
+    $('#taskCard').style.filter = 'grayscale(.6)';
+    setStatusTag('自由探索');
+    Object.values(materials).forEach((m)=>{ m.group.classList.add('active'); });
+  }
+  updateModeHud();
+  refreshModeStyle();
+  refreshInteractionLocks();
+  refreshReadouts();
+  if(showTip && !state.autoPlaying) showToast('已重置：回到步骤1。');
+}
+
+function ensureAutoDrawerLayout(){
+  setControlCollapsed(false);
+  setDataCollapsed(true);
+  state.dockMoved.control = false;
+  state.dockMoved.data = false;
+  defaultDockPositions(true);
+  resolveDrawerOverlap(true);
+}
+
+function stopAutoDemo(byUser = false){
+  if(!state.autoPlaying) return;
+  state.demoRunId += 1;
+  state.autoPlaying = false;
+  hideDemoCursor();
+  updateModeHud();
+  refreshInteractionLocks();
+  if(!state.completed) setStatusTag('待操作');
+  if(byUser) showToast('已退出自动演示。');
+}
+
+function assertAutoRecorded(beforeLen){
+  if(state.records.length <= beforeLen) throw new Error('AUTO_RECORD_NOT_PERSISTED');
+}
+
+function setDemoCursor(x, y){
+  demoCursor.classList.add('show');
+  demoCursor.style.left = `${x}px`;
+  demoCursor.style.top = `${y}px`;
+}
+function hideDemoCursor(){
+  demoCursor.classList.remove('show', 'clicking');
+  demoCursorPulse.classList.remove('active');
+  demoCursor.style.left = '-200px';
+  demoCursor.style.top = '-200px';
+  demoCursorPulse.style.left = '-200px';
+  demoCursorPulse.style.top = '-200px';
+}
+async function clickDemoCursor(ms = 220, runId = state.demoRunId){
+  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+  demoCursor.classList.add('clicking');
+  const x = Number.parseFloat(demoCursor.style.left || '0');
+  const y = Number.parseFloat(demoCursor.style.top || '0');
+  demoCursorPulse.style.left = `${x}px`;
+  demoCursorPulse.style.top = `${y}px`;
+  demoCursorPulse.classList.remove('active');
+  void demoCursorPulse.offsetWidth;
+  demoCursorPulse.classList.add('active');
+  await waitAuto(ms, runId);
+  demoCursor.classList.remove('clicking');
+}
+function elemCenterInStage(el){
+  const s = stage.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return { x: r.left - s.left + r.width / 2, y: r.top - s.top + r.height / 2 };
+}
+async function demoClickElement(el, runId, action = null){
+  const p = elemCenterInStage(el);
+  setDemoCursor(p.x, p.y);
+  await waitAuto(230, runId);
+  await clickDemoCursor(150, runId);
+  if(action) await action();
+  else el.click();
+  await waitAuto(200, runId);
+}
+
+async function demoDragMaterial(key, runId){
+  const m = materials[key];
+  const hRect = m.handle.getBoundingClientRect();
+  const sRect = stage.getBoundingClientRect();
+  const startClientY = hRect.top + hRect.height * 0.5;
+
+  const dragMap = { rubber: 180, spring: 250, clay: 190 };
+  const rawDy = dragMap[key] || 180;
+  const endClientY = startClientY + rawDy;
+
+  if(!beginDrag(key, startClientY, { fromAuto: true, handle: null })) throw new Error('AUTO_DRAG_START_FAILED');
+
+  const xInStage = hRect.left - sRect.left + hRect.width * 0.5;
+  setDemoCursor(xInStage, hRect.top - sRect.top + hRect.height * 0.5);
+  await waitAuto(160, runId);
+  await clickDemoCursor(130, runId);
+
+  const steps = 24;
+  for(let i = 1; i <= steps; i++){
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    const cy = startClientY + (rawDy * i) / steps;
+    updateDrag(cy);
+    setDemoCursor(xInStage, cy - sRect.top);
+    await waitAuto(22, runId);
+  }
+
+  finishDrag();
+
+  const settleStart = performance.now();
+  while(m.animating){
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    if(performance.now() - settleStart > 5000) throw new Error('AUTO_RELEASE_TIMEOUT');
+    await waitAuto(70, runId);
+  }
+  await waitAuto(180, runId);
+}
+
+async function startAutoDemo(){
+  if(state.autoPlaying || state.freeMode) return;
+  state.autoPlaying = true;
+  const runId = ++state.demoRunId;
+  updateModeHud();
+  refreshInteractionLocks();
+  resetAll({ preserveAuto: true, showTip: false });
+  ensureAutoDrawerLayout();
+  setStatusTag('自动演示中');
+
+  try {
+    for(let i = 0; i < tasks.length; i++){
+      const key = tasks[state.currentTask].material;
+      await demoDragMaterial(key, runId);
+      const before = state.records.length;
+      await demoClickElement(checkBtn, runId, async () => {
+        passCurrentTask(true);
+        if(state.completed && runId === state.demoRunId){
+          state.autoPlaying = false;
+          updateModeHud();
+          refreshInteractionLocks();
+        }
+      });
+      assertAutoRecorded(before);
+    }
+
+    if(!state.completed) throw new Error('AUTO_NOT_COMPLETED');
+    setStatusTag('挑战完成');
+  } catch (e) {
+    if(String(e && e.message) !== 'AUTO_DEMO_CANCELLED'){
+      console.error('auto demo failed', e);
+      if(String(e && e.message).startsWith('AUTO_RECORD')) showToast('自动演示记录失败，请重试。');
+      else showToast('自动演示中断，已恢复可操作状态。');
+      if(!state.completed) setStatusTag('待操作');
+    }
+  } finally {
+    hideDemoCursor();
+    if(runId === state.demoRunId){
+      state.autoPlaying = false;
+      updateModeHud();
+      refreshInteractionLocks();
+      if(!state.completed) setStatusTag('待操作');
+    }
+  }
+}
+
+resetBtn.onclick = () => {
+  if(state.autoPlaying) return;
+  resetAll({ preserveAuto: false, showTip: true, preserveFreeMode: state.freeMode });
+};
+freeBtn.onclick = () => setFreeMode(!state.freeMode);
+autoDemoBtn.onclick = () => {
+  if(state.autoPlaying) stopAutoDemo(true);
+  else {
+    if(state.freeMode){
+      showToast('请先退出自由模式，再启动自动演示。');
+      return;
+    }
+    startAutoDemo();
+  }
+};
+
+okBtn.onclick = () => { doneMask.style.display = 'none'; };
+
+function init(){
+  bindHandles();
+  renderRecordTable();
+  refreshDataNotice();
+  resetAll({ preserveAuto: false, showTip: false });
+}
+
+const relayout = (() => {
+  let t = 0;
+  return () => {
+    if(t){
+      clearTimeout(t);
+      untrackTimer(t);
+    }
+    t = trackTimer(setTimeout(()=>{
+      t = 0;
+      defaultDockPositions();
+      resolveDrawerOverlap(true);
+    }, 120));
+  };
+})();
+
+window.addEventListener('resize', relayout);
+window.addEventListener('orientationchange', relayout);
+window.addEventListener('beforeunload', ()=>{
+  clearTrackedTimers();
+  cancelAllMaterialAnim();
+});
+
+init();
+</script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

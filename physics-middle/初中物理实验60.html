@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验60｜探究电流与电压、电阻的关系</title>
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --ink:#fff;
+      --card-bg:rgba(255,255,255,.08);
+      --panel-bg:rgba(15,15,15,.58);
+      --line:rgba(255,255,255,.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --dockShadow:0 14px 36px rgba(0,0,0,.42);
+    }
+    *{ box-sizing:border-box; }
+    html,body{ min-height:100%; }
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      letter-spacing:0;
+    }
+    #app{ width:100%; max-width:980px; margin:0 auto 34px; }
+    button{ font:inherit; touch-action:manipulation; }
+    button.main,button.sub{
+      border:none;
+      border-radius:8px;
+      padding:8px 12px;
+      color:#fff;
+      cursor:pointer;
+      transition:background .2s,transform .05s,opacity .2s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      font-size:13px;
+      background:#444;
+    }
+    button.main{ background:#2e7d32; }
+    button.main:hover,button.sub:hover{ background:#5a5a5a; }
+    button.main:active,button.sub:active{ transform:scale(.98); }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:980px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{ 0%{background-position:0 0;} 100%{background-position:-100% 0;} }
+    .task-card{
+      width:100%;
+      max-width:980px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+    }
+    .task-step{
+      background:rgba(255,255,255,.16);
+      border-radius:8px;
+      padding:6px 10px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .task-text{ min-width:0; line-height:1.55; }
+    #taskHint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+    .progress-dots{ display:flex; gap:6px; align-items:center; }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:rgba(255,255,255,.26);
+      outline:2px solid rgba(255,255,255,.12);
+    }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.45); }
+    .dot.warn{ background:#ff4d4f; outline-color:rgba(255,77,79,.58); box-shadow:0 0 10px rgba(255,77,79,.62); }
+    #stage{
+      width:100%;
+      max-width:980px;
+      height:66vh;
+      max-height:660px;
+      min-height:500px;
+      margin-top:10px;
+      border-radius:12px;
+      position:relative;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      background:#0b0f14;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      touch-action:pan-y pinch-zoom;
+      background-image:
+        radial-gradient(circle at 76% 25%, rgba(255,255,255,.06), transparent 42%),
+        radial-gradient(circle at 22% 78%, rgba(0,255,255,.05), transparent 46%);
+    }
+    .lab-area{
+      position:absolute;
+      inset:54px 10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.82);
+      overflow:hidden;
+    }
+    #labCanvas{ width:100%; height:100%; display:block; touch-action:pan-y pinch-zoom; cursor:crosshair; }
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      background:rgba(0,0,0,.48);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:7px 10px;
+      font-size:12px;
+    }
+    .tag{
+      border:1px solid rgba(255,255,255,.26);
+      border-radius:999px;
+      padding:2px 8px;
+      font-weight:700;
+      color:#dce9ff;
+      background:rgba(255,255,255,.06);
+    }
+    .hint-lamp{
+      position:absolute;
+      left:10px;
+      top:56px;
+      z-index:22;
+      width:34px;
+      height:34px;
+      border-radius:8px;
+      display:grid;
+      place-items:center;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.2);
+      color:#ffd54f;
+      font-size:16px;
+      cursor:pointer;
+      padding:0;
+    }
+    .hint-lamp.flash{ animation:lampFlash .6s ease; }
+    @keyframes lampFlash{ 50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; } }
+    .hint-pop{
+      position:absolute;
+      left:10px;
+      top:96px;
+      z-index:23;
+      width:min(340px, calc(100% - 24px));
+      display:none;
+      padding:10px 12px;
+      border:1px solid rgba(255,209,102,.36);
+      border-radius:10px;
+      background:rgba(16,18,20,.9);
+      color:#f4efe2;
+      font-size:13px;
+      line-height:1.55;
+    }
+    .hint-pop.open{ display:block; }
+    .dock{
+      position:absolute;
+      width:min(94%, 380px);
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:var(--panel-bg);
+      backdrop-filter:blur(6px);
+      box-shadow:var(--dockShadow);
+      overflow:hidden;
+      touch-action:none;
+      z-index:30;
+    }
+    .dock-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none;
+    }
+    .dockTitle{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; color:#e7f0ff; white-space:nowrap; }
+    .iconBtn{
+      border:1px solid rgba(255,255,255,.2);
+      background:rgba(255,255,255,.08);
+      color:#e8f1ff;
+      border-radius:7px;
+      padding:4px 8px;
+      font-size:12px;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .dock-body{ padding:10px; max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+    .collapsed .dock-body{ display:none; }
+    .read-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+    .readout{ border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); border-radius:8px; padding:8px; min-height:56px; }
+    .readout b{ display:block; color:#cfe4ff; font-size:12px; margin-bottom:5px; }
+    .readout span{ color:#fff; font-size:13px; line-height:1.4; }
+    .controls{ display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+    .controls button{ flex:1 1 98px; }
+    .analysis{ margin-top:9px; border:1px solid rgba(91,188,255,.32); background:rgba(91,188,255,.08); color:#d9ecff; border-radius:8px; padding:8px 10px; font-size:13px; line-height:1.55; }
+    .analysis.ok{ border-color:rgba(61,220,151,.55); background:rgba(61,220,151,.12); color:#e7fff3; }
+    .badge{ display:inline-grid; place-items:center; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:#ef476f; color:#fff; font-size:12px; transform:scale(0); opacity:0; transition:.15s; }
+    .badge.show{ transform:scale(1); opacity:1; animation:badgePulse .9s ease-in-out infinite; }
+    @keyframes badgePulse{ 50%{transform:scale(1.14);} }
+    table.record{ width:100%; border-collapse:collapse; font-size:12px; color:#e8f1ff; }
+    table.record th,table.record td{ border:1px solid rgba(255,255,255,.1); padding:6px; vertical-align:top; line-height:1.45; text-align:left; }
+    table.record th{ background:rgba(255,255,255,.08); color:#cfe4ff; }
+    .empty{ margin:8px 2px; color:#aebbd0; font-size:12px; }
+    .chartWrap{ height:220px; margin-top:10px; border:1px solid rgba(255,255,255,.12); border-radius:8px; overflow:hidden; background:rgba(0,0,0,.18); }
+    #recordChart{ width:100%; height:100%; display:block; }
+    .toolbar{ width:100%; max-width:980px; display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 0; }
+    .toast{ position:absolute; left:50%; bottom:24px; transform:translateX(-50%) translateY(18px); opacity:0; pointer-events:none; padding:10px 16px; border-radius:999px; background:rgba(0,0,0,.72); border:1px solid rgba(255,255,255,.12); color:#fff; font-weight:800; transition:.18s ease; z-index:80; }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+    .checkmark{ position:absolute; left:50%; top:50%; width:64px; height:64px; border-radius:50%; transform:translate(-50%,-50%) scale(.7); opacity:0; pointer-events:none; background:rgba(37,194,119,.96); box-shadow:0 0 24px rgba(37,194,119,.55); z-index:82; transition:.18s ease; }
+    .checkmark::before{ content:""; position:absolute; left:19px; top:16px; width:24px; height:13px; border-left:5px solid #fff; border-bottom:5px solid #fff; transform:rotate(-45deg); }
+    .checkmark.active{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+    .modal-mask{ position:absolute; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,.58); z-index:90; padding:16px; }
+    .modal{ width:min(390px, 92vw); padding:18px 16px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background:#101317; text-align:center; box-shadow:0 18px 44px rgba(0,0,0,.42); }
+    .modal h3{ margin:4px 0 8px; font-size:21px; }
+    .modal p{ margin:0; color:#cdd7e0; line-height:1.55; }
+    .modal .ok{ margin-top:14px; border:none; border-radius:8px; padding:8px 18px; background:var(--accent); color:#07170f; font-weight:800; cursor:pointer; }
+    .demo-cursor{ position:absolute; left:0; top:0; width:20px; height:20px; border-radius:50%; border:2px solid #fff; background:rgba(91,188,255,.8); box-shadow:0 0 14px rgba(91,188,255,.8); opacity:0; z-index:72; pointer-events:none; transition:opacity .15s; }
+    .demo-cursor.click{ animation:cursorClick .28s ease; }
+    @keyframes cursorClick{ 50%{ transform:scale(1.8); opacity:.55; } }
+    .explanation{ width:100%; max-width:980px; margin:14px 0 22px; color:#e8f4ff; line-height:1.66; font-size:15px; }
+    .explanation h2{ margin:0 0 8px; color:#9bd3ff; font-size:20px; }
+    .explanation ul{ margin:0; padding-left:22px; }
+    @media (max-width:720px){
+      body{ padding:8px; }
+      #app,#spectrum,.task-card,#stage,.toolbar,.explanation{ max-width:100%; }
+      .task-card{ grid-template-columns:1fr; gap:7px; }
+      .task-step{ width:fit-content; }
+      .progress-dots{ justify-content:flex-start; }
+      #stage{ height:78vh; min-height:680px; }
+      .lab-area{ inset:96px 8px 10px; }
+      .hud{ max-width:calc(100% - 20px); }
+      .hint-lamp{ top:56px; }
+      .hint-pop{ top:96px; }
+      .dock{ width:calc(100% - 24px); }
+      .toolbar button{ flex:1 1 132px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="spectrum"></div>
+    <section class="task-card" id="taskCard">
+      <div class="task-step" id="taskStep">步骤 1 / 4</div>
+      <div class="task-text">
+        <div id="taskText"></div>
+        <div id="taskHint"></div>
+      </div>
+      <div class="progress-dots" id="dots"></div>
+    </section>
+    <main id="stage" aria-label="探究电流与电压、电阻的关系实验台">
+      <div class="hud">
+        <span class="tag" id="modeTag">模式：引导</span>
+        <span class="tag" id="statusTag">状态：待操作</span>
+      </div>
+      <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+      <div class="hint-pop" id="hintPop"></div>
+      <div class="lab-area" id="labArea"><canvas id="labCanvas"></canvas></div>
+      <section class="dock drawer control collapsed" id="controlDock" aria-label="实验面板">
+        <div class="dock-header" data-drag-handle>
+          <span class="dockTitle">实验面板</span>
+          <button class="iconBtn mini" id="controlToggleBtn" type="button">展开</button>
+        </div>
+        <div class="dock-body">
+          <div class="controls">
+            <button class="main" id="recordBtn" type="button">记录</button>
+            <button class="sub" id="analyzeBtn" type="button">分析</button>
+          </div>
+          <div class="analysis" id="analysisText">完成三次记录后分析。</div>
+        </div>
+      </section>
+      <section class="dock drawer data collapsed" id="dataDock" aria-label="数据面板">
+        <div class="dock-header" data-drag-handle>
+          <span class="dockTitle">数据面板 <span class="badge" id="dataNotice">0</span></span>
+          <button class="iconBtn mini" id="dataToggleBtn" type="button">展开</button>
+        </div>
+        <div class="dock-body">
+          <table class="record" id="recordTable">
+            <thead><tr><th>阶段</th><th>R/Ω</th><th>U/V</th><th>I/A</th></tr></thead>
+            <tbody></tbody>
+          </table>
+          <div class="empty" id="emptyRecords">暂无记录。请按步骤调节器材后记录。</div>
+          <div class="chartWrap"><canvas id="recordChart"></canvas></div>
+        </div>
+      </section>
+      <div class="toast" id="toast">提示</div>
+      <div class="checkmark" id="checkmark"></div>
+      <div class="demo-cursor" id="demoCursor"></div>
+      <div class="modal-mask" id="doneMask">
+        <div class="modal">
+          <h3>实验完成</h3>
+          <p>你已经完成“探究电流与电压、电阻的关系”：电阻一定时，电流与电压成正比；电压一定时，电流与电阻成反比。</p>
+          <button class="ok" id="okBtn" type="button">OK</button>
+        </div>
+      </div>
+    </main>
+    <div class="toolbar">
+      <button class="sub" id="resetBtn" type="button">步骤重置</button>
+      <button class="sub" id="autoDemoBtn" type="button">自动演示</button>
+      <button class="sub" id="freeBtn" type="button">自由模式</button>
+    </div>
+    <section class="explanation">
+      <h2>实验名：探究电流与电压、电阻的关系</h2>
+      <ul>
+        <li><b>关键过程：</b>控制变量，分别改变电压和电阻并记录电流。</li>
+        <li><b>实验结论：</b>电阻一定时，电流与电压成正比；电压一定时，电流与电阻成反比。</li>
+      </ul>
+    </section>
+  </div>
+  <script>
+    (() => {
+      "use strict";
+      const SPEC = {
+        id: 60,
+        title: "探究电流与电压、电阻的关系",
+        category: "ohm-real",
+        textbookEntry: "EXP025（九年级，第十七章，索引条目标注需核对）",
+        apparatus: "4.5 V电池组、单刀开关、滑动变阻器、电流表、电压表、5/10/15 Ω定值电阻、导线",
+        conclusion: "电阻一定时，电流与电压成正比；电压一定时，电流与电阻成反比。",
+        keyPoint: "闭合开关后先调滑动变阻器改变定值电阻两端电压，再换不同阻值并重新调到相同电压。"
+      };
+      const SUPPLY_VOLTAGE = 4.5;
+      const RHEOSTAT_MIN = 1;
+      const RHEOSTAT_MAX = 35;
+      const FIXED_RESISTORS = [
+        { value: 5, label: "5 Ω", color: "#8d6e63", band: "#3ddc97" },
+        { value: 10, label: "10 Ω", color: "#6d4c41", band: "#ffd54f" },
+        { value: 15, label: "15 Ω", color: "#5d4037", band: "#5bbcff" }
+      ];
+      const VOLTAGE_TARGETS = [1, 2, 3];
+      const CONSTANT_VOLTAGE = 2;
+      const $ = (selector) => document.querySelector(selector);
+      const stage = $("#stage");
+      const labArea = $("#labArea");
+      const canvas = $("#labCanvas");
+      const ctx = canvas.getContext("2d");
+      const chartCanvas = $("#recordChart");
+      const chartCtx = chartCanvas.getContext("2d");
+      const taskStep = $("#taskStep");
+      const taskText = $("#taskText");
+      const taskHint = $("#taskHint");
+      const dots = $("#dots");
+      const modeTag = $("#modeTag");
+      const statusTag = $("#statusTag");
+      const hintLamp = $("#hintLamp");
+      const hintPop = $("#hintPop");
+      const controlDock = $("#controlDock");
+      const dataDock = $("#dataDock");
+      const controlToggleBtn = $("#controlToggleBtn");
+      const dataToggleBtn = $("#dataToggleBtn");
+      const recordBtn = $("#recordBtn");
+      const analyzeBtn = $("#analyzeBtn");
+      const analysisText = $("#analysisText");
+      const recordBody = $("#recordTable tbody");
+      const emptyRecords = $("#emptyRecords");
+      const dataNotice = $("#dataNotice");
+      const resetBtn = $("#resetBtn");
+      const autoDemoBtn = $("#autoDemoBtn");
+      const freeBtn = $("#freeBtn");
+      const toast = $("#toast");
+      const checkmark = $("#checkmark");
+      const doneMask = $("#doneMask");
+      const okBtn = $("#okBtn");
+      const demoCursor = $("#demoCursor");
+
+      const state = {
+        currentTask: 0,
+        completed: false,
+        freeMode: false,
+        autoPlaying: false,
+        autoCancel: false,
+        draggingId: null,
+        drawerDrag: null,
+        stepWarning: false,
+        successCooldown: false,
+        timers: new Set(),
+        records: [],
+        unseenRecords: 0,
+        lastObservation: null,
+        analysisDone: false,
+        switchClosed: false,
+        switchTouched: false,
+        slider: 0.08,
+        sliderMoved: false,
+        resistorIndex: 1,
+        resistorChanged: false,
+        hotSpots: {},
+        layoutCache: null,
+        lastOperation: "等待闭合开关",
+        width: 0,
+        height: 0,
+        stageWidth: 0,
+        stageHeight: 0,
+        phase: 0
+      };
+
+      const tasks = [
+        {
+          text: "闭合开关，拖动滑动变阻器滑片，使电压表示数约为 1.0 V，记录第一组 U-I 数据。",
+          hint: "点击开关或使用面板按钮闭合电路，再拖动滑动变阻器上方的滑片。",
+          detail: "滑动变阻器要串联在电路中；调节滑片时，电压表和电流表的指针会同步变化。第一组先把定值电阻保持为 10 Ω。",
+          check: () => hasVoltageTarget(1)
+        },
+        {
+          text: "保持 10 Ω 定值电阻不变，继续调节滑片，分别记录约 2.0 V 和 3.0 V 时的电流。",
+          hint: "只移动滑片，不换电阻；要形成 1.0 V、2.0 V、3.0 V 三组记录。",
+          detail: "这一步考查“控制变量”：电阻 R 不变，只改变电阻两端电压 U，再观察电流 I 怎样变化。",
+          check: () => VOLTAGE_TARGETS.every(hasVoltageTarget)
+        },
+        {
+          text: "换用 5 Ω 和 15 Ω 定值电阻，并重新拖动滑片，让电压保持约 2.0 V 后记录电流。",
+          hint: "点击电阻盒中的 5 Ω、10 Ω、15 Ω 电阻板完成换接，记录时电压要接近 2.0 V。",
+          detail: "换电阻后，必须重新调滑动变阻器，使电压表回到约 2.0 V。这样才能比较“电压一定时，电流与电阻”的关系。",
+          check: () => FIXED_RESISTORS.every(item => hasResistanceRecord(item.value))
+        },
+        {
+          text: "点击“分析结论”，归纳实验规律。",
+          hint: "需要 U-I 三组数据，以及 U≈2.0 V 时 5/10/15 Ω 的比较数据。",
+          detail: SPEC.conclusion,
+          check: () => state.analysisDone
+        }
+      ];
+
+      function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+      function lerp(a, b, t) { return a + (b - a) * t; }
+      function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+      function schedule(fn, ms) {
+        const id = setTimeout(() => { state.timers.delete(id); fn(); }, ms);
+        state.timers.add(id);
+        return id;
+      }
+      function clearAllTimers() {
+        for (const id of state.timers) clearTimeout(id);
+        state.timers.clear();
+      }
+      function fixedResistance() { return FIXED_RESISTORS[state.resistorIndex].value; }
+      function rheostatResistance() { return RHEOSTAT_MAX - state.slider * (RHEOSTAT_MAX - RHEOSTAT_MIN); }
+      function readings() {
+        const r = fixedResistance();
+        const rs = rheostatResistance();
+        const voltage = state.switchClosed ? SUPPLY_VOLTAGE * r / (r + rs) : 0;
+        const current = r ? voltage / r : 0;
+        return { r, rs, voltage, current };
+      }
+      function round1(value) { return Math.round(value * 10) / 10; }
+      function round2(value) { return Math.round(value * 100) / 100; }
+      function near(value, target, tolerance = 0.16) { return Math.abs(value - target) <= tolerance; }
+      function nearestVoltageTarget(voltage) {
+        return VOLTAGE_TARGETS.reduce((best, target) => {
+          return Math.abs(voltage - target) < Math.abs(voltage - best) ? target : best;
+        }, VOLTAGE_TARGETS[0]);
+      }
+      function hasVoltageTarget(target) {
+        return state.records.some(record => record.resistance === 10 && record.voltageTarget === target && record.sliderMoved && record.switchClosed);
+      }
+      function hasResistanceRecord(resistance) {
+        return state.records.some(record => record.resistance === resistance && record.constantVoltage && record.resistorAction && record.sliderMoved && record.switchClosed);
+      }
+      function allEvidenceReady() {
+        return VOLTAGE_TARGETS.every(hasVoltageTarget) && FIXED_RESISTORS.every(item => hasResistanceRecord(item.value));
+      }
+      function sliderForVoltage(targetVoltage, resistance = fixedResistance()) {
+        const series = resistance * (SUPPLY_VOLTAGE / targetVoltage - 1);
+        return clamp((RHEOSTAT_MAX - series) / (RHEOSTAT_MAX - RHEOSTAT_MIN), 0, 1);
+      }
+
+      function initDots() {
+        dots.innerHTML = "";
+        tasks.forEach(() => {
+          const dot = document.createElement("span");
+          dot.className = "dot";
+          dots.appendChild(dot);
+        });
+      }
+      function updateDots() {
+        [...dots.children].forEach((dot, index) => {
+          dot.classList.toggle("done", state.completed || index < state.currentTask);
+          dot.classList.toggle("active", !state.completed && index === state.currentTask && !state.stepWarning);
+          dot.classList.toggle("warn", !state.completed && index === state.currentTask && state.stepWarning);
+        });
+      }
+      function setStepUI(index) {
+        state.currentTask = clamp(index, 0, tasks.length - 1);
+        state.stepWarning = false;
+        const task = tasks[state.currentTask];
+        taskStep.textContent = "步骤 " + (state.currentTask + 1) + " / " + tasks.length;
+        taskText.textContent = task.text;
+        taskHint.textContent = task.hint;
+        hintPop.textContent = task.detail;
+        updateDots();
+        updateStatus();
+        draw();
+      }
+      function updateStatus(text) {
+        if (text) statusTag.textContent = "状态：" + text;
+        else if (state.completed) statusTag.textContent = "状态：已完成";
+        else if (state.autoPlaying) statusTag.textContent = "状态：自动演示";
+        else if (state.switchClosed) statusTag.textContent = "状态：电路接通";
+        else statusTag.textContent = "状态：开关断开";
+      }
+      function setModeLabel() {
+        modeTag.textContent = state.autoPlaying ? "模式：自动演示" : (state.freeMode ? "模式：自由" : "模式：引导");
+      }
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => toast.classList.remove("show"), 1500);
+      }
+      function showCheck() {
+        checkmark.classList.add("active");
+        clearTimeout(showCheck.timer);
+        showCheck.timer = setTimeout(() => checkmark.classList.remove("active"), 520);
+      }
+      function warnCurrentStep(message) {
+        state.stepWarning = true;
+        updateDots();
+        hintLamp.classList.remove("flash");
+        void hintLamp.offsetWidth;
+        hintLamp.classList.add("flash");
+        showToast(message);
+        schedule(() => { state.stepWarning = false; updateDots(); }, 1200);
+      }
+      function setSwitchClosed(closed, markAction = true) {
+        state.switchClosed = !!closed;
+        if (markAction) state.switchTouched = true;
+        state.lastOperation = state.switchClosed ? "闭合开关" : "断开开关";
+        updateReadouts();
+        updateStatus();
+        draw();
+      }
+      function toggleSwitch(markAction = true) {
+        setSwitchClosed(!state.switchClosed, markAction);
+      }
+      function updateReadouts() {
+        const r = readings();
+        const target = nearestVoltageTarget(r.voltage);
+        const targetText = state.currentTask <= 1 ? "；最近目标 " + target.toFixed(1) + " V" : "；目标电压 2.0 V";
+        if (!state.completed && !state.autoPlaying) updateStatus(state.switchClosed ? "读数中" + targetText : "开关断开");
+      }
+      function passStepIfReady({ quiet = false } = {}) {
+        if (state.freeMode || state.completed || state.successCooldown) return false;
+        if (!tasks[state.currentTask].check()) {
+          if (!quiet) warnCurrentStep("当前步骤的证据还不完整。");
+          return false;
+        }
+        state.successCooldown = true;
+        schedule(() => { state.successCooldown = false; }, 360);
+        showCheck();
+        if (state.currentTask >= tasks.length - 1) {
+          state.completed = true;
+          delete controlDock.dataset.moved;
+          delete dataDock.dataset.moved;
+          setDrawerCollapsed(controlDock, true);
+          setDrawerCollapsed(dataDock, false);
+          doneMask.style.display = "flex";
+          updateStatus();
+          updateDots();
+        } else {
+          setStepUI(state.currentTask + 1);
+        }
+        return true;
+      }
+      function recordLastObservation({ auto = false } = {}) {
+        const r = readings();
+        if (!state.switchClosed) {
+          warnCurrentStep("请先闭合开关，让电流表和电压表产生读数。");
+          return false;
+        }
+        if (!state.sliderMoved && !auto) {
+          warnCurrentStep("请先拖动滑动变阻器滑片，再记录读数。");
+          return false;
+        }
+        const voltageTarget = nearestVoltageTarget(r.voltage);
+        const voltageOk = near(r.voltage, voltageTarget);
+        const constantVoltage = near(r.voltage, CONSTANT_VOLTAGE);
+        const canCountVoltage = r.r === 10 && voltageOk;
+        const canCountResistance = constantVoltage;
+        if (!state.freeMode && state.currentTask === 0 && !(r.r === 10 && near(r.voltage, 1))) {
+          warnCurrentStep("第 1 步需要保持 10 Ω，并把电压调到约 1.0 V。");
+          return false;
+        }
+        if (!state.freeMode && state.currentTask === 1 && !(r.r === 10 && voltageOk)) {
+          warnCurrentStep("第 2 步只保持 10 Ω，分别调到约 2.0 V、3.0 V 后记录。");
+          return false;
+        }
+        if (!state.freeMode && state.currentTask === 2 && !constantVoltage) {
+          warnCurrentStep("换电阻后要重新调滑片，让电压表回到约 2.0 V。");
+          return false;
+        }
+        const key = r.r + "Ω@" + round1(r.voltage).toFixed(1) + "V";
+        if (!state.records.some(record => record.key === key)) {
+          state.records.push({
+            key,
+            stage: state.currentTask < 2 ? "电阻不变" : "电压不变",
+            resistance: r.r,
+            voltage: round2(r.voltage),
+            current: round2(r.current),
+            rheostat: round1(r.rs),
+            voltageTarget: canCountVoltage ? voltageTarget : null,
+            constantVoltage: canCountResistance,
+            switchClosed: state.switchClosed,
+            sliderMoved: state.sliderMoved || auto,
+            resistorAction: state.resistorChanged || r.r === 10,
+            operation: (r.r === 10 ? "调滑片" : "换 " + r.r + " Ω 并调滑片")
+          });
+          if (dataDock.classList.contains("collapsed")) {
+            state.unseenRecords += 1;
+            updateBadge();
+          }
+          renderRecords();
+          showToast("已记录观察");
+        } else if (!auto) {
+          showToast("这组读数已经记录过");
+        }
+        passStepIfReady({ quiet: true });
+        return true;
+      }
+      function analyzeConclusion() {
+        if (!allEvidenceReady()) {
+          warnCurrentStep("请先补齐三组观察记录。");
+          return false;
+        }
+        state.analysisDone = true;
+        analysisText.classList.add("ok");
+        analysisText.textContent = "结论成立：" + SPEC.conclusion;
+        updateReadouts();
+        showToast("已归纳实验结论");
+        passStepIfReady({ quiet: true });
+        return true;
+      }
+      function renderRecords() {
+        recordBody.innerHTML = "";
+        state.records.forEach(record => {
+          const row = document.createElement("tr");
+          [record.stage, record.resistance, record.voltage.toFixed(2), record.current.toFixed(2)].forEach(value => {
+            const cell = document.createElement("td");
+            cell.textContent = String(value);
+            row.appendChild(cell);
+          });
+          recordBody.appendChild(row);
+        });
+        emptyRecords.style.display = state.records.length ? "none" : "block";
+        drawChart();
+      }
+      function updateBadge() {
+        dataNotice.textContent = String(state.unseenRecords);
+        dataNotice.classList.toggle("show", state.unseenRecords > 0 && dataDock.classList.contains("collapsed"));
+      }
+      function drawChart() {
+        const dpr = window.devicePixelRatio || 1;
+        const w = chartCanvas.clientWidth || 320;
+        const h = chartCanvas.clientHeight || 220;
+        chartCanvas.width = Math.round(w * dpr);
+        chartCanvas.height = Math.round(h * dpr);
+        chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        chartCtx.clearRect(0, 0, w, h);
+        chartCtx.fillStyle = "rgba(0,0,0,.18)";
+        chartCtx.fillRect(0, 0, w, h);
+        chartCtx.save();
+        chartCtx.font = "700 13px Arial";
+        chartCtx.fillStyle = "#cfe4ff";
+        chartCtx.fillText("I-U（R=10Ω）", 16, 24);
+        chartCtx.fillText("I-1/R（U≈2V）", 16, h / 2 + 20);
+        drawChartAxes(46, 42, w - 70, h / 2 - 56, "U/V", "I/A");
+        drawChartAxes(46, h / 2 + 38, w - 70, h / 2 - 60, "1/R", "I/A");
+        const voltageRecords = state.records.filter(record => record.resistance === 10 && record.voltageTarget);
+        chartCtx.strokeStyle = "rgba(61,220,151,.75)";
+        chartCtx.lineWidth = 2;
+        chartCtx.beginPath();
+        voltageRecords
+          .sort((a, b) => a.voltage - b.voltage)
+          .forEach((record, index) => {
+            const x = 46 + (record.voltage / 3.2) * (w - 70);
+            const y = 42 + (h / 2 - 56) - (record.current / .34) * (h / 2 - 56);
+            if (index === 0) chartCtx.moveTo(x, y);
+            else chartCtx.lineTo(x, y);
+          });
+        chartCtx.stroke();
+        voltageRecords.forEach(record => drawPoint(46 + (record.voltage / 3.2) * (w - 70), 42 + (h / 2 - 56) - (record.current / .34) * (h / 2 - 56), "#3ddc97"));
+        const resistanceRecords = FIXED_RESISTORS
+          .map(item => state.records.find(record => record.resistance === item.value && record.constantVoltage))
+          .filter(Boolean);
+        resistanceRecords.forEach(record => {
+          const inv = 1 / record.resistance;
+          const x = 46 + (inv / .22) * (w - 70);
+          const y = h / 2 + 38 + (h / 2 - 60) - (record.current / .46) * (h / 2 - 60);
+          drawPoint(x, y, "#ffd54f");
+        });
+        chartCtx.restore();
+      }
+      function drawChartAxes(x, y, w, h, xLabel, yLabel) {
+        chartCtx.strokeStyle = "rgba(255,255,255,.2)";
+        chartCtx.lineWidth = 1;
+        chartCtx.beginPath();
+        chartCtx.moveTo(x, y);
+        chartCtx.lineTo(x, y + h);
+        chartCtx.lineTo(x + w, y + h);
+        chartCtx.stroke();
+        chartCtx.fillStyle = "rgba(235,245,255,.65)";
+        chartCtx.font = "11px Arial";
+        chartCtx.fillText(yLabel, x - 32, y + 10);
+        chartCtx.fillText(xLabel, x + w - 28, y + h + 16);
+      }
+      function drawPoint(x, y, color) {
+        chartCtx.fillStyle = color;
+        chartCtx.beginPath();
+        chartCtx.arc(x, y, 4, 0, Math.PI * 2);
+        chartCtx.fill();
+      }
+      function resizeCanvas() {
+        const stageRect = stage.getBoundingClientRect();
+        const rect = labArea.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        state.width = rect.width;
+        state.height = rect.height;
+        state.stageWidth = stageRect.width;
+        state.stageHeight = stageRect.height;
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+        canvas.style.width = rect.width + "px";
+        canvas.style.height = rect.height + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        fitDrawers();
+        draw();
+        drawChart();
+      }
+      function setDrawerCollapsed(drawer, collapsed) {
+        drawer.classList.toggle("collapsed", collapsed);
+        const btn = drawer === controlDock ? controlToggleBtn : dataToggleBtn;
+        btn.textContent = collapsed ? "展开" : "收起";
+        if (drawer === dataDock && !collapsed) {
+          state.unseenRecords = 0;
+          updateBadge();
+        }
+        fitDrawers();
+      }
+      function fitDrawers() {
+        const areaWidth = state.stageWidth || state.width;
+        const areaHeight = state.stageHeight || state.height;
+        if (!areaWidth || !areaHeight) return;
+        [controlDock, dataDock].forEach((drawer, index) => {
+          const isMobile = areaWidth <= 720;
+          const collapsed = drawer.classList.contains("collapsed");
+          let targetWidth = 300;
+          if (isMobile && collapsed) targetWidth = Math.max(132, Math.min(152, Math.floor((areaWidth - 90) / 2)));
+          else if (isMobile) targetWidth = areaWidth - 24;
+          drawer.style.width = targetWidth + "px";
+          const rect = drawer.getBoundingClientRect();
+          let left = drawer.offsetLeft;
+          let top = drawer.offsetTop;
+          if (!drawer.dataset.moved) {
+            if (isMobile && collapsed) {
+              top = 52;
+              left = index === 0 ? areaWidth - (targetWidth * 2) - 18 : areaWidth - targetWidth - 8;
+            } else if (isMobile) {
+              left = 12;
+              if (index === 0) top = 104;
+              else if (!controlDock.classList.contains("collapsed")) top = controlDock.offsetTop + controlDock.offsetHeight + 8;
+              else top = 104;
+            } else {
+              const bothCollapsed = controlDock.classList.contains("collapsed") && dataDock.classList.contains("collapsed");
+              if (bothCollapsed && collapsed) {
+                top = 10;
+                left = index === 0 ? Math.max(12, areaWidth - rect.width - 12) : Math.max(12, areaWidth - rect.width * 2 - 22);
+              } else {
+                left = Math.max(12, areaWidth - rect.width - 12);
+                top = index === 0 ? 10 : 94;
+              }
+            }
+          }
+          left = clamp(left, 8, Math.max(8, areaWidth - rect.width - 8));
+          top = clamp(top, 8, Math.max(8, areaHeight - 48));
+          drawer.style.left = left + "px";
+          drawer.style.right = "auto";
+          drawer.style.top = top + "px";
+        });
+      }
+      function stagePoint(event) {
+        const rect = canvas.getBoundingClientRect();
+        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+      }
+      function bindDrawer(drawer) {
+        const header = drawer.querySelector("[data-drag-handle]");
+        header.addEventListener("pointerdown", event => {
+          if (event.target.tagName === "BUTTON") return;
+          const rect = drawer.getBoundingClientRect();
+          const parent = stage.getBoundingClientRect();
+          drawer.dataset.moved = "true";
+          state.drawerDrag = { drawer, dx: event.clientX - rect.left, dy: event.clientY - rect.top, parentLeft: parent.left, parentTop: parent.top };
+          header.setPointerCapture(event.pointerId);
+          event.preventDefault();
+        });
+        header.addEventListener("pointermove", event => {
+          if (!state.drawerDrag || state.drawerDrag.drawer !== drawer) return;
+          const drag = state.drawerDrag;
+          const width = drawer.offsetWidth;
+          const areaWidth = state.stageWidth || state.width;
+          const areaHeight = state.stageHeight || state.height;
+          drawer.style.left = clamp(event.clientX - drag.parentLeft - drag.dx, 6, Math.max(6, areaWidth - width - 6)) + "px";
+          drawer.style.top = clamp(event.clientY - drag.parentTop - drag.dy, 6, Math.max(6, areaHeight - 48)) + "px";
+          drawer.style.right = "auto";
+          event.preventDefault();
+        });
+        header.addEventListener("pointerup", event => {
+          try { header.releasePointerCapture(event.pointerId); } catch (error) { console.warn("释放抽屉指针捕获失败", error); }
+          state.drawerDrag = null;
+        });
+        header.addEventListener("pointercancel", () => { state.drawerDrag = null; });
+      }
+      function drawBackground(w, h) {
+        ctx.strokeStyle = "rgba(255,255,255,.045)";
+        ctx.lineWidth = 1;
+        for (let x = 0; x < w; x += 40) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+        }
+        for (let y = 0; y < h; y += 40) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+      }
+      function roundRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      }
+      function draw() {
+        const w = state.width;
+        const h = state.height;
+        if (!w || !h) return;
+        ctx.clearRect(0, 0, w, h);
+        drawBackground(w, h);
+        const cx = w * 0.5;
+        const cy = h * 0.52;
+        drawScene(w, h, cx, cy);
+      }
+      function drawScene(w, h, cx, cy) {
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#e8f5ff";
+        ctx.font = "700 20px Arial";
+        ctx.fillText(SPEC.title + "实验台", cx, 34);
+        ctx.font = "13px Arial";
+        ctx.fillStyle = "rgba(232,245,255,.72)";
+        ctx.fillText(SPEC.keyPoint, cx, 58);
+        drawOhmBench(w, h);
+        ctx.restore();
+      }
+      function ohmLayout(w, h) {
+        const logicalW = 760;
+        const logicalH = 430;
+        const scale = clamp(Math.min((w - 28) / logicalW, (h - 92) / logicalH), 0.38, 1.24);
+        const ox = (w - logicalW * scale) / 2;
+        const oy = Math.max(74, 72 + (h - 92 - logicalH * scale) / 2);
+        const p = (x, y) => ({ x: ox + x * scale, y: oy + y * scale });
+        const box = (x, y, bw, bh) => ({ x: ox + x * scale, y: oy + y * scale, w: bw * scale, h: bh * scale });
+        return {
+          scale,
+          p,
+          box,
+          bench: box(18, 48, 724, 340),
+          battery: box(54, 246, 112, 84),
+          switchBox: box(128, 78, 110, 72),
+          ammeter: { ...p(350, 114), r: 46 * scale },
+          resistor: box(506, 86, 126, 58),
+          voltmeter: { ...p(574, 224), r: 46 * scale },
+          rheostat: box(292, 270, 232, 82),
+          rack: [
+            { ...box(564, 294, 54, 42), index: 0 },
+            { ...box(626, 294, 54, 42), index: 1 },
+            { ...box(688, 294, 54, 42), index: 2 }
+          ]
+        };
+      }
+      function drawOhmBench(w, h) {
+        const layout = ohmLayout(w, h);
+        const r = readings();
+        const s = layout.scale;
+        state.layoutCache = layout;
+        state.hotSpots = {};
+        ctx.save();
+        ctx.fillStyle = "rgba(255,255,255,.05)";
+        ctx.strokeStyle = "rgba(160,220,255,.28)";
+        ctx.lineWidth = Math.max(1, 1.5 * s);
+        roundRect(layout.bench.x, layout.bench.y, layout.bench.w, layout.bench.h, 12 * s);
+        ctx.fill();
+        ctx.stroke();
+        drawWoodTop(layout.box(28, 360, 704, 28));
+
+        const wireOn = state.switchClosed ? "rgba(255,213,79,.92)" : "rgba(210,225,235,.42)";
+        drawLead([layout.p(166, 268), layout.p(166, 114), layout.p(128, 114)], wireOn);
+        drawLead([layout.p(238, 114), layout.p(304, 114)], wireOn);
+        drawLead([layout.p(396, 114), layout.p(506, 114)], wireOn);
+        drawLead([layout.p(632, 114), layout.p(654, 114), layout.p(654, 312), layout.p(524, 312)], wireOn);
+        drawLead([layout.p(292, 312), layout.p(56, 312)], wireOn);
+        drawLead([layout.p(520, 144), layout.p(520, 224), layout.p(528, 224)], "rgba(91,188,255,.74)");
+        drawLead([layout.p(618, 144), layout.p(628, 224), layout.p(620, 224)], "rgba(255,120,120,.74)");
+
+        drawBatteryPack(layout.battery);
+        drawKnifeSwitch(layout.switchBox);
+        drawAnalogMeter(layout.ammeter, "A", r.current, 0.45, "A");
+        drawFixedResistor(layout.resistor);
+        drawAnalogMeter(layout.voltmeter, "V", r.voltage, 4.5, "V");
+        drawRheostat(layout.rheostat);
+        drawResistorRack(layout.rack);
+        drawLiveReadout(layout, r);
+        ctx.restore();
+      }
+      function drawWoodTop(area) {
+        ctx.save();
+        const grad = ctx.createLinearGradient(area.x, area.y, area.x, area.y + area.h);
+        grad.addColorStop(0, "rgba(90,64,42,.9)");
+        grad.addColorStop(1, "rgba(48,33,24,.9)");
+        ctx.fillStyle = grad;
+        roundRect(area.x, area.y, area.w, area.h, 8);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.13)";
+        ctx.stroke();
+        ctx.restore();
+      }
+      function drawLead(points, color) {
+        ctx.save();
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.strokeStyle = "rgba(0,0,0,.5)";
+        ctx.lineWidth = Math.max(5, 9 * (state.layoutCache?.scale || 1));
+        ctx.beginPath();
+        points.forEach((pt, index) => index ? ctx.lineTo(pt.x, pt.y) : ctx.moveTo(pt.x, pt.y));
+        ctx.stroke();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(3, 5 * (state.layoutCache?.scale || 1));
+        ctx.beginPath();
+        points.forEach((pt, index) => index ? ctx.lineTo(pt.x, pt.y) : ctx.moveTo(pt.x, pt.y));
+        ctx.stroke();
+        ctx.restore();
+      }
+      function drawBatteryPack(box) {
+        const s = state.layoutCache.scale;
+        ctx.save();
+        const grad = ctx.createLinearGradient(box.x, box.y, box.x, box.y + box.h);
+        grad.addColorStop(0, "#586575");
+        grad.addColorStop(1, "#222b36");
+        ctx.fillStyle = grad;
+        roundRect(box.x, box.y, box.w, box.h, 9 * s);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.32)";
+        ctx.lineWidth = 1.5 * s;
+        ctx.stroke();
+        for (let i = 0; i < 3; i += 1) {
+          const cellX = box.x + (14 + i * 30) * s;
+          ctx.fillStyle = i % 2 ? "#3d4854" : "#4d5a67";
+          roundRect(cellX, box.y + 16 * s, 22 * s, 50 * s, 5 * s);
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,255,255,.22)";
+          ctx.stroke();
+          ctx.fillStyle = "#ff6b6b";
+          ctx.fillRect(cellX + 4 * s, box.y + 16 * s, 14 * s, 5 * s);
+        }
+        ctx.fillStyle = "#f4f7fb";
+        ctx.font = `700 ${Math.max(11, 12 * s)}px Arial`;
+        ctx.textAlign = "center";
+        ctx.fillText("4.5 V 电池组", box.x + box.w / 2, box.y - 8 * s);
+        ctx.fillText("+", box.x + box.w - 8 * s, box.y + 26 * s);
+        ctx.fillText("-", box.x + 10 * s, box.y + 68 * s);
+        drawTerminal(box.x + box.w, box.y + 24 * s, "#ff6b6b", s);
+        drawTerminal(box.x, box.y + 64 * s, "#8fc8ff", s);
+        ctx.restore();
+      }
+      function drawKnifeSwitch(box) {
+        const s = state.layoutCache.scale;
+        state.hotSpots.switch = box;
+        ctx.save();
+        ctx.fillStyle = "rgba(85,70,54,.92)";
+        roundRect(box.x, box.y + 18 * s, box.w, 36 * s, 7 * s);
+        ctx.fill();
+        ctx.strokeStyle = state.switchClosed ? "#ffd54f" : "rgba(255,255,255,.3)";
+        ctx.lineWidth = 2 * s;
+        ctx.stroke();
+        const left = { x: box.x + 22 * s, y: box.y + 36 * s };
+        const right = { x: box.x + 88 * s, y: box.y + 36 * s };
+        drawTerminal(left.x, left.y, "#dcecff", s);
+        drawTerminal(right.x, right.y, "#dcecff", s);
+        ctx.strokeStyle = state.switchClosed ? "#ffda6a" : "#bfc9d4";
+        ctx.lineWidth = 7 * s;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(left.x, left.y);
+        ctx.lineTo(right.x - 4 * s, state.switchClosed ? right.y : right.y - 28 * s);
+        ctx.stroke();
+        ctx.fillStyle = "#e8f5ff";
+        ctx.font = `700 ${Math.max(11, 12 * s)}px Arial`;
+        ctx.textAlign = "center";
+        ctx.fillText(state.switchClosed ? "单刀开关：闭合" : "单刀开关：断开", box.x + box.w / 2, box.y - 4 * s);
+        ctx.restore();
+      }
+      function drawTerminal(x, y, color, s) {
+        ctx.save();
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, 6 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,.45)";
+        ctx.lineWidth = 1.5 * s;
+        ctx.stroke();
+        ctx.restore();
+      }
+      function drawAnalogMeter(meter, label, value, max, unit) {
+        const s = state.layoutCache.scale;
+        const ratio = clamp(value / max, 0, 1);
+        const start = -Math.PI * .78;
+        const end = Math.PI * .78;
+        const angle = start + (end - start) * ratio;
+        ctx.save();
+        const grad = ctx.createRadialGradient(meter.x - 14 * s, meter.y - 18 * s, 6 * s, meter.x, meter.y, meter.r);
+        grad.addColorStop(0, "#f8fbff");
+        grad.addColorStop(1, "#c9d5df");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(meter.x, meter.y, meter.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = label === "A" ? "#3ddc97" : "#5bbcff";
+        ctx.lineWidth = 3 * s;
+        ctx.stroke();
+        ctx.strokeStyle = "#26323f";
+        ctx.lineWidth = 1 * s;
+        for (let i = 0; i <= 10; i += 1) {
+          const a = start + (end - start) * i / 10;
+          const inner = meter.r * .66;
+          const outer = meter.r * .82;
+          ctx.beginPath();
+          ctx.moveTo(meter.x + Math.cos(a) * inner, meter.y + Math.sin(a) * inner);
+          ctx.lineTo(meter.x + Math.cos(a) * outer, meter.y + Math.sin(a) * outer);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = "#d33";
+        ctx.lineWidth = 2.2 * s;
+        ctx.beginPath();
+        ctx.moveTo(meter.x, meter.y + 8 * s);
+        ctx.lineTo(meter.x + Math.cos(angle) * meter.r * .62, meter.y + 8 * s + Math.sin(angle) * meter.r * .62);
+        ctx.stroke();
+        ctx.fillStyle = "#26323f";
+        ctx.font = `700 ${Math.max(16, 20 * s)}px Arial`;
+        ctx.textAlign = "center";
+        ctx.fillText(label, meter.x, meter.y - 8 * s);
+        ctx.font = `${Math.max(10, 11 * s)}px Arial`;
+        ctx.fillText(round2(value).toFixed(2) + " " + unit, meter.x, meter.y + 24 * s);
+        drawTerminal(meter.x - meter.r * .76, meter.y + meter.r * .74, "#111", s);
+        drawTerminal(meter.x + meter.r * .76, meter.y + meter.r * .74, "#d33", s);
+        ctx.restore();
+      }
+      function drawFixedResistor(box) {
+        const s = state.layoutCache.scale;
+        const active = FIXED_RESISTORS[state.resistorIndex];
+        ctx.save();
+        ctx.fillStyle = "rgba(55,63,72,.94)";
+        roundRect(box.x, box.y, box.w, box.h, 8 * s);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.28)";
+        ctx.lineWidth = 1.5 * s;
+        ctx.stroke();
+        drawTerminal(box.x, box.y + box.h / 2, "#dcecff", s);
+        drawTerminal(box.x + box.w, box.y + box.h / 2, "#dcecff", s);
+        ctx.fillStyle = active.color;
+        roundRect(box.x + 22 * s, box.y + 15 * s, box.w - 44 * s, 28 * s, 14 * s);
+        ctx.fill();
+        ctx.fillStyle = active.band;
+        ctx.fillRect(box.x + box.w / 2 - 4 * s, box.y + 16 * s, 8 * s, 26 * s);
+        ctx.fillStyle = "#f7efe8";
+        ctx.font = `700 ${Math.max(11, 13 * s)}px Arial`;
+        ctx.textAlign = "center";
+        ctx.fillText("定值电阻 " + active.label, box.x + box.w / 2, box.y - 8 * s);
+        ctx.restore();
+      }
+      function drawRheostat(box) {
+        const s = state.layoutCache.scale;
+        const trackX = box.x + 30 * s;
+        const trackY = box.y + 24 * s;
+        const trackW = box.w - 60 * s;
+        state.hotSpots.sliderTrack = { x: trackX, y: trackY - 22 * s, w: trackW, h: 50 * s };
+        const knobX = trackX + state.slider * trackW;
+        state.hotSpots.sliderKnob = { x: knobX - 17 * s, y: trackY - 24 * s, w: 34 * s, h: 52 * s };
+        ctx.save();
+        ctx.fillStyle = "rgba(42,46,52,.95)";
+        roundRect(box.x, box.y, box.w, box.h, 8 * s);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,.25)";
+        ctx.stroke();
+        ctx.fillStyle = "#d8c8a4";
+        roundRect(box.x + 22 * s, box.y + 40 * s, box.w - 44 * s, 26 * s, 13 * s);
+        ctx.fill();
+        ctx.strokeStyle = "#8b6f47";
+        ctx.lineWidth = 2 * s;
+        for (let i = 0; i < 14; i += 1) {
+          const x = box.x + 34 * s + i * (box.w - 68 * s) / 13;
+          ctx.beginPath();
+          ctx.arc(x, box.y + 53 * s, 10 * s, Math.PI * .12, Math.PI * 1.88);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = "#cfd8dc";
+        ctx.lineWidth = 5 * s;
+        ctx.beginPath();
+        ctx.moveTo(trackX, trackY);
+        ctx.lineTo(trackX + trackW, trackY);
+        ctx.stroke();
+        ctx.fillStyle = "#5bbcff";
+        roundRect(knobX - 12 * s, trackY - 20 * s, 24 * s, 42 * s, 6 * s);
+        ctx.fill();
+        ctx.strokeStyle = "#eaf5ff";
+        ctx.lineWidth = 1.5 * s;
+        ctx.stroke();
+        ctx.strokeStyle = "#5bbcff";
+        ctx.lineWidth = 3 * s;
+        ctx.beginPath();
+        ctx.moveTo(knobX, trackY + 20 * s);
+        ctx.lineTo(knobX, box.y + 50 * s);
+        ctx.stroke();
+        drawTerminal(box.x, box.y + 42 * s, "#dcecff", s);
+        drawTerminal(box.x + box.w, box.y + 42 * s, "#dcecff", s);
+        ctx.fillStyle = "#e8f5ff";
+        ctx.font = `700 ${Math.max(11, 13 * s)}px Arial`;
+        ctx.textAlign = "center";
+        ctx.fillText("滑动变阻器", box.x + box.w / 2, box.y - 8 * s);
+        ctx.font = `${Math.max(10, 11 * s)}px Arial`;
+        ctx.fillStyle = "rgba(232,245,255,.74)";
+        ctx.fillText("拖动蓝色滑片调节接入电阻", box.x + box.w / 2, box.y + box.h + 16 * s);
+        ctx.restore();
+      }
+      function drawResistorRack(items) {
+        const s = state.layoutCache.scale;
+        ctx.save();
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#e8f5ff";
+        ctx.font = `700 ${Math.max(11, 12 * s)}px Arial`;
+        ctx.fillText("电阻盒", items[0].x + 90 * s, items[0].y - 9 * s);
+        items.forEach((item) => {
+          const meta = FIXED_RESISTORS[item.index];
+          state.hotSpots["resistor-" + item.index] = item;
+          ctx.fillStyle = item.index === state.resistorIndex ? "rgba(61,220,151,.25)" : "rgba(255,255,255,.08)";
+          ctx.strokeStyle = item.index === state.resistorIndex ? "#3ddc97" : "rgba(255,255,255,.2)";
+          roundRect(item.x, item.y, item.w, item.h, 7 * s);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = meta.color;
+          roundRect(item.x + 8 * s, item.y + 9 * s, item.w - 16 * s, 12 * s, 6 * s);
+          ctx.fill();
+          ctx.fillStyle = "#f4f7fb";
+          ctx.font = `700 ${Math.max(10, 11 * s)}px Arial`;
+          ctx.fillText(meta.label, item.x + item.w / 2, item.y + 34 * s);
+        });
+        ctx.restore();
+      }
+      function drawLiveReadout(layout, r) {
+        const s = layout.scale;
+        const y = layout.bench.y + layout.bench.h + 22 * s;
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,.32)";
+        roundRect(layout.bench.x + 80 * s, y - 22 * s, layout.bench.w - 160 * s, 34 * s, 9 * s);
+        ctx.fill();
+        ctx.fillStyle = "#ffd54f";
+        ctx.font = `700 ${Math.max(12, 14 * s)}px Arial`;
+        ctx.textAlign = "center";
+        ctx.fillText("当前读数：R=" + r.r + " Ω，U=" + round2(r.voltage).toFixed(2) + " V，I=" + round2(r.current).toFixed(2) + " A", layout.bench.x + layout.bench.w / 2, y);
+        ctx.restore();
+      }
+      function cxFrom(x,w){ return x + w * .5; }
+      function drawCandle(x, y, ghost) {
+        ctx.globalAlpha = ghost ? .42 : 1;
+        ctx.fillStyle = ghost ? "#9bd3ff" : "#ff7043";
+        ctx.fillRect(x - 11, y - 60, 22, 60);
+        ctx.fillStyle = "#ffd54f";
+        ctx.beginPath(); ctx.arc(x, y - 70, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+      function drawLens(x, y, h) {
+        ctx.strokeStyle = "#9bd3ff"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.ellipse(x, y, 22, h / 2, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x - 170, y); ctx.lineTo(x + 170, y); ctx.stroke();
+      }
+      function drawScreen(x, y, virtual) {
+        ctx.strokeStyle = virtual ? "rgba(255,255,255,.32)" : "#e8f5ff";
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(x, y - 95); ctx.lineTo(x, y + 95); ctx.stroke();
+      }
+      function drawRay(x1,y1,x2,y2,x3,y3) {
+        ctx.strokeStyle = "#ffd54f"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.stroke();
+      }
+      function drawCameraBox(x,y,w,h,focused) {
+        ctx.fillStyle = focused ? "rgba(61,220,151,.18)" : "rgba(255,183,77,.15)";
+        roundRect(x,y,w,h,10); ctx.fill(); ctx.strokeStyle = "#dcecff"; ctx.stroke();
+      }
+      function drawEye(x,y,key) {
+        ctx.strokeStyle = "#dcecff"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(x,y,100,58,0,0,Math.PI*2); ctx.stroke();
+        ctx.fillStyle = key.includes("Fix") ? "#3ddc97" : "#ffb74d";
+        ctx.beginPath(); ctx.arc(x+70,y,5,0,Math.PI*2); ctx.fill();
+      }
+      function drawPrism(cx, cy, key) {
+        ctx.fillStyle = "rgba(155,211,255,.18)";
+        ctx.strokeStyle = "#9bd3ff"; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(cx - 70, cy + 80); ctx.lineTo(cx, cy - 80); ctx.lineTo(cx + 90, cy + 80); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = "#fff"; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(cx - 260, cy); ctx.lineTo(cx - 40, cy - 10); ctx.stroke();
+        const colors = ["#ff4d4f","#ffb74d","#ffd54f","#3ddc97","#26e3d1","#5bbcff","#b084ff"];
+        colors.forEach((c,i)=>{ ctx.strokeStyle=c; ctx.beginPath(); ctx.moveTo(cx+42,cy+8); ctx.lineTo(cx+260, cy - 70 + i*22 + (key==="angle"?18:0)); ctx.stroke(); });
+      }
+      function drawRGB(cx, cy, key) {
+        ctx.globalAlpha = .58;
+        const on = key === "rgb" ? [1,1,1] : key === "rg" ? [1,1,0] : [0,1,1];
+        if (on[0]) { ctx.fillStyle = "#ff3344"; ctx.beginPath(); ctx.arc(cx-55,cy,92,0,Math.PI*2); ctx.fill(); }
+        if (on[1]) { ctx.fillStyle = "#29e06f"; ctx.beginPath(); ctx.arc(cx+55,cy,92,0,Math.PI*2); ctx.fill(); }
+        if (on[2]) { ctx.fillStyle = "#3388ff"; ctx.beginPath(); ctx.arc(cx,cy-72,92,0,Math.PI*2); ctx.fill(); }
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "#fff"; ctx.font = "700 16px Arial"; ctx.fillText("色光叠加区", cx, cy + 130);
+      }
+      function drawRod(x,y,charged){ ctx.strokeStyle = charged ? "#ffd54f" : "#aaa"; ctx.lineWidth = 12; ctx.beginPath(); ctx.moveTo(x-80,y); ctx.lineTo(x+80,y-40); ctx.stroke(); }
+      function drawPaperBits(x,y,active){ ctx.fillStyle = active ? "#ffd54f" : "#777"; for(let i=0;i<18;i++){ ctx.fillRect(x+Math.cos(i)*55, y+Math.sin(i*2)*35, 5, 3); } }
+      function drawElectroscope(x,y,open){ ctx.strokeStyle="#dcecff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y-70,16,0,Math.PI*2); ctx.moveTo(x,y-54); ctx.lineTo(x,y+40); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x,y+40); ctx.lineTo(x+(open?38:12),y+90); ctx.moveTo(x,y+40); ctx.lineTo(x-(open?38:12),y+90); ctx.stroke(); }
+      function drawBarMagnet(cx,cy,coil){ ctx.fillStyle="#e74c3c"; roundRect(cx-130,cy-28,130,56,8); ctx.fill(); ctx.fillStyle="#3498db"; roundRect(cx,cy-28,130,56,8); ctx.fill(); ctx.fillStyle="#fff"; ctx.font="700 18px Arial"; ctx.fillText("N",cx-70,cy+7); ctx.fillText("S",cx+70,cy+7); if(coil) drawSolenoid(cx-40,cy+82,false); }
+      function drawFieldLines(cx,cy,reverse){ ctx.strokeStyle="rgba(255,213,79,.55)"; ctx.lineWidth=2; for(let i=0;i<4;i++){ ctx.beginPath(); ctx.ellipse(cx,cy,170+i*28,72+i*20,0,0,Math.PI*2); ctx.stroke(); } ctx.fillStyle="#ffd54f"; ctx.fillText(reverse?"磁场方向反转":"磁场分布",cx,cy-130); }
+      function drawCompass(x,y,reverse){ ctx.strokeStyle="#dcecff"; ctx.beginPath(); ctx.arc(x,y,36,0,Math.PI*2); ctx.stroke(); ctx.fillStyle="#ff4d4f"; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+(reverse?-28:28),y-8); ctx.lineTo(x,y+8); ctx.fill(); }
+      function drawWire(x,y,on,reverse){ ctx.strokeStyle=on?"#ffd54f":"#777"; ctx.lineWidth=6; ctx.beginPath(); ctx.moveTo(x,y-110); ctx.lineTo(x,y+110); ctx.stroke(); ctx.fillText(reverse?"I↓":"I↑",x+22,y); }
+      function drawSolenoid(x,y,reverse){ ctx.strokeStyle="#ffb74d"; ctx.lineWidth=4; for(let i=0;i<7;i++){ ctx.beginPath(); ctx.ellipse(x+i*28,y,16,32,0,0,Math.PI*2); ctx.stroke(); } ctx.fillText(reverse?"S   N":"N   S",x+84,y+54); }
+      function drawMachine(type,cx,cy,key){ drawBarMagnet(cx,cy,false); ctx.strokeStyle="#ffd54f"; ctx.lineWidth=5; ctx.strokeRect(cx-45,cy-90,90,180); ctx.fillStyle=key==="fast"||key==="spin"?"#3ddc97":"#ffb74d"; ctx.beginPath(); ctx.arc(cx,cy,26,0,Math.PI*2); ctx.fill(); ctx.fillStyle="#fff"; ctx.fillText(type.includes("generator")?"发电机":"电机/线圈",cx,cy+130); }
+      function drawBattery(x,y){ ctx.strokeStyle="#ffd54f"; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(x-22,y-25); ctx.lineTo(x-22,y+25); ctx.moveTo(x+10,y-40); ctx.lineTo(x+10,y+40); ctx.stroke(); }
+      function drawSwitch(x,y,closed){ ctx.strokeStyle="#dcecff"; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(x-42,y); ctx.lineTo(x-8,y); ctx.moveTo(x+36,y); ctx.lineTo(x+68,y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x-8,y); ctx.lineTo(x+(closed?36:24),y+(closed?0:-28)); ctx.stroke(); }
+      function drawBulb(x,y,on){ ctx.strokeStyle="#dcecff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y,28,0,Math.PI*2); ctx.stroke(); if(on){ ctx.fillStyle="rgba(255,213,79,.55)"; ctx.beginPath(); ctx.arc(x,y,38,0,Math.PI*2); ctx.fill(); } }
+      function drawMeter(x,y,label,wrong){ ctx.strokeStyle=wrong?"#ff4d4f":"#5bbcff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y,34,0,Math.PI*2); ctx.stroke(); ctx.fillStyle="#fff"; ctx.font="700 20px Arial"; ctx.fillText(label,x,y+7); }
+      function drawBranch(cx,cy,parallel){ if(!parallel)return; ctx.strokeStyle="#3ddc97"; ctx.lineWidth=3; ctx.strokeRect(cx-130,cy-45,260,90); drawBulb(cx-70,cy, true); drawBulb(cx+70,cy, true); }
+      function drawSafety(cx,cy,key){ ctx.fillStyle=key==="normal"?"#3ddc97":"#ff4d4f"; roundRect(cx-90,cy-48,180,96,10); ctx.fill(); ctx.fillStyle="#061018"; ctx.fillText(key==="normal"?"安全接线":"保护断开",cx,cy+5); }
+      function drawHeater(cx,cy,key){ ctx.strokeStyle="#ff7043"; ctx.lineWidth=5; ctx.beginPath(); for(let i=0;i<9;i++){ ctx.lineTo(cx-120+i*30, cy + Math.sin(i)*28); } ctx.stroke(); ctx.fillStyle=key==="high"||key==="time"?"rgba(255,112,67,.45)":"rgba(255,183,77,.25)"; ctx.fillRect(cx-150,cy+42,300,72); }
+      function drawPendulum(cx,cy,key){ const angle=key==="high"?-.75:key==="rise"?.55:0; const px=cx+Math.sin(angle)*150, py=cy-110+Math.cos(angle)*150; ctx.strokeStyle="#dcecff"; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(cx,cy-110); ctx.lineTo(px,py); ctx.stroke(); ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.arc(px,py,24,0,Math.PI*2); ctx.fill(); }
+      function drawEngine(cx,cy,key){ ctx.strokeStyle="#dcecff"; ctx.lineWidth=4; roundRect(cx-110,cy-100,220,170,10); ctx.stroke(); const pistonY=key==="power"?cy+28:key==="exhaust"?cy-30:cy-62; ctx.fillStyle="#9bd3ff"; ctx.fillRect(cx-92,pistonY,184,24); ctx.fillStyle=key==="power"?"rgba(255,112,67,.55)":"rgba(255,183,77,.2)"; ctx.fillRect(cx-90,cy-95,180,pistonY-cy+95); }
+      function drawFriction(cx,cy,key){ ctx.fillStyle="#9bd3ff"; roundRect(cx-120,cy-35,240,70,8); ctx.fill(); ctx.fillStyle=key==="fast"||key==="more"?"#ff7043":"#ffd54f"; ctx.fillText("温度 " + (key==="slow"?"略升":key==="fast"?"升高":"明显升高"),cx,cy+80); }
+      function drawPulley(cx,cy,key){ ctx.strokeStyle="#dcecff"; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(cx,cy-90,38,0,Math.PI*2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx-38,cy-90); ctx.lineTo(cx-38,cy+80); ctx.lineTo(cx+80,cy+80); ctx.stroke(); ctx.fillStyle=key==="friction"?"#ff7043":"#3ddc97"; ctx.fillRect(cx-70,cy+80,64,64); }
+      function drawBeakers(cx,cy,key){ const levels=key==="doubleMass"?[120,180]:[120,120]; levels.forEach((lv,i)=>{ const x=cx-110+i*220; ctx.strokeStyle="#dcecff"; ctx.strokeRect(x-50,cy-80,100,160); ctx.fillStyle="rgba(91,188,255,.45)"; ctx.fillRect(x-48,cy+80-lv,96,lv); ctx.fillStyle="#ffd54f"; ctx.fillText(i?"样品B":"样品A",x,cy+110); }); }
+      function drawRenewable(cx,cy,key){ ctx.fillStyle="#1e88e5"; for(let i=0;i<4;i++){ ctx.fillRect(cx-190+i*48,cy-60,40,58); } ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.arc(cx-220,cy-120,key==="strong"?44:28,0,Math.PI*2); ctx.fill(); drawMachine("motor",cx+120,cy,key==="strong"?"fast":"slow"); }
+      function wrapText(text, x, y, maxWidth, lineHeight) {
+        const chars = String(text).split("");
+        let line = "";
+        for (const ch of chars) {
+          const test = line + ch;
+          if (ctx.measureText(test).width > maxWidth && line) {
+            ctx.fillText(line, x, y);
+            line = ch;
+            y += lineHeight;
+          } else line = test;
+        }
+        ctx.fillText(line, x, y);
+      }
+      function onCanvasPointerDown(event) {
+        if (state.autoPlaying) return;
+        const point = stagePoint(event);
+        if (boxContains(point, state.hotSpots.sliderKnob) || boxContains(point, state.hotSpots.sliderTrack)) {
+          state.draggingId = "slider";
+          canvas.setPointerCapture(event.pointerId);
+          setSliderFromCanvasX(point.x, true);
+        } else if (boxContains(point, state.hotSpots.switch)) {
+          toggleSwitch(true);
+        } else {
+          const resistorHit = FIXED_RESISTORS.find((_, index) => boxContains(point, state.hotSpots["resistor-" + index]));
+          if (resistorHit) {
+            selectResistor(FIXED_RESISTORS.indexOf(resistorHit), true);
+          } else {
+            showToast("可点击开关、拖动滑动变阻器滑片，或点击电阻盒换接电阻。");
+          }
+        }
+        event.preventDefault();
+      }
+      function onCanvasPointerMove(event) {
+        if (state.draggingId !== "slider") return;
+        setSliderFromCanvasX(stagePoint(event).x, true);
+        event.preventDefault();
+      }
+      function onCanvasPointerUp(event) {
+        if (state.draggingId === "slider") {
+          try { canvas.releasePointerCapture(event.pointerId); } catch (error) { console.warn("释放实验台指针捕获失败", error); }
+          state.draggingId = null;
+          passStepIfReady({ quiet: true });
+        }
+        event.preventDefault();
+      }
+      function boxContains(point, box) {
+        return !!box && point.x >= box.x && point.x <= box.x + box.w && point.y >= box.y && point.y <= box.y + box.h;
+      }
+      function setSliderFromCanvasX(x, markAction = true) {
+        const track = state.hotSpots.sliderTrack;
+        if (!track) return;
+        state.slider = clamp((x - track.x) / track.w, 0, 1);
+        if (markAction) {
+          state.sliderMoved = true;
+          state.lastOperation = "拖动滑动变阻器";
+        }
+        updateReadouts();
+        draw();
+      }
+      function selectResistor(index, markAction = true) {
+        state.resistorIndex = clamp(index, 0, FIXED_RESISTORS.length - 1);
+        if (markAction) {
+          state.resistorChanged = true;
+          state.lastOperation = "换接 " + FIXED_RESISTORS[state.resistorIndex].label + " 定值电阻";
+        }
+        updateReadouts();
+        draw();
+      }
+      function resetScene({ keepMode = true } = {}) {
+        clearAllTimers();
+        state.completed = false;
+        state.autoCancel = false;
+        state.draggingId = null;
+        state.stepWarning = false;
+        state.successCooldown = false;
+        state.records = [];
+        state.unseenRecords = 0;
+        state.lastObservation = null;
+        state.analysisDone = false;
+        state.switchClosed = false;
+        state.switchTouched = false;
+        state.slider = 0.08;
+        state.sliderMoved = false;
+        state.resistorIndex = 1;
+        state.resistorChanged = false;
+        state.lastOperation = "等待闭合开关";
+        if (!keepMode) state.freeMode = false;
+        doneMask.style.display = "none";
+        analysisText.classList.remove("ok");
+        analysisText.textContent = "完成三次记录后分析。";
+        renderRecords();
+        updateBadge();
+        setModeLabel();
+        setStepUI(0);
+        updateReadouts();
+        draw();
+      }
+      function setFreeMode(on) {
+        state.freeMode = !!on;
+        freeBtn.textContent = state.freeMode ? "退出自由模式" : "自由模式";
+        autoDemoBtn.disabled = state.freeMode;
+        setModeLabel();
+        showToast(state.freeMode ? "自由模式下可任意换电阻、调滑片并记录读数。" : "已回到引导模式。");
+        draw();
+      }
+      function moveCursorTo(x, y, visible = true) {
+        const stageRect = stage.getBoundingClientRect();
+        const sceneRect = labArea.getBoundingClientRect();
+        demoCursor.style.opacity = visible ? "1" : "0";
+        demoCursor.style.transform = "translate(" + (sceneRect.left - stageRect.left + x - 10) + "px," + (sceneRect.top - stageRect.top + y - 10) + "px)";
+      }
+      function clickCursor() {
+        demoCursor.classList.remove("click");
+        void demoCursor.offsetWidth;
+        demoCursor.classList.add("click");
+      }
+      async function autoRecord(assertion, code) {
+        const before = state.records.length;
+        const ok = recordLastObservation({ auto: true });
+        await sleep(360);
+        if (!ok || !assertion() || state.records.length <= before) throw new Error("AUTO_RECORD_NOT_PERSISTED:" + code);
+      }
+      async function dragSliderToVoltage(targetVoltage, resistance) {
+        const targetSlider = sliderForVoltage(targetVoltage, resistance);
+        draw();
+        const track = state.hotSpots.sliderTrack;
+        const y = track.y + track.h / 2;
+        const startX = track.x + state.slider * track.w;
+        const endX = track.x + targetSlider * track.w;
+        moveCursorTo(startX, y);
+        await sleep(180);
+        for (let i = 1; i <= 18; i += 1) {
+          if (state.autoCancel) throw new Error("AUTO_CANCELLED");
+          const x = lerp(startX, endX, i / 18);
+          moveCursorTo(x, y);
+          setSliderFromCanvasX(x, true);
+          await sleep(34);
+        }
+        clickCursor();
+        await sleep(220);
+      }
+      async function clickSwitchAuto(closed) {
+        draw();
+        const box = state.hotSpots.switch;
+        moveCursorTo(box.x + box.w / 2, box.y + box.h / 2);
+        await sleep(220);
+        clickCursor();
+        setSwitchClosed(closed, true);
+        await sleep(280);
+      }
+      async function clickResistorAuto(index) {
+        draw();
+        const box = state.hotSpots["resistor-" + index];
+        moveCursorTo(box.x + box.w / 2, box.y + box.h / 2);
+        await sleep(220);
+        clickCursor();
+        selectResistor(index, true);
+        await sleep(260);
+      }
+      async function runAutoDemo() {
+        if (state.autoPlaying) { state.autoCancel = true; return; }
+        state.autoPlaying = true;
+        state.autoCancel = false;
+        autoDemoBtn.textContent = "退出自动演示";
+        freeBtn.disabled = true;
+        setDrawerCollapsed(controlDock, false);
+        setDrawerCollapsed(dataDock, true);
+        setModeLabel();
+        resetScene({ keepMode: false });
+        state.autoPlaying = true;
+        autoDemoBtn.textContent = "退出自动演示";
+        setModeLabel();
+        try {
+          await clickSwitchAuto(true);
+          setStepUI(0);
+          await dragSliderToVoltage(1, 10);
+          await autoRecord(() => hasVoltageTarget(1), "U1_R10");
+          setStepUI(1);
+          await dragSliderToVoltage(2, 10);
+          await autoRecord(() => hasVoltageTarget(2), "U2_R10");
+          await dragSliderToVoltage(3, 10);
+          await autoRecord(() => hasVoltageTarget(3), "U3_R10");
+          setStepUI(2);
+          await clickResistorAuto(0);
+          await dragSliderToVoltage(2, 5);
+          await autoRecord(() => hasResistanceRecord(5), "U2_R5");
+          await clickResistorAuto(2);
+          await dragSliderToVoltage(2, 15);
+          await autoRecord(() => hasResistanceRecord(15), "U2_R15");
+          setStepUI(3);
+          await sleep(280);
+          setDrawerCollapsed(dataDock, false);
+          analyzeConclusion();
+        } catch (error) {
+          if (String(error.message || error) !== "AUTO_CANCELLED") showToast("自动演示中断：" + (error.message || error));
+          else showToast("已退出自动演示");
+        } finally {
+          state.autoPlaying = false;
+          state.autoCancel = false;
+          autoDemoBtn.textContent = "自动演示";
+          freeBtn.disabled = false;
+          demoCursor.style.opacity = "0";
+          setModeLabel();
+          updateStatus();
+          draw();
+        }
+      }
+      function initEvents() {
+        canvas.addEventListener("pointerdown", onCanvasPointerDown);
+        canvas.addEventListener("pointermove", onCanvasPointerMove);
+        canvas.addEventListener("pointerup", onCanvasPointerUp);
+        canvas.addEventListener("pointercancel", onCanvasPointerUp);
+        recordBtn.addEventListener("click", () => recordLastObservation());
+        analyzeBtn.addEventListener("click", analyzeConclusion);
+        resetBtn.addEventListener("click", () => { const free = state.freeMode; resetScene(); state.freeMode = free; setFreeMode(free); showToast("已重置当前实验。"); });
+        autoDemoBtn.addEventListener("click", runAutoDemo);
+        freeBtn.addEventListener("click", () => setFreeMode(!state.freeMode));
+        controlToggleBtn.addEventListener("click", () => setDrawerCollapsed(controlDock, !controlDock.classList.contains("collapsed")));
+        dataToggleBtn.addEventListener("click", () => setDrawerCollapsed(dataDock, !dataDock.classList.contains("collapsed")));
+        hintLamp.addEventListener("click", () => hintPop.classList.toggle("open"));
+        okBtn.addEventListener("click", () => { doneMask.style.display = "none"; });
+        bindDrawer(controlDock);
+        bindDrawer(dataDock);
+        window.addEventListener("resize", () => {
+          clearTimeout(resizeCanvas.timer);
+          resizeCanvas.timer = setTimeout(resizeCanvas, 120);
+        });
+      }
+      function init() {
+        initDots();
+        initEvents();
+        resizeCanvas();
+        setDrawerCollapsed(controlDock, true);
+        setDrawerCollapsed(dataDock, true);
+        resetScene();
+        requestAnimationFrame(() => { resizeCanvas(); draw(); });
+        setTimeout(() => { resizeCanvas(); draw(); }, 180);
+      }
+      init();
+      window.state = state;
+      window.recordLastObservation = recordLastObservation;
+      window.analyzeConclusion = analyzeConclusion;
+    })();
+  </script>
+</body>
+</html>

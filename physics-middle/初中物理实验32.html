@@ -1,0 +1,2539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验32｜探究浮力大小与哪些因素有关（交互版）</title>
+  <!-- 实验目录依据：中小学实验教学目录（初中物理 32. 探究浮力大小与哪些因素有关） -->
+  <!-- 教材依据：2025 物理 八年级下册 人教版 电子课本（高清正式版）PDF 第71页 -->
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --ink:#ffffff;
+      --card-bg:rgba(255,255,255,0.08);
+      --panel-bg:rgba(15,15,15,0.58);
+      --line:rgba(255,255,255,0.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --water:#4ea1ff;
+      --salt:#6ec8ff;
+      --dockShadow:0 14px 36px rgba(0,0,0,.42);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:960px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,0.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{ 0%{ background-position:0 0; } 100%{ background-position:-100% 0; } }
+
+    .task-card{
+      width:100%;
+      max-width:960px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition:opacity .2s, filter .2s;
+    }
+    .task-step{
+      background:rgba(255,255,255,0.16);
+      border-radius:8px;
+      padding:6px 10px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .task-text{ line-height:1.55; }
+    .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+    .progress-dots{ display:flex; gap:6px; }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:rgba(255,255,255,0.26);
+      outline:2px solid rgba(255,255,255,0.12);
+    }
+    .dot.active{ background:var(--warn); }
+    .dot.warning{
+      background:#ff5f57;
+      outline-color:rgba(255,95,87,.42);
+      box-shadow:0 0 0 3px rgba(255,95,87,.14);
+    }
+    .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.45); }
+
+    #stage{
+      width:100%;
+      max-width:960px;
+      height:80vh;
+      max-height:900px;
+      min-height:700px;
+      margin-top:10px;
+      border-radius:12px;
+      position:relative;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      background:#0b0f14;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 76% 25%, rgba(255,255,255,.06), transparent 42%),
+        radial-gradient(circle at 22% 78%, rgba(0,255,255,.05), transparent 46%);
+    }
+
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      background:rgba(0,0,0,.48);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:7px 10px;
+      font-size:12px;
+    }
+    .tag{
+      border:1px solid rgba(255,255,255,.26);
+      border-radius:999px;
+      padding:2px 8px;
+      font-weight:700;
+      color:#dce9ff;
+      background:rgba(255,255,255,.06);
+    }
+
+    .lab-area{
+      position:absolute;
+      inset:58px 10px 22px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.82);
+      overflow:hidden;
+    }
+
+    .bench{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      height:76px;
+      background:linear-gradient(180deg,#4a4a4a,#3a3a3a);
+      border-top:1px solid rgba(255,255,255,.12);
+      z-index:1;
+    }
+
+    .stand{
+      display:none;
+    }
+    .stand .rod{
+      position:absolute;
+      left:50%;
+      top:20px;
+      width:8px;
+      height:240px;
+      transform:translateX(-50%);
+      border-radius:4px;
+      background:linear-gradient(180deg,#9ca8b3,#6f7a84);
+      box-shadow:inset 0 0 6px rgba(255,255,255,.25);
+    }
+    .stand .arm{
+      position:absolute;
+      left:50%;
+      top:18px;
+      width:126px;
+      height:8px;
+      transform:translateX(-50%);
+      border-radius:4px;
+      background:linear-gradient(180deg,#9ca8b3,#707b86);
+    }
+
+    .spring-scale{
+      position:absolute;
+      left:50%;
+      top:18px;
+      transform:translateX(-50%);
+      width:112px;
+      height:246px;
+      z-index:8;
+      pointer-events:auto;
+      touch-action:none;
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+    .spring-scale.dragging{ cursor:grabbing; }
+    .scale-casing{
+      width:100%;
+      height:206px;
+      border-radius:6px;
+      border:3px solid #6eb4ff;
+      background:#dcecff;
+      box-shadow:0 12px 24px rgba(0,0,0,.35);
+      overflow:hidden;
+      position:relative;
+    }
+    .readout-panel{
+      height:56px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      gap:6px;
+      padding:8px 8px 0;
+      background:transparent;
+      border-bottom:none;
+    }
+    .scale-label{
+      font-size:12px;
+      font-weight:700;
+      color:#2b4d66;
+      letter-spacing:.2px;
+    }
+    .lcd-screen{
+      min-width:72px;
+      text-align:center;
+      background:#0b1621;
+      color:#7fd1ff;
+      font-family:"Courier New", monospace;
+      font-weight:700;
+      font-size:16px;
+      padding:4px 8px;
+      letter-spacing:.4px;
+      border-radius:0;
+      border:none;
+      box-shadow:none;
+    }
+    .spring-window{
+      margin:0 auto;
+      width:92px;
+      height:132px;
+      position:relative;
+      overflow:hidden;
+      background:transparent;
+    }
+    .spring-coil,
+    .internal-rod{
+      display:none;
+    }
+    .scale-guide{
+      position:absolute;
+      inset:6px 10px 8px 12px;
+      pointer-events:none;
+    }
+    .scale-guide .guide-mark{
+      position:absolute;
+      left:8px;
+      transform:translateY(-50%);
+      height:1.4px;
+      background:#b8d7fa;
+      opacity:.98;
+    }
+    .scale-guide .guide-mark.major{
+      width:20px;
+      height:2px;
+      background:#8ebeea;
+    }
+    .scale-guide .guide-mark.minor{
+      width:10px;
+      background:#b8d7fa;
+      opacity:.65;
+    }
+    .scale-guide .guide-label{
+      position:absolute;
+      right:4px;
+      transform:translateY(-50%);
+      font-size:11px;
+      font-weight:700;
+      color:#39566d;
+      letter-spacing:.1px;
+    }
+    .scale-pointer{
+      position:absolute;
+      left:30px;
+      right:26px;
+      height:4px;
+      border-radius:999px;
+      background:#ffcf6f;
+      transform:translateY(-50%);
+    }
+    .scale-pointer::after{
+      content:"";
+      position:absolute;
+      right:-2px;
+      top:50%;
+      width:12px;
+      height:12px;
+      transform:translateY(-50%);
+      border-radius:50%;
+      background:#ffcf6f;
+    }
+    .hook-assembly{
+      position:absolute;
+      left:50%;
+      width:30px;
+      height:24px;
+      transform:translateX(-50%);
+      z-index:1;
+    }
+    .hook-assembly.top{ top:-10px; }
+    .hook-assembly.bottom{ bottom:-4px; }
+    .hook-link{
+      position:absolute;
+      left:50%;
+      top:206px;
+      width:4px;
+      height:22px;
+      transform:translateX(-50%);
+      border-radius:999px;
+      background:linear-gradient(180deg,#d7e2ed,#95a7b9);
+      box-shadow:0 1px 4px rgba(0,0,0,.18);
+      z-index:1;
+      pointer-events:none;
+    }
+    .metal-hook{
+      width:18px;
+      height:18px;
+      border:4px solid #b8c7d5;
+      border-radius:50%;
+      position:absolute;
+      left:6px;
+      top:2px;
+      background:linear-gradient(135deg,#dce7f2 0%, #94a8bb 100%);
+      box-shadow:1px 1px 3px rgba(0,0,0,.4);
+      mask:radial-gradient(transparent 55%, black 60%);
+      -webkit-mask:radial-gradient(transparent 55%, black 60%);
+    }
+    .hook-assembly.top .metal-hook{
+      transform:rotate(180deg);
+    }
+    .hook-assembly.bottom .metal-hook{
+      transform:rotate(35deg);
+    }
+
+    .string{
+      position:absolute;
+      left:0;
+      top:0;
+      width:2px;
+      height:18px;
+      background:linear-gradient(180deg,#e5edf6,#9aa8b7);
+      transform-origin:top center;
+      z-index:5;
+      pointer-events:none;
+      box-shadow:0 0 4px rgba(255,255,255,.28);
+      border-radius:2px;
+    }
+
+    .hint-lamp-wrap{
+      position:absolute;
+      left:14px;
+      top:58px;
+      z-index:24;
+    }
+    .hint-lamp-btn{
+      width:34px;
+      height:34px;
+      border:none;
+      border-radius:50%;
+      background:transparent;
+      color:#ffe082;
+      font-size:28px;
+      line-height:1;
+      cursor:pointer;
+      filter:drop-shadow(0 0 10px rgba(255,224,130,.24));
+    }
+    .hint-lamp-btn.flash{
+      animation:hintBlink .28s ease-in-out 3;
+    }
+    @keyframes hintBlink{
+      0%,100%{ transform:scale(1); filter:drop-shadow(0 0 10px rgba(255,224,130,.24)); }
+      50%{ transform:scale(1.08); filter:drop-shadow(0 0 18px rgba(255,224,130,.72)); }
+    }
+    .hint-pop{
+      position:absolute;
+      top:42px;
+      left:0;
+      width:min(320px, 72vw);
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(10,16,24,.92);
+      box-shadow:0 12px 28px rgba(0,0,0,.4);
+      padding:10px 12px;
+      display:none;
+      color:#dce9ff;
+      backdrop-filter:blur(10px);
+    }
+    .hint-lamp-wrap.open .hint-pop{ display:block; }
+    .hint-pop h4{
+      margin:0 0 6px;
+      font-size:12px;
+      color:#ffd54f;
+    }
+    .hint-detail,.hint-thought{
+      font-size:12px;
+      line-height:1.6;
+      color:#dce9ff;
+    }
+    .hint-thought{ color:#b9d1ee; }
+
+    .beaker-wrap{
+      position:absolute;
+      bottom:76px;
+      width:206px;
+      height:312px;
+      z-index:2;
+    }
+
+    .beaker-label{
+      position:absolute;
+      left:0;
+      right:0;
+      top:-30px;
+      text-align:center;
+      font-weight:700;
+      font-size:13px;
+      color:#dce9ff;
+      letter-spacing:.4px;
+    }
+    .beaker-rho{
+      position:absolute;
+      left:50%;
+      top:-12px;
+      transform:translateX(-50%);
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:999px;
+      padding:1px 8px;
+      font-size:11px;
+      background:rgba(0,0,0,.34);
+      color:#cde2ff;
+    }
+
+    .beaker{
+      position:absolute;
+      left:0;
+      right:0;
+      top:0;
+      bottom:0;
+      border:3px solid rgba(220,240,255,.52);
+      border-top-width:6px;
+      border-bottom-width:4px;
+      border-radius:0 0 16px 16px;
+      background:rgba(200,228,255,.1);
+      overflow:hidden;
+      box-shadow:inset 0 0 24px rgba(255,255,255,.06);
+    }
+    .liquid{
+      position:absolute;
+      left:4px;
+      right:4px;
+      bottom:4px;
+      height:58%;
+      border-radius:0 0 12px 12px;
+      box-shadow:inset 0 8px 12px rgba(255,255,255,.16);
+      transition:height .18s linear;
+    }
+    .beaker-wrap.water .liquid{ background:linear-gradient(180deg, rgba(122,206,255,.92), rgba(58,141,239,.92)); }
+    .beaker-wrap.salt .liquid{ background:linear-gradient(180deg, rgba(145,223,255,.92), rgba(77,175,255,.92)); }
+    .liquid::before{
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      top:-7px;
+      height:14px;
+      border-radius:50%;
+      background:rgba(220,245,255,.45);
+    }
+    .wave{
+      position:absolute;
+      left:8px;
+      right:8px;
+      height:7px;
+      border-radius:50%;
+      top:23%;
+      opacity:.25;
+      transition:opacity .15s;
+      background:radial-gradient(ellipse at center, rgba(255,255,255,.8), rgba(255,255,255,0));
+    }
+    .beaker-wrap.active .wave{ opacity:.8; }
+
+    .beaker-scale{
+      position:absolute;
+      left:8px;
+      right:8px;
+      top:10px;
+      bottom:8px;
+      pointer-events:none;
+      opacity:.55;
+    }
+    .beaker-scale .tick{
+      position:absolute;
+      left:0;
+      width:16px;
+      height:1px;
+      background:rgba(255,255,255,.55);
+    }
+    .beaker-scale .tick.big{ width:28px; }
+
+    .block{
+      position:absolute;
+      --front-left:8px;
+      --front-top:8px;
+      --front-w:30px;
+      --front-h:42px;
+      --side-left:38px;
+      --side-top:11px;
+      --side-w:10px;
+      --side-h:40px;
+      width:54px;
+      height:56px;
+      border-radius:4px;
+      border:none;
+      background:transparent;
+      box-shadow:none;
+      color:transparent;
+      font-size:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      line-height:1.2;
+      z-index:9;
+      touch-action:none;
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+    .block-eyelet{
+      position:absolute;
+      left:21px;
+      top:-12px;
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      border:2px solid rgba(215,225,236,.95);
+      background:linear-gradient(180deg,#22313f,#0e171f);
+      box-shadow:0 2px 5px rgba(0,0,0,.28);
+      pointer-events:none;
+    }
+    .block::before{
+      content:"";
+      position:absolute;
+      left:var(--front-left);
+      top:var(--front-top);
+      width:var(--front-w);
+      height:var(--front-h);
+      border-radius:2px;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.62), rgba(255,255,255,0) 28%),
+        linear-gradient(180deg,#eef3f8 0%, #cfd7e1 24%, #afb9c5 56%, #8f9aa8 100%);
+      border:1px solid rgba(255,255,255,.38);
+      box-shadow:
+        inset 8px 0 10px rgba(255,255,255,.18),
+        inset -10px 0 14px rgba(76,92,111,.16),
+        0 10px 18px rgba(0,0,0,.24);
+    }
+    .block::after{
+      content:"";
+      position:absolute;
+      left:var(--side-left);
+      top:var(--side-top);
+      width:var(--side-w);
+      height:var(--side-h);
+      transform:skewY(-18deg);
+      border-radius:0 2px 2px 0;
+      background:linear-gradient(180deg,#c0cad5 0%, #8e9aa8 48%, #6f7c8b 100%);
+      box-shadow:
+        inset 2px 0 4px rgba(255,255,255,.18),
+        0 6px 10px rgba(0,0,0,.14);
+    }
+    .block:active{ cursor:grabbing; }
+    .block.dragging::before,
+    .block.dragging::after{ filter:drop-shadow(0 8px 18px rgba(0,0,0,.26)); }
+
+    .rack{
+      position:absolute;
+      left:50%;
+      bottom:72px;
+      transform:translateX(-50%);
+      display:flex;
+      align-items:center;
+      gap:6px;
+      z-index:9;
+      background:rgba(0,0,0,.45);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:10px;
+      padding:6px;
+    }
+    .rack .rack-title{
+      font-size:11px;
+      color:#dce9ff;
+      margin-right:4px;
+      white-space:nowrap;
+    }
+    .vol-btn{
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:8px;
+      background:rgba(255,255,255,.08);
+      color:#e8f1ff;
+      font-size:12px;
+      padding:5px 8px;
+      cursor:pointer;
+      min-width:52px;
+    }
+    .vol-btn.active{
+      border-color:rgba(61,220,151,.75);
+      background:rgba(61,220,151,.2);
+      color:#baf7d6;
+      font-weight:700;
+    }
+
+    .dock{
+      position:absolute;
+      width:min(92%, 360px);
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:var(--panel-bg);
+      backdrop-filter:blur(6px);
+      box-shadow:var(--dockShadow);
+      overflow:hidden;
+      touch-action:none;
+      z-index:30;
+    }
+    .dock.control-dock{ width:min(92%, 400px); }
+    .dock.data-dock{ width:min(92%, 320px); }
+    .dock.dragging{ box-shadow:0 20px 48px rgba(0,0,0,.55); }
+    .dockHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none;
+    }
+    .dockHead:active{ cursor:grabbing; }
+    .dockTitle{ font-size:13px; font-weight:700; color:#e7f0ff; }
+    .dockBtns{ display:flex; gap:6px; }
+    .iconBtn{
+      border:1px solid rgba(255,255,255,.2);
+      background:rgba(255,255,255,.08);
+      color:#e8f1ff;
+      border-radius:7px;
+      padding:4px 8px;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .dockBody{ padding:10px; max-height:330px; overflow:auto; -webkit-overflow-scrolling:touch; }
+    .dockBody.collapsed{ display:none; }
+
+    .row{ margin-bottom:8px; }
+    .status-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:6px;
+      margin-bottom:8px;
+    }
+    .pill{
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:999px;
+      padding:4px 8px;
+      font-size:11px;
+      color:#e8f1ff;
+      background:rgba(0,0,0,.28);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .btnRow{ display:flex; gap:8px; flex-wrap:wrap; }
+    button.main, button.sub{
+      border:none;
+      border-radius:8px;
+      padding:8px 12px;
+      color:#fff;
+      cursor:pointer;
+      transition:background .2s, transform .05s, opacity .2s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      font-size:13px;
+    }
+    button.main{ background:#2e7d32; }
+    button.sub{ background:#444; }
+    button.main:hover, button.sub:hover{ background:#5a5a5a; }
+    button.main:active, button.sub:active{ transform:scale(.98); }
+    button.main:disabled, button.sub:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .analysis{
+      font-size:12px;
+      line-height:1.6;
+      color:#e3efff;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:10px;
+      padding:8px;
+      background:rgba(0,0,0,.24);
+    }
+    .analysis.ok{ border-color:rgba(61,220,151,.4); }
+    .formula i{ font-style:italic; }
+    .formula sub{
+      font-size:.7em;
+      vertical-align:-0.28em;
+      margin-left:1px;
+    }
+
+    .dataNotice{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:18px;
+      height:18px;
+      margin-left:6px;
+      padding:0 5px;
+      border-radius:999px;
+      background:#f44336;
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      box-shadow:0 0 12px rgba(244,67,54,.36);
+    }
+    .dataNotice.hidden{ display:none; }
+
+    table.record{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:8px;
+      font-size:12px;
+    }
+    table.record th, table.record td{
+      border:1px solid rgba(255,255,255,.12);
+      padding:4px 5px;
+      text-align:center;
+    }
+    table.record th{ background:rgba(255,255,255,.08); color:#dce9ff; font-weight:700; }
+
+    .chartWrap{
+      margin-top:8px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:10px;
+      background:rgba(0,0,0,.25);
+      overflow:hidden;
+    }
+    #chart{ width:100%; height:170px; display:block; }
+
+    .checkmark{
+      position:absolute;
+      z-index:60;
+      left:50%;
+      top:18%;
+      transform:translate(-50%,-50%) scale(.6);
+      width:120px;
+      height:120px;
+      border-radius:50%;
+      background:rgba(61,220,151,.15);
+      border:3px solid var(--accent);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);
+      animation:pop .55s ease-out;
+      pointer-events:none;
+    }
+    .checkmark.active{ display:flex; }
+    .checkmark > div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+    @keyframes pop{
+      0%{ transform:translate(-50%,-50%) scale(.4); opacity:.2; }
+      60%{ transform:translate(-50%,-50%) scale(1.08); opacity:1; }
+      100%{ transform:translate(-50%,-50%) scale(1); }
+    }
+
+    .toolbar{
+      width:100%;
+      max-width:960px;
+      margin-top:12px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-start;
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:24px;
+      transform:translateX(-50%) translateY(20px);
+      background:rgba(0,0,0,.82);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:10px;
+      font-size:14px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .25s, transform .25s;
+      z-index:200;
+    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+    .modal-mask{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:300;
+      background:rgba(0,0,0,.5);
+    }
+    .modal{
+      width:min(90vw, 370px);
+      background:#111;
+      color:#fff;
+      border:1px solid rgba(255,255,255,.15);
+      border-radius:14px;
+      padding:18px 16px;
+      text-align:center;
+      box-shadow:0 10px 30px rgba(0,0,0,.5);
+    }
+    .modal h3{ margin:8px 0 6px; font-size:20px; }
+    .modal p{ margin-top:0; line-height:1.55; color:#cfd8dc; }
+    .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; }
+
+    .explanation{
+      width:100%;
+      max-width:960px;
+      margin:14px 0 20px;
+      line-height:1.65;
+      font-size:.95em;
+      color:#e9f2ff;
+    }
+    .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; }
+
+    @media (max-width:760px){
+      .task-card{ grid-template-columns:1fr; }
+      .task-step{ width:fit-content; }
+      #stage{ height:86vh; max-height:1040px; min-height:780px; }
+      .spring-scale{
+        top:8px;
+        transform:translateX(-50%) scale(.86);
+        transform-origin:top center;
+      }
+      .rack{ left:50%; transform:translateX(-50%) scale(.94); }
+      .dock{ width:min(96%, 360px); }
+      .hud{ left:8px; right:8px; }
+      .hint-pop{ width:min(82vw, 300px); }
+    }
+  
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText"></div>
+      <div class="task-hint" id="taskHint"></div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：清水 20 mL</span>
+    </div>
+
+    <div class="hint-lamp-wrap" id="hintLampWrap">
+      <button id="hintLamp" class="hint-lamp-btn" type="button" aria-label="查看实验提示">💡</button>
+      <div class="hint-pop" id="hintPop">
+        <h4>当前提示</h4>
+        <div class="hint-detail" id="hintDetail">先选择 20 mL 金属块，把它浸入清水并记录第一组数据。</div>
+        <h4>实验思路</h4>
+        <div class="hint-thought" id="hintThought">本实验用控制变量法：先只改变浸入液体中的体积，再只改变液体密度，比较浮力变化。</div>
+      </div>
+    </div>
+
+    <div class="lab-area" id="labArea">
+      <div class="stand">
+        <div class="arm"></div>
+        <div class="rod"></div>
+      </div>
+
+      <div class="spring-scale" id="springScale">
+        <div class="hook-assembly top"><div class="metal-hook"></div></div>
+        <div class="scale-casing">
+          <div class="readout-panel">
+            <span class="scale-label">弹簧测力计</span>
+            <div class="lcd-screen" id="scaleRead">2.200</div>
+          </div>
+          <div class="spring-window">
+            <div class="spring-coil" id="scaleCoil"></div>
+            <div class="internal-rod" id="scaleRod"></div>
+            <div class="scale-guide" id="scaleGuide"></div>
+            <div class="scale-pointer" id="scalePointer"></div>
+          </div>
+        </div>
+        <div class="hook-link" id="hookLink"></div>
+        <div class="hook-assembly bottom" id="scaleHookAssy"><div class="metal-hook" id="scaleHook"></div></div>
+      </div>
+
+      <div class="string" id="string"></div>
+
+      <div class="beaker-wrap water" id="beakerWater" data-liquid="water">
+        <div class="beaker-label">清水烧杯</div>
+        <div class="beaker-rho">ρ=1.00 g/cm³</div>
+        <div class="beaker">
+          <div class="liquid"></div>
+          <div class="wave"></div>
+          <div class="beaker-scale"></div>
+        </div>
+      </div>
+
+      <div class="beaker-wrap salt" id="beakerSalt" data-liquid="salt">
+        <div class="beaker-label">盐水烧杯</div>
+        <div class="beaker-rho">ρ=1.15 g/cm³</div>
+        <div class="beaker">
+          <div class="liquid"></div>
+          <div class="wave"></div>
+          <div class="beaker-scale"></div>
+        </div>
+      </div>
+
+      <div class="block" id="block" aria-label="金属块"><span class="block-eyelet" aria-hidden="true"></span><span id="blockVol" style="display:none;">20 mL</span></div>
+
+      <div class="rack" id="blockRack">
+        <span class="rack-title">器材架: 体积块</span>
+        <button class="vol-btn" data-vol="20">20 mL</button>
+        <button class="vol-btn" data-vol="40">40 mL</button>
+        <button class="vol-btn" data-vol="60">60 mL</button>
+      </div>
+
+      <div class="bench"></div>
+    </div>
+
+    <div class="dock control-dock drawer control" id="controlDock" style="right:10px; top:10px; left:auto;">
+      <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">实验面板</div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">收起</button></div>
+      </div>
+      <div class="dockBody drawer-body" id="controlBody">
+        <div class="btnRow">
+          <button class="main" id="recordBtn">记录本次读数</button>
+          <button class="sub" id="liftBtn">提起到空气</button>
+          <button class="sub" id="analyzeBtn">分析结论</button>
+        </div>
+        <div class="analysis" id="analysisText">暂无。请先拖动弹簧测力计，让金属块进入液体并记录数据，再点击“分析结论”。</div>
+        <div class="chartWrap"><canvas id="chart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="dock data-dock drawer data" id="dataDock" style="right:10px; top:80px; left:auto;">
+      <div class="dockHead drawer-header" id="dataHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">数据面板 <span class="dataNotice hidden" id="dataNotice">0</span></div>
+        <div class="dockBtns drawer-actions">
+          <button class="iconBtn" id="clearBtn">清空</button>
+          <button class="iconBtn" id="dataToggleBtn">展开</button>
+        </div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="dataBody">
+        <table class="record">
+          <thead>
+            <tr><th>介质</th><th><span class="formula"><i>V</i><sub>排</sub></span>(mL)</th><th><span class="formula"><i>F</i><sub>浮</sub></span>(N)</th><th>示数(N)</th></tr>
+          </thead>
+          <tbody id="recordBody"></tbody>
+        </table>
+      
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="sub" id="resetBtn">步骤重置</button>
+    <button class="sub" id="autoDemoBtn">自动演示</button>
+    <button class="sub" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">实验完成</h3>
+      <p>你已经完成浮力影响因素探究：<br /><span class="formula"><i>F</i><sub>浮</sub></span> 与液体密度 ρ、排开液体体积 <span class="formula"><i>V</i><sub>排</sub></span> 有关。</p>
+      <button class="sub ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：探究浮力大小与哪些因素有关</h2>
+    <ul>
+      <li><b>关键操作与现象</b>：先让金属块悬挂在空气中，读取弹簧测力计示数；再把它浸入液体中，观察示数减小。保持液体不变、逐渐增大浸入体积时，浮力会增大；保持浸入体积相同、改用密度更大的液体时，浮力也会增大。</li>
+      <li><b>原理与结论</b>：浮力可由 <b><span class="formula"><i>F</i><sub>浮</sub></span> = F空气 - F液中示数</b> 求得。浮力大小与物体浸在液体中的体积有关，也与液体密度有关；浸入体积越大、液体密度越大，浮力越大。</li>
+    </ul>
+  </div>
+
+  <script>
+    const LIQUIDS = {
+      water:{ name:'清水', rho:1000, color:'#63adff' },
+      salt:{ name:'盐水', rho:1150, color:'#9cd9ff' }
+    };
+
+    const tasks = [
+      {
+        text:'选择 <b>20 mL</b> 金属块，拖动<b>弹簧测力计</b>，让金属块浸入<b>清水烧杯</b>并记录一组数据。',
+        hint:'提示：先选体积块，再拖动测力计整体，让金属块进入清水。',
+        check:(ctx)=>ctx.records.some(r=>r.liquid==='water' && Math.abs(r.volume-20)<=3 && r.ratio>=0.85)
+      },
+      {
+        text:'保持在<b>清水烧杯</b>中，改用 <b>40 mL 或以上</b> 体积块，再拖动测力计浸没并记录。',
+        hint:'提示：此步只增大浸入液体中的体积，液体仍保持清水。',
+        check:(ctx)=>ctx.records.some(r=>r.liquid==='water' && r.volume>=40 && r.ratio>=0.85)
+      },
+      {
+        text:'拖动测力计到<b>盐水烧杯</b>上方，保持排开体积约 <b>40 mL</b> 并记录。',
+        hint:'提示：比较与清水近似同体积时的浮力差异。',
+        check:(ctx)=>ctx.records.some(r=>r.liquid==='salt' && Math.abs(r.volume-40)<=4 && r.ratio>=0.85)
+      },
+      {
+        text:'点击“分析结论”，完成本实验。',
+        hint:'提示：结论需同时体现体积效应和密度效应。',
+        check:(ctx)=>ctx.analysisOk===true
+      }
+    ];
+
+    const $ = (s)=>document.querySelector(s);
+
+    const stageEl = $('#stage');
+    const labArea = $('#labArea');
+    const taskCard = $('#taskCard');
+    const taskStepEl = $('#taskStep');
+    const taskTextEl = $('#taskText');
+    const taskHintEl = $('#taskHint');
+    const dotsEl = $('#dots');
+
+    const modeTag = $('#modeTag');
+    const statusTag = $('#statusTag');
+    const hintLampWrap = $('#hintLampWrap');
+    const hintLampBtn = $('#hintLamp');
+    const hintDetail = $('#hintDetail');
+    const hintThought = $('#hintThought');
+
+    const springScale = $('#springScale');
+    const scaleRead = $('#scaleRead');
+    const scaleCoil = $('#scaleCoil');
+    const scaleRod = $('#scaleRod');
+    const scaleGuide = $('#scaleGuide');
+    const scalePointer = $('#scalePointer');
+    const scaleHook = $('#scaleHook');
+    const scaleHookAssy = $('#scaleHookAssy');
+    const hookLink = $('#hookLink');
+    const stringEl = $('#string');
+
+    const beakerWater = $('#beakerWater');
+    const beakerSalt = $('#beakerSalt');
+    const block = $('#block');
+    const blockRack = $('#blockRack');
+    const blockVol = $('#blockVol');
+
+    const controlDock = $('#controlDock');
+    const controlHead = $('#controlHead');
+    const controlBody = $('#controlBody');
+    const controlToggleBtn = $('#controlToggleBtn');
+
+    const dataDock = $('#dataDock');
+    const dataHead = $('#dataHead');
+    const dataBody = $('#dataBody');
+    const dataToggleBtn = $('#dataToggleBtn');
+    const dataNotice = $('#dataNotice');
+
+    const recordBtn = $('#recordBtn');
+    const liftBtn = $('#liftBtn');
+    const analyzeBtn = $('#analyzeBtn');
+    const clearBtn = $('#clearBtn');
+    const resetBtn = $('#resetBtn');
+    const autoDemoBtn = $('#autoDemoBtn');
+    const freeBtn = $('#freeBtn');
+
+    const analysisText = $('#analysisText');
+    const recordBody = $('#recordBody');
+    const chart = $('#chart');
+
+    const toastEl = $('#toast');
+    const checkmarkEl = $('#checkmark');
+    const doneMaskEl = $('#doneMask');
+    const okBtn = $('#okBtn');
+
+    const AIR_WEIGHT_N = 2.2;
+    const SCALE_MAX_N = 5;
+    const BLOCK_EYELET_OFFSET_Y = -6;
+    const BLOCK_SPECS = {
+      20:{ w:42, h:46 },
+      40:{ w:54, h:56 },
+      60:{ w:64, h:66 }
+    };
+    const FIXED_STRING_LENGTH = 18;
+    const SCALE_TOTAL_HEIGHT = 246;
+    const HOOK_ASSY_HEIGHT = 24;
+    const HOOK_ASSY_BOTTOM = -4;
+    const HOOK_METAL_TOP = 2;
+    const HOOK_METAL_SIZE = 18;
+    const HOOK_ANCHOR_RATIO = 0.58;
+    const HOOK_LINK_BASE_HEIGHT = 22;
+    const AIR_CLEARANCE_ABOVE_WATER = 14;
+    const HOOK_BASE_OFFSET = SCALE_TOTAL_HEIGHT - HOOK_ASSY_HEIGHT - HOOK_ASSY_BOTTOM + HOOK_METAL_TOP + HOOK_METAL_SIZE * HOOK_ANCHOR_RATIO;
+    const FORMULA_FORCE_HTML = '<span class="formula"><i>F</i><sub>浮</sub></span>';
+    const FORMULA_VOLUME_HTML = '<span class="formula"><i>V</i><sub>排</sub></span>';
+
+    const state = {
+      currentTask:0,
+      completed:false,
+      freeMode:false,
+      autoPlaying:false,
+      autoRunId:0,
+      successCooldown:false,
+      warningStep:-1,
+      selectedVolumeMl:20,
+      airWeightN:AIR_WEIGHT_N,
+      draggingSystem:false,
+      scaleCenterX:0,
+      homeScaleX:0,
+      minScaleX:0,
+      maxScaleX:0,
+      scaleTopY:18,
+      homeScaleTopY:18,
+      minScaleTopY:18,
+      maxScaleTopY:260,
+      blockLeft:0,
+      blockTop:0,
+      activeLiquid:null,
+      immersionRatio:0,
+      displacedMl:0,
+      buoyancyN:0,
+      apparentN:2.2,
+      records:[],
+      unseenRecordCount:0,
+      analysisOk:false,
+      hintOpen:false,
+      drawRAF:0,
+      timers:new Set(),
+      zTop:40,
+      controlCollapsed:false,
+      dataCollapsed:true,
+      dockMoved:{control:false,data:false}
+    };
+
+    const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
+    const round = (n,p=3)=>Number(n.toFixed(p));
+    const sleep = (ms)=>new Promise(r=>setTimeout(r,ms));
+    const getBlockSpec = (vol = state.selectedVolumeMl)=>BLOCK_SPECS[vol] || BLOCK_SPECS[40];
+
+    function applyBlockGeometry(spec = getBlockSpec()){
+      const frontW = Math.max(22, Math.round(spec.w * 0.56));
+      const frontH = Math.max(28, Math.round(spec.h * 0.76));
+      const frontLeft = Math.max(6, Math.round((spec.w - frontW - Math.max(8, Math.round(spec.w * 0.18))) / 2));
+      const frontTop = Math.max(6, Math.round((spec.h - frontH) / 2));
+      const sideW = Math.max(8, Math.round(spec.w * 0.18));
+      const sideH = Math.max(26, frontH - 2);
+      const sideLeft = frontLeft + frontW;
+      const sideTop = frontTop + 3;
+
+      block.style.width = `${spec.w}px`;
+      block.style.height = `${spec.h}px`;
+      block.style.setProperty('--front-left', `${frontLeft}px`);
+      block.style.setProperty('--front-top', `${frontTop}px`);
+      block.style.setProperty('--front-w', `${frontW}px`);
+      block.style.setProperty('--front-h', `${frontH}px`);
+      block.style.setProperty('--side-left', `${sideLeft}px`);
+      block.style.setProperty('--side-top', `${sideTop}px`);
+      block.style.setProperty('--side-w', `${sideW}px`);
+      block.style.setProperty('--side-h', `${sideH}px`);
+      const eyelet = block.querySelector('.block-eyelet');
+      if(eyelet){
+        eyelet.style.left = `${Math.round((spec.w - 12) / 2)}px`;
+      }
+    }
+
+    function trackTimeout(fn, ms){
+      const id = setTimeout(()=>{ state.timers.delete(id); fn(); }, ms);
+      state.timers.add(id);
+      return id;
+    }
+    function clearAllTimers(){
+      for(const id of state.timers) clearTimeout(id);
+      state.timers.clear();
+    }
+
+    function showToast(msg){
+      toastEl.textContent = msg || '请继续尝试';
+      toastEl.classList.add('show');
+      clearTimeout(showToast.t);
+      showToast.t = setTimeout(()=>toastEl.classList.remove('show'), 1400);
+    }
+
+    function showCheck(){
+      checkmarkEl.classList.add('active');
+      clearTimeout(showCheck.t);
+      showCheck.t = setTimeout(()=>checkmarkEl.classList.remove('active'), 520);
+    }
+
+    function setStatus(msg){
+      statusTag.textContent = `状态：${msg}`;
+    }
+
+    function syncModeTag(){
+      modeTag.textContent = `模式：${state.autoPlaying ? '自动演示' : (state.freeMode ? '自由' : '引导')}`;
+    }
+
+    function syncInteractiveButtons(){
+      autoDemoBtn.textContent = state.autoPlaying ? '退出自动演示' : '自动演示';
+      autoDemoBtn.disabled = !state.autoPlaying && state.freeMode;
+      recordBtn.disabled = state.autoPlaying;
+      liftBtn.disabled = state.autoPlaying;
+      analyzeBtn.disabled = state.autoPlaying;
+      clearBtn.disabled = state.autoPlaying;
+      resetBtn.disabled = state.autoPlaying;
+      freeBtn.disabled = state.autoPlaying;
+    }
+
+    function currentStageStatus(){
+      if(state.currentTask === 0) return '清水 20 mL';
+      if(state.currentTask === 1) return '清水 ≥40 mL';
+      if(state.currentTask === 2) return '盐水约 40 mL';
+      if(state.currentTask === 3) return '等待分析';
+      return '待操作';
+    }
+
+    function flashHintLamp(){
+      if(!hintLampBtn) return;
+      hintLampBtn.classList.remove('flash');
+      void hintLampBtn.offsetWidth;
+      hintLampBtn.classList.add('flash');
+      clearTimeout(flashHintLamp.t);
+      flashHintLamp.t = setTimeout(()=>hintLampBtn.classList.remove('flash'), 900);
+    }
+
+    function syncHintLamp(){
+      if(!hintLampWrap) return;
+      hintLampWrap.classList.toggle('open', !!state.hintOpen);
+      const task = tasks[state.currentTask] || tasks[0];
+      let detail = task.hint;
+      if(state.freeMode){
+        detail = '自由模式下可切换 20/40/60 mL 金属块，并拖动弹簧测力计，让金属块进入清水或盐水，对比浮力变化。';
+      }else if(state.currentTask === 1){
+        detail = '此步只改变浸入体积，液体仍然保持清水。可换成更大体积块后再浸入。';
+      }else if(state.currentTask === 2){
+        detail = '此步要控制浸入体积与清水组相近，再比较清水和盐水的浮力差异。';
+      }else if(state.currentTask === 3){
+        detail = '分析时要同时说明体积效应和液体密度效应，缺一不可。';
+      }
+      hintDetail.textContent = detail.replace(/^提示：/, '');
+      if(state.analysisOk){
+        hintThought.innerHTML = '你已经验证：<b>浸入体积越大，浮力越大；液体密度越大，浮力越大</b>。';
+      }else{
+        hintThought.innerHTML = '本实验用控制变量法：先只改变 <b>浸入液体中的体积</b>，再只改变 <b>液体密度</b>，其余条件保持不变。';
+      }
+    }
+
+    function warnCurrentStep(msg){
+      if(state.completed) return;
+      state.warningStep = state.currentTask;
+      updateDots();
+      setStatus('当前步骤未完成');
+      showToast(msg || '请先完成当前步骤');
+      flashHintLamp();
+    }
+
+    function updateBadge(){
+      dataNotice.textContent = String(state.unseenRecordCount);
+      dataNotice.classList.toggle('hidden', state.unseenRecordCount <= 0);
+    }
+    function clearBadge(){
+      state.unseenRecordCount = 0;
+      updateBadge();
+    }
+
+    function initDots(){
+      dotsEl.innerHTML = '';
+      for(let i=0;i<tasks.length;i++){
+        const d = document.createElement('span');
+        d.className = 'dot';
+        dotsEl.appendChild(d);
+      }
+    }
+    function updateDots(){
+      [...dotsEl.children].forEach((d,i)=>{
+        const isWarning = i===state.warningStep && !state.completed && !state.freeMode;
+        d.classList.toggle('warning', isWarning);
+        d.classList.toggle('active', i===state.currentTask && !state.completed && !isWarning);
+        d.classList.toggle('done', i<state.currentTask || state.completed);
+      });
+    }
+
+    function setStepUI(i){
+      const idx = clamp(i,0,tasks.length-1);
+      state.currentTask = idx;
+      taskStepEl.textContent = `步骤 ${idx+1} / ${tasks.length}`;
+      taskTextEl.innerHTML = tasks[idx].text;
+      taskHintEl.textContent = tasks[idx].hint;
+      updateDots();
+      syncHintLamp();
+      if(!state.autoPlaying && !state.freeMode && !state.completed){
+        setStatus(currentStageStatus());
+      }
+    }
+
+    function setFreeMode(on){
+      state.freeMode = !!on;
+      syncModeTag();
+      freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+      syncInteractiveButtons();
+      if(state.freeMode){
+        taskCard.style.opacity = '.74';
+        taskCard.style.filter = 'saturate(.8)';
+        setStatus('自由探索');
+      }else{
+        taskCard.style.opacity = '1';
+        taskCard.style.filter = 'none';
+        recalcProgress();
+        setStatus(currentStageStatus());
+      }
+      syncHintLamp();
+    }
+
+    function tryPassStep(showFailToast=true){
+      if(state.freeMode || state.autoPlaying || state.completed || state.successCooldown) return false;
+      const current = tasks[state.currentTask];
+      if(!current || !current.check(state)){
+        if(showFailToast){
+          if(state.currentTask === 0) warnCurrentStep('步骤1要求：先把 20 mL 金属块浸入清水并记录。');
+          else if(state.currentTask === 1) warnCurrentStep('步骤2要求：仍在清水中，把浸入体积增大到 40 mL 或以上后再记录。');
+          else if(state.currentTask === 2) warnCurrentStep('步骤3要求：改到盐水中，并保持排开体积约 40 mL 再记录。');
+          else warnCurrentStep('请先完成分析后再结束实验。');
+        }
+        return false;
+      }
+      state.successCooldown = true;
+      state.warningStep = -1;
+      updateDots();
+      showCheck();
+      trackTimeout(()=>{
+        if(state.currentTask < tasks.length-1){
+          setStepUI(state.currentTask + 1);
+        }else{
+          finishLab();
+        }
+        state.successCooldown = false;
+      }, 420);
+      return true;
+    }
+
+    function recalcProgress(){
+      if(state.completed || state.freeMode) return;
+      let idx = 0;
+      while(idx < tasks.length && tasks[idx].check(state)) idx += 1;
+      if(state.warningStep > -1 && idx > state.warningStep){
+        state.warningStep = -1;
+      }
+      if(idx >= tasks.length){
+        finishLab();
+      }else{
+        setStepUI(idx);
+      }
+    }
+
+    function finishLab(){
+      if(state.completed) return;
+      state.completed = true;
+      state.currentTask = tasks.length-1;
+      setStatus('挑战完成');
+      updateDots();
+      doneMaskEl.style.display = 'flex';
+    }
+
+    function buildScales(){
+      [beakerWater, beakerSalt].forEach((b)=>{
+        const scale = b.querySelector('.beaker-scale');
+        scale.innerHTML = '';
+        for(let i=0;i<=8;i++){
+          const y = i * (100/8);
+          const t = document.createElement('div');
+          t.className = `tick ${i%2===0?'big':''}`;
+          t.style.top = `${y}%`;
+          scale.appendChild(t);
+        }
+      });
+    }
+
+    function layoutApparatus(){
+      const lab = labArea.getBoundingClientRect();
+      const W = lab.width;
+      const H = lab.height;
+      const pad = W < 430 ? 10 : 18;
+      const benchH = 76;
+      const beakerHBase = W < 430 ? 220 : (W < 760 ? 274 : 312);
+      const maxBeakerH = Math.max(180, H - benchH - 166);
+      const beakerH = Math.min(beakerHBase, maxBeakerH);
+      const beakerW = Math.round(beakerH * 0.66);
+      const bottom = Math.max(40, benchH - 28);
+
+      [beakerWater, beakerSalt].forEach((el)=>{
+        el.style.width = `${beakerW}px`;
+        el.style.height = `${beakerH}px`;
+        el.style.bottom = `${bottom}px`;
+        el.style.top = 'auto';
+      });
+
+      const waterX = pad;
+      const saltX = W - beakerW - pad;
+      beakerWater.style.left = `${waterX}px`;
+      beakerSalt.style.left = `${saltX}px`;
+
+      const waterCenterX = waterX + beakerW / 2;
+      const saltCenterX = saltX + beakerW / 2;
+      state.homeScaleX = Math.round((waterCenterX + saltCenterX) / 2);
+      state.minScaleX = Math.round(pad + 56);
+      state.maxScaleX = Math.round(W - pad - 56);
+      if(!state.scaleCenterX){
+        state.scaleCenterX = state.homeScaleX;
+      }else{
+        state.scaleCenterX = clamp(state.scaleCenterX, state.minScaleX, state.maxScaleX);
+      }
+
+      const liquidTop = getReferenceLiquidTop();
+      const spec = getBlockSpec();
+      const preferredBlockTop = liquidTop - spec.h - AIR_CLEARANCE_ABOVE_WATER;
+      state.homeScaleTopY = Math.round(scaleTopForBlockTop(preferredBlockTop, state.homeScaleX));
+      state.minScaleTopY = state.homeScaleTopY;
+      state.maxScaleTopY = Math.round(scaleTopForBlockTop(liquidTop + 14, state.scaleCenterX));
+      state.scaleTopY = clamp(state.scaleTopY || state.homeScaleTopY, state.minScaleTopY, state.maxScaleTopY);
+
+      springScale.style.left = `${state.scaleCenterX}px`;
+      springScale.style.top = `${state.scaleTopY}px`;
+
+      if(W < 560){
+        blockRack.style.transform = 'translateX(-50%) scale(.86)';
+      }else if(W < 760){
+        blockRack.style.transform = 'translateX(-50%) scale(.94)';
+      }else{
+        blockRack.style.transform = 'translateX(-50%)';
+      }
+
+      buildScaleGuide();
+    }
+
+    function getReferenceLiquidTop(){
+      const labRect = labArea.getBoundingClientRect();
+      const liquidRect = beakerWater.querySelector('.liquid').getBoundingClientRect();
+      return liquidRect.top - labRect.top + 3;
+    }
+
+    function getHookDropForApparent(apparentN){
+      const loadRatio = clamp(apparentN / state.airWeightN, 0, 1);
+      return 8 + loadRatio * 24;
+    }
+
+    function getBlockLeftForScaleX(scaleCenterX){
+      const spec = getBlockSpec();
+      return scaleCenterX - spec.w / 2;
+    }
+
+    function setSelectedVolume(vol){
+      const v = clamp(Number(vol)||20, 20, 60);
+      state.selectedVolumeMl = v;
+      blockVol.textContent = `${v} mL`;
+      document.querySelectorAll('.vol-btn').forEach((btn)=>{
+        btn.classList.toggle('active', Number(btn.dataset.vol)===v);
+      });
+      applyBlockGeometry(getBlockSpec(v));
+      updatePhysics();
+    }
+
+    function setScalePos(scaleX, scaleTopY, opts = {}){
+      const { snapY = false } = opts;
+      state.scaleCenterX = clamp(scaleX, state.minScaleX, state.maxScaleX);
+      state.scaleTopY = clamp(scaleTopY, state.minScaleTopY, state.maxScaleTopY);
+      if(snapY){
+        const solved = solveSystemGeometry(state.scaleTopY, state.scaleCenterX);
+        state.scaleTopY = clamp(scaleTopForBlockTop(solved.blockTop, state.scaleCenterX), state.minScaleTopY, state.maxScaleTopY);
+      }
+      updatePhysics();
+    }
+
+    function liftToAir(announce=true){
+      setScalePos(state.homeScaleX, state.homeScaleTopY);
+      if(announce) showToast('已提起到空气中');
+    }
+
+    function updateStringLine(hookY){
+      const spec = getBlockSpec();
+      const anchorX = state.blockLeft + spec.w / 2;
+      stringEl.style.left = `${anchorX}px`;
+      stringEl.style.top = `${hookY}px`;
+      stringEl.style.height = `${FIXED_STRING_LENGTH}px`;
+    }
+
+    function getBeakerInfo(el, key){
+      const labRect = labArea.getBoundingClientRect();
+      const wrapRect = el.getBoundingClientRect();
+      const liquidRect = el.querySelector('.liquid').getBoundingClientRect();
+      return {
+        key,
+        innerLeft: wrapRect.left - labRect.left + 14,
+        innerRight: wrapRect.right - labRect.left - 14,
+        liquidTop: liquidRect.top - labRect.top + 3,
+        bottom: wrapRect.bottom - labRect.top - 8
+      };
+    }
+
+    function computeImmersion(blockLeft, blockTop){
+      const spec = getBlockSpec();
+      const centerX = blockLeft + spec.w / 2;
+      const blockBottom = blockTop + spec.h;
+
+      const infos = [
+        getBeakerInfo(beakerWater, 'water'),
+        getBeakerInfo(beakerSalt, 'salt')
+      ];
+
+      let chosen = null;
+      for(const info of infos){
+        if(centerX < info.innerLeft || centerX > info.innerRight) continue;
+        if(blockTop > info.bottom || blockBottom < info.liquidTop) continue;
+        const immersionPx = clamp(blockBottom - info.liquidTop, 0, spec.h);
+        const ratio = immersionPx / spec.h;
+        if(!chosen || ratio > chosen.ratio){
+          chosen = { key:info.key, ratio };
+        }
+      }
+
+      if(!chosen){
+        return {
+          activeLiquid:null,
+          immersionRatio:0,
+          displacedMl:0,
+          buoyancyN:0,
+          apparentN:state.airWeightN
+        };
+      }else{
+        const immersionRatio = clamp(chosen.ratio, 0, 1);
+        const displacedMl = round(state.selectedVolumeMl * immersionRatio, 1);
+        const rho = LIQUIDS[chosen.key].rho;
+        const buoyancyN = round(rho * 9.8 * displacedMl * 1e-6, 3);
+        return {
+          activeLiquid:chosen.key,
+          immersionRatio,
+          displacedMl,
+          buoyancyN,
+          apparentN:round(clamp(state.airWeightN - buoyancyN, 0, 9), 3)
+        };
+      }
+    }
+
+    function solveSystemGeometry(scaleTopY = state.scaleTopY, scaleCenterX = state.scaleCenterX){
+      let apparentN = state.apparentN || state.airWeightN;
+      let hookDrop = getHookDropForApparent(apparentN);
+      let blockTop = scaleTopY + HOOK_BASE_OFFSET + hookDrop + FIXED_STRING_LENGTH - BLOCK_EYELET_OFFSET_Y;
+      const blockLeft = getBlockLeftForScaleX(scaleCenterX);
+      let immersion = computeImmersion(blockLeft, blockTop);
+      for(let i=0;i<4;i+=1){
+        apparentN = immersion.apparentN;
+        hookDrop = getHookDropForApparent(apparentN);
+        blockTop = scaleTopY + HOOK_BASE_OFFSET + hookDrop + FIXED_STRING_LENGTH - BLOCK_EYELET_OFFSET_Y;
+        immersion = computeImmersion(blockLeft, blockTop);
+      }
+      const finalHookDrop = getHookDropForApparent(immersion.apparentN);
+      return {
+        blockLeft,
+        blockTop,
+        hookDrop:finalHookDrop,
+        hookAnchorY:scaleTopY + HOOK_BASE_OFFSET + finalHookDrop,
+        loadRatio:clamp(immersion.apparentN / state.airWeightN, 0, 1),
+        ...immersion
+      };
+    }
+
+    function scaleTopForBlockTop(blockTop, scaleCenterX = state.scaleCenterX){
+      const blockLeft = getBlockLeftForScaleX(scaleCenterX);
+      const immersion = computeImmersion(blockLeft, blockTop);
+      const hookDrop = getHookDropForApparent(immersion.apparentN);
+      return blockTop - HOOK_BASE_OFFSET - hookDrop - FIXED_STRING_LENGTH + BLOCK_EYELET_OFFSET_Y;
+    }
+
+    function buildScaleGuide(){
+      if(!scaleGuide) return;
+      scaleGuide.innerHTML = '';
+      const guideHeight = scaleGuide.clientHeight || 118;
+      for(let n=0; n<=SCALE_MAX_N; n+=0.5){
+        const y = (n / SCALE_MAX_N) * guideHeight;
+        const mark = document.createElement('div');
+        const isMajor = Number.isInteger(n);
+        mark.className = `guide-mark ${isMajor ? 'major' : 'minor'}`;
+        mark.style.top = `${y}px`;
+        scaleGuide.appendChild(mark);
+        if(isMajor){
+          const label = document.createElement('div');
+          label.className = 'guide-label';
+          label.style.top = `${y}px`;
+          label.textContent = `${n.toFixed(0)}`;
+          scaleGuide.appendChild(label);
+        }
+      }
+    }
+
+    function updateReadoutUI(){
+      const solved = solveSystemGeometry(state.scaleTopY, state.scaleCenterX);
+      state.blockLeft = solved.blockLeft;
+      state.blockTop = solved.blockTop;
+      state.activeLiquid = solved.activeLiquid;
+      state.immersionRatio = solved.immersionRatio;
+      state.displacedMl = solved.displacedMl;
+      state.buoyancyN = solved.buoyancyN;
+      state.apparentN = solved.apparentN;
+      applyBlockGeometry(getBlockSpec());
+
+      springScale.style.left = `${state.scaleCenterX}px`;
+      springScale.style.top = `${state.scaleTopY}px`;
+      block.style.left = `${state.blockLeft}px`;
+      block.style.top = `${state.blockTop}px`;
+
+      scaleRead.textContent = `${state.apparentN.toFixed(3)}`;
+      if(scalePointer){
+        const pointerTop = 6 + (clamp(state.apparentN, 0, SCALE_MAX_N) / SCALE_MAX_N) * (scaleGuide.clientHeight || 118);
+        scalePointer.style.top = `${pointerTop}px`;
+      }
+      scaleHookAssy.style.transform = `translateX(-50%) translateY(${solved.hookDrop}px)`;
+      hookLink.style.height = `${HOOK_LINK_BASE_HEIGHT + solved.hookDrop}px`;
+      updateStringLine(solved.hookAnchorY);
+
+      beakerWater.classList.toggle('active', state.activeLiquid==='water' && state.immersionRatio>0.05);
+      beakerSalt.classList.toggle('active', state.activeLiquid==='salt' && state.immersionRatio>0.05);
+    }
+
+    function updatePhysics(){
+      updateReadoutUI();
+    }
+
+    function getGuidedRecordBlockReason(){
+      if(state.freeMode) return '';
+      if(state.currentTask === 0){
+        if(state.activeLiquid !== 'water' || state.immersionRatio < 0.85 || Math.abs(state.displacedMl - 20) > 3){
+          return '步骤1要求：先把 20 mL 金属块浸入清水并记录。';
+        }
+      }else if(state.currentTask === 1){
+        if(state.activeLiquid !== 'water' || state.immersionRatio < 0.85 || state.displacedMl < 40){
+          return '步骤2要求：仍在清水中，把浸入体积增大到 40 mL 或以上后再记录。';
+        }
+      }else if(state.currentTask === 2){
+        if(state.activeLiquid !== 'salt' || state.immersionRatio < 0.85 || Math.abs(state.displacedMl - 40) > 4){
+          return '步骤3要求：改到盐水中，并保持排开体积约 40 mL 再记录。';
+        }
+      }else if(state.currentTask === 3){
+        return '请先完成分析后再结束实验。';
+      }
+      return '';
+    }
+
+    function addRecord(){
+      if(!state.activeLiquid || state.displacedMl < 5){
+        if(!state.freeMode) warnCurrentStep('请先把金属块浸入当前步骤要求的烧杯液体中，再记录数据。');
+        else showToast('请先拖动弹簧测力计，让金属块浸入烧杯液体中再记录');
+        return;
+      }
+      const guidedBlockReason = getGuidedRecordBlockReason();
+      if(guidedBlockReason){
+        warnCurrentStep(guidedBlockReason);
+        return;
+      }
+      const rec = {
+        id:`${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
+        liquid:state.activeLiquid,
+        liquidName:LIQUIDS[state.activeLiquid].name,
+        volume:round(state.displacedMl,1),
+        ratio:round(state.immersionRatio,2),
+        buoyancy:state.buoyancyN,
+        apparent:state.apparentN
+      };
+      state.records.push(rec);
+      if(state.records.length > 30) state.records.shift();
+      renderRecords();
+      scheduleDraw();
+      if(state.dataCollapsed){
+        state.unseenRecordCount += 1;
+        updateBadge();
+      }
+      showToast('已记录一组实验数据');
+      tryPassStep(false);
+    }
+
+    function clearData(announce=true){
+      state.records = [];
+      state.unseenRecordCount = 0;
+      state.analysisOk = false;
+      analysisText.classList.remove('ok');
+      analysisText.textContent = '暂无。请先拖动弹簧测力计，让金属块进入液体并记录数据，再点击“分析结论”。';
+      renderRecords();
+      updateReadoutUI();
+      scheduleDraw();
+      clearBadge();
+      if(announce) showToast('已清空数据');
+    }
+
+    function renderRecords(){
+      recordBody.innerHTML = '';
+      if(!state.records.length){
+        recordBody.innerHTML = '<tr><td colspan="4" style="color:#9db4d6;">暂无记录</td></tr>';
+        return;
+      }
+      const rows = [...state.records].slice(-12).reverse();
+      rows.forEach((r)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.liquidName}</td><td>${r.volume.toFixed(1)}</td><td>${r.buoyancy.toFixed(3)}</td><td>${r.apparent.toFixed(3)}</td>`;
+        recordBody.appendChild(tr);
+      });
+    }
+
+    function analyzeConclusion(advance=true){
+      if(state.records.length < 3){
+        state.analysisOk = false;
+        analysisText.classList.remove('ok');
+        analysisText.textContent = '数据不足：请至少记录3组（清水低体积、清水高体积、盐水同体积）后再分析。';
+        if(advance){
+          if(!state.freeMode) warnCurrentStep('请先补齐清水低体积、清水高体积、盐水同体积三组数据。');
+          else showToast('请先补充实验数据');
+        }
+        return;
+      }
+
+      const water = state.records.filter(r=>r.liquid==='water');
+      const salt = state.records.filter(r=>r.liquid==='salt');
+
+      const wMin = water.reduce((m,r)=>!m||r.volume<m.volume?r:m, null);
+      const wMax = water.reduce((m,r)=>!m||r.volume>m.volume?r:m, null);
+      const volumeEffect = !!(wMin && wMax && (wMax.volume - wMin.volume >= 15) && (wMax.buoyancy - wMin.buoyancy >= 0.09));
+
+      const near40Water = water.filter(r=>Math.abs(r.volume-40)<=6);
+      const near40Salt = salt.filter(r=>Math.abs(r.volume-40)<=6);
+      const avg = (arr, key)=>arr.reduce((s,r)=>s+r[key],0)/arr.length;
+      const densityEffect = near40Water.length>0 && near40Salt.length>0 && (avg(near40Salt, 'buoyancy') - avg(near40Water, 'buoyancy') > 0.02);
+
+      state.analysisOk = volumeEffect && densityEffect;
+      if(state.analysisOk){
+        analysisText.classList.add('ok');
+        analysisText.innerHTML = [
+          `结论成立：<b>${FORMULA_FORCE_HTML} 与液体密度 ρ、排开液体体积 ${FORMULA_VOLUME_HTML} 有关</b>。`,
+          `体积效应：清水中从 ${wMin.volume.toFixed(1)}mL 到 ${wMax.volume.toFixed(1)}mL，${FORMULA_FORCE_HTML} 增大 ${ (wMax.buoyancy-wMin.buoyancy).toFixed(3) }N。`,
+          `密度效应：约40mL时，盐水浮力平均值大于清水。`
+        ].join('<br />');
+        showToast('分析完成：结论正确');
+      }else{
+        analysisText.classList.remove('ok');
+        const reason = [];
+        if(!volumeEffect) reason.push('缺少同液体不同体积的明显对比');
+        if(!densityEffect) reason.push('缺少同体积不同液体的有效对比');
+        analysisText.textContent = `暂不能得出完整结论：${reason.join('；')}。请补充对应数据后重试。`;
+        if(advance) showToast('请补充数据后再分析');
+      }
+
+      if(advance) tryPassStep(false);
+    }
+
+    function drawChart(){
+      const ctx = chart.getContext('2d');
+      const w = chart.clientWidth;
+      const h = chart.clientHeight;
+      const dpr = window.devicePixelRatio || 1;
+      chart.width = Math.floor(w * dpr);
+      chart.height = Math.floor(h * dpr);
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+
+      ctx.clearRect(0,0,w,h);
+      ctx.fillStyle = 'rgba(255,255,255,.05)';
+      ctx.fillRect(0,0,w,h);
+
+      const left = 44;
+      const right = 12;
+      const top = 14;
+      const bottom = 28;
+      const pw = w - left - right;
+      const ph = h - top - bottom;
+
+      ctx.strokeStyle = 'rgba(255,255,255,.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(left, top);
+      ctx.lineTo(left, top+ph);
+      ctx.lineTo(left+pw, top+ph);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(230,240,255,.85)';
+      ctx.font = '11px -apple-system, BlinkMacSystemFont, Segoe UI, Arial';
+      ctx.fillText('V排(mL)', left+pw-42, h-8);
+      ctx.fillText('F浮(N)', 8, top+10);
+
+      if(!state.records.length){
+        ctx.fillStyle = 'rgba(180,200,225,.75)';
+        ctx.fillText('暂无数据', left+pw/2-18, top+ph/2);
+        return;
+      }
+
+      const xMax = 60;
+      const yMaxRec = state.records.reduce((m,r)=>Math.max(m, r.buoyancy), 0.35);
+      const yMax = Math.max(0.45, yMaxRec*1.25);
+      const toX = (v)=>left + (v/xMax)*pw;
+      const toY = (f)=>top + ph - (f/yMax)*ph;
+
+      for(let i=0;i<=6;i++){
+        const x = left + (i/6)*pw;
+        const v = i*10;
+        ctx.strokeStyle = 'rgba(255,255,255,.08)';
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, top+ph);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(210,225,245,.65)';
+        ctx.fillText(String(v), x-6, top+ph+14);
+      }
+      for(let i=0;i<=4;i++){
+        const y = top + ph - (i/4)*ph;
+        const f = (yMax*i/4).toFixed(2);
+        ctx.strokeStyle = 'rgba(255,255,255,.08)';
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(left+pw, y);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(210,225,245,.65)';
+        ctx.fillText(f, 8, y+3);
+      }
+
+      const colorMap = { water:'#63adff', salt:'#9cd9ff' };
+      ['water','salt'].forEach((k)=>{
+        const arr = state.records.filter(r=>r.liquid===k).sort((a,b)=>a.volume-b.volume);
+        if(!arr.length) return;
+
+        ctx.fillStyle = colorMap[k];
+        arr.forEach((p)=>{
+          ctx.beginPath();
+          ctx.arc(toX(p.volume), toY(p.buoyancy), 3.6, 0, Math.PI*2);
+          ctx.fill();
+        });
+
+        if(arr.length >= 2){
+          ctx.strokeStyle = colorMap[k];
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          arr.forEach((p, idx)=>{
+            const x = toX(p.volume), y = toY(p.buoyancy);
+            if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+          });
+          ctx.stroke();
+        }
+      });
+
+      ctx.fillStyle = colorMap.water;
+      ctx.fillRect(left+8, top+8, 10, 4);
+      ctx.fillStyle = '#d9e8ff';
+      ctx.fillText('清水', left+24, top+12);
+      ctx.fillStyle = colorMap.salt;
+      ctx.fillRect(left+66, top+8, 10, 4);
+      ctx.fillStyle = '#d9e8ff';
+      ctx.fillText('盐水', left+82, top+12);
+    }
+
+    function scheduleDraw(){
+      if(state.drawRAF) return;
+      state.drawRAF = requestAnimationFrame(()=>{
+        state.drawRAF = 0;
+        drawChart();
+      });
+    }
+
+    function bringToFront(which){
+      state.zTop += 1;
+      if(which==='control') controlDock.style.zIndex = state.zTop;
+      if(which==='data') dataDock.style.zIndex = state.zTop;
+    }
+
+    function setDockPos(el, x, y){
+      const stage = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const pad = 10;
+      const nx = clamp(x, pad, stage.width - r.width - pad);
+      const ny = clamp(y, pad, stage.height - r.height - pad);
+      el.style.left = `${nx}px`;
+      el.style.top = `${ny}px`;
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    }
+
+    function snapDockToEdges(el){
+      const stage = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const x = parseFloat(el.style.left || '10');
+      const y = parseFloat(el.style.top || '10');
+      const pad = 10;
+      const snap = 16;
+
+      let nx = x;
+      let ny = y;
+      if(Math.abs(x - pad) < snap) nx = pad;
+      if(Math.abs((x+r.width) - (stage.width-pad)) < snap) nx = stage.width - pad - r.width;
+      if(Math.abs(y - pad) < snap) ny = pad;
+      if(Math.abs((y+r.height) - (stage.height-pad)) < snap) ny = stage.height - pad - r.height;
+      setDockPos(el, nx, ny);
+    }
+
+    function makeDockDraggable(el, head, kind){
+      let dragging = false;
+      let offX = 0;
+      let offY = 0;
+
+      head.addEventListener('pointerdown', (e)=>{
+        if(e.target.closest('button')) return;
+        dragging = true;
+        el.classList.add('dragging');
+        bringToFront(kind);
+        const r = el.getBoundingClientRect();
+        offX = e.clientX - r.left;
+        offY = e.clientY - r.top;
+        state.dockMoved[kind] = true;
+        head.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+
+      head.addEventListener('pointermove', (e)=>{
+        if(!dragging) return;
+        const stage = stageEl.getBoundingClientRect();
+        const x = e.clientX - stage.left - offX;
+        const y = e.clientY - stage.top - offY;
+        setDockPos(el, x, y);
+        e.preventDefault();
+      });
+
+      const end = ()=>{
+        if(!dragging) return;
+        dragging = false;
+        el.classList.remove('dragging');
+        snapDockToEdges(el);
+      };
+      head.addEventListener('pointerup', end);
+      head.addEventListener('pointercancel', end);
+    }
+
+    function setControlCollapsed(on){
+      state.controlCollapsed = !!on;
+      controlBody.classList.toggle('collapsed', state.controlCollapsed);
+      controlToggleBtn.textContent = state.controlCollapsed ? '展开' : '收起';
+      bringToFront('control');
+    }
+    function setDataCollapsed(on){
+      state.dataCollapsed = !!on;
+      dataBody.classList.toggle('collapsed', state.dataCollapsed);
+      dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+      bringToFront('data');
+      if(!state.dataCollapsed){
+        clearBadge();
+        scheduleDraw();
+      }
+      requestAnimationFrame(()=>initDockPositions(true));
+    }
+
+    function initDockPositions(force=false){
+      const stage = stageEl.getBoundingClientRect();
+      const cr = controlDock.getBoundingClientRect();
+      const dr = dataDock.getBoundingClientRect();
+      const pad = 10;
+
+      const rightXControl = stage.width - cr.width - pad;
+      const rightXData = stage.width - dr.width - pad;
+      if(stage.width <= 760){
+        if(force || !state.dockMoved.control) setDockPos(controlDock, rightXControl, pad);
+        if(force || !state.dockMoved.data) setDockPos(dataDock, rightXData, pad + cr.height + 10);
+      }else{
+        if(force || !state.dockMoved.control) setDockPos(controlDock, rightXControl, pad);
+        if(force || !state.dockMoved.data) setDockPos(dataDock, rightXData, pad + cr.height + 10);
+      }
+    }
+
+    function bindSystemDrag(){
+      let pointerId = null;
+      let offsetX = 0;
+      let offsetY = 0;
+      let dragEl = null;
+      const handles = [springScale, block];
+
+      handles.forEach((el)=>{
+        el.addEventListener('pointerdown', (e)=>{
+          if(state.autoPlaying) return;
+          const lab = labArea.getBoundingClientRect();
+          pointerId = e.pointerId;
+          dragEl = el;
+          offsetX = e.clientX - lab.left - state.scaleCenterX;
+          offsetY = e.clientY - lab.top - state.scaleTopY;
+          state.draggingSystem = true;
+          springScale.classList.add('dragging');
+          block.classList.add('dragging');
+          try { el.setPointerCapture(e.pointerId); } catch (err) {}
+          e.preventDefault();
+        });
+
+        el.addEventListener('pointermove', (e)=>{
+          if(!state.draggingSystem || e.pointerId !== pointerId) return;
+          const lab = labArea.getBoundingClientRect();
+          const nextX = e.clientX - lab.left - offsetX;
+          const nextTop = e.clientY - lab.top - offsetY;
+          setScalePos(nextX, nextTop);
+          e.preventDefault();
+        });
+
+        const end = (e)=>{
+          if(!state.draggingSystem || e.pointerId !== pointerId) return;
+          state.draggingSystem = false;
+          springScale.classList.remove('dragging');
+          block.classList.remove('dragging');
+          if(dragEl && e && e.pointerId != null){
+            try { dragEl.releasePointerCapture(e.pointerId); } catch (err) {}
+          }
+          dragEl = null;
+          pointerId = null;
+        };
+        el.addEventListener('pointerup', end);
+        el.addEventListener('pointercancel', end);
+      });
+    }
+
+    async function animateSystemTo(scaleX, scaleTopY, duration=520, guardRunId=null){
+      const sx = state.scaleCenterX;
+      const sy = state.scaleTopY;
+      const tx = scaleX;
+      const ty = scaleTopY;
+      const t0 = performance.now();
+
+      return new Promise((resolve)=>{
+        function step(now){
+          if(guardRunId !== null && (!state.autoPlaying || guardRunId !== state.autoRunId)){
+            resolve();
+            return;
+          }
+          const p = clamp((now - t0) / duration, 0, 1);
+          const e = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2)/2;
+          setScalePos(sx + (tx-sx)*e, sy + (ty-sy)*e);
+          if(p < 1){
+            requestAnimationFrame(step);
+          }else{
+            resolve();
+          }
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    function getImmerseTarget(liquidKey){
+      const info = liquidKey==='water' ? getBeakerInfo(beakerWater, 'water') : getBeakerInfo(beakerSalt, 'salt');
+      const scaleX = (info.innerLeft + info.innerRight) / 2;
+      const spec = getBlockSpec();
+      const blockTop = info.liquidTop + Math.max(10, Math.round(spec.h * 0.18));
+      const scaleTop = clamp(scaleTopForBlockTop(blockTop, scaleX), state.minScaleTopY, state.maxScaleTopY);
+      return {scaleX, scaleTop};
+    }
+
+    function cancelAutoDemo(announce=true){
+      if(!state.autoPlaying) return;
+      state.autoPlaying = false;
+      state.autoRunId += 1;
+      syncModeTag();
+      syncInteractiveButtons();
+      setStatus(state.completed ? '挑战完成' : (state.freeMode ? '自由探索' : currentStageStatus()));
+      if(announce) showToast('已退出自动演示');
+    }
+
+    async function autoDemo(){
+      if(state.autoPlaying){
+        cancelAutoDemo(true);
+        return;
+      }
+      if(state.freeMode) return;
+      const runId = ++state.autoRunId;
+      state.autoPlaying = true;
+      setFreeMode(false);
+      setControlCollapsed(false);
+      syncModeTag();
+      syncInteractiveButtons();
+
+      try{
+        const ensureActive = ()=>{
+          if(!state.autoPlaying || runId !== state.autoRunId){
+            throw new Error('auto-demo-cancelled');
+          }
+        };
+        const pause = async (ms)=>{
+          await sleep(ms);
+          ensureActive();
+        };
+
+        resetFlow(false);
+        recalcProgress();
+        setStatus('自动演示中');
+
+        showToast('步骤1：20mL金属块浸入清水');
+        await pause(850);
+        setSelectedVolume(20);
+        recalcProgress();
+        await pause(720);
+        const p1 = getImmerseTarget('water');
+        await animateSystemTo(p1.scaleX, p1.scaleTop, 1080, runId);
+        ensureActive();
+        await pause(900);
+        addRecord();
+        recalcProgress();
+        await pause(1200);
+
+        showToast('步骤2：更换40mL金属块，再浸入清水');
+        liftToAir(false);
+        await pause(820);
+        setSelectedVolume(40);
+        recalcProgress();
+        await pause(780);
+        const p2 = getImmerseTarget('water');
+        await animateSystemTo(p2.scaleX, p2.scaleTop, 1120, runId);
+        ensureActive();
+        await pause(900);
+        addRecord();
+        recalcProgress();
+        await pause(1200);
+
+        showToast('步骤3：保持40mL，改浸入盐水');
+        liftToAir(false);
+        await pause(760);
+        setSelectedVolume(40);
+        await pause(640);
+        const p3 = getImmerseTarget('salt');
+        await animateSystemTo(p3.scaleX, p3.scaleTop, 1280, runId);
+        ensureActive();
+        await pause(900);
+        addRecord();
+        recalcProgress();
+        await pause(1200);
+
+        showToast('步骤4：分析并得出结论');
+        await pause(780);
+        analyzeConclusion(false);
+        recalcProgress();
+      }catch(err){
+        if(err && err.message !== 'auto-demo-cancelled'){
+          console.error('[autoDemo] failed:', err);
+          showToast('自动演示失败，请重试');
+        }
+      }finally{
+        if(runId === state.autoRunId){
+          state.autoPlaying = false;
+          syncModeTag();
+          syncInteractiveButtons();
+          setStatus(state.completed ? '挑战完成' : (state.freeMode ? '自由探索' : currentStageStatus()));
+        }
+      }
+    }
+
+    function resetFlow(announce=true){
+      clearAllTimers();
+      if(state.drawRAF){
+        cancelAnimationFrame(state.drawRAF);
+        state.drawRAF = 0;
+      }
+
+      state.completed = false;
+      state.successCooldown = false;
+      state.warningStep = -1;
+      doneMaskEl.style.display = 'none';
+
+      layoutApparatus();
+      clearData(false);
+      setSelectedVolume(20);
+      setStepUI(0);
+      liftToAir(false);
+      updatePhysics();
+      scheduleDraw();
+      setStatus(state.freeMode ? '自由探索' : currentStageStatus());
+
+      if(announce) showToast('实验已重置');
+    }
+
+    const onResize = (()=>{
+      let t = 0;
+      return ()=>{
+        clearTimeout(t);
+        t = setTimeout(()=>{
+          layoutApparatus();
+          
+          if(!state.dockMoved.control || !state.dockMoved.data){
+            initDockPositions(false);
+          }
+          state.scaleCenterX = clamp(state.scaleCenterX || state.homeScaleX, state.minScaleX, state.maxScaleX);
+          snapDockToEdges(controlDock);
+          snapDockToEdges(dataDock);
+          updatePhysics();
+          scheduleDraw();
+        }, 130);
+      };
+    })();
+
+    function bindEvents(){
+      document.querySelectorAll('.vol-btn').forEach((btn)=>{
+        btn.addEventListener('click', ()=>{
+          if(state.autoPlaying) return;
+          setSelectedVolume(Number(btn.dataset.vol));
+          tryPassStep(false);
+        });
+      });
+
+      controlToggleBtn.addEventListener('click', ()=>setControlCollapsed(!state.controlCollapsed));
+      dataToggleBtn.addEventListener('click', ()=>setDataCollapsed(!state.dataCollapsed));
+
+      recordBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        addRecord();
+      });
+
+      liftBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        liftToAir(true);
+      });
+
+      analyzeBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        analyzeConclusion(true);
+      });
+
+      clearBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        clearData(true);
+      });
+
+      resetBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        resetFlow(true);
+      });
+
+      autoDemoBtn.addEventListener('click', autoDemo);
+
+      freeBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        setFreeMode(!state.freeMode);
+      });
+
+      hintLampBtn.addEventListener('click', ()=>{
+        state.hintOpen = !state.hintOpen;
+        syncHintLamp();
+      });
+
+      okBtn.addEventListener('click', ()=>{ doneMaskEl.style.display = 'none'; });
+
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
+      document.addEventListener('gesturestart', (e)=>e.preventDefault(), {passive:false});
+
+      controlDock.addEventListener('pointerdown', ()=>bringToFront('control'));
+      dataDock.addEventListener('pointerdown', ()=>bringToFront('data'));
+    }
+
+    function init(){
+      initDots();
+      buildScales();
+      layoutApparatus();
+      bindSystemDrag();
+      makeDockDraggable(controlDock, controlHead, 'control');
+      makeDockDraggable(dataDock, dataHead, 'data');
+      bindEvents();
+
+      setStepUI(0);
+      setFreeMode(false);
+      setControlCollapsed(false);
+      setDataCollapsed(true);
+
+      state.scaleCenterX = state.homeScaleX;
+      state.scaleTopY = state.homeScaleTopY;
+      updatePhysics();
+      setSelectedVolume(20);
+      renderRecords();
+
+      initDockPositions(true);
+      scheduleDraw();
+      setStatus(currentStageStatus());
+      syncHintLamp();
+    }
+
+    init();
+  </script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

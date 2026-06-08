@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>初中物理实验9｜比较不同材料的导热性（交互闯关版）</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+    --ink:#e9f2ff;
+    --panel-bg: rgba(12,16,26,0.74);
+    --line: rgba(255,255,255,0.12);
+    --shadow: 0 18px 48px rgba(0,0,0,0.55);
+    --zPanel: 38;
+    --zResults: 37;
+    --copper:#d98656;
+    --iron:#a1aab3;
+    --glass:#6ec4d4;
+    --heat:#ff5d4f;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    padding:10px;
+    background:#1a1a1a;
+    color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  #spectrum{
+    position:relative;
+    width:100%;
+    max-width:900px;
+    height:40px;
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:0 0 15px rgba(255,255,255,.15);
+    margin:0 0 12px;
+    background:#000;
+    flex-shrink:0;
+  }
+  #spectrum::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:linear-gradient(90deg,
+      #ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,
+      #ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000
+    );
+    background-size:200% 100%;
+    animation:flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow{0%{background-position:0 0;}100%{background-position:-100% 0;}}
+
+  .task-card{
+    width:100%;
+    max-width:900px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:12px 14px;
+    backdrop-filter:blur(6px);
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:10px;
+    align-items:center;
+    transition:opacity .2s, filter .2s;
+  }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:700; white-space:nowrap; }
+  .task-text{ line-height:1.55; }
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.25); outline:2px solid rgba(255,255,255,.12); }
+  .dot.active{ background:var(--warn); }
+  .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.5); }
+  .dot.warn{ background:var(--error); outline-color:rgba(255,107,107,.45); box-shadow:0 0 10px rgba(255,107,107,.42); }
+
+  #stage{
+    width:100%;
+    max-width:900px;
+    height:62vh;
+    max-height:620px;
+    min-height:520px;
+    margin-top:10px;
+    border-radius:12px;
+    position:relative;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.08);
+    background:#08111f;
+    box-shadow:0 10px 26px rgba(0,0,0,.35);
+    touch-action:none;
+    background-image:
+      radial-gradient(circle at 76% 22%, rgba(255,255,255,.06), transparent 32%),
+      radial-gradient(circle at 18% 82%, rgba(255,96,96,.06), transparent 42%);
+  }
+  .hud{
+    position:absolute;
+    left:10px;
+    top:10px;
+    z-index:30;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    pointer-events:none;
+  }
+  .tag{
+    display:inline-flex;
+    align-items:center;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(0,0,0,.34);
+    backdrop-filter:blur(8px);
+    color:#eaf2ff;
+    font-weight:900;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .tag.mode-auto{
+    border-color:rgba(61,220,151,.42);
+    color:#b8ffd6;
+    background:rgba(61,220,151,.14);
+  }
+
+  .lab-area{
+    position:absolute;
+    inset:54px 10px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.08);
+    overflow:hidden;
+    background:
+      linear-gradient(180deg, rgba(13,20,32,.96), rgba(7,11,18,.98)),
+      linear-gradient(90deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+  }
+  .board-grid{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size:28px 28px;
+    opacity:.4;
+  }
+  .bench{
+    position:absolute;
+    left:28px;
+    right:28px;
+    top:42px;
+    bottom:36px;
+    display:grid;
+    grid-template-columns:110px 1fr;
+    gap:18px;
+    align-items:center;
+  }
+  .heater-col{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:12px;
+    height:100%;
+  }
+  .heater-block{
+    width:76px;
+    height:270px;
+    border-radius:12px;
+    border:2px solid rgba(255,255,255,.16);
+    background:linear-gradient(180deg, #2f3440, #1c2129);
+    box-shadow:0 12px 24px rgba(0,0,0,.36);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:border-color .22s ease, box-shadow .22s ease, background .22s ease;
+    position:relative;
+    touch-action:none;
+  }
+  .heater-block.active{
+    border-color:#ff6b57;
+    box-shadow:0 0 28px rgba(255,94,73,.42), 0 12px 24px rgba(0,0,0,.36);
+    background:linear-gradient(180deg, #4a201e, #271615);
+  }
+  .heater-coil{
+    width:44px;
+    height:194px;
+    border-radius:8px;
+    background:repeating-linear-gradient(180deg, #505865, #505865 8px, #2f3440 8px, #2f3440 16px);
+    transition:filter .2s ease;
+  }
+  .heater-block.active .heater-coil{
+    background:repeating-linear-gradient(180deg, #ff665b, #ff665b 8px, #9b1a14 8px, #9b1a14 16px);
+    animation:heaterPulse .9s ease-in-out infinite alternate;
+  }
+  @keyframes heaterPulse{from{filter:brightness(1);}to{filter:brightness(1.25);}}
+  .heater-label{
+    padding:4px 12px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.35);
+    color:#d4e7ff;
+    font-size:12px;
+  }
+
+  .rods-col{
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    justify-content:space-around;
+    gap:16px;
+    height:100%;
+  }
+  .rod-row{
+    position:relative;
+    min-height:98px;
+    padding-top:8px;
+  }
+  .rod-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    color:#d6e5ff;
+    font-size:13px;
+    margin-bottom:8px;
+  }
+  .rod-result{
+    font-size:12px;
+    color:#9ff5c8;
+    opacity:.12;
+    transition:opacity .25s ease;
+  }
+  .rod-result.show{ opacity:1; }
+  .rod-track{
+    position:relative;
+    width:100%;
+    height:18px;
+    border-radius:999px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,.12);
+    background:#24303c;
+  }
+  .rod-track.copper{ background:linear-gradient(90deg, rgba(217,134,86,.36), rgba(125,77,53,.32)); }
+  .rod-track.iron{ background:linear-gradient(90deg, rgba(161,170,179,.36), rgba(87,96,105,.32)); }
+  .rod-track.glass{ background:linear-gradient(90deg, rgba(110,196,212,.30), rgba(57,103,113,.30)); }
+  .heat-layer{
+    position:absolute;
+    left:0;
+    top:0;
+    bottom:0;
+    width:0%;
+    background:linear-gradient(90deg, rgba(255,77,77,.92), rgba(255,165,80,.72) 70%, rgba(255,220,120,.08) 100%);
+    transition:width .08s linear;
+  }
+  .matchstick{
+    position:absolute;
+    top:40px;
+    width:8px;
+    height:30px;
+    border-radius:3px;
+    background:#f0f0f0;
+    box-shadow:1px 2px 4px rgba(0,0,0,.35);
+    transform-origin:top center;
+    transition:opacity .28s ease;
+  }
+  .matchstick::before{
+    content:"";
+    position:absolute;
+    top:-6px;
+    left:-3px;
+    width:14px;
+    height:14px;
+    border-radius:50%;
+    background:#f2d25f;
+    box-shadow:0 0 8px rgba(242,210,95,.35);
+  }
+  .matchstick.drop{ animation:dropFall .9s forwards ease-in; }
+  @keyframes dropFall{
+    0%{ transform:rotate(0deg) translateY(0); opacity:1; }
+    35%{ transform:rotate(15deg) translateY(16px); opacity:1; }
+    100%{ transform:rotate(48deg) translateY(160px); opacity:0; }
+  }
+
+  .quiz-card{
+    position:absolute;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
+    width:min(420px, calc(100% - 180px));
+    padding:14px 16px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(6,12,22,.90);
+    backdrop-filter:blur(10px);
+    box-shadow:0 18px 40px rgba(0,0,0,.42);
+    z-index:52;
+    display:none;
+  }
+  .quiz-card.show{ display:block; }
+  .quiz-title{
+    color:#eaf2ff;
+    font-size:13px;
+    font-weight:900;
+    line-height:1.45;
+    margin-bottom:8px;
+  }
+  .quiz-actions{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .quiz-actions button{
+    flex:1 1 82px;
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    cursor:pointer;
+    font-weight:800;
+  }
+  .quiz-actions button.correct{ background:rgba(61,220,151,.92); color:#091910; border-color:rgba(61,220,151,.92); }
+  .quiz-actions button.wrong{ background:rgba(255,107,107,.92); border-color:rgba(255,107,107,.92); }
+
+  .effect-tag{
+    position:absolute;
+    left:12px;
+    bottom:48px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.42);
+    color:#e7f0ff;
+    font-size:12px;
+    z-index:12;
+    pointer-events:none;
+  }
+  .effect-dot{
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:var(--warn);
+    box-shadow:0 0 10px rgba(255,183,77,.42);
+  }
+  .lab-note{
+    position:absolute;
+    left:12px;
+    bottom:10px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.34);
+    color:#d6e5ff;
+    font-size:12px;
+    z-index:12;
+    pointer-events:none;
+  }
+
+  .dock{
+    position:absolute;
+    width:min(356px, 90%);
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    box-shadow:0 10px 24px rgba(0,0,0,.35);
+    backdrop-filter:blur(8px);
+    z-index:var(--zPanel);
+    user-select:none;
+  }
+  .resultsDock{ z-index:var(--zResults); }
+  .dockHead{
+    background:var(--panel-bg);
+    padding:10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    cursor:grab;
+    touch-action:none;
+  }
+  .dockHead:active{ cursor:grabbing; }
+  .dockTitle{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:800; color:#eaf2ff; }
+  .dockBtns{ display:flex; gap:8px; align-items:center; }
+  .iconBtn{
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:#eaf2ff;
+    cursor:pointer;
+    font-weight:800;
+    font-size:12px;
+  }
+  .iconBtn:hover{ background:rgba(255,255,255,.10); }
+  .dockBody{
+    background:var(--panel-bg);
+    padding:10px;
+    border-top:1px solid rgba(255,255,255,.10);
+    max-height:340px;
+    overflow:auto;
+  }
+  .dockBody.collapsed{ display:none; }
+  .dockNotice{
+    min-width:18px;
+    height:18px;
+    padding:0 5px;
+    border-radius:999px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#ff5f66;
+    color:#fff;
+    font-size:11px;
+    font-weight:900;
+    border:1px solid rgba(255,255,255,.16);
+    opacity:0;
+    transform:scale(.7);
+    transition:.18s;
+  }
+  .dockNotice.show{
+    opacity:1;
+    transform:scale(1);
+    animation:pulseBadge .75s ease-in-out infinite alternate;
+  }
+  @keyframes pulseBadge{from{box-shadow:0 0 0 0 rgba(255,95,102,.4);}to{box-shadow:0 0 0 6px rgba(255,95,102,0);}}
+  .secTitle{ font-size:12px; color:#cfe2ff; opacity:.95; font-weight:900; margin:0 0 8px; }
+  .mini{ font-size:12px; color:#cfe3ff; opacity:.95; line-height:1.5; }
+  .readout{
+    margin-top:8px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.08);
+    color:#e9f2ff;
+    font-size:12px;
+    padding:6px 10px;
+    white-space:nowrap;
+  }
+  .btnRow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btnRow button{
+    flex:1 1 120px;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    cursor:pointer;
+    font-weight:900;
+    transition:.15s;
+  }
+  .btnRow button:hover{ background:rgba(255,255,255,.12); }
+  .btnRow button:disabled{ opacity:.55; cursor:not-allowed; }
+  .table{ width:100%; border-collapse:collapse; font-size:12px; color:#eaf2ff; }
+  .table th,.table td{ border-bottom:1px solid rgba(255,255,255,.10); padding:6px 4px; text-align:left; font-variant-numeric:tabular-nums; }
+  .table th{ color:#cfe2ff; font-weight:900; }
+
+  .checkmark{
+    position:absolute;
+    z-index:60;
+    left:50%;
+    top:24%;
+    transform:translate(-50%,-50%) scale(.6);
+    width:120px;
+    height:120px;
+    border-radius:50%;
+    background:rgba(61,220,151,.15);
+    border:3px solid var(--accent);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 0 40px rgba(61,220,151,.35), inset 0 0 18px rgba(61,220,151,.18);
+    animation:pop .55s ease-out;
+    pointer-events:none;
+  }
+  .checkmark.active{ display:flex; }
+  .checkmark > div{
+    width:60px;
+    height:30px;
+    border-left:8px solid var(--accent);
+    border-bottom:8px solid var(--accent);
+    transform:rotate(-45deg) translateY(-6px);
+  }
+  @keyframes pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+
+  .demoCursor{
+    position:absolute;
+    z-index:140;
+    width:26px;
+    height:26px;
+    left:-200px;
+    top:-200px;
+    opacity:0;
+    pointer-events:none;
+    transition:left .48s cubic-bezier(.22,.61,.36,1), top .48s cubic-bezier(.22,.61,.36,1), opacity .2s ease, transform .12s ease;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.55));
+  }
+  .demoCursor.show{ opacity:1; }
+  .demoCursor.clicking{ transform:scale(.9); }
+  .demoCursorPulse{
+    position:absolute;
+    z-index:139;
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    border:2px solid rgba(255,195,74,.95);
+    left:-200px;
+    top:-200px;
+    opacity:0;
+    pointer-events:none;
+    transform:translate(-50%,-50%) scale(.35);
+  }
+  .demoCursorPulse.active{ animation:cursorPulse .45s ease-out; }
+  @keyframes cursorPulse{0%{opacity:.95;transform:translate(-50%,-50%) scale(.35)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}}
+
+  .toolbar{
+    width:100%;
+    max-width:900px;
+    margin-top:12px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:flex-start;
+  }
+  button.main{
+    padding:10px 16px;
+    border:none;
+    border-radius:8px;
+    background:#444;
+    color:#fff;
+    cursor:pointer;
+    transition:background .25s, transform .05s, opacity .2s;
+  }
+  button.main:hover{ background:#5a5a5a; }
+  button.main:active{ transform:scale(.98); }
+  button.main:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:24px;
+    transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,.82);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s, transform .25s;
+    z-index:200;
+    box-shadow:0 8px 18px rgba(0,0,0,.35);
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .modal-mask{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:300;
+  }
+  .modal{
+    width:min(90vw,380px);
+    background:#111;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:14px;
+    padding:18px 16px;
+    text-align:center;
+    box-shadow:0 12px 30px rgba(0,0,0,.5);
+  }
+  .modal h3{ margin:8px 0 6px; font-size:20px; color:#a2e3a9; }
+  .modal p{ margin-top:0; color:#cfd8dc; line-height:1.6; }
+  .modal .ok{
+    margin-top:12px;
+    background:var(--accent);
+    color:#081a12;
+    font-weight:800;
+    border:none;
+    border-radius:10px;
+    padding:10px 18px;
+    cursor:pointer;
+  }
+  .explanation{
+    width:100%;
+    max-width:900px;
+    margin:14px 0 20px;
+    line-height:1.65;
+    font-size:.95em;
+    color:var(--ink);
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:12px;
+    padding:14px 16px;
+  }
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; }
+  .explanation ul{ margin:.2em 0 .2em 1.1em; }
+  .explanation li{ margin:6px 0; }
+
+  @media (max-width:560px){
+    .task-card{ grid-template-columns:1fr; gap:6px; }
+    .task-step{ width:fit-content; }
+    .progress-dots{ justify-content:flex-start; }
+    #stage{ min-height:620px; }
+    .dock{ width:min(92%, 360px); }
+    .bench{ left:18px; right:18px; top:34px; bottom:126px; grid-template-columns:78px 1fr; gap:12px; }
+    .heater-block{ width:60px; height:230px; }
+    .heater-coil{ width:34px; height:160px; }
+    .rod-row{ min-height:88px; }
+    .rod-head{ font-size:12px; }
+    .rod-result{ font-size:11px; }
+    .matchstick{ top:36px; height:24px; }
+    .quiz-card{ width:auto; left:12px; right:12px; bottom:12px; transform:none; }
+  }
+
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">点击左侧热源开始加热，观察热量如何沿材料棒传播。</div>
+      <div class="task-hint" id="taskHint">提示：热源点亮后，热层会沿材料棒向右推进。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+
+    
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+<div class="lab-area" id="labArea">
+      <div class="board-grid"></div>
+      <div class="bench">
+        <div class="heater-col">
+          <div class="heater-block" id="heaterBtn">
+            <div class="heater-coil"></div>
+          </div>
+          <div class="heater-label">热源</div>
+        </div>
+        <div class="rods-col" id="rodsCol">
+          <div class="rod-row" data-key="copper">
+            <div class="rod-head">
+              <span>铜棒</span>
+              <span class="rod-result" id="result-copper">最快</span>
+            </div>
+            <div class="rod-track copper">
+              <div class="heat-layer" id="heat-copper"></div>
+            </div>
+            <div class="matchstick" id="stick-copper" style="left:80%;"></div>
+          </div>
+          <div class="rod-row" data-key="iron">
+            <div class="rod-head">
+              <span>铁棒</span>
+              <span class="rod-result" id="result-iron">中等</span>
+            </div>
+            <div class="rod-track iron">
+              <div class="heat-layer" id="heat-iron"></div>
+            </div>
+            <div class="matchstick" id="stick-iron" style="left:80%;"></div>
+          </div>
+          <div class="rod-row" data-key="glass">
+            <div class="rod-head">
+              <span>玻璃棒</span>
+              <span class="rod-result" id="result-glass">最慢</span>
+            </div>
+            <div class="rod-track glass">
+              <div class="heat-layer" id="heat-glass"></div>
+            </div>
+            <div class="matchstick" id="stick-glass" style="left:80%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="quiz-card" id="quizCard">
+        <div class="quiz-title">根据刚才的火柴掉落顺序，哪种材料导热最快？</div>
+        <div class="quiz-actions">
+          <button data-answer="glass">玻璃棒</button>
+          <button data-answer="iron">铁棒</button>
+          <button data-answer="copper">铜棒</button>
+        </div>
+      </div>
+
+      <div class="effect-tag"><span class="effect-dot"></span><span id="effectText">观察：等待加热</span></div>
+      <div class="lab-note" id="labNote">实验状态：请点击热源开始实验</div>
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+
+    <div class="dock drawer control" id="controlDock" style="right:10px; top:10px;">
+      <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">控制面板</div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="controlBody">
+        <div class="secTitle">过程读数</div>
+        <div class="mini">导热快慢来自同一套状态链：加热时间、热层推进、火柴掉落顺序和结论题必须一致。</div>
+        <div class="readout">
+          <span class="pill">热源状态：<b id="heaterPill">未加热</b></span>
+          <span class="pill">当前阶段：<b id="phasePill">待开始</b></span>
+          <span class="pill">铜棒热层：<b id="copperPill">0%</b></span>
+          <span class="pill">铁棒热层：<b id="ironPill">0%</b></span>
+          <span class="pill">玻璃棒热层：<b id="glassPill">0%</b></span>
+          <span class="pill">掉落顺序：<b id="orderPill">暂无</b></span>
+        </div>
+        <div class="btnRow">
+          <button id="heaterToggleBtn">开始/停止加热</button>
+          <button id="checkBtn">确认观察 ✅</button>
+        </div>
+        <div class="btnRow">
+          <button id="trialResetBtn">本轮复位</button>
+          <button id="revealQuizBtn">显示结论题</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="dock resultsDock drawer data" id="dataDock" style="right:10px; top:70px;">
+      <div class="dockHead drawer-header" id="dataHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">数据面板 <span class="dockNotice" id="dataNotice">0</span></div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="dataToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="dataBody">
+        <div class="secTitle">数据记录</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>步骤</th>
+              <th>记录</th>
+              <th>结果</th>
+            </tr>
+          </thead>
+          <tbody id="recordBody">
+            <tr><td colspan="4" style="opacity:.72;">当前无记录。达成步骤后会自动记录。</td></tr>
+          </tbody>
+        </table>
+      
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="demoCursor" id="demoCursor" aria-hidden="true">
+      <svg viewBox="0 0 24 24" role="img" aria-label="自动演示鼠标">
+        <path d="M3 2.5L10.2 20.8L12.7 12.9L20.8 10.3L3 2.5Z" fill="#ffffff" stroke="#111820" stroke-width="1.3" />
+      </svg>
+    </div>
+    <div class="demoCursorPulse" id="demoCursorPulse" aria-hidden="true"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="main" id="resetBtn">步骤重置</button>
+    <button class="main" id="autoDemoBtn">自动演示</button>
+    <button class="main" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>实验完成</h3>
+      <p>你已通过火柴掉落先后比较出不同材料的导热快慢：铜棒最快，铁棒次之，玻璃棒最慢。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：比较不同材料的导热性</h2>
+    <ul>
+      <li><b>关键操作</b>：点击热源加热三根材料棒，观察热层推进和火柴掉落的先后顺序，再回答哪种材料导热最快。</li>
+      <li><b>可观察现象</b>：铜棒上的火柴最先掉落，铁棒随后掉落，玻璃棒变化最慢。</li>
+      <li><b>原理与结论</b>：热传导快的材料更容易把热量传到远端，因此热良导体如铜导热快，玻璃等热不良导体导热慢。</li>
+    </ul>
+  </div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const AUTO_DEMO_FACTOR = 1.2;
+
+const RODS = [
+  { key:'copper', label:'铜棒', speed:2.6, threshold:80, heatEl: null, stickEl: null, resultEl: null },
+  { key:'iron', label:'铁棒', speed:1.25, threshold:80, heatEl: null, stickEl: null, resultEl: null },
+  { key:'glass', label:'玻璃棒', speed:0.22, threshold:80, heatEl: null, stickEl: null, resultEl: null }
+];
+
+const TASKS = [
+  {
+    short:'启动加热',
+    text:'点击左侧热源开始加热，观察热量如何沿材料棒传播。',
+    hint:'提示：热源点亮后，热层会沿材料棒向右推进。',
+    check:() => state.heating && state.progress.copper >= 8
+  },
+  {
+    short:'比较顺序',
+    text:'观察火柴掉落的先后顺序，判断哪种材料导热更快。',
+    hint:'提示：火柴先掉落，说明热量先传到那里。',
+    check:() => state.dropOrder[0] === 'copper' && state.dropOrder[1] === 'iron'
+  },
+  {
+    short:'回答结论',
+    text:'根据现象回答：哪种材料导热最快？',
+    hint:'提示：最快掉落火柴的材料导热最好。',
+    check:() => state.quizAnswered && state.quizCorrect
+  }
+];
+
+const state = {
+  currentTask: 0,
+  completed: false,
+  freeMode: false,
+  autoPlaying: false,
+  draggingId: '',
+  rafId: 0,
+  timers: new Set(),
+  successCooldown: false,
+  warningStep: -1,
+  panelCollapsed: true,
+  dataCollapsed: true,
+  unseenRecordCount: 0,
+  records: [],
+  demoRunId: 0,
+  dockMoved: { control:false, data:false },
+  heating: false,
+  progress: { copper:0, iron:0, glass:0 },
+  dropped: { copper:false, iron:false, glass:false },
+  dropOrder: [],
+  quizVisible: false,
+  quizAnswered: false,
+  quizCorrect: false
+};
+
+const stage = $('#stage');
+const labArea = $('#labArea');
+const heaterBtn = $('#heaterBtn');
+const quizCard = $('#quizCard');
+const quizButtons = [...quizCard.querySelectorAll('button[data-answer]')];
+
+const taskCard = $('#taskCard');
+const taskStepEl = $('#taskStep');
+const taskTextEl = $('#taskText');
+const taskHintEl = $('#taskHint');
+const dots = [$('#dot1'), $('#dot2'), $('#dot3')];
+const modeTag = $('#modeTag');
+const statusTag = $('#statusTag');
+const effectText = $('#effectText');
+const labNote = $('#labNote');
+
+const controlDock = $('#controlDock');
+const controlHead = $('#controlHead');
+const controlBody = $('#controlBody');
+const controlToggleBtn = $('#controlToggleBtn');
+const dataDock = $('#dataDock');
+const dataHead = $('#dataHead');
+const dataBody = $('#dataBody');
+const dataToggleBtn = $('#dataToggleBtn');
+const dataNotice = $('#dataNotice');
+const recordBody = $('#recordBody');
+
+const heaterPill = $('#heaterPill');
+const phasePill = $('#phasePill');
+const copperPill = $('#copperPill');
+const ironPill = $('#ironPill');
+const glassPill = $('#glassPill');
+const orderPill = $('#orderPill');
+
+const heaterToggleBtn = $('#heaterToggleBtn');
+const checkBtn = $('#checkBtn');
+const trialResetBtn = $('#trialResetBtn');
+const revealQuizBtn = $('#revealQuizBtn');
+const resetBtn = $('#resetBtn');
+const autoDemoBtn = $('#autoDemoBtn');
+const freeBtn = $('#freeBtn');
+
+const toastEl = $('#toast');
+const checkmark = $('#checkmark');
+const doneMask = $('#doneMask');
+const okBtn = $('#okBtn');
+const demoCursor = $('#demoCursor');
+const demoCursorPulse = $('#demoCursorPulse');
+
+for(const rod of RODS){
+  rod.heatEl = $(`#heat-${rod.key}`);
+  rod.stickEl = $(`#stick-${rod.key}`);
+  rod.resultEl = $(`#result-${rod.key}`);
+}
+
+function trackTimer(id){ state.timers.add(id); return id; }
+function untrackTimer(id){ state.timers.delete(id); }
+function clearTrackedTimers(){
+  state.timers.forEach((id)=>clearTimeout(id));
+  state.timers.clear();
+}
+function wait(ms){
+  return new Promise((resolve)=>{
+    const id = setTimeout(()=>{ untrackTimer(id); resolve(); }, ms);
+    trackTimer(id);
+  });
+}
+async function waitAuto(ms, runId){
+  await wait(Math.round(ms * AUTO_DEMO_FACTOR));
+  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+}
+async function waitForAutoCondition(check, timeoutMs, runId, errorCode){
+  const start = performance.now();
+  while(performance.now() - start < timeoutMs){
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    if(check()) return;
+    await waitAuto(80, runId);
+  }
+  throw new Error(errorCode);
+}
+
+function showToast(msg){
+  toastEl.textContent = msg || '提示';
+  toastEl.classList.add('show');
+  if(showToast.t){
+    clearTimeout(showToast.t);
+    untrackTimer(showToast.t);
+  }
+  showToast.t = trackTimer(setTimeout(()=>{
+    toastEl.classList.remove('show');
+    if(showToast.t){
+      untrackTimer(showToast.t);
+      showToast.t = 0;
+    }
+  }, 1500));
+}
+showToast.t = 0;
+
+function showCheck(){
+  checkmark.classList.add('active');
+  if(showCheck.t){
+    clearTimeout(showCheck.t);
+    untrackTimer(showCheck.t);
+  }
+  showCheck.t = trackTimer(setTimeout(()=>{
+    checkmark.classList.remove('active');
+    if(showCheck.t){
+      untrackTimer(showCheck.t);
+      showCheck.t = 0;
+    }
+  }, 560));
+}
+showCheck.t = 0;
+
+function setStatus(text){
+  statusTag.textContent = `状态：${text || '待操作'}`;
+}
+function updateModeHud(){
+  modeTag.classList.remove('mode-auto');
+  if(state.autoPlaying){
+    modeTag.textContent = '模式：自动演示';
+    modeTag.classList.add('mode-auto');
+  }else if(state.freeMode){
+    modeTag.textContent = '模式：自由';
+  }else{
+    modeTag.textContent = '模式：引导';
+  }
+}
+
+function renderStepDots(){
+  const last = TASKS.length - 1;
+  dots.forEach((d, idx)=>{
+    const done = idx < state.currentTask || (state.completed && idx === last);
+    const active = idx === state.currentTask && !state.completed;
+    d.classList.toggle('done', done);
+    d.classList.toggle('active', active);
+    d.classList.toggle('warn', active && state.warningStep === state.currentTask);
+  });
+}
+function setStepUI(i){
+  state.currentTask = clamp(i, 0, TASKS.length - 1);
+  if(state.warningStep !== state.currentTask) state.warningStep = -1;
+  const t = TASKS[state.currentTask];
+  taskStepEl.textContent = `步骤 ${state.currentTask + 1} / ${TASKS.length}`;
+  taskTextEl.textContent = t.text;
+  taskHintEl.textContent = t.hint;
+  renderStepDots();
+  refreshReadouts();
+}
+function warnCurrentStep(msg){
+  if(state.freeMode || state.completed) return;
+  state.warningStep = state.currentTask;
+  renderStepDots();
+  showToast(msg);
+}
+
+function resetRodVisual(rod){
+  rod.heatEl.style.width = '0%';
+  rod.stickEl.className = 'matchstick';
+  rod.resultEl.classList.remove('show');
+}
+
+function setHeating(on){
+  state.heating = !!on;
+  heaterBtn.classList.toggle('active', state.heating);
+  if(state.heating){
+    if(!state.rafId) tickHeat();
+  }
+  refreshReadouts();
+}
+
+function tickHeat(){
+  if(state.rafId) cancelAnimationFrame(state.rafId);
+  const loop = () => {
+    if(!state.heating){
+      state.rafId = 0;
+      return;
+    }
+    let changed = false;
+    for(const rod of RODS){
+      if(state.progress[rod.key] < 100){
+        state.progress[rod.key] = Math.min(100, state.progress[rod.key] + rod.speed * 0.38);
+        rod.heatEl.style.width = `${state.progress[rod.key]}%`;
+        changed = true;
+      }
+      if(!state.dropped[rod.key] && state.progress[rod.key] >= rod.threshold){
+        state.dropped[rod.key] = true;
+        state.dropOrder.push(rod.key);
+        rod.stickEl.classList.add('drop');
+        rod.resultEl.classList.add('show');
+        changed = true;
+      }
+    }
+    if(changed) refreshReadouts();
+    state.rafId = requestAnimationFrame(loop);
+  };
+  state.rafId = requestAnimationFrame(loop);
+}
+
+function setQuizVisible(on){
+  state.quizVisible = !!on;
+  quizCard.classList.toggle('show', state.quizVisible);
+  refreshInteractionLocks();
+}
+
+function chooseAnswer(answer, fromAuto = false){
+  if(!state.freeMode && state.currentTask < 2){
+    if(!fromAuto) warnCurrentStep('请先完成前面的加热与观察步骤。');
+    return false;
+  }
+  setQuizVisible(true);
+  state.quizAnswered = true;
+  state.quizCorrect = answer === 'copper';
+  quizButtons.forEach((btn)=>{
+    btn.classList.remove('correct', 'wrong');
+    if(btn.dataset.answer === answer) btn.classList.add(state.quizCorrect ? 'correct' : 'wrong');
+  });
+  refreshReadouts();
+  if(!state.quizCorrect && !fromAuto) showToast('不对，掉落最快的才是导热最快的。');
+  if(state.quizCorrect && state.currentTask === 2 && (!state.freeMode || fromAuto)){
+    passCurrentTask(fromAuto);
+  }
+  return state.quizCorrect;
+}
+
+function refreshReadouts(){
+  heaterPill.textContent = state.heating ? '加热中' : '未加热';
+  if(state.completed) phasePill.textContent = '挑战完成';
+  else if(state.quizVisible) phasePill.textContent = '结论题';
+  else if(state.dropOrder.length >= 2) phasePill.textContent = '比较顺序';
+  else if(state.heating) phasePill.textContent = '加热观察';
+  else phasePill.textContent = '待开始';
+  copperPill.textContent = `${state.progress.copper.toFixed(0)}%`;
+  ironPill.textContent = `${state.progress.iron.toFixed(0)}%`;
+  glassPill.textContent = `${state.progress.glass.toFixed(0)}%`;
+  orderPill.textContent = state.dropOrder.length ? state.dropOrder.map((k)=>RODS.find((r)=>r.key===k).label).join(' > ') : '暂无';
+
+  if(state.completed){
+    labNote.textContent = '实验状态：挑战完成';
+    effectText.textContent = '观察：铜棒导热最快';
+  }else if(state.quizVisible){
+    labNote.textContent = '实验状态：请根据现象回答结论题';
+    effectText.textContent = `观察：掉落顺序 ${orderPill.textContent}`;
+  }else if(state.heating){
+    labNote.textContent = '实验状态：热量沿材料棒向右传递';
+    effectText.textContent = state.dropOrder.length ? `观察：${orderPill.textContent}` : '观察：热层正在推进';
+  }else if(state.freeMode){
+    labNote.textContent = '实验状态：自由探索中，可反复加热观察';
+    effectText.textContent = state.dropOrder.length ? `观察：${orderPill.textContent}` : '观察：等待加热';
+  }else{
+    labNote.textContent = '实验状态：请点击热源开始实验';
+    effectText.textContent = '观察：等待加热';
+  }
+
+  if(state.autoPlaying) setStatus('自动演示中');
+  else if(state.freeMode) setStatus('自由探索');
+  else if(state.completed) setStatus('挑战完成');
+  else if(state.heating) setStatus('加热观察中');
+  else setStatus('待操作');
+
+  revealQuizBtn.disabled = state.autoPlaying || (!state.freeMode && state.dropOrder.length < 2);
+}
+
+function addRecord(step, snapshot, result){
+  state.records.push({ step, snapshot, result });
+  if(state.records.length > 120) state.records.shift();
+  if(state.dataCollapsed) state.unseenRecordCount = Math.min(999, state.unseenRecordCount + 1);
+  else state.unseenRecordCount = 0;
+  renderRecordTable();
+  refreshDataNotice();
+}
+function renderRecordTable(){
+  if(!state.records.length){
+    recordBody.innerHTML = '<tr><td colspan="4" style="opacity:.72;">当前无记录。达成步骤后会自动记录。</td></tr>';
+    return;
+  }
+  recordBody.innerHTML = state.records.map((r, i)=>(
+    `<tr><td>${i + 1}</td><td>${r.step}</td><td>${r.snapshot}</td><td>${r.result}</td></tr>`
+  )).join('');
+}
+function refreshDataNotice(){
+  const n = state.unseenRecordCount;
+  dataNotice.textContent = n > 99 ? '99+' : String(n);
+  dataNotice.classList.toggle('show', state.dataCollapsed && n > 0);
+}
+
+function lockSuccess(){
+  state.successCooldown = true;
+  const id = setTimeout(()=>{
+    state.successCooldown = false;
+    untrackTimer(id);
+  }, 620);
+  trackTimer(id);
+}
+
+function passCurrentTask(fromAuto = false){
+  if(state.successCooldown || state.completed) return false;
+  if(state.freeMode && !fromAuto){
+    showToast('自由模式下可继续观察，不进入闯关判定。');
+    return false;
+  }
+  const task = TASKS[state.currentTask];
+  if(!task.check()){
+    if(!fromAuto){
+      if(state.currentTask === 0) warnCurrentStep('请先点击热源并观察热层开始推进。');
+      else if(state.currentTask === 1) warnCurrentStep('请先观察铜棒和铁棒的火柴掉落顺序。');
+      else warnCurrentStep('请先选择正确答案：哪种材料导热最快？');
+    }
+    return false;
+  }
+
+  state.warningStep = -1;
+  let snapshot = '';
+  let result = '';
+  if(state.currentTask === 0){
+    snapshot = `铜棒热层 ${state.progress.copper.toFixed(0)}%`;
+    result = '已启动加热';
+  }else if(state.currentTask === 1){
+    snapshot = `掉落顺序 ${orderPill.textContent}`;
+    result = '铜棒先于铁棒掉落';
+  }else{
+    snapshot = `回答 ${state.quizCorrect ? '铜棒' : '错误答案'}`;
+    result = '判定铜棒导热最快';
+  }
+  addRecord(`步骤${state.currentTask + 1}`, snapshot, result);
+  showCheck();
+  lockSuccess();
+
+  if(state.currentTask >= TASKS.length - 1){
+    state.completed = true;
+    renderStepDots();
+    refreshReadouts();
+    setStatus('挑战完成');
+    if(fromAuto && state.autoPlaying){
+      state.autoPlaying = false;
+      updateModeHud();
+      refreshInteractionLocks();
+    }
+    doneMask.style.display = 'flex';
+  } else {
+    const nextTask = state.currentTask + 1;
+    state.successCooldown = false;
+    setStepUI(nextTask);
+    setQuizVisible(nextTask === 2);
+    if(!fromAuto) showToast('✅ 过关，进入下一步。');
+  }
+  return true;
+}
+
+quizButtons.forEach((btn)=>{
+  btn.addEventListener('click', ()=>{
+    if(state.autoPlaying) return;
+    chooseAnswer(btn.dataset.answer, false);
+  });
+});
+
+heaterBtn.addEventListener('pointerdown', (e)=>{
+  if(e.button !== 0) return;
+  if(state.autoPlaying) return;
+  if(!state.freeMode && state.currentTask > 1){
+    warnCurrentStep('请先完成当前结论题。');
+    return;
+  }
+  setHeating(!state.heating);
+  if(!state.freeMode && state.currentTask === 0 && state.heating) refreshReadouts();
+  e.preventDefault();
+});
+
+heaterToggleBtn.onclick = () => {
+  if(state.autoPlaying) return;
+  if(!state.freeMode && state.currentTask > 1){
+    warnCurrentStep('请先完成当前结论题。');
+    return;
+  }
+  setHeating(!state.heating);
+};
+
+checkBtn.onclick = () => { passCurrentTask(false); };
+trialResetBtn.onclick = () => {
+  if(state.autoPlaying) return;
+  resetRound({ keepMode:true, showTip:true });
+};
+revealQuizBtn.onclick = () => {
+  if(state.autoPlaying) return;
+  if(!state.freeMode && state.dropOrder.length < 2){
+    warnCurrentStep('请先观察至少两根材料棒的火柴掉落顺序。');
+    return;
+  }
+  setQuizVisible(true);
+  refreshReadouts();
+};
+
+function setControlCollapsed(on){
+  state.panelCollapsed = !!on;
+  controlBody.classList.toggle('collapsed', state.panelCollapsed);
+  controlToggleBtn.textContent = state.panelCollapsed ? '展开' : '收起';
+}
+function setDataCollapsed(on){
+  state.dataCollapsed = !!on;
+  dataBody.classList.toggle('collapsed', state.dataCollapsed);
+  dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+  if(!state.dataCollapsed) state.unseenRecordCount = 0;
+  refreshDataNotice();
+}
+controlToggleBtn.onclick = () => {
+  setControlCollapsed(!state.panelCollapsed);
+  resolveDrawerOverlap(true);
+};
+dataToggleBtn.onclick = () => {
+  setDataCollapsed(!state.dataCollapsed);
+  resolveDrawerOverlap(true);
+};
+
+function getStageRect(){ return stage.getBoundingClientRect(); }
+function setDockPos(el, x, y){
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.style.right = 'auto';
+  el.style.bottom = 'auto';
+}
+function clampDockPos(el, x, y){
+  const s = getStageRect();
+  const r = el.getBoundingClientRect();
+  const pad = 10;
+  return { x: clamp(x, pad, s.width - r.width - pad), y: clamp(y, pad, s.height - r.height - pad) };
+}
+function overlapArea(a, b){
+  const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+  const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+  return x * y;
+}
+function bringToFront(which){
+  if(which === 'control'){
+    document.documentElement.style.setProperty('--zPanel', '42');
+    document.documentElement.style.setProperty('--zResults', '39');
+  }else{
+    document.documentElement.style.setProperty('--zResults', '42');
+    document.documentElement.style.setProperty('--zPanel', '39');
+  }
+}
+function resolveDrawerOverlap(force = false){
+  const narrow = window.innerWidth <= 560;
+  const enforce = force || state.autoPlaying;
+  if(!enforce && !narrow) return;
+  if(state.panelCollapsed || state.dataCollapsed) return;
+  const s = getStageRect();
+  const c = controlDock.getBoundingClientRect();
+  const d = dataDock.getBoundingClientRect();
+  if(overlapArea(c, d) <= 0) return;
+  const pad = 10;
+  const rightX = s.width - d.width - pad;
+  const leftX = pad;
+  const belowY = c.bottom - s.top + 8;
+  const aboveY = c.top - s.top - d.height - 8;
+  const candidates = [
+    { x:rightX, y:belowY },
+    { x:rightX, y:aboveY },
+    { x:leftX, y:belowY },
+    { x:leftX, y:aboveY }
+  ];
+  let best = null;
+  let bestOv = Infinity;
+  for(const raw of candidates){
+    const next = clampDockPos(dataDock, raw.x, raw.y);
+    const rect = { left:s.left + next.x, top:s.top + next.y, right:s.left + next.x + d.width, bottom:s.top + next.y + d.height };
+    const ov = overlapArea(c, rect);
+    if(ov < bestOv){ bestOv = ov; best = next; }
+    if(ov <= 0) break;
+  }
+  if(best) setDockPos(dataDock, best.x, best.y);
+}
+function defaultDockPositions(force = false){
+  const s = getStageRect();
+  const pad = 10;
+  const cr = controlDock.getBoundingClientRect();
+  const dr = dataDock.getBoundingClientRect();
+  if(force || !state.dockMoved.control) setDockPos(controlDock, s.width - cr.width - pad, pad);
+  const cNow = controlDock.getBoundingClientRect();
+  const baseY = cNow.bottom - s.top + 8;
+  if(force || !state.dockMoved.data){
+    const next = clampDockPos(dataDock, s.width - dr.width - pad, baseY);
+    setDockPos(dataDock, next.x, next.y);
+  }
+  resolveDrawerOverlap();
+}
+function bindDockDrag(el, headEl, kind){
+  let dragging = false;
+  let sx = 0;
+  let sy = 0;
+  let bx = 0;
+  let by = 0;
+  function currentPos(){
+    const s = getStageRect();
+    const r = el.getBoundingClientRect();
+    return { x:r.left - s.left, y:r.top - s.top };
+  }
+  function finishDrag(e){
+    if(!dragging) return;
+    dragging = false;
+    el.style.boxShadow = '';
+    try { headEl.releasePointerCapture(e.pointerId); }
+    catch (err) { console.warn('releasePointerCapture failed', err); }
+    resolveDrawerOverlap(true);
+  }
+  headEl.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('button')) return;
+    dragging = true;
+    bringToFront(kind);
+    el.style.boxShadow = getComputedStyle(document.documentElement).getPropertyValue('--shadow');
+    const p = currentPos();
+    bx = p.x;
+    by = p.y;
+    sx = e.clientX;
+    sy = e.clientY;
+    state.dockMoved[kind] = true;
+    try { headEl.setPointerCapture(e.pointerId); }
+    catch (err) { console.warn('setPointerCapture failed', err); }
+    e.preventDefault();
+  });
+  headEl.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    const p = clampDockPos(el, bx + (e.clientX - sx), by + (e.clientY - sy));
+    setDockPos(el, p.x, p.y);
+    e.preventDefault();
+  });
+  headEl.addEventListener('pointerup', finishDrag);
+  headEl.addEventListener('pointercancel', finishDrag);
+}
+bindDockDrag(controlDock, controlHead, 'control');
+bindDockDrag(dataDock, dataHead, 'data');
+
+function refreshInteractionLocks(){
+  const autoLocked = state.autoPlaying;
+  heaterToggleBtn.disabled = false;
+  checkBtn.disabled = autoLocked || (!state.freeMode && state.currentTask === 2 && state.quizVisible);
+  trialResetBtn.disabled = autoLocked;
+  revealQuizBtn.disabled = autoLocked || (!state.freeMode && state.dropOrder.length < 2);
+  resetBtn.disabled = autoLocked;
+  freeBtn.disabled = autoLocked;
+  if(autoLocked){
+    autoDemoBtn.textContent = '退出自动演示';
+    autoDemoBtn.disabled = false;
+  }else{
+    autoDemoBtn.textContent = '自动演示';
+    autoDemoBtn.disabled = state.freeMode;
+  }
+  freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+}
+
+function setFreeMode(on){
+  if(state.autoPlaying) return;
+  state.freeMode = !!on;
+  state.warningStep = -1;
+  doneMask.style.display = 'none';
+  if(state.freeMode){
+    taskCard.style.opacity = '.28';
+    taskCard.style.filter = 'grayscale(.6)';
+    setStatus('自由探索');
+    showToast('自由模式：可反复开始或停止加热观察。');
+  }else{
+    taskCard.style.opacity = '1';
+    taskCard.style.filter = 'none';
+    setStatus('待操作');
+  }
+  updateModeHud();
+  refreshInteractionLocks();
+  setHeating(false);
+  setQuizVisible(false);
+  renderStepDots();
+  refreshReadouts();
+}
+
+function resetRound(opts = {}){
+  const { keepMode = true, showTip = false } = opts;
+  setHeating(false);
+  if(state.rafId){
+    cancelAnimationFrame(state.rafId);
+    state.rafId = 0;
+  }
+  state.progress = { copper:0, iron:0, glass:0 };
+  state.dropped = { copper:false, iron:false, glass:false };
+  state.dropOrder = [];
+  state.quizVisible = false;
+  state.quizAnswered = false;
+  state.quizCorrect = false;
+  for(const rod of RODS) resetRodVisual(rod);
+  quizButtons.forEach((btn)=>btn.classList.remove('correct','wrong'));
+  setQuizVisible(false);
+  if(!keepMode){
+    taskCard.style.opacity = '1';
+    taskCard.style.filter = 'none';
+    state.freeMode = false;
+  }
+  refreshReadouts();
+  if(showTip) showToast(state.freeMode ? '自由场景已复位。' : `已复位当前步骤：${TASKS[state.currentTask].short}。`);
+}
+
+function resetAll(opts = {}){
+  const { preserveAuto = false, showTip = true, preserveFreeMode = false } = opts;
+  clearTrackedTimers();
+  if(state.rafId){
+    cancelAnimationFrame(state.rafId);
+    state.rafId = 0;
+  }
+  const keepFree = preserveFreeMode && state.freeMode;
+  if(!preserveAuto){
+    state.autoPlaying = false;
+    state.demoRunId += 1;
+  }
+  state.completed = false;
+  state.successCooldown = false;
+  state.warningStep = -1;
+  state.currentTask = 0;
+  state.records = [];
+  state.unseenRecordCount = 0;
+  state.freeMode = !!keepFree;
+  resetRound({ keepMode:true, showTip:false });
+  setControlCollapsed(true);
+  setDataCollapsed(true);
+  state.dockMoved.control = false;
+  state.dockMoved.data = false;
+  defaultDockPositions(true);
+  renderRecordTable();
+  refreshDataNotice();
+  setStepUI(0);
+  updateModeHud();
+  refreshInteractionLocks();
+  taskCard.style.opacity = keepFree ? '.28' : '1';
+  taskCard.style.filter = keepFree ? 'grayscale(.6)' : 'none';
+  if(showTip && !state.autoPlaying) showToast(keepFree ? '自由模式场景已重置。' : '已重置：回到步骤1。');
+}
+
+function ensureAutoDrawerLayout(){
+  setControlCollapsed(false);
+  setDataCollapsed(true);
+  state.dockMoved.control = false;
+  state.dockMoved.data = false;
+  defaultDockPositions(true);
+  resolveDrawerOverlap(true);
+}
+
+function assertAutoRecorded(beforeLen){
+  if(state.records.length <= beforeLen) throw new Error('AUTO_RECORD_NOT_PERSISTED');
+}
+
+function setDemoCursor(x, y){
+  demoCursor.classList.add('show');
+  demoCursor.style.left = `${x}px`;
+  demoCursor.style.top = `${y}px`;
+}
+function hideDemoCursor(){
+  demoCursor.classList.remove('show', 'clicking');
+  demoCursorPulse.classList.remove('active');
+  demoCursor.style.left = '-200px';
+  demoCursor.style.top = '-200px';
+  demoCursorPulse.style.left = '-200px';
+  demoCursorPulse.style.top = '-200px';
+}
+async function clickDemoCursor(ms = 200, runId = state.demoRunId){
+  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+  demoCursor.classList.add('clicking');
+  const x = Number.parseFloat(demoCursor.style.left || '0');
+  const y = Number.parseFloat(demoCursor.style.top || '0');
+  demoCursorPulse.style.left = `${x}px`;
+  demoCursorPulse.style.top = `${y}px`;
+  demoCursorPulse.classList.remove('active');
+  void demoCursorPulse.offsetWidth;
+  demoCursorPulse.classList.add('active');
+  await waitAuto(ms, runId);
+  demoCursor.classList.remove('clicking');
+}
+function elemCenterInStage(el){
+  const s = stage.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return { x:r.left - s.left + r.width / 2, y:r.top - s.top + r.height / 2 };
+}
+async function demoClickElement(el, runId, action = null){
+  const p = elemCenterInStage(el);
+  setDemoCursor(p.x, p.y);
+  await waitAuto(220, runId);
+  await clickDemoCursor(150, runId);
+  if(action) await action();
+  else el.click();
+  await waitAuto(180, runId);
+}
+
+function stopAutoDemo(byUser = false){
+  if(!state.autoPlaying) return;
+  state.demoRunId += 1;
+  state.autoPlaying = false;
+  hideDemoCursor();
+  updateModeHud();
+  refreshInteractionLocks();
+  if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
+  if(byUser) showToast('已退出自动演示。');
+}
+
+async function startAutoDemo(){
+  if(state.autoPlaying || state.freeMode) return;
+  state.autoPlaying = true;
+  const runId = ++state.demoRunId;
+  updateModeHud();
+  refreshInteractionLocks();
+  resetAll({ preserveAuto:true, showTip:false });
+  ensureAutoDrawerLayout();
+  setStatus('自动演示中');
+
+  try {
+    await demoClickElement(heaterBtn, runId, async ()=>{ setHeating(true); });
+    await waitForAutoCondition(() => TASKS[0].check(), 2200, runId, 'AUTO_STEP1_NOT_READY');
+    let before = state.records.length;
+    await demoClickElement(checkBtn, runId, async ()=>{ passCurrentTask(true); });
+    assertAutoRecorded(before);
+    await waitAuto(640, runId);
+
+    await waitForAutoCondition(() => TASKS[1].check(), 7200, runId, 'AUTO_STEP2_NOT_READY');
+    before = state.records.length;
+    await demoClickElement(checkBtn, runId, async ()=>{ passCurrentTask(true); });
+    assertAutoRecorded(before);
+    await waitAuto(640, runId);
+
+    const answerBtn = quizButtons.find((btn)=>btn.dataset.answer === 'copper');
+    before = state.records.length;
+    await demoClickElement(answerBtn, runId, async ()=>{ chooseAnswer('copper', true); });
+    await waitForAutoCondition(() => TASKS[2].check(), 1200, runId, 'AUTO_STEP3_NOT_READY');
+    assertAutoRecorded(before);
+
+    if(!state.completed) throw new Error('AUTO_NOT_COMPLETED');
+    setStatus('挑战完成');
+  } catch (err) {
+    const msg = String(err && err.message ? err.message : err);
+    if(msg !== 'AUTO_DEMO_CANCELLED'){
+      console.error('[autoDemo] failed:', err);
+      if(msg.startsWith('AUTO_RECORD')) showToast('自动演示记录失败，请重试。');
+      else showToast('自动演示中断，已恢复可操作状态。');
+      if(!state.completed) setStatus('待操作');
+    }
+  } finally {
+    hideDemoCursor();
+    if(runId === state.demoRunId){
+      state.autoPlaying = false;
+      updateModeHud();
+      refreshInteractionLocks();
+      if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
+    }
+  }
+}
+
+resetBtn.onclick = () => {
+  if(state.autoPlaying) return;
+  resetAll({ preserveAuto:false, showTip:true, preserveFreeMode:state.freeMode });
+};
+freeBtn.onclick = () => setFreeMode(!state.freeMode);
+autoDemoBtn.onclick = () => {
+  if(state.autoPlaying) stopAutoDemo(true);
+  else{
+    if(state.freeMode){
+      showToast('请先退出自由模式，再启动自动演示。');
+      return;
+    }
+    startAutoDemo();
+  }
+};
+okBtn.onclick = () => { doneMask.style.display = 'none'; };
+
+function init(){
+  renderRecordTable();
+  refreshDataNotice();
+  resetAll({ preserveAuto:false, showTip:false });
+}
+
+const relayout = (() => {
+  let t = 0;
+  return () => {
+    if(t){
+      clearTimeout(t);
+      untrackTimer(t);
+    }
+    t = trackTimer(setTimeout(()=>{
+      t = 0;
+      defaultDockPositions();
+      resolveDrawerOverlap(true);
+    }, 120));
+  };
+})();
+
+window.addEventListener('resize', relayout);
+window.addEventListener('orientationchange', relayout);
+window.addEventListener('beforeunload', ()=>{
+  clearTrackedTimers();
+  if(state.rafId) cancelAnimationFrame(state.rafId);
+});
+
+init();
+</script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

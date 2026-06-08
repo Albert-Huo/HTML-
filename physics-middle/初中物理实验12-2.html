@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验12-2｜测量固体的密度</title>
+  <style>
+    :root{
+      --bg:#0c1118;
+      --panel:rgba(20,26,36,.72);
+      --line:rgba(255,255,255,.12);
+      --ink:#eef6ff;
+      --muted:#9fb6d1;
+      --accent:#45d483;
+      --warn:#ffca55;
+      --danger:#ff6b6b;
+      --glass:#dce9f7;
+      --liquid:#82c7ff;
+      --metal:#b9c7d7;
+      --shadow:0 18px 44px rgba(0,0,0,.34);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      background:radial-gradient(circle at top,#122032 0,#0c1118 42%,#0a0f15 100%);
+      color:var(--ink);
+      font-family:"PingFang SC","Microsoft YaHei",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:10px;
+    }
+    #spectrum{
+      position:relative;
+      width:min(1080px,100%);
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{ 0%{background-position:0 0;} 100%{background-position:-100% 0;} }
+    .task-card{
+      width:min(1080px,100%);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      gap:12px;
+      align-items:center;
+      padding:14px 16px;
+      border-radius:14px;
+      background:rgba(255,255,255,.08);
+      border:1px solid var(--line);
+      backdrop-filter:blur(10px);
+    }
+    .task-step{
+      background:rgba(255,255,255,.14);
+      border-radius:10px;
+      padding:7px 12px;
+      font-weight:700;
+      white-space:nowrap;
+      font-size:14px;
+    }
+    .task-text{ line-height:1.55; font-size:15px; color:#cedcf0; }
+    .task-hint{ color:var(--warn); font-size:12px; margin-top:2px; }
+    .progress-dots{ display:flex; gap:7px; }
+    .dot{
+      width:11px;
+      height:11px;
+      border-radius:50%;
+      background:rgba(255,255,255,.22);
+      outline:2px solid rgba(255,255,255,.08);
+    }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--accent); }
+    .dot.warn{ background:var(--danger); box-shadow:0 0 12px rgba(255,107,107,.7); }
+
+    #stage{
+      width:min(1080px,100%);
+      min-height:720px;
+      margin-top:10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.08);
+      background:linear-gradient(180deg,rgba(13,19,29,.94),rgba(8,13,19,.96));
+      position:relative;
+      overflow:hidden;
+      box-shadow:var(--shadow);
+    }
+    .hud{
+      position:absolute;
+      top:12px;
+      left:12px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      padding:8px 10px;
+      border-radius:10px;
+      background:rgba(0,0,0,.42);
+      border:1px solid var(--line);
+    }
+    .tag{
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:999px;
+      padding:3px 10px;
+      color:#dceaff;
+      font-size:10px;
+      font-weight:700;
+      background:rgba(255,255,255,.06);
+    }
+    .lab-area{
+      position:absolute;
+      left:10px;
+      right:10px;
+      top:58px;
+      bottom:92px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.08);
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,.06), transparent 28%),
+        radial-gradient(circle at 78% 24%, rgba(69,212,131,.08), transparent 24%),
+        linear-gradient(180deg,rgba(10,16,24,.88),rgba(7,11,17,.95));
+      overflow:hidden;
+    }
+    .bench{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:0;
+      height:64px;
+      background:linear-gradient(180deg,#30353d,#222830);
+      border-top:1px solid rgba(255,255,255,.12);
+    }
+    .module-label{
+      position:absolute;
+      font-size:12px;
+      font-weight:700;
+      color:#e8f3ff;
+      text-shadow:0 2px 8px rgba(0,0,0,.45);
+      letter-spacing:.5px;
+      pointer-events:none;
+      user-select:none;
+    }
+    .scale-zone{
+      position:absolute;
+      left:52px;
+      top:298px;
+      width:252px;
+      height:248px;
+    }
+    .scale-body{
+      position:absolute;
+      inset:auto 22px 18px 22px;
+      height:156px;
+      border-radius:22px 22px 20px 20px;
+      background:linear-gradient(180deg,#485b70,#2a3340 58%,#1d252f);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.18), 0 18px 28px rgba(0,0,0,.22);
+    }
+    .scale-plate{
+      position:absolute;
+      left:24px;
+      right:24px;
+      top:16px;
+      height:20px;
+      border-radius:14px;
+      background:linear-gradient(180deg,#e1e6ec,#b7c4d6);
+      box-shadow:inset 0 -2px 4px rgba(0,0,0,.2);
+      z-index:2;
+    }
+    .scale-plate::before,
+    .scale-plate::after{
+      content:"";
+      position:absolute;
+      top:18px;
+      width:16px;
+      height:22px;
+      border-radius:0 0 8px 8px;
+      background:linear-gradient(180deg,#c9d6e6,#7d8fa3);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.25);
+    }
+    .scale-plate::before{ left:26px; }
+    .scale-plate::after{ right:26px; }
+    .scale-stem{
+      position:absolute;
+      left:50%;
+      top:36px;
+      width:22px;
+      height:32px;
+      transform:translateX(-50%);
+      border-radius:0 0 10px 10px;
+      background:linear-gradient(180deg,#bcc8d8,#738295);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.24);
+    }
+    .scale-display{
+      position:absolute;
+      left:54px;
+      right:54px;
+      top:76px;
+      height:52px;
+      border-radius:12px;
+      background:#06111a;
+      border:2px solid rgba(129,214,255,.22);
+      box-shadow:inset 0 0 10px rgba(0,255,220,.08);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font:700 28px/1.1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      color:#8fd8ff;
+      letter-spacing:1px;
+    }
+    .scale-caption{
+      position:absolute;
+      bottom:0;
+      width:100%;
+      text-align:center;
+      color:#b7c7da;
+      font-size:11px;
+      pointer-events:none;
+      user-select:none;
+    }
+
+    .cylinder-zone{
+      position:absolute;
+      left:364px;
+      top:118px;
+      width:292px;
+      height:442px;
+    }
+    .cylinder-wrap{
+      position:absolute;
+      left:84px;
+      top:22px;
+      width:118px;
+      height:350px;
+    }
+    .cylinder-top{
+      position:absolute;
+      left:-2px;
+      right:-2px;
+      top:0;
+      height:12px;
+      border-radius:8px;
+      background:linear-gradient(180deg,#f2f5f9,#ced9e6);
+      border:2px solid rgba(255,255,255,.5);
+    }
+    .cylinder-body{
+      position:absolute;
+      left:8px;
+      right:8px;
+      top:8px;
+      bottom:36px;
+      border:4px solid rgba(221,236,255,.92);
+      border-bottom-width:6px;
+      border-radius:0 0 14px 14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
+      overflow:hidden;
+    }
+    .cylinder-liquid{
+      position:absolute;
+      left:7px;
+      right:7px;
+      bottom:0;
+      height:0;
+      background:linear-gradient(180deg,rgba(160,221,255,.9),rgba(106,193,255,.9));
+      transition:height .18s linear;
+    }
+    .cylinder-liquid::before{
+      content:"";
+      position:absolute;
+      left:0;
+      right:0;
+      top:-6px;
+      height:12px;
+      border-radius:50%;
+      background:rgba(181,233,255,.88);
+      box-shadow:inset 0 -2px 0 rgba(255,255,255,.38);
+    }
+    .cylinder-ref{
+      position:absolute;
+      left:7px;
+      right:7px;
+      bottom:0;
+      height:0;
+      pointer-events:none;
+      opacity:.55;
+      background:linear-gradient(180deg,rgba(143,225,255,.28),rgba(106,193,255,.18));
+      border-top:2px dashed rgba(150,228,255,.75);
+    }
+    .cylinder-base{
+      position:absolute;
+      left:12px;
+      right:12px;
+      bottom:0;
+      height:38px;
+      border-radius:0 0 22px 22px;
+      background:linear-gradient(180deg,#f7fbff,#c8d4e0);
+      clip-path:polygon(18% 0,82% 0,100% 100%,0 100%);
+    }
+    .cylinder-marks{
+      position:absolute;
+      left:-32px;
+      right:-32px;
+      top:8px;
+      bottom:36px;
+      pointer-events:none;
+    }
+    .mark{
+      position:absolute;
+      left:0;
+      right:0;
+      height:1px;
+      background:transparent;
+    }
+    .mark::before{
+      content:"";
+      position:absolute;
+      right:22px;
+      width:26px;
+      top:0;
+      height:1px;
+      background:rgba(220,234,248,.56);
+    }
+    .mark.major::before{ width:40px; background:rgba(236,244,255,.9); }
+    .mark-label{
+      position:absolute;
+      right:-4px;
+      top:-9px;
+      font-size:11px;
+      color:#bdd0e7;
+    }
+    .cylinder-title{
+      position:absolute;
+      top:382px;
+      width:100%;
+      text-align:center;
+      font-size:13px;
+      color:#c7d9ef;
+    }
+    .eye-guide{
+      position:absolute;
+      top:186px;
+      left:6px;
+      right:0;
+      height:22px;
+      cursor:ns-resize;
+      touch-action:none;
+    }
+    .eye-line{
+      position:absolute;
+      left:24px;
+      right:34px;
+      top:10px;
+      height:2px;
+      border-top:2px dashed rgba(123,226,255,.8);
+    }
+    .eye-icon{
+      position:absolute;
+      right:0;
+      top:-1px;
+      width:34px;
+      height:22px;
+      color:#dff6ff;
+      font-size:20px;
+      text-align:right;
+      line-height:22px;
+      text-shadow:0 2px 8px rgba(0,0,0,.55);
+    }
+    .cylinder-info{
+      position:absolute;
+      left:0;
+      right:0;
+      bottom:8px;
+      display:flex;
+      justify-content:center;
+      gap:8px;
+      flex-wrap:wrap;
+      font-size:12px;
+      color:#d8ecff;
+    }
+    .mini-pill{
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.15);
+      background:rgba(255,255,255,.06);
+      padding:4px 10px;
+      white-space:nowrap;
+    }
+    .solid-zone{
+      position:absolute;
+      inset:0;
+      width:auto;
+      height:auto;
+      pointer-events:none;
+    }
+    .solid{
+      position:absolute;
+      left:688px;
+      top:320px;
+      width:80px;
+      height:66px;
+      touch-action:none;
+      cursor:grab;
+      z-index:7;
+      transition:left .16s ease, top .16s ease, transform .16s ease;
+      pointer-events:auto;
+    }
+    .solid.dragging{ cursor:grabbing; transition:none; }
+    .solid > *{ pointer-events:none; }
+    .solid-tag{
+      display:none;
+      position:absolute;
+      top:-10px;
+      left:8px;
+      padding:4px 10px;
+      border-radius:999px;
+      background:rgba(0,0,0,.4);
+      border:1px solid rgba(255,255,255,.14);
+      color:#f2fbff;
+      font-size:12px;
+    }
+    .solid-body{
+      position:absolute;
+      inset:12px 8px 0 8px;
+      border-radius:10px;
+      background:
+        linear-gradient(135deg,rgba(255,255,255,.55),rgba(255,255,255,.02) 24%,rgba(0,0,0,.12) 100%),
+        linear-gradient(180deg,#c8d3e1,#93a3b7);
+      border:2px solid rgba(236,246,255,.45);
+      box-shadow:inset 0 2px 4px rgba(255,255,255,.4), 0 12px 18px rgba(0,0,0,.2);
+    }
+    .solid-body::before{
+      content:"";
+      position:absolute;
+      left:10px;
+      right:10px;
+      top:8px;
+      height:8px;
+      border-radius:999px;
+      background:rgba(255,255,255,.28);
+    }
+    .solid-loop{
+      position:absolute;
+      left:30px;
+      top:0;
+      width:20px;
+      height:18px;
+      border:3px solid rgba(210,233,255,.9);
+      border-bottom:none;
+      border-radius:18px 18px 0 0;
+    }
+    .solid-note{
+      display:none;
+    }
+    .sink-string{
+      position:absolute;
+      width:2px;
+      background:rgba(230,240,255,.78);
+      left:498px;
+      top:160px;
+      height:0;
+      display:none;
+      z-index:4;
+    }
+    .formula-card{
+      position:absolute;
+      left:708px;
+      top:476px;
+      width:240px;
+      padding:10px 12px;
+      border-radius:14px;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:var(--shadow);
+      font-size:13px;
+      line-height:1.65;
+    }
+    .formula-eq{
+      margin-top:6px;
+      padding:8px 10px;
+      border-radius:10px;
+      background:rgba(0,0,0,.22);
+      font:700 22px/1.4 "Times New Roman",serif;
+      text-align:center;
+      color:#fff4c9;
+    }
+    .scene-tip{
+      position:absolute;
+      left:18px;
+      bottom:18px;
+      padding:6px 12px;
+      border-radius:999px;
+      background:rgba(0,0,0,.36);
+      border:1px solid rgba(255,255,255,.12);
+      font-size:12px;
+      color:#d5e8ff;
+    }
+    .formula-card,
+    .scene-tip{ display:none !important; }
+
+    .hint-lamp-wrap{
+      position:absolute;
+      top:62px;
+      left:14px;
+      z-index:21;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-start;
+      gap:8px;
+    }
+    .hint-lamp-btn{
+      width:30px;
+      height:30px;
+      border:none;
+      border-radius:0;
+      background:transparent;
+      color:#ffd96a;
+      font-size:22px;
+      cursor:pointer;
+      box-shadow:none;
+      padding:0;
+      line-height:1;
+      filter:drop-shadow(0 2px 5px rgba(0,0,0,.35));
+    }
+    .hint-lamp-btn.flash{
+      animation:lampFlash .25s ease-in-out 8;
+    }
+    @keyframes lampFlash{
+      0%,100%{
+        transform:scale(1);
+        color:#ffd96a;
+        filter:
+          drop-shadow(0 2px 5px rgba(0,0,0,.35))
+          drop-shadow(0 0 0 rgba(255,214,94,0));
+      }
+      50%{
+        transform:scale(1.14);
+        color:#fff7bc;
+        filter:
+          drop-shadow(0 2px 5px rgba(0,0,0,.35))
+          drop-shadow(0 0 12px rgba(255,225,120,.96))
+          drop-shadow(0 0 24px rgba(255,214,94,.78))
+          drop-shadow(0 0 38px rgba(255,214,94,.48));
+      }
+    }
+    .hint-pop{
+      display:none;
+      width:290px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:rgba(20,27,37,.92);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(10px);
+    }
+    .hint-lamp-wrap.open .hint-pop{ display:block; }
+    .hint-pop h4{
+      margin:0 0 6px;
+      font-size:12px;
+      color:#fff1a8;
+    }
+    .hint-pop .hint-detail{
+      font-size:12px;
+      line-height:1.6;
+      color:#d8e7f7;
+      margin-bottom:10px;
+    }
+    .hint-pop .hint-thought{
+      font-size:12px;
+      line-height:1.7;
+      color:#bfd2e8;
+    }
+    .hint-pop .hint-thought b{ color:#fff1c4; }
+
+    .dock{
+      position:absolute;
+      right:12px;
+      width:min(196px,21vw);
+      border-radius:14px;
+      background:var(--panel);
+      border:1px solid var(--line);
+      backdrop-filter:blur(10px);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      z-index:20;
+      touch-action:none;
+    }
+    .dock-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:10px 12px;
+      background:rgba(255,255,255,.05);
+      border-bottom:1px solid rgba(255,255,255,.08);
+      cursor:grab;
+      user-select:none;
+    }
+    .dock-title{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:14px;
+      font-weight:700;
+      color:#eef6ff;
+    }
+    .dock-badge{
+      min-width:18px;
+      height:18px;
+      padding:0 6px;
+      border-radius:999px;
+      background:#ff6a6a;
+      color:#fff;
+      font-size:11px;
+      line-height:18px;
+      text-align:center;
+      box-shadow:0 0 0 2px rgba(255,106,106,.18);
+      display:none;
+    }
+    .dock-badge.show{ display:inline-block; }
+    .dock-head:active{ cursor:grabbing; }
+    .dock-body{ padding:10px; max-height:280px; overflow-y:auto; overflow-x:hidden; }
+    #controlDock{ width:min(214px,23vw); }
+    #dataDock{ width:min(304px,31vw); }
+    .dock.collapsed .dock-body{ display:none; }
+    .dock button.toggle{
+      border:none;
+      border-radius:9px;
+      padding:6px 12px;
+      color:#eef6ff;
+      background:rgba(255,255,255,.12);
+      cursor:pointer;
+    }
+    .dock-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .pill-box{
+      border-radius:12px;
+      padding:8px 10px;
+      background:rgba(0,0,0,.24);
+      border:1px solid rgba(255,255,255,.08);
+      font-size:11px;
+      color:#cfe0f5;
+    }
+    .btn-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:10px;
+    }
+    button.main, button.sub{
+      border:none;
+      border-radius:10px;
+      padding:9px 14px;
+      color:white;
+      cursor:pointer;
+      font-size:12px;
+    }
+    button.main{ background:#318d55; }
+    button.sub{ background:#4b5663; }
+    button:disabled{ opacity:.42; cursor:not-allowed; }
+    .analysis{
+      margin-top:10px;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:13px;
+      line-height:1.65;
+      background:rgba(0,0,0,.25);
+      border:1px solid rgba(255,255,255,.08);
+    }
+    .analysis.ok{ border-color:rgba(69,212,131,.45); }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      table-layout:fixed;
+      font-size:10px;
+    }
+    th,td{
+      border:1px solid rgba(255,255,255,.12);
+      padding:4px 2px;
+      text-align:center;
+      white-space:nowrap;
+      word-break:normal;
+    }
+    th{
+      background:rgba(255,255,255,.07);
+      color:#e8f4ff;
+    }
+    .toolbar{
+      width:min(1080px,100%);
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-start;
+      margin-top:12px;
+    }
+    .explanation{
+      width:min(1080px,100%);
+      margin-top:14px;
+      padding:10px 2px 22px;
+    }
+    .explanation h2{ margin:0 0 8px; font-size:22px; color:#d7e5f6; }
+    .explanation ul{
+      margin:0;
+      padding-left:22px;
+      color:#d7e6f6;
+      line-height:1.9;
+      font-size:15px;
+    }
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:26px;
+      transform:translateX(-50%);
+      background:rgba(0,0,0,.76);
+      color:#fff;
+      padding:10px 16px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s ease, transform .18s ease;
+      z-index:100;
+      font-size:13px;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(-6px);
+    }
+    .modal-mask{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,.38);
+      z-index:120;
+    }
+    .modal-mask.show{ display:flex; }
+    .modal{
+      width:min(380px,92vw);
+      border-radius:18px;
+      padding:20px 18px;
+      background:#101722;
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:var(--shadow);
+      text-align:center;
+    }
+    .checkmark{
+      position:absolute;
+      left:50%;
+      top:18%;
+      transform:translate(-50%,-50%);
+      width:110px;
+      height:110px;
+      border-radius:50%;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(69,212,131,.14);
+      border:3px solid var(--accent);
+      box-shadow:0 0 28px rgba(69,212,131,.36);
+      z-index:90;
+    }
+    .checkmark.show{ display:flex; }
+    .checkmark::before{
+      content:"";
+      width:48px;
+      height:22px;
+      border-left:7px solid var(--accent);
+      border-bottom:7px solid var(--accent);
+      transform:rotate(-45deg) translateY(-4px);
+    }
+    .demo-cursor{
+      position:absolute;
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      background:rgba(255,255,255,.95);
+      border:2px solid rgba(0,0,0,.3);
+      box-shadow:0 0 0 4px rgba(69,212,131,.16);
+      pointer-events:none;
+      z-index:130;
+      opacity:0;
+      transform:translate(-50%,-50%);
+      transition:left .42s cubic-bezier(.22,.61,.36,1), top .42s cubic-bezier(.22,.61,.36,1), opacity .16s;
+    }
+    .demo-cursor.show{ opacity:1; }
+
+    @media (max-width: 900px){
+      #stage{ min-height:920px; }
+      .lab-area{ bottom:114px; }
+      .scale-zone{ left:20px; top:350px; transform:scale(.94); transform-origin:left top; }
+      .cylinder-zone{ left:250px; top:110px; transform:scale(.9); transform-origin:left top; }
+      .solid-zone{ left:592px; top:190px; transform:scale(.92); transform-origin:left top; }
+      .formula-card{ left:540px; top:500px; width:220px; }
+      .dock{ width:min(92vw, 340px); }
+    }
+    @media (max-width: 720px){
+      body{ padding:8px; }
+      .task-card{ grid-template-columns:1fr; }
+      #stage{ min-height:1220px; }
+      .lab-area{ bottom:128px; }
+      .scale-zone{ left:20px; top:510px; transform:scale(1); }
+      .cylinder-zone{ left:calc(50% - 146px); top:110px; transform:scale(.96); }
+      .solid-zone{ left:calc(50% - 110px); top:580px; }
+      .formula-card{ left:16px; right:16px; top:auto; bottom:94px; width:auto; }
+      .dock{ left:12px; right:12px; width:auto; }
+      #controlDock{ top:14px !important; }
+      #dataDock{ top:320px !important; }
+    }
+  
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div id="taskStep" class="task-step">步骤 1 / 4</div>
+    <div>
+      <div id="taskText" class="task-text"></div>
+      <div id="taskHint" class="task-hint"></div>
+    </div>
+    <div id="dots" class="progress-dots"></div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span id="modeTag" class="tag">模式：引导</span>
+      <span id="statusTag" class="tag">状态：等待开始</span>
+    </div>
+    <div class="hint-lamp-wrap" id="hintLampWrap">
+      <button id="hintLamp" class="hint-lamp-btn" type="button" aria-label="查看实验提示">💡</button>
+      <div class="hint-pop" id="hintPop">
+        <h4>当前提示</h4>
+        <div class="hint-detail" id="hintDetail"></div>
+        <h4>实验思路</h4>
+        <div class="hint-thought" id="hintThought"></div>
+      </div>
+    </div>
+
+    <div class="checkmark" id="checkmark"></div>
+    <div class="demo-cursor" id="demoCursor"></div>
+
+    <div class="lab-area" id="labArea">
+      <div class="scale-zone">
+        <div class="module-label" style="left:58px; top:-14px;">天平称量区</div>
+        <div class="scale-body"></div>
+        <div class="scale-plate"></div>
+        <div class="scale-stem"></div>
+        <div class="scale-display" id="scaleReadout">0.0 g</div>
+        <div class="scale-caption">固体质量 m</div>
+      </div>
+
+      <div class="cylinder-zone">
+        <div class="module-label" style="left:48px; top:-10px;">100 mL 量筒（排水法）</div>
+        <div class="cylinder-wrap">
+          <div class="cylinder-top"></div>
+          <div class="cylinder-body">
+            <div class="cylinder-ref" id="cylinderRef"></div>
+            <div class="cylinder-liquid" id="cylinderLiquid"></div>
+          </div>
+          <div class="cylinder-base"></div>
+          <div class="cylinder-marks" id="cylinderMarks"></div>
+        </div>
+        <div class="eye-guide" id="eyeGuide">
+          <div class="eye-line"></div>
+          <div class="eye-icon">👁</div>
+        </div>
+        <div class="cylinder-title" id="cylinderReadout">当前读数：40.0 mL</div>
+        <div class="cylinder-info">
+          <span class="mini-pill">量程：100 mL</span>
+          <span class="mini-pill">分度值：1 mL</span>
+        </div>
+      </div>
+
+      <div class="sink-string" id="sinkString"></div>
+
+      <div class="solid-zone">
+        <div class="module-label" style="left:700px; top:420px;">待测铝块</div>
+        <div id="solid" class="solid">
+          <div class="solid-tag">铝块</div>
+          <div class="solid-loop"></div>
+          <div class="solid-body"></div>
+        </div>
+        <div class="solid-note" id="solidNote">拖动铝块到天平上称量，再拖到量筒中浸没，利用液面升高量测体积。</div>
+      </div>
+
+      <div class="formula-card">
+        <div><b>实验思路</b></div>
+        <div>先用天平测固体质量 <b>m</b>，再由量筒读出初始体积 <b>V₁</b> 和浸没后体积 <b>V₂</b>，由 <b>V固 = V₂ - V₁</b> 求体积。</div>
+        <div class="formula-eq">ρ = m / (V₂ - V₁)</div>
+        <div id="resultSummary" style="margin-top:8px;color:#d5e6f8;">当前：等待完成质量与体积测量</div>
+      </div>
+
+      <div class="scene-tip" id="sceneTip">先观察量筒量程与分度值，并把视线对准初始液面 40 mL。</div>
+      <div class="bench"></div>
+    </div>
+
+    <div id="controlDock" class="dock" style="top:14px; right:14px;">
+      <div class="dock-head" data-dock="controlDock">
+        <div class="dock-title drawer-title">实验面板</div>
+        <button class="toggle" id="controlToggleBtn" data-toggle="controlDock">收起</button>
+      </div>
+      <div class="dock-body drawer-body" id="controlBody">
+        <div class="dock-grid">
+          <div class="pill-box" id="pillMode">引导模式</div>
+          <div class="pill-box" id="pillMass">m：--</div>
+          <div class="pill-box" id="pillVolumes">V₁ / V₂：-- / --</div>
+          <div class="pill-box" id="pillDensity">ρ：--</div>
+        </div>
+        <div class="btn-row">
+          <button class="sub" id="recordV1Btn">记录 V₁</button>
+          <button class="sub" id="recordMassBtn">记录 m</button>
+          <button class="sub" id="recordV2Btn">记录 V₂</button>
+          <button class="main" id="analyzeBtn">计算并分析</button>
+          <button class="main" id="confirmBtn">确认观察</button>
+        </div>
+        <div class="analysis" id="analysisBox">结论：待完成质量和体积测量后分析。</div>
+      </div>
+    </div>
+
+    <div id="dataDock" class="dock" style="top:268px; right:14px;">
+      <div class="dock-head" data-dock="dataDock">
+        <div class="dock-title drawer-title">数据面板 <span id="dataNotice" class="dock-badge">0</span></div>
+        <button class="toggle" id="dataToggleBtn" data-toggle="dataDock">收起</button>
+      </div>
+      <div class="dock-body drawer-body" id="dataBody">
+        <table>
+          <thead>
+            <tr>
+              <th>m</th>
+              <th>V₁</th>
+              <th>V₂</th>
+              <th>ΔV</th>
+              <th>ρ</th>
+            </tr>
+          </thead>
+          <tbody id="recordBody">
+            <tr><td colspan="5" style="color:#8ea7c2;">暂无记录</td></tr>
+          </tbody>
+        </table>
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="sub" id="resetBtn">步骤重置</button>
+    <button class="sub" id="autoDemoBtn">自动演示</button>
+    <button class="sub" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：测量固体的密度</h2>
+    <ul>
+      <li>先用天平测出固体质量 <b>m</b>。</li>
+      <li>再读取量筒中水的初始体积 <b>V₁</b> 与浸没后的总体积 <b>V₂</b>。</li>
+      <li>固体体积 <b>V固 = V₂ - V₁</b>，密度 <b>ρ = m / V固</b>。</li>
+    </ul>
+  </div>
+
+  <div id="toast" class="toast">提示</div>
+  <div id="doneMask" class="modal-mask">
+    <div class="modal">
+      <h3>实验完成</h3>
+      <p>你已完成“测量固体的密度”的核心操作链。</p>
+      <button class="main" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <script>
+    const LAB = {
+      name:'测量固体的密度',
+      tasks:[
+        { text:'观察量筒的量程和分度值，并把视线与初始液面 <b>40 mL</b> 齐平后记录 <b>V₁</b>。', hint:'拖动眼睛虚线到 40 mL 刻线，再点击“记录 V₁”。' },
+        { text:'把铝块拖到天平上，记录其质量 <b>m</b>。', hint:'铝块放稳后点击“记录 m”，再点“确认观察”。' },
+        { text:'把铝块浸没在量筒中，视线与液面最低处相平，记录终体积 <b>V₂</b>。', hint:'铝块拖入量筒后，液面升到 60 mL；把视线对到弯月面最低处，再点击“记录 V₂”。' },
+        { text:'点击“计算并分析”，得到固体密度，再点“确认观察”。', hint:'应得到 V固 = V₂ - V₁，ρ = m / V固。' }
+      ]
+    };
+
+    const state = {
+      freeMode:false,
+      autoPlaying:false,
+      autoStopRequested:false,
+      completed:false,
+      currentTask:0,
+      stepWarn:false,
+      records:[],
+      analysisOk:false,
+      m:null,
+      V1:null,
+      V2:null,
+      Vsolid:null,
+      rho:null,
+      eyeY:0,
+      eyeDragging:false,
+      eyeAligned:false,
+      solidDragging:false,
+      dragDx:0,
+      dragDy:0,
+      solidX:700,
+      solidY:448,
+      solidHomeX:700,
+      solidHomeY:448,
+      solidOnScale:false,
+      solidInCylinder:false,
+      cylinderMl:40,
+      baselineMl:40,
+      solidMass:54.0,
+      solidVolume:20.0,
+      dataUnseen:0,
+      hintOpen:false
+    };
+
+    const SCALE_RECT = { x:76, y:314, w:212, h:54 };
+    const CYL_MOUTH = { x:507, y:148 };
+    const CYL_BODY = { x:456, y:148, w:102, h:306 };
+    const CYL_MAX = 100;
+    const CYL_PIXELS = 306;
+    const CYL_INNER_TOP = 4;
+    const CYL_INNER_BOTTOM = 6;
+    const CYL_INNER_HEIGHT = CYL_PIXELS - CYL_INNER_TOP - CYL_INNER_BOTTOM;
+    const INITIAL_ML = 40;
+    const FINAL_ML = 60;
+    const SOLID_SCALE_POS = { x:142, y:248 };
+    const SOLID_CYL_POS = { x:468, y:388 };
+    const SOLID_CYL_CENTER_X = 507;
+    const SOLID_CYL_TOP_Y = 156;
+
+    const byId = id => document.getElementById(id);
+    const taskStep = byId('taskStep');
+    const taskText = byId('taskText');
+    const taskHint = byId('taskHint');
+    const dots = byId('dots');
+    const modeTag = byId('modeTag');
+    const statusTag = byId('statusTag');
+    const hintLampWrap = byId('hintLampWrap');
+    const hintLampBtn = byId('hintLamp');
+    const hintDetail = byId('hintDetail');
+    const hintThought = byId('hintThought');
+    const toast = byId('toast');
+    const doneMask = byId('doneMask');
+    const checkmark = byId('checkmark');
+    const scaleReadout = byId('scaleReadout');
+    const cylinderLiquid = byId('cylinderLiquid');
+    const cylinderRef = byId('cylinderRef');
+    const cylinderReadout = byId('cylinderReadout');
+    const cylinderMarks = byId('cylinderMarks');
+    const cylinderZone = document.querySelector('.cylinder-zone');
+    const eyeGuide = byId('eyeGuide');
+    const solid = byId('solid');
+    const solidNote = byId('solidNote');
+    const sinkString = byId('sinkString');
+    const sceneTip = byId('sceneTip');
+    const recordBody = byId('recordBody');
+    const pillMode = byId('pillMode');
+    const pillMass = byId('pillMass');
+    const pillVolumes = byId('pillVolumes');
+    const pillDensity = byId('pillDensity');
+    const analysisBox = byId('analysisBox');
+    const resultSummary = byId('resultSummary');
+    const recordV1Btn = byId('recordV1Btn');
+    const recordMassBtn = byId('recordMassBtn');
+    const recordV2Btn = byId('recordV2Btn');
+    const analyzeBtn = byId('analyzeBtn');
+    const confirmBtn = byId('confirmBtn');
+    const resetBtn = byId('resetBtn');
+    const autoDemoBtn = byId('autoDemoBtn');
+    const freeBtn = byId('freeBtn');
+    const okBtn = byId('okBtn');
+    const demoCursor = byId('demoCursor');
+    const dataNotice = byId('dataNotice');
+
+    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+    function round(v,d=1){ const p = 10 ** d; return Math.round(v * p) / p; }
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+    function syncModeTag(){
+      modeTag.textContent = `模式：${state.autoPlaying ? '自动演示' : (state.freeMode ? '自由' : '引导')}`;
+    }
+    function flashHintLamp(){
+      if(!hintLampBtn) return;
+      hintLampBtn.classList.remove('flash');
+      void hintLampBtn.offsetWidth;
+      hintLampBtn.classList.add('flash');
+      clearTimeout(flashHintLamp.t);
+      flashHintLamp.t = setTimeout(()=>hintLampBtn.classList.remove('flash'), 2000);
+    }
+    function syncHintLamp(){
+      if(!hintLampWrap) return;
+      hintLampWrap.classList.toggle('open', !!state.hintOpen);
+      hintDetail.textContent = sceneTip.textContent;
+      hintThought.innerHTML = state.rho !== null
+        ? `已得到 <b>m = ${state.m.toFixed(1)} g</b>、<b>V₁ = ${state.V1.toFixed(1)} mL</b>、<b>V₂ = ${state.V2.toFixed(1)} mL</b>，所以 <b>V固 = ${(state.V2 - state.V1).toFixed(1)} cm³</b>，<b>ρ = ${state.rho.toFixed(2)} g/cm³</b>。`
+        : '先读出初始体积 <b>V₁</b>，再称量固体质量 <b>m</b>，随后把固体浸没读出 <b>V₂</b>，最后按 <b>ρ = m / (V₂ - V₁)</b> 计算密度。';
+    }
+    function focusDock(id){
+      const front = byId(id);
+      const back = id === 'controlDock' ? byId('dataDock') : byId('controlDock');
+      if(!front || !back) return;
+      front.style.zIndex = '24';
+      back.style.zIndex = '20';
+    }
+    function updateDataNotice(){
+      if(!dataNotice) return;
+      dataNotice.textContent = String(state.dataUnseen || 0);
+      dataNotice.classList.toggle('show', !!state.dataUnseen);
+    }
+    function flashDataDock(){
+      const dock = byId('dataDock');
+      if(!dock) return;
+      state.dataUnseen += 1;
+      updateDataNotice();
+      dock.animate(
+        [
+          { borderColor:'rgba(255,255,255,.12)', boxShadow:'var(--shadow)' },
+          { borderColor:'rgba(255,106,106,.75)', boxShadow:'0 0 0 2px rgba(255,106,106,.18), var(--shadow)' },
+          { borderColor:'rgba(255,255,255,.12)', boxShadow:'var(--shadow)' }
+        ],
+        { duration:880, easing:'ease-out' }
+      );
+    }
+    function stackDocks(force = false){
+      const control = byId('controlDock');
+      const data = byId('dataDock');
+      if(!control || !data) return;
+      if(!force && data.dataset.moved === '1') return;
+      const top = parseFloat(control.style.top || '14');
+      const controlH = control.offsetHeight || 0;
+      data.style.top = `${top + controlH + 12}px`;
+      data.style.right = control.style.right || '14px';
+      if(force){
+        control.style.right = '14px';
+        control.style.left = 'auto';
+        data.style.left = 'auto';
+      }
+    }
+
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(showToast.t);
+      showToast.t = setTimeout(()=>toast.classList.remove('show'), 1700);
+    }
+
+    function setStatus(msg){ statusTag.textContent = `状态：${msg}`; }
+
+    function renderDots(){
+      dots.innerHTML = '';
+      LAB.tasks.forEach((_,i)=>{
+        const el = document.createElement('span');
+        el.className = 'dot';
+        if(state.completed || i < state.currentTask) el.classList.add('done');
+        else if(i === state.currentTask) el.classList.add(state.stepWarn ? 'warn' : 'active');
+        dots.appendChild(el);
+      });
+    }
+
+    function setTask(idx){
+      state.currentTask = clamp(idx, 0, LAB.tasks.length - 1);
+      state.stepWarn = false;
+      const task = LAB.tasks[state.currentTask];
+      taskStep.textContent = `步骤 ${state.currentTask + 1} / ${LAB.tasks.length}`;
+      taskText.innerHTML = task.text;
+      taskHint.textContent = task.hint;
+      renderDots();
+      updateSceneTip();
+      refreshReferenceLine();
+      syncHintLamp();
+    }
+
+    function currentTargetMl(){
+      if(state.currentTask === 0) return INITIAL_ML;
+      if(state.currentTask === 2) return state.cylinderMl;
+      if(state.V2 !== null) return state.V2;
+      if(state.solidInCylinder) return state.cylinderMl;
+      return state.V1 !== null ? state.V1 : INITIAL_ML;
+    }
+
+    function updateSceneTip(){
+      const tips = [
+        '先把眼睛虚线拖到 40 mL 初始液面，再记录 V₁。',
+        '把铝块放到天平秤盘中央，读取稳定质量 m。',
+        '将铝块拖到量筒中完全浸没，液面升高后再读 V₂。',
+        '点击“计算并分析”，得到固体体积与密度。'
+      ];
+      sceneTip.textContent = tips[state.currentTask] || '请按步骤完成实验。';
+    }
+
+    function mLToLevelHeight(ml){
+      return clamp((ml / CYL_MAX) * CYL_INNER_HEIGHT, 0, CYL_INNER_HEIGHT);
+    }
+    function mLToHeight(ml){ return ml <= 0 ? 0 : clamp(mLToLevelHeight(ml) + 6, 0, CYL_INNER_HEIGHT + 6); }
+    function mlToEyeY(ml){ return CYL_BODY.y + CYL_INNER_TOP + CYL_INNER_HEIGHT - mLToLevelHeight(ml); }
+
+    function drawCylinderMarks(){
+      cylinderMarks.innerHTML = '';
+      for(let ml = 0; ml <= 100; ml += 1){
+        const y = CYL_INNER_TOP + CYL_INNER_HEIGHT - (ml / 100) * CYL_INNER_HEIGHT;
+        const row = document.createElement('div');
+        row.className = `mark${ml % 10 === 0 ? ' major' : ''}`;
+        row.style.top = `${y}px`;
+        if(ml % 10 === 0 && ml < 100){
+          const label = document.createElement('div');
+          label.className = 'mark-label';
+          label.textContent = ml;
+          row.appendChild(label);
+        }
+        cylinderMarks.appendChild(row);
+      }
+    }
+
+    function refreshReferenceLine(){
+      const ml = currentTargetMl();
+      cylinderRef.style.height = `${mLToLevelHeight(ml)}px`;
+    }
+
+    function refreshCylinder(){
+      cylinderLiquid.style.height = `${mLToHeight(state.cylinderMl)}px`;
+      cylinderReadout.textContent = `当前读数：${round(state.cylinderMl, 1)} mL`;
+      state.eyeAligned = Math.abs(state.eyeY - mlToEyeY(currentTargetMl())) <= 6;
+    }
+
+    function refreshScale(){
+      scaleReadout.textContent = state.solidOnScale ? `${state.solidMass.toFixed(1)} g` : '0.0 g';
+      pillMass.textContent = `m：${state.m === null ? '--' : `${state.m.toFixed(1)} g`}`;
+    }
+
+    function refreshResultSummary(){
+      if(state.rho !== null){
+        resultSummary.textContent = `本次结果：m = ${state.m.toFixed(1)} g，V固 = ${state.Vsolid.toFixed(1)} cm³，ρ = ${state.rho.toFixed(2)} g/cm³`;
+      }else if(state.V2 !== null){
+        resultSummary.textContent = `当前：已测得 V₂ = ${state.V2.toFixed(1)} mL，等待计算 V固 和 ρ`;
+      }else{
+        resultSummary.textContent = '当前：等待完成质量与体积测量';
+      }
+    }
+
+    function refreshSolidPosition(){
+      solid.style.left = `${state.solidX}px`;
+      solid.style.top = `${state.solidY}px`;
+      solid.style.transform = state.solidInCylinder ? 'scale(0.92)' : 'scale(1)';
+      sinkString.style.display = state.solidInCylinder ? 'block' : 'none';
+      if(state.solidInCylinder){
+        sinkString.style.left = `${SOLID_CYL_CENTER_X}px`;
+        sinkString.style.top = `${SOLID_CYL_TOP_Y}px`;
+        sinkString.style.height = `${state.solidY - SOLID_CYL_TOP_Y + 12}px`;
+      }else{
+        sinkString.style.height = '0px';
+      }
+    }
+
+    function refreshButtons(){
+      recordV1Btn.disabled = !(state.currentTask === 0 && state.eyeAligned);
+      recordMassBtn.disabled = !(state.currentTask <= 1 && state.solidOnScale);
+      const v2Aligned = Math.abs(state.eyeY - mlToEyeY(FINAL_ML)) <= 8;
+      recordV2Btn.disabled = !(state.currentTask === 2 && state.solidInCylinder && v2Aligned);
+      analyzeBtn.disabled = !(state.m !== null && state.V1 !== null && state.V2 !== null);
+      confirmBtn.disabled = false;
+      autoDemoBtn.textContent = state.autoPlaying ? '退出自动演示' : '自动演示';
+      freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+      autoDemoBtn.disabled = state.freeMode && !state.autoPlaying;
+      freeBtn.disabled = state.autoPlaying;
+      pillMode.textContent = state.freeMode ? '自由模式' : '引导模式';
+      pillVolumes.textContent = `V₁ / V₂：${state.V1 === null ? '--' : state.V1.toFixed(1)} / ${state.V2 === null ? '--' : state.V2.toFixed(1)}`;
+      pillDensity.textContent = `ρ：${state.rho === null ? '--' : `${state.rho.toFixed(2)} g/cm³`}`;
+    }
+
+    function refreshAnalysis(){
+      if(state.rho === null){
+        analysisBox.textContent = '结论：待完成质量和体积测量后分析。';
+        analysisBox.classList.remove('ok');
+        return;
+      }
+      analysisBox.textContent = `结论：固体体积 V固 = V₂ - V₁ = ${state.Vsolid.toFixed(1)} cm³，密度 ρ = m / V固 = ${state.rho.toFixed(2)} g/cm³。`;
+      analysisBox.classList.add('ok');
+    }
+
+    function formatRecordCell(value, digits = 1){
+      return value == null ? '—' : value.toFixed(digits);
+    }
+
+    function refreshRecordTable(){
+      if(!state.records.length){
+        recordBody.innerHTML = '<tr><td colspan="5" style="color:#8ea7c2;">暂无记录</td></tr>';
+        return;
+      }
+      recordBody.innerHTML = state.records.map(r => `<tr><td>${formatRecordCell(r.m, 1)}</td><td>${formatRecordCell(r.V1, 1)}</td><td>${formatRecordCell(r.V2, 1)}</td><td>${formatRecordCell(r.Vsolid, 1)}</td><td>${formatRecordCell(r.rho, 2)}</td></tr>`).join('');
+    }
+
+    function reRender(){
+      refreshReferenceLine();
+      refreshCylinder();
+      refreshScale();
+      refreshSolidPosition();
+      refreshButtons();
+      refreshAnalysis();
+      refreshRecordTable();
+      refreshResultSummary();
+      updateDataNotice();
+      const eyeZoneTop = cylinderZone ? cylinderZone.offsetTop : 0;
+      eyeGuide.style.top = `${state.eyeY - eyeZoneTop - 10}px`;
+      solidNote.textContent = state.solidInCylinder
+        ? '铝块已完全浸没在量筒中，请把视线与液面最低处相平，读取 V₂。'
+        : '拖动铝块到天平上称量，再拖到量筒中浸没，利用液面升高量测体积。';
+    }
+
+    function hideDemoCursor(){
+      demoCursor.classList.remove('show');
+      demoCursor.style.left = '-9999px';
+      demoCursor.style.top = '-9999px';
+    }
+
+    function resetGuidedState(keepMode=false){
+      state.completed = false;
+      state.autoStopRequested = false;
+      state.analysisOk = false;
+      state.m = null;
+      state.V1 = null;
+      state.V2 = null;
+      state.Vsolid = null;
+      state.rho = null;
+      state.eyeY = mlToEyeY(INITIAL_ML);
+      state.eyeDragging = false;
+      state.eyeAligned = true;
+      state.solidDragging = false;
+      state.solidX = state.solidHomeX;
+      state.solidY = state.solidHomeY;
+      state.solidOnScale = false;
+      state.solidInCylinder = false;
+      state.cylinderMl = INITIAL_ML;
+      state.records = [];
+      state.dataUnseen = 0;
+      state.hintOpen = false;
+      if(!keepMode) state.freeMode = false;
+      hideDemoCursor();
+      refreshRecordTable();
+      doneMask.classList.remove('show');
+      updateDataNotice();
+      syncHintLamp();
+      syncModeTag();
+      setStatus(state.freeMode ? '自由探索' : '等待开始');
+      setTask(0);
+      reRender();
+    }
+
+    function warnStep(msg){
+      state.stepWarn = true;
+      renderDots();
+      flashHintLamp();
+      showToast(msg);
+    }
+
+    function advanceIfAllowed(){
+      let ok = false;
+      if(state.currentTask === 0 && state.V1 === null && state.eyeAligned){
+        recordV1();
+      }
+      switch(state.currentTask){
+        case 0: ok = state.V1 !== null; break;
+        case 1: ok = state.m !== null; break;
+        case 2: ok = state.V2 !== null; break;
+        case 3: ok = state.analysisOk; break;
+      }
+      if(!ok){
+        warnStep('当前步骤条件未满足，请按提示完成操作');
+        return;
+      }
+      checkmark.classList.add('show');
+      setTimeout(()=>checkmark.classList.remove('show'), 520);
+      if(state.currentTask < LAB.tasks.length - 1){
+        setTask(state.currentTask + 1);
+        setStatus('继续下一步');
+      }else{
+        state.completed = true;
+        syncModeTag();
+        setStatus('挑战完成');
+        renderDots();
+        doneMask.classList.add('show');
+      }
+      reRender();
+    }
+
+    function buildRecord(){
+      return {
+        m:state.m,
+        V1:state.V1,
+        V2:state.V2,
+        Vsolid:state.Vsolid,
+        rho:state.rho,
+        mode:state.freeMode ? 'free' : 'guided'
+      };
+    }
+
+    function syncPartialRecord(){
+      const rec = buildRecord();
+      const hasAnyValue = rec.m !== null || rec.V1 !== null || rec.V2 !== null || rec.Vsolid !== null || rec.rho !== null;
+      if(!hasAnyValue) return;
+      if(!state.records.length){
+        state.records.push(rec);
+      }else{
+        Object.assign(state.records[state.records.length - 1], rec);
+      }
+      flashDataDock();
+      refreshRecordTable();
+    }
+
+    function finishRecord(){
+      if(state.m === null || state.V1 === null || state.V2 === null) return;
+      state.Vsolid = round(state.V2 - state.V1, 1);
+      state.rho = round(state.m / state.Vsolid, 2);
+      state.analysisOk = true;
+      syncPartialRecord();
+      reRender();
+    }
+
+    function placeSolidHome(){
+      state.solidOnScale = false;
+      state.solidInCylinder = false;
+      state.solidX = state.solidHomeX;
+      state.solidY = state.solidHomeY;
+      state.cylinderMl = state.V2 !== null && state.freeMode ? state.V2 : (state.V1 !== null ? state.V1 : INITIAL_ML);
+      if(!state.freeMode) state.cylinderMl = state.solidInCylinder ? FINAL_ML : INITIAL_ML;
+      if(!state.solidInCylinder) state.cylinderMl = INITIAL_ML;
+      reRender();
+    }
+
+    function snapToScale(){
+      state.solidOnScale = true;
+      state.solidInCylinder = false;
+      state.solidX = SOLID_SCALE_POS.x;
+      state.solidY = SOLID_SCALE_POS.y;
+      state.cylinderMl = INITIAL_ML;
+      reRender();
+    }
+
+    function snapIntoCylinder(){
+      state.solidOnScale = false;
+      state.solidInCylinder = true;
+      state.solidX = SOLID_CYL_POS.x;
+      state.solidY = SOLID_CYL_POS.y;
+      state.cylinderMl = FINAL_ML;
+      setStatus('铝块已浸没，请读取 V₂');
+      reRender();
+    }
+
+    function stopSolidDrag(pointerId){
+      state.solidDragging = false;
+      solid.classList.remove('dragging');
+      if(pointerId !== undefined){
+        try{ solid.releasePointerCapture(pointerId); }catch(_){}
+      }
+    }
+
+    function recordV1(){
+      if(!state.eyeAligned){
+        showToast('请先把视线虚线对准 40 mL 液面（靠近会自动吸附）');
+        return;
+      }
+      state.V1 = round(state.cylinderMl, 1);
+      setStatus(`已记录 V₁ = ${state.V1.toFixed(1)} mL`);
+      syncPartialRecord();
+      reRender();
+    }
+
+    function recordMass(){
+      if(!state.solidOnScale){
+        showToast('请先把铝块放到天平上');
+        return;
+      }
+      state.m = round(state.solidMass, 1);
+      setStatus(`已记录 m = ${state.m.toFixed(1)} g`);
+      syncPartialRecord();
+      reRender();
+    }
+
+    function recordV2(){
+      if(!state.solidInCylinder){
+        showToast('请先把铝块浸没在量筒中');
+        return;
+      }
+      if(Math.abs(state.eyeY - mlToEyeY(FINAL_ML)) > 8){
+        showToast('视线需与弯月面最低处相平');
+        return;
+      }
+      state.V2 = round(state.cylinderMl, 1);
+      setStatus(`已记录 V₂ = ${state.V2.toFixed(1)} mL`);
+      syncPartialRecord();
+      reRender();
+    }
+
+    function analyze(){
+      if(state.m === null || state.V1 === null || state.V2 === null){
+        showToast('请先完成 m、V₁、V₂ 三项测量');
+        return;
+      }
+      finishRecord();
+      setStatus(`ρ = ${state.rho.toFixed(2)} g/cm³`);
+    }
+
+    function setFreeMode(on){
+      state.freeMode = on;
+      syncModeTag();
+      setStatus(state.freeMode ? '自由探索' : '等待开始');
+      if(!state.freeMode){
+        setTask(0);
+      }
+      reRender();
+    }
+
+    function pointerPos(evt){
+      const rect = byId('labArea').getBoundingClientRect();
+      return { x:evt.clientX - rect.left, y:evt.clientY - rect.top };
+    }
+
+    solid.addEventListener('pointerdown', e=>{
+      if(state.autoPlaying || e.button !== 0) return;
+      const p = pointerPos(e);
+      state.solidDragging = true;
+      state.dragDx = p.x - state.solidX;
+      state.dragDy = p.y - state.solidY;
+      solid.classList.add('dragging');
+      solid.setPointerCapture(e.pointerId);
+      if(state.solidInCylinder){
+        state.solidInCylinder = false;
+        state.cylinderMl = INITIAL_ML;
+      }
+    });
+
+    solid.addEventListener('pointermove', e=>{
+      if(!state.solidDragging || state.autoPlaying) return;
+      if((e.buttons & 1) === 0){
+        stopSolidDrag(e.pointerId);
+        reRender();
+        return;
+      }
+      const p = pointerPos(e);
+      state.solidX = clamp(p.x - state.dragDx, 10, 930);
+      state.solidY = clamp(p.y - state.dragDy, 20, 540);
+      state.solidOnScale = false;
+      state.solidInCylinder = false;
+      refreshSolidPosition();
+      refreshCylinder();
+    });
+
+    solid.addEventListener('pointerup', e=>{
+      if(!state.solidDragging) return;
+      stopSolidDrag(e.pointerId);
+      const cx = state.solidX + 40;
+      const cy = state.solidY + 36;
+      if(
+        cx > SCALE_RECT.x - 46 &&
+        cx < SCALE_RECT.x + SCALE_RECT.w + 46 &&
+        cy > SCALE_RECT.y - 112 &&
+        cy < SCALE_RECT.y + SCALE_RECT.h + 54
+      ){
+        snapToScale();
+        return;
+      }
+      const mouthDx = Math.abs(cx - CYL_MOUTH.x);
+      const mouthDy = Math.abs(cy - CYL_MOUTH.y);
+      const inCylinderZone =
+        cx > CYL_BODY.x - 58 &&
+        cx < CYL_BODY.x + CYL_BODY.w + 58 &&
+        cy > CYL_BODY.y - 96 &&
+        cy < CYL_BODY.y + CYL_BODY.h + 58;
+      if((mouthDx < 164 && mouthDy < 252) || inCylinderZone){
+        snapIntoCylinder();
+        return;
+      }
+      placeSolidHome();
+    });
+    solid.addEventListener('pointercancel', e=> stopSolidDrag(e.pointerId));
+    solid.addEventListener('lostpointercapture', ()=> stopSolidDrag());
+    window.addEventListener('pointerup', ()=>{ if(state.solidDragging) stopSolidDrag(); });
+
+    function stopEyeDrag(pointerId){
+      state.eyeDragging = false;
+      if(pointerId !== undefined){
+        try{ eyeGuide.releasePointerCapture(pointerId); }catch(_){}
+      }
+      reRender();
+    }
+
+    eyeGuide.addEventListener('pointerdown', e=>{
+      if(state.autoPlaying || e.button !== 0) return;
+      state.eyeDragging = true;
+      eyeGuide.setPointerCapture(e.pointerId);
+    });
+
+    eyeGuide.addEventListener('pointermove', e=>{
+      if(!state.eyeDragging || state.autoPlaying) return;
+      if((e.buttons & 1) === 0){
+        stopEyeDrag(e.pointerId);
+        return;
+      }
+      const p = pointerPos(e);
+      const targetY = mlToEyeY(currentTargetMl());
+      const nextY = clamp(p.y, CYL_BODY.y + 6, CYL_BODY.y + CYL_BODY.h - 6);
+      state.eyeY = Math.abs(nextY - targetY) <= 6 ? targetY : nextY;
+      reRender();
+    });
+
+    eyeGuide.addEventListener('pointerup', e=>{
+      stopEyeDrag(e.pointerId);
+    });
+    eyeGuide.addEventListener('pointercancel', e=> stopEyeDrag(e.pointerId));
+    eyeGuide.addEventListener('lostpointercapture', ()=> stopEyeDrag());
+
+    recordV1Btn.addEventListener('click', recordV1);
+    recordMassBtn.addEventListener('click', recordMass);
+    recordV2Btn.addEventListener('click', recordV2);
+    analyzeBtn.addEventListener('click', analyze);
+    confirmBtn.addEventListener('click', advanceIfAllowed);
+    resetBtn.addEventListener('click', ()=> resetGuidedState(true));
+    freeBtn.addEventListener('click', ()=>{
+      const next = !state.freeMode;
+      if(next){
+        resetGuidedState(true);
+        setFreeMode(true);
+      }else{
+        setFreeMode(false);
+        resetGuidedState(true);
+      }
+    });
+    okBtn.addEventListener('click', ()=>doneMask.classList.remove('show'));
+
+    document.querySelectorAll('.toggle').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const id = btn.dataset.toggle;
+        byId(id).classList.toggle('collapsed');
+        btn.textContent = byId(id).classList.contains('collapsed') ? '展开' : '收起';
+        if(id === 'dataDock' && !byId(id).classList.contains('collapsed')){
+          state.dataUnseen = 0;
+          updateDataNotice();
+        }
+        stackDocks();
+      });
+    });
+
+    function makeDockDraggable(id){
+      const dock = byId(id);
+      const head = dock.querySelector('.dock-head');
+      let dragging = false, dx = 0, dy = 0;
+      head.addEventListener('pointerdown', e=>{
+        if(e.target.closest('button')) return;
+        const rect = dock.getBoundingClientRect();
+        dragging = true;
+        dx = e.clientX - rect.left;
+        dy = e.clientY - rect.top;
+        dock.dataset.moved = '1';
+        focusDock(id);
+        head.setPointerCapture(e.pointerId);
+      });
+      head.addEventListener('pointermove', e=>{
+        if(!dragging) return;
+        const stageRect = byId('stage').getBoundingClientRect();
+        dock.style.left = `${clamp(e.clientX - stageRect.left - dx, 8, stageRect.width - dock.offsetWidth - 8)}px`;
+        dock.style.right = 'auto';
+        dock.style.top = `${clamp(e.clientY - stageRect.top - dy, 8, stageRect.height - 120)}px`;
+      });
+      head.addEventListener('pointerup', e=>{
+        dragging = false;
+        try{ head.releasePointerCapture(e.pointerId); }catch(_){}
+      });
+    }
+    makeDockDraggable('controlDock');
+    makeDockDraggable('dataDock');
+    window.addEventListener('resize', ()=>stackDocks(true));
+
+    async function moveCursorTo(x, y, ms = 420){
+      demoCursor.classList.add('show');
+      demoCursor.style.left = `${x}px`;
+      demoCursor.style.top = `${y}px`;
+      await sleep(ms);
+    }
+
+    async function autoDemo(){
+      if(state.autoPlaying){
+        state.autoStopRequested = true;
+        hideDemoCursor();
+        setStatus('已退出自动演示');
+        reRender();
+        return;
+      }
+      resetGuidedState(false);
+      state.autoPlaying = true;
+      syncModeTag();
+      setStatus('自动演示中');
+      reRender();
+      try{
+        state.eyeY = mlToEyeY(INITIAL_ML);
+        reRender();
+        await moveCursorTo(618, state.eyeY + 12);
+        recordV1();
+        advanceIfAllowed();
+        await sleep(320);
+
+        await moveCursorTo(state.solidHomeX + 44, state.solidHomeY + 34);
+        snapToScale();
+        await sleep(460);
+        recordMass();
+        advanceIfAllowed();
+        await sleep(320);
+
+        await moveCursorTo(CYL_MOUTH.x, CYL_MOUTH.y + 10);
+        snapIntoCylinder();
+        await sleep(420);
+        state.eyeY = mlToEyeY(FINAL_ML);
+        reRender();
+        await sleep(300);
+        recordV2();
+        advanceIfAllowed();
+        await sleep(300);
+
+        analyze();
+        advanceIfAllowed();
+      } finally{
+        state.autoPlaying = false;
+        state.autoStopRequested = false;
+        hideDemoCursor();
+        syncModeTag();
+        reRender();
+      }
+    }
+
+    autoDemoBtn.addEventListener('click', autoDemo);
+    hintLampBtn.addEventListener('click', ()=>{
+      state.hintOpen = !state.hintOpen;
+      syncHintLamp();
+    });
+
+    drawCylinderMarks();
+    resetGuidedState(false);
+    stackDocks(true);
+    syncHintLamp();
+    syncModeTag();
+    setStatus('等待开始');
+    reRender();
+  </script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock) return;
+    if (!isDone()) {
+      var dataOpen = dataBody && !dataBody.classList.contains("collapsed");
+      var controlOpen = controlBody && !controlBody.classList.contains("collapsed");
+      if (stage.clientWidth <= 760 && dataOpen && controlOpen) {
+        setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+        var narrowW = stage.clientWidth;
+        placeDock(controlDock, narrowW - (controlDock.offsetWidth || 160) - 10, 10);
+        placeDock(dataDock, narrowW - (dataDock.offsetWidth || 260) - 10, 10 + (controlDock.offsetHeight || 44) + 10);
+      }
+      return;
+    }
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

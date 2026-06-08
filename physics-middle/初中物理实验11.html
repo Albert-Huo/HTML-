@@ -1,0 +1,1912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>初中物理实验11 - 探究物体的质量与体积之间的关系</title>
+<style>
+  :root{
+    --bg:#07111d;
+    --panel:rgba(8,16,30,.88);
+    --panelLine:rgba(255,255,255,.12);
+    --panelSoft:rgba(255,255,255,.06);
+    --ink:#e9f2ff;
+    --muted:#9fb3c9;
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+    --wood:#f6c177;
+    --al:#9fb4ff;
+    --iron:#ff9f9f;
+    --zPanel:38;
+    --zResults:37;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; min-height:100%; }
+  body{
+    background:radial-gradient(circle at top, #123456 0%, #09101c 42%, #060b14 100%);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+    padding:10px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  #spectrum{
+    position:relative;
+    width:100%;
+    max-width:940px;
+    height:40px;
+    border-radius:12px;
+    overflow:hidden;
+    box-shadow:0 0 15px rgba(255,255,255,.15);
+    background:#000;
+    flex-shrink:0;
+    margin-bottom:12px;
+  }
+  #spectrum::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    border-radius:inherit;
+    background:linear-gradient(90deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000);
+    background-size:200% 100%;
+    animation:flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow{ 0%{ background-position:0 0; } 100%{ background-position:-100% 0; } }
+
+  .task-card{
+    width:100%;
+    max-width:940px;
+    background:rgba(255,255,255,.07);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:14px;
+    padding:12px 14px;
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:10px;
+    align-items:center;
+    backdrop-filter:blur(8px);
+    transition:opacity .2s, filter .2s;
+  }
+  .task-step{ background:rgba(255,255,255,.14); border-radius:10px; padding:7px 12px; font-weight:700; white-space:nowrap; }
+  .task-text{ line-height:1.56; }
+  .task-hint{ color:#ffd45a; font-size:12px; opacity:.95; }
+  .progress-dots{ display:flex; gap:7px; align-items:center; }
+  .dot{ width:11px; height:11px; border-radius:50%; background:rgba(255,255,255,.22); outline:2px solid rgba(255,255,255,.12); }
+  .dot.active{ background:var(--warn); }
+  .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.45); }
+  .dot.warn{ background:var(--error); outline-color:rgba(255,107,107,.42); box-shadow:0 0 10px rgba(255,107,107,.42); }
+
+  #stage{
+    position:relative;
+    width:100%;
+    max-width:940px;
+    min-height:650px;
+    margin-top:12px;
+    border-radius:18px;
+    overflow:hidden;
+    background:linear-gradient(180deg, rgba(8,18,34,.94), rgba(4,10,18,.98));
+    box-shadow:0 18px 42px rgba(0,0,0,.42);
+    border:1px solid rgba(255,255,255,.08);
+    touch-action:none;
+  }
+  .board-grid{
+    position:absolute;
+    inset:0;
+    background-image:linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+    background-size:22px 22px;
+    opacity:.5;
+    pointer-events:none;
+  }
+  .hud{
+    position:absolute;
+    left:12px;
+    top:12px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    z-index:30;
+  }
+  .tag{
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.34);
+    color:#eef5ff;
+    font-size:13px;
+    font-weight:700;
+  }
+  .tag.mode-auto{ color:#ffe48a; }
+
+  .lab-area{
+    position:relative;
+    min-height:650px;
+    padding:78px 16px 94px;
+  }
+  .bench{
+    position:relative;
+    display:grid;
+    grid-template-columns:minmax(260px, 320px) minmax(360px, 1fr);
+    gap:16px;
+    min-height:500px;
+  }
+  .apparatusCard,
+  .graphCard{
+    position:relative;
+    border:1px solid rgba(255,255,255,.1);
+    border-radius:18px;
+    background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05), 0 10px 24px rgba(0,0,0,.24);
+  }
+  .apparatusCard{ padding:16px; overflow:hidden; }
+  .graphCard{ padding:14px; }
+  .cardTitle{ font-size:13px; color:#dbe7ff; font-weight:800; margin-bottom:10px; }
+
+  .sampleStage{
+    position:relative;
+    height:236px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.08);
+    background:radial-gradient(circle at top, rgba(255,255,255,.08), rgba(255,255,255,.02) 60%);
+    overflow:hidden;
+  }
+  .sampleStand{
+    position:absolute;
+    left:50%;
+    bottom:26px;
+    transform:translateX(-50%);
+    width:178px;
+    height:24px;
+    border-radius:999px;
+    background:linear-gradient(180deg,#d9dee4,#9da7b4);
+    box-shadow:0 8px 14px rgba(0,0,0,.28);
+  }
+  .sampleBlock{
+    position:absolute;
+    left:50%;
+    bottom:50px;
+    transform:translateX(-50%);
+    width:76px;
+    height:76px;
+    border-radius:14px;
+    background:linear-gradient(135deg, rgba(255,255,255,.24), rgba(0,0,0,.18));
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 18px 28px rgba(0,0,0,.28);
+    transition:width .18s ease, height .18s ease, background .18s ease;
+  }
+  .sampleGlow{
+    position:absolute;
+    left:50%;
+    bottom:44px;
+    transform:translateX(-50%);
+    width:130px;
+    height:34px;
+    border-radius:50%;
+    filter:blur(14px);
+    opacity:.38;
+  }
+  .sampleLabel{
+    position:absolute;
+    left:16px;
+    top:16px;
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.36);
+    font-size:12px;
+    font-weight:800;
+  }
+  .sampleSpecs{
+    position:absolute;
+    right:16px;
+    top:16px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    align-items:flex-end;
+  }
+  .specPill{
+    padding:6px 10px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.38);
+    font-size:12px;
+  }
+  .balancePanel{
+    margin-top:12px;
+    padding:12px 14px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(0,0,0,.24);
+  }
+  .balanceDisplay{
+    margin-top:10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:12px 14px;
+    border-radius:14px;
+    background:linear-gradient(180deg, rgba(5,11,18,.92), rgba(10,26,18,.92));
+    border:1px solid rgba(61,220,151,.26);
+    box-shadow:inset 0 0 12px rgba(61,220,151,.12);
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  .balanceDisplay b{ color:var(--accent); font-size:20px; letter-spacing:1px; }
+
+  .volumeRig{
+    margin-top:14px;
+    padding:14px 14px 12px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.03);
+  }
+  .volumeTop{ display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12px; color:#dbe7ff; }
+  .volumeTrack{
+    position:relative;
+    margin-top:14px;
+    height:18px;
+    border-radius:999px;
+    background:linear-gradient(180deg, rgba(255,255,255,.16), rgba(255,255,255,.05));
+    border:1px solid rgba(255,255,255,.08);
+    touch-action:none;
+  }
+  .volumeFill{
+    position:absolute;
+    left:0;
+    top:0;
+    bottom:0;
+    width:0%;
+    border-radius:999px;
+    background:linear-gradient(90deg, rgba(61,220,151,.95), rgba(61,220,151,.2));
+  }
+  .volumeHandle{
+    position:absolute;
+    top:50%;
+    left:0;
+    width:24px;
+    height:24px;
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    background:linear-gradient(180deg,#f8fbff,#cad7e5);
+    border:2px solid rgba(11,22,36,.7);
+    box-shadow:0 4px 12px rgba(0,0,0,.28);
+    cursor:grab;
+    touch-action:none;
+  }
+  .volumeHandle.dragging{ cursor:grabbing; }
+  .volumeScale{ margin-top:10px; display:flex; justify-content:space-between; font-size:11px; color:#90a7c0; }
+
+  .graphCanvasWrap{
+    position:relative;
+    height:100%;
+    min-height:470px;
+    border-radius:16px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(6,12,20,.86);
+    overflow:hidden;
+  }
+  #graphCanvas{
+    width:100%;
+    height:100%;
+    display:block;
+  }
+  .legend{
+    position:absolute;
+    right:14px;
+    top:12px;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
+  .legend span{
+    padding:5px 9px;
+    border-radius:999px;
+    background:rgba(0,0,0,.4);
+    border:1px solid rgba(255,255,255,.08);
+    font-size:11px;
+    font-weight:800;
+  }
+  .legend .wood{ color:var(--wood); }
+  .legend .aluminum{ color:var(--al); }
+  .legend .iron{ color:var(--iron); }
+
+  .effectTag{
+    position:absolute;
+    left:18px;
+    bottom:82px;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    padding:7px 12px;
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.42);
+    color:#e7f0ff;
+    font-size:12px;
+  }
+  .effectDot{ width:9px; height:9px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px rgba(61,220,151,.55); }
+  .labNote{
+    position:absolute;
+    right:18px;
+    bottom:78px;
+    padding:9px 14px;
+    border-radius:999px;
+    background:rgba(0,0,0,.44);
+    border:1px solid rgba(255,255,255,.12);
+    color:#e9f2ff;
+    font-size:13px;
+    max-width:min(70%, 420px);
+    text-align:right;
+  }
+
+  .dock{
+    position:absolute;
+    width:min(92%, 350px);
+    border:1px solid var(--panelLine);
+    background:var(--panel);
+    border-radius:16px;
+    overflow:hidden;
+    z-index:var(--zPanel);
+    box-shadow:0 14px 36px rgba(0,0,0,.42);
+    backdrop-filter:blur(12px);
+  }
+  .resultsDock{ z-index:var(--zResults); }
+  .dock.dragging{ box-shadow:0 20px 48px rgba(0,0,0,.56); }
+  .dockHead{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:10px 12px;
+    background:rgba(255,255,255,.05);
+    cursor:grab;
+    touch-action:none;
+  }
+  .dockHead:active{ cursor:grabbing; }
+  .dockTitle{ display:flex; align-items:center; gap:6px; font-size:13px; font-weight:800; color:#eaf2ff; }
+  .dockBtns{ display:flex; align-items:center; gap:8px; }
+  .iconBtn{ padding:6px 10px; border:none; border-radius:999px; background:rgba(255,255,255,.1); color:#fff; cursor:pointer; }
+  .dockBody{ padding:10px 12px 12px; max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .dockBody.collapsed{ display:none; }
+  .secTitle{ font-size:12px; color:#98afc5; margin-bottom:8px; font-weight:800; }
+  .mini{ color:#9ab0c6; font-size:12px; line-height:1.55; }
+  .readout{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .pill{ padding:7px 10px; border-radius:999px; background:var(--panelSoft); border:1px solid rgba(255,255,255,.08); font-size:12px; }
+  .matRow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .matBtn{
+    border:none;
+    border-radius:999px;
+    padding:8px 12px;
+    font-size:12px;
+    font-weight:800;
+    color:#081320;
+    cursor:pointer;
+  }
+  .matBtn.active{ outline:2px solid rgba(255,255,255,.4); }
+  .matBtn[data-key="wood"]{ background:var(--wood); }
+  .matBtn[data-key="aluminum"]{ background:var(--al); }
+  .matBtn[data-key="iron"]{ background:var(--iron); }
+  .btnRow{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .btnRow button, .toolbar button.main{
+    padding:10px 14px;
+    border:none;
+    border-radius:10px;
+    background:#414d5d;
+    color:#fff;
+    cursor:pointer;
+    transition:background .2s, transform .08s, opacity .2s;
+  }
+  .btnRow button:hover, .toolbar button.main:hover{ background:#526173; }
+  .btnRow button:active, .toolbar button.main:active{ transform:scale(.98); }
+  .btnRow button:disabled, .toolbar button.main:disabled{ opacity:.5; cursor:not-allowed; }
+  .analysisBox{
+    margin-top:10px;
+    padding:10px 12px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.03);
+    color:#dbe7ff;
+    font-size:12px;
+    line-height:1.7;
+  }
+  .dataNotice{
+    min-width:18px;
+    height:18px;
+    padding:0 5px;
+    border-radius:999px;
+    background:rgba(255,107,107,.18);
+    color:#ffd6d6;
+    font-size:11px;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    border:1px solid rgba(255,107,107,.46);
+  }
+  .dataNotice.show{ display:inline-flex; animation:blinkBadge 1s ease-in-out infinite; }
+  @keyframes blinkBadge{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+  .table{ width:100%; border-collapse:collapse; font-size:12px; }
+  .table th,.table td{ border-bottom:1px solid rgba(255,255,255,.08); padding:8px 6px; text-align:left; vertical-align:top; }
+  .table th{ color:#9cb2c8; font-weight:800; }
+
+  .toolbar{
+    width:100%;
+    max-width:940px;
+    margin-top:12px;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:flex-start;
+  }
+
+  .demoCursor,
+  .demoCursorPulse{
+    position:absolute;
+    left:-200px;
+    top:-200px;
+    width:22px;
+    height:22px;
+    pointer-events:none;
+    z-index:140;
+    transform:translate(-50%,-50%);
+  }
+  .demoCursor svg{ width:100%; height:100%; display:block; filter:drop-shadow(0 4px 10px rgba(0,0,0,.42)); }
+  .demoCursor.clicking{ transform:translate(-50%,-50%) scale(.92); }
+  .demoCursorPulse{ border-radius:50%; border:2px solid rgba(255,198,85,.95); opacity:0; }
+  .demoCursorPulse.active{ animation:cursorPulse .45s ease-out; }
+  @keyframes cursorPulse{ 0%{ opacity:.95; transform:translate(-50%,-50%) scale(.35); } 100%{ opacity:0; transform:translate(-50%,-50%) scale(1.55); } }
+
+  .checkmark{
+    position:absolute;
+    left:50%;
+    top:42%;
+    transform:translate(-50%,-50%) scale(.6);
+    width:124px;
+    height:124px;
+    border-radius:50%;
+    background:rgba(61,220,151,.15);
+    border:3px solid var(--accent);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 0 40px rgba(61,220,151,.45);
+    animation:pop .55s ease-out;
+    z-index:120;
+  }
+  .checkmark.active{ display:flex; }
+  .checkmark > div{ width:62px; height:32px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  @keyframes pop{ 0%{ transform:translate(-50%,-50%) scale(.4); opacity:.2; } 60%{ transform:translate(-50%,-50%) scale(1.08); opacity:1; } 100%{ transform:translate(-50%,-50%) scale(1); } }
+  .toast{
+    position:fixed;
+    left:50%;
+    bottom:24px;
+    transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,.82);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:10px;
+    font-size:14px;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .25s, transform .25s;
+    z-index:200;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .modal-mask{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,.5);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:300;
+  }
+  .modal{
+    width:min(90vw,380px);
+    background:#111722;
+    color:#fff;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:14px;
+    padding:18px 16px;
+    text-align:center;
+    box-shadow:0 12px 30px rgba(0,0,0,.5);
+  }
+  .modal h3{ margin:8px 0 6px; font-size:20px; color:#a2e3a9; }
+  .modal p{ margin-top:0; color:#cfd8dc; line-height:1.6; }
+  .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:800; border:none; border-radius:10px; padding:10px 18px; cursor:pointer; }
+
+  .explanation{
+    width:100%;
+    max-width:940px;
+    margin:14px 0 20px;
+    line-height:1.65;
+    font-size:.95em;
+    color:var(--ink);
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.1);
+    border-radius:12px;
+    padding:14px 16px;
+  }
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; }
+  .explanation ul{ margin:.2em 0 .2em 1.1em; }
+  .explanation li{ margin:6px 0; }
+
+  @media (max-width:720px){
+    .task-card{ grid-template-columns:1fr; gap:6px; }
+    .task-step{ width:fit-content; }
+    .progress-dots{ justify-content:flex-start; }
+    #stage{ min-height:910px; }
+    .lab-area{ min-height:910px; padding:90px 10px 126px; }
+    .bench{ grid-template-columns:1fr; min-height:700px; }
+    .graphCanvasWrap{ min-height:320px; }
+    .effectTag{ bottom:186px; max-width:70%; }
+    .labNote{ bottom:184px; max-width:72%; font-size:12px; }
+    .dock{ width:min(94%, 360px); }
+  }
+
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText">选择“铝块”，把体积调到 20 cm³，点击“测量并记录”，再点击“确认观察”。</div>
+      <div class="task-hint" id="taskHint">提示：先用同一种物质记录多组数据，才能看出质量与体积成正比。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+      <span class="dot" id="dot4"></span>
+    </div>
+  </div>
+
+  <div id="stage">
+    <div class="board-grid"></div>
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+
+    
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+<div class="lab-area">
+      <div class="bench">
+        <div class="apparatusCard">
+          <div class="cardTitle">样品与电子天平</div>
+          <div class="sampleStage">
+            <div class="sampleGlow" id="sampleGlow"></div>
+            <div class="sampleLabel" id="sampleLabel">铝块</div>
+            <div class="sampleSpecs">
+              <div class="specPill">体积：<b id="sampleVolume">20 cm³</b></div>
+              <div class="specPill">密度：<b id="sampleDensity">2.7 g/cm³</b></div>
+            </div>
+            <div class="sampleBlock" id="sampleBlock"></div>
+            <div class="sampleStand"></div>
+          </div>
+          <div class="balancePanel">
+            <div class="mini">改变样品体积后，电子天平会显示当前这块样品应有的质量。点击“测量并记录”把该点写入图像。</div>
+            <div class="balanceDisplay">
+              <span>电子天平</span>
+              <b id="massReadout">54.0 g</b>
+            </div>
+            <div class="volumeRig">
+              <div class="volumeTop">
+                <span>体积调节滑尺</span>
+                <span id="volumeValue">20 cm³</span>
+              </div>
+              <div class="volumeTrack" id="volumeTrack">
+                <div class="volumeFill" id="volumeFill"></div>
+                <div class="volumeHandle" id="volumeHandle"></div>
+              </div>
+              <div class="volumeScale"><span>10</span><span>30</span><span>50</span><span>70</span><span>90</span><span>100</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="graphCard">
+          <div class="cardTitle">m-V 图像</div>
+          <div class="graphCanvasWrap">
+            <canvas id="graphCanvas" width="560" height="470"></canvas>
+            <div class="legend">
+              <span class="wood">木块</span>
+              <span class="aluminum">铝块</span>
+              <span class="iron">铁块</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="effectTag"><span class="effectDot"></span><span id="effectText">观察：当前图像暂无测量点</span></div>
+      <div class="labNote" id="labNote">实验状态：先用铝块记录第一组数据</div>
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+
+    <div class="dock drawer control" id="controlDock" style="right:10px; top:10px;">
+      <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">控制面板</div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="controlBody">
+        <div class="secTitle">过程读数</div>
+        <div class="mini">同一种物质的质量 m 与体积 V 应呈线性关系；不同物质的斜率不同，斜率大小对应密度大小。</div>
+        <div class="matRow">
+          <button class="matBtn active" data-key="aluminum">铝块</button>
+          <button class="matBtn" data-key="wood">木块</button>
+          <button class="matBtn" data-key="iron">铁块</button>
+        </div>
+        <div class="readout">
+          <span class="pill">当前材料：<b id="materialPill">铝块</b></span>
+          <span class="pill">当前体积：<b id="volumePill">20 cm³</b></span>
+          <span class="pill">当前质量：<b id="massPill">54.0 g</b></span>
+          <span class="pill">测量点数：<b id="countPill">0</b></span>
+          <span class="pill">分析状态：<b id="analysisPill">未拟合</b></span>
+        </div>
+        <div class="btnRow">
+          <button id="measureBtn">测量并记录</button>
+          <button id="checkBtn">确认观察 ✅</button>
+        </div>
+        <div class="btnRow">
+          <button id="fitBtn">线性拟合</button>
+          <button id="volumeResetBtn">体积回到 20</button>
+        </div>
+        <div class="analysisBox" id="analysisBox">分析：暂无。请先按步骤记录数据，再点击“线性拟合”。</div>
+      </div>
+    </div>
+
+    <div class="dock resultsDock drawer data" id="dataDock" style="right:10px; top:70px;">
+      <div class="dockHead drawer-header" id="dataHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">数据面板 <span class="dataNotice" id="dataNotice">0</span></div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="dataToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="dataBody">
+        <div class="secTitle">数据记录</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>材料</th>
+              <th>体积(cm³)</th>
+              <th>质量(g)</th>
+              <th>备注</th>
+            </tr>
+          </thead>
+          <tbody id="recordBody">
+            <tr><td colspan="5" style="opacity:.72;">当前无记录。完成测量后会自动写入。</td></tr>
+          </tbody>
+        </table>
+      
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="demoCursor" id="demoCursor" aria-hidden="true">
+      <svg viewBox="0 0 24 24" role="img" aria-label="自动演示鼠标">
+        <path d="M5 3l11 9-5.2.9 2.4 5.1-2.1 1-2.4-5.1L5 18V3z" fill="#f8fbff" stroke="#061321" stroke-width="1.2" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="demoCursorPulse" id="demoCursorPulse" aria-hidden="true"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="main" id="resetBtn">步骤重置</button>
+    <button class="main" id="autoDemoBtn">自动演示</button>
+    <button class="main" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示信息</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">实验完成</h3>
+      <p id="doneText">你已完成“质量与体积关系”的测量、比较与分析。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：探究物体的质量与体积之间的关系</h2>
+    <ul>
+      <li><b>关键操作与现象</b>：选择同一种材料，改变样品体积并测量质量，把各组数据记录到 m-V 图像中。</li>
+      <li><b>关键操作与现象</b>：再换一种材料重复记录，可以看到不同材料的数据点形成不同斜率的直线。</li>
+      <li><b>原理与结论</b>：同一种物质的质量与体积成正比，图像近似为过原点的直线；不同物质的斜率不同，说明密度不同。</li>
+    </ul>
+  </div>
+
+<script>
+const MATERIALS = {
+  aluminum:{ label:'铝块', density:2.7, color:'#9fb4ff', glow:'rgba(159,180,255,.58)' },
+  wood:{ label:'木块', density:0.6, color:'#f6c177', glow:'rgba(246,193,119,.58)' },
+  iron:{ label:'铁块', density:7.8, color:'#ff9f9f', glow:'rgba(255,159,159,.56)' }
+};
+const TASKS = [
+  {
+    text:'选择“铝块”，把体积调到 20 cm³，点击“测量并记录”，再点击“确认观察”。',
+    hint:'提示：先用同一种物质记录第一组数据，后续才能比较质量与体积的变化。',
+    check:() => state.records.some((r)=>r.material==='aluminum' && r.volume===20)
+  },
+  {
+    text:'继续保持“铝块”，再记录 2 组不同体积的数据，然后点击“确认观察”。',
+    hint:'提示：铝块至少要有 3 个不同体积的数据点，才能看出一条直线。',
+    check:() => uniqueVolumes('aluminum').length >= 3
+  },
+  {
+    text:'切换到另一种材料，再记录 2 组不同体积的数据，然后点击“确认观察”。',
+    hint:'提示：建议切换到“铁块”，这样两种材料的斜率差异最明显。',
+    check:() => materialKeysWithTwoPoints().length >= 2
+  },
+  {
+    text:'点击“线性拟合”，观察两种材料的直线斜率，再点击“确认观察”。',
+    hint:'提示：同一种物质应接近一条直线，不同物质的斜率应不同。',
+    check:() => state.analysisOk
+  }
+];
+
+const state = {
+  currentTask:0,
+  completed:false,
+  freeMode:false,
+  autoPlaying:false,
+  draggingId:null,
+  rafId:0,
+  timers:new Set(),
+  successCooldown:false,
+  warningStep:-1,
+  records:[],
+  panelCollapsed:true,
+  dataCollapsed:true,
+  unseenRecordCount:0,
+  dockMoved:{ control:false, data:false },
+  pointerDrag:null,
+  toastTimer:0,
+  demoRunId:0,
+  volume:20,
+  material:'aluminum',
+  fitVisible:false,
+  analysisOk:false,
+  fitSummary:'',
+  measuredAtCurrent:false,
+  volumeDrag:null
+};
+
+const $ = (sel) => document.querySelector(sel);
+const stage = $('#stage');
+const taskCard = $('#taskCard');
+const taskStepEl = $('#taskStep');
+const taskTextEl = $('#taskText');
+const taskHintEl = $('#taskHint');
+const modeTag = $('#modeTag');
+const statusTag = $('#statusTag');
+const sampleLabel = $('#sampleLabel');
+const sampleBlock = $('#sampleBlock');
+const sampleGlow = $('#sampleGlow');
+const sampleVolume = $('#sampleVolume');
+const sampleDensity = $('#sampleDensity');
+const massReadout = $('#massReadout');
+const volumeValue = $('#volumeValue');
+const volumeTrack = $('#volumeTrack');
+const volumeFill = $('#volumeFill');
+const volumeHandle = $('#volumeHandle');
+const graphCanvas = $('#graphCanvas');
+const effectText = $('#effectText');
+const labNote = $('#labNote');
+const checkmark = $('#checkmark');
+const toast = $('#toast');
+const doneMask = $('#doneMask');
+const doneText = $('#doneText');
+const okBtn = $('#okBtn');
+const materialPill = $('#materialPill');
+const volumePill = $('#volumePill');
+const massPill = $('#massPill');
+const countPill = $('#countPill');
+const analysisPill = $('#analysisPill');
+const analysisBox = $('#analysisBox');
+const matButtons = [...document.querySelectorAll('.matBtn')];
+const measureBtn = $('#measureBtn');
+const fitBtn = $('#fitBtn');
+const checkBtn = $('#checkBtn');
+const volumeResetBtn = $('#volumeResetBtn');
+const resetBtn = $('#resetBtn');
+const autoDemoBtn = $('#autoDemoBtn');
+const freeBtn = $('#freeBtn');
+const recordBody = $('#recordBody');
+const dataNotice = $('#dataNotice');
+const controlDock = $('#controlDock');
+const dataDock = $('#dataDock');
+const controlHead = $('#controlHead');
+const dataHead = $('#dataHead');
+const controlBody = $('#controlBody');
+const dataBody = $('#dataBody');
+const controlToggleBtn = $('#controlToggleBtn');
+const dataToggleBtn = $('#dataToggleBtn');
+const demoCursor = $('#demoCursor');
+const demoCursorPulse = $('#demoCursorPulse');
+const dots = [$('#dot1'), $('#dot2'), $('#dot3'), $('#dot4')];
+
+function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+function trackTimer(id){ state.timers.add(id); return id; }
+function untrackTimer(id){ state.timers.delete(id); }
+function clearTrackedTimers(){ state.timers.forEach((id)=>clearTimeout(id)); state.timers.clear(); }
+function currentMass(){ return Number((MATERIALS[state.material].density * state.volume).toFixed(1)); }
+function uniqueVolumes(material){ return [...new Set(state.records.filter((r)=>r.material===material && r.kind==='measure').map((r)=>r.volume))].sort((a,b)=>a-b); }
+function materialKeysWithTwoPoints(){
+  return Object.keys(MATERIALS).filter((key)=>uniqueVolumes(key).length >= 2);
+}
+function getMeasureRecords(material){
+  return state.records.filter((r)=>r.kind==='measure' && (!material || r.material===material));
+}
+function getGraphMaxY(){
+  const base = Math.max(120, ...getMeasureRecords().map((r)=>r.mass + 20), currentMass() + 20);
+  return Math.ceil(base / 50) * 50;
+}
+
+function setStatus(text){ statusTag.textContent = `状态：${text || '待操作'}`; }
+function updateModeHud(){
+  modeTag.classList.remove('mode-auto');
+  if(state.autoPlaying){ modeTag.textContent = '模式：自动演示'; modeTag.classList.add('mode-auto'); }
+  else if(state.freeMode){ modeTag.textContent = '模式：自由'; }
+  else modeTag.textContent = '模式：引导';
+}
+function renderStepDots(){
+  const last = TASKS.length - 1;
+  dots.forEach((d, idx)=>{
+    const done = idx < state.currentTask || (state.completed && idx === last);
+    const active = idx === state.currentTask && !state.completed;
+    d.classList.toggle('done', done);
+    d.classList.toggle('active', active);
+    d.classList.toggle('warn', active && state.warningStep === state.currentTask);
+  });
+}
+function setStepUI(idx){
+  state.currentTask = clamp(idx, 0, TASKS.length - 1);
+  if(state.warningStep !== state.currentTask) state.warningStep = -1;
+  const task = TASKS[state.currentTask];
+  taskStepEl.textContent = `步骤 ${state.currentTask + 1} / ${TASKS.length}`;
+  taskTextEl.textContent = task.text;
+  taskHintEl.textContent = task.hint;
+  renderStepDots();
+  refreshReadouts();
+}
+function warnCurrentStep(msg){
+  if(state.freeMode || state.completed) return;
+  state.warningStep = state.currentTask;
+  renderStepDots();
+  showToast(msg);
+}
+function showToast(msg){
+  toast.textContent = msg;
+  toast.classList.add('show');
+  if(state.toastTimer){ clearTimeout(state.toastTimer); untrackTimer(state.toastTimer); }
+  state.toastTimer = trackTimer(setTimeout(()=>{
+    toast.classList.remove('show');
+    if(state.toastTimer){ untrackTimer(state.toastTimer); state.toastTimer = 0; }
+  }, 2000));
+}
+function showCheck(){
+  checkmark.classList.add('active');
+  if(showCheck.t){ clearTimeout(showCheck.t); untrackTimer(showCheck.t); }
+  showCheck.t = trackTimer(setTimeout(()=>{
+    checkmark.classList.remove('active');
+    if(showCheck.t){ untrackTimer(showCheck.t); showCheck.t = 0; }
+  }, 560));
+}
+showCheck.t = 0;
+function lockSuccess(){
+  state.successCooldown = true;
+  const id = setTimeout(()=>{ state.successCooldown = false; untrackTimer(id); }, 620);
+  trackTimer(id);
+}
+
+function updateSampleVisual(){
+  const meta = MATERIALS[state.material];
+  const size = clamp(42 + (state.volume - 10) * 0.48, 42, 90);
+  sampleLabel.textContent = meta.label;
+  sampleVolume.textContent = `${state.volume} cm³`;
+  sampleDensity.textContent = `${meta.density.toFixed(1)} g/cm³`;
+  massReadout.textContent = `${currentMass().toFixed(1)} g`;
+  sampleBlock.style.width = `${size}px`;
+  sampleBlock.style.height = `${size}px`;
+  sampleBlock.style.background = `linear-gradient(135deg, ${meta.color}, rgba(255,255,255,.1))`;
+  sampleGlow.style.background = meta.glow;
+  sampleGlow.style.width = `${size + 54}px`;
+}
+function renderVolume(){
+  const ratio = (state.volume - 10) / 90;
+  const usable = volumeTrack.clientWidth - volumeHandle.offsetWidth;
+  volumeHandle.style.left = `${ratio * usable + volumeHandle.offsetWidth / 2}px`;
+  volumeFill.style.width = `${ratio * 100}%`;
+  volumeValue.textContent = `${state.volume} cm³`;
+}
+function resizeCanvas(){
+  const rect = graphCanvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  graphCanvas.width = Math.max(320, Math.round(rect.width * dpr));
+  graphCanvas.height = Math.max(260, Math.round(rect.height * dpr));
+  drawGraph();
+}
+function fitLinear(points){
+  const n = points.length;
+  if(n < 2) return null;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for(const p of points){ sx += p.volume; sy += p.mass; sxy += p.volume * p.mass; sxx += p.volume * p.volume; }
+  const denom = n * sxx - sx * sx;
+  if(Math.abs(denom) < 1e-6) return null;
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  return { slope, intercept };
+}
+function drawGraph(){
+  const ctx = graphCanvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  ctx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+  ctx.save();
+  ctx.scale(dpr, dpr);
+  const width = graphCanvas.width / dpr;
+  const height = graphCanvas.height / dpr;
+  const pad = { left:52, right:18, top:22, bottom:44 };
+  const legendReserve = 148;
+  const x0 = pad.left;
+  const y0 = height - pad.bottom;
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+  const maxX = 100;
+  const maxY = getGraphMaxY();
+
+  ctx.strokeStyle = 'rgba(255,255,255,.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for(let x=0; x<=maxX; x+=10){
+    const px = x0 + plotW * (x / maxX);
+    ctx.moveTo(px, pad.top);
+    ctx.lineTo(px, y0);
+  }
+  for(let y=0; y<=maxY; y+=50){
+    const py = y0 - plotH * (y / maxY);
+    ctx.moveTo(x0, py);
+    ctx.lineTo(x0 + plotW, py);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(210,230,255,.8)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x0, pad.top);
+  ctx.lineTo(x0, y0);
+  ctx.lineTo(x0 + plotW, y0);
+  ctx.stroke();
+
+  ctx.fillStyle = '#dbe7ff';
+  ctx.font = '12px system-ui';
+  ctx.fillText('质量 m / g', x0, pad.top - 6);
+  ctx.fillText('体积 V / cm³', x0 + plotW - 70, y0 + 30);
+  for(let x=0; x<=maxX; x+=20){
+    const px = x0 + plotW * (x / maxX);
+    ctx.fillStyle = 'rgba(220,232,244,.76)';
+    ctx.fillText(String(x), px - 7, y0 + 18);
+  }
+  for(let y=0; y<=maxY; y+=100){
+    const py = y0 - plotH * (y / maxY);
+    ctx.fillStyle = 'rgba(220,232,244,.76)';
+    ctx.fillText(String(y), 8, py + 4);
+  }
+
+  for(const key of Object.keys(MATERIALS)){
+    const points = getMeasureRecords(key);
+    const meta = MATERIALS[key];
+    if(state.fitVisible && points.length >= 2){
+      const fit = fitLinear(points);
+      if(fit){
+        const legendMaxX = Math.max(0, Math.min(maxX, ((plotW - legendReserve) / plotW) * maxX));
+        let startX = 0;
+        let endX = legendMaxX;
+        if(Math.abs(fit.slope) < 1e-6){
+          if(fit.intercept < 0 || fit.intercept > maxY) endX = -1;
+        } else {
+          const xAtY0 = (0 - fit.intercept) / fit.slope;
+          const xAtYMax = (maxY - fit.intercept) / fit.slope;
+          startX = Math.max(0, Math.min(xAtY0, xAtYMax));
+          endX = Math.min(legendMaxX, Math.max(xAtY0, xAtYMax));
+        }
+        if(endX >= startX){
+          ctx.strokeStyle = meta.color;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          for(let i=startX; i<=endX; i+=2){
+            const y = fit.slope * i + fit.intercept;
+            const px = x0 + plotW * (i / maxX);
+            const py = y0 - plotH * (clamp(y, 0, maxY) / maxY);
+            if(i === startX) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          const finalY = fit.slope * endX + fit.intercept;
+          const finalPx = x0 + plotW * (endX / maxX);
+          const finalPy = y0 - plotH * (clamp(finalY, 0, maxY) / maxY);
+          ctx.lineTo(finalPx, finalPy);
+          ctx.stroke();
+        }
+      }
+    }
+    points.forEach((p)=>{
+      const px = x0 + plotW * (p.volume / maxX);
+      const py = y0 - plotH * (p.mass / maxY);
+      ctx.fillStyle = meta.color;
+      ctx.beginPath();
+      ctx.arc(px, py, 4.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#091119';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+  }
+  ctx.restore();
+}
+
+function updateVolume(value){
+  state.volume = clamp(Math.round(value / 5) * 5, 10, 100);
+  state.measuredAtCurrent = false;
+  renderVolume();
+  updateSampleVisual();
+  refreshReadouts();
+  drawGraph();
+}
+function setMaterial(key, fromAuto = false){
+  if(state.autoPlaying && !fromAuto) return;
+  state.material = key;
+  state.measuredAtCurrent = false;
+  matButtons.forEach((btn)=>btn.classList.toggle('active', btn.dataset.key === key));
+  updateSampleVisual();
+  refreshReadouts();
+  drawGraph();
+}
+function updateVolumeFromClientX(clientX){
+  const rect = volumeTrack.getBoundingClientRect();
+  const usable = rect.width - volumeHandle.offsetWidth;
+  const local = clamp(clientX - rect.left - volumeHandle.offsetWidth / 2, 0, usable);
+  const ratio = usable <= 0 ? 0 : local / usable;
+  updateVolume(10 + ratio * 90);
+}
+
+function refreshReadouts(){
+  const meta = MATERIALS[state.material];
+  materialPill.textContent = meta.label;
+  volumePill.textContent = `${state.volume} cm³`;
+  massPill.textContent = `${currentMass().toFixed(1)} g`;
+  countPill.textContent = `${getMeasureRecords().length}`;
+  analysisPill.textContent = state.analysisOk ? '已完成' : (state.fitVisible ? '已拟合' : '未拟合');
+  if(state.analysisOk){
+    effectText.textContent = '观察：同种材料点几乎共线，不同材料斜率不同';
+    labNote.textContent = '实验状态：分析结论成立';
+  }else if(state.autoPlaying){
+    effectText.textContent = `观察：${MATERIALS[state.material].label} 当前质量 ${currentMass().toFixed(1)} g`;
+    labNote.textContent = '实验状态：自动演示中';
+  }else if(state.freeMode){
+    effectText.textContent = `观察：${MATERIALS[state.material].label} 当前质量 ${currentMass().toFixed(1)} g`;
+    labNote.textContent = '实验状态：自由探索中，可切换材料、调体积并记录';
+  }else if(state.currentTask === 0){
+    effectText.textContent = '观察：先获取铝块第一组数据';
+    labNote.textContent = '实验状态：记录铝块 20 cm³ 的质量';
+  }else if(state.currentTask === 1){
+    effectText.textContent = `观察：铝块已记录 ${uniqueVolumes('aluminum').length} 组不同体积`;
+    labNote.textContent = '实验状态：继续补齐铝块多组数据';
+  }else if(state.currentTask === 2){
+    effectText.textContent = `观察：当前切换到 ${MATERIALS[state.material].label}`;
+    labNote.textContent = '实验状态：换一种材料继续记录';
+  }else{
+    effectText.textContent = state.fitVisible ? '观察：拟合直线已显示在图像上' : '观察：点击线性拟合查看直线';
+    labNote.textContent = '实验状态：分析 m-V 图像并得出结论';
+  }
+
+  if(state.autoPlaying) setStatus('自动演示中');
+  else if(state.completed) setStatus('挑战完成');
+  else if(state.freeMode) setStatus('自由探索');
+  else if(state.currentTask === 3) setStatus('分析中');
+  else setStatus('测量中');
+
+  refreshInteractionLocks();
+}
+
+function addRecord(row){
+  state.records.push(row);
+  if(state.records.length > 200) state.records.shift();
+  if(state.dataCollapsed) state.unseenRecordCount = Math.min(999, state.unseenRecordCount + 1);
+  else state.unseenRecordCount = 0;
+  renderRecordTable();
+  refreshDataNotice();
+  drawGraph();
+}
+function renderRecordTable(){
+  if(!state.records.length){
+    recordBody.innerHTML = '<tr><td colspan="5" style="opacity:.72;">当前无记录。完成测量后会自动写入。</td></tr>';
+    return;
+  }
+  recordBody.innerHTML = state.records.map((r, i)=>{
+    if(r.kind === 'measure'){
+      return `<tr><td>${i + 1}</td><td>${MATERIALS[r.material].label}</td><td>${r.volume}</td><td>${r.mass.toFixed(1)}</td><td>${r.note}</td></tr>`;
+    }
+    return `<tr><td>${i + 1}</td><td>分析</td><td>-</td><td>-</td><td>${r.note}</td></tr>`;
+  }).join('');
+}
+function refreshDataNotice(){
+  const n = state.unseenRecordCount;
+  dataNotice.textContent = n > 99 ? '99+' : String(n);
+  dataNotice.classList.toggle('show', state.dataCollapsed && n > 0);
+}
+
+function guidedMeasureAllowed(){
+  const volSetAl = uniqueVolumes('aluminum');
+  const currentSet = uniqueVolumes(state.material);
+  if(state.currentTask === 0) return state.material === 'aluminum' && state.volume === 20;
+  if(state.currentTask === 1) return state.material === 'aluminum' && !volSetAl.includes(state.volume);
+  if(state.currentTask === 2) return state.material !== 'aluminum' && !currentSet.includes(state.volume);
+  if(state.currentTask === 3) return false;
+  return true;
+}
+function measureCurrent(fromAuto = false){
+  if(state.autoPlaying && !fromAuto) return false;
+  if(!state.freeMode && !guidedMeasureAllowed()){
+    if(state.currentTask === 0) warnCurrentStep('步骤1要求：选择铝块并把体积调到 20 cm³ 后再测量。');
+    else if(state.currentTask === 1) warnCurrentStep('步骤2要求：继续记录铝块新的体积数据。');
+    else if(state.currentTask === 2) warnCurrentStep('步骤3要求：切换到另一种材料，再记录新的体积数据。');
+    else warnCurrentStep('当前步骤需要点击“线性拟合”，不是继续测量。');
+    return false;
+  }
+  if(state.records.some((r)=>r.kind==='measure' && r.material===state.material && r.volume===state.volume)){
+    if(!fromAuto) showToast('该材料与体积组合已记录，无需重复写入。');
+    return false;
+  }
+  addRecord({ kind:'measure', material:state.material, volume:state.volume, mass:currentMass(), note:`${MATERIALS[state.material].label}测量点` });
+  state.measuredAtCurrent = true;
+  state.fitVisible = false;
+  state.analysisOk = false;
+  analysisBox.textContent = '分析：新增了测量点。请继续按步骤记录数据，最后点击“线性拟合”。';
+  if(!fromAuto) showToast('已记录当前测量点。');
+  refreshReadouts();
+  return true;
+}
+function runFitAnalysis(fromAuto = false){
+  if(state.autoPlaying && !fromAuto) return false;
+  if(!state.freeMode && state.currentTask < 3){
+    warnCurrentStep('请先完成前面的测量步骤，再进行线性拟合。');
+    return false;
+  }
+  const materialKeys = materialKeysWithTwoPoints();
+  if(materialKeys.length < 2){
+    if(!fromAuto) showToast('至少需要两种材料、且每种至少两条记录，才能比较斜率。');
+    state.fitVisible = false;
+    state.analysisOk = false;
+    refreshReadouts();
+    drawGraph();
+    return false;
+  }
+  const fits = materialKeys.map((key)=>{
+    const fit = fitLinear(getMeasureRecords(key));
+    return { key, fit };
+  }).filter((item)=>item.fit);
+  if(fits.length < 2){
+    if(!fromAuto) showToast('拟合失败，请补充数据。');
+    return false;
+  }
+  state.fitVisible = true;
+  state.analysisOk = true;
+  const summary = fits.map((item)=>`${MATERIALS[item.key].label}: m≈${item.fit.slope.toFixed(2)}V${item.fit.intercept >= 0 ? '+' : ''}${item.fit.intercept.toFixed(2)}`).join('；');
+  state.fitSummary = summary;
+  analysisBox.textContent = `分析：${summary}。结论：同一种物质的质量与体积近似成正比，不同物质的斜率不同，斜率大小反映密度大小。`;
+  drawGraph();
+  refreshReadouts();
+  if(!fromAuto) showToast('线性拟合完成。');
+  return true;
+}
+
+function passCurrentTask(fromAuto = false){
+  if(state.successCooldown || state.completed) return false;
+  if(state.freeMode && !fromAuto){
+    showToast('自由模式下可继续探索，不进入闯关判定。');
+    return false;
+  }
+  if(!TASKS[state.currentTask].check()){
+    if(!fromAuto){
+      if(state.currentTask === 0) warnCurrentStep('请先完成铝块 20 cm³ 的测量。');
+      else if(state.currentTask === 1) warnCurrentStep('请先补齐铝块至少 3 个不同体积的数据。');
+      else if(state.currentTask === 2) warnCurrentStep('请先补齐第二种材料至少 2 组数据。');
+      else warnCurrentStep('请先点击“线性拟合”，让图像显示结论。');
+    }
+    return false;
+  }
+  state.warningStep = -1;
+  let row;
+  if(state.currentTask === 0) row = { kind:'analysis', note:'已完成铝块 20 cm³ 首次测量' };
+  else if(state.currentTask === 1) row = { kind:'analysis', note:'已完成铝块多组体积测量' };
+  else if(state.currentTask === 2) row = { kind:'analysis', note:`已加入第二种材料：${materialKeysWithTwoPoints().map((k)=>MATERIALS[k].label).join('、')}` };
+  else row = { kind:'analysis', note:'已完成 m-V 线性拟合与结论判断' };
+  addRecord(row);
+  showCheck();
+  lockSuccess();
+
+  if(state.currentTask >= TASKS.length - 1){
+    state.warningStep = -1;
+    state.completed = true;
+    renderStepDots();
+    refreshReadouts();
+    doneText.textContent = '你已完成“探究物体的质量与体积之间的关系”的测量、比较与图像分析。';
+    setStatus('挑战完成');
+    if(fromAuto && state.autoPlaying){ state.autoPlaying = false; updateModeHud(); refreshInteractionLocks(); }
+    doneMask.style.display = 'flex';
+  }else{
+    state.successCooldown = false;
+    setStepUI(state.currentTask + 1);
+    if(!fromAuto) showToast('✅ 过关，进入下一步。');
+  }
+  return true;
+}
+
+function setControlCollapsed(on){
+  state.panelCollapsed = !!on;
+  controlBody.classList.toggle('collapsed', state.panelCollapsed);
+  controlToggleBtn.textContent = state.panelCollapsed ? '展开' : '收起';
+}
+function setDataCollapsed(on){
+  state.dataCollapsed = !!on;
+  dataBody.classList.toggle('collapsed', state.dataCollapsed);
+  dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+  if(!state.dataCollapsed) state.unseenRecordCount = 0;
+  refreshDataNotice();
+}
+function getStageRect(){ return stage.getBoundingClientRect(); }
+function setDockPos(el, x, y){
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.style.right = 'auto';
+  el.style.bottom = 'auto';
+}
+function clampDockPos(el, x, y){
+  const s = getStageRect();
+  const r = el.getBoundingClientRect();
+  const pad = 10;
+  return { x:clamp(x, pad, s.width - r.width - pad), y:clamp(y, pad, s.height - r.height - pad) };
+}
+function overlapArea(a, b){
+  const x = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left));
+  const y = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+  return x * y;
+}
+function bringToFront(which){
+  if(which === 'control'){
+    document.documentElement.style.setProperty('--zPanel', '42');
+    document.documentElement.style.setProperty('--zResults', '39');
+  }else{
+    document.documentElement.style.setProperty('--zResults', '42');
+    document.documentElement.style.setProperty('--zPanel', '39');
+  }
+}
+function resolveDrawerOverlap(force = false){
+  const narrow = window.innerWidth <= 720;
+  const enforce = force || state.autoPlaying;
+  if(!enforce && !narrow) return;
+  if(state.panelCollapsed || state.dataCollapsed) return;
+  const s = getStageRect();
+  const c = controlDock.getBoundingClientRect();
+  const d = dataDock.getBoundingClientRect();
+  if(overlapArea(c, d) <= 0) return;
+  const pad = 10;
+  const candidates = [
+    { x:s.width - d.width - pad, y:c.bottom - s.top + 8 },
+    { x:pad, y:c.bottom - s.top + 8 },
+    { x:s.width - d.width - pad, y:c.top - s.top - d.height - 8 },
+    { x:pad, y:c.top - s.top - d.height - 8 }
+  ];
+  for(const candidate of candidates){
+    const pos = clampDockPos(dataDock, candidate.x, candidate.y);
+    const rect = { left:s.left + pos.x, top:s.top + pos.y, right:s.left + pos.x + d.width, bottom:s.top + pos.y + d.height };
+    if(overlapArea(c, rect) === 0){ setDockPos(dataDock, pos.x, pos.y); return; }
+  }
+}
+function initDockPositions(force = false){
+  const s = getStageRect();
+  const pad = 10;
+  const cr = controlDock.getBoundingClientRect();
+  const dr = dataDock.getBoundingClientRect();
+  if(force || !state.dockMoved.control) setDockPos(controlDock, s.width - cr.width - pad, pad);
+  if(force || !state.dockMoved.data) setDockPos(dataDock, s.width - dr.width - pad, pad + (state.panelCollapsed ? 60 : cr.height + 8));
+  resolveDrawerOverlap(true);
+}
+function ensureAutoDrawerLayout(){
+  setControlCollapsed(false);
+  const s = getStageRect();
+  const pad = 10;
+  const cr = controlDock.getBoundingClientRect();
+  if(!state.dockMoved.control) setDockPos(controlDock, s.width - cr.width - pad, pad);
+  resolveDrawerOverlap(true);
+}
+function attachDockDrag(head, dock, kind){
+  head.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('button')) return;
+    const sr = getStageRect();
+    const dr = dock.getBoundingClientRect();
+    state.pointerDrag = { kind:'dock', target:kind, pointerId:e.pointerId, offsetX:e.clientX - dr.left, offsetY:e.clientY - dr.top };
+    state.dockMoved[kind] = true;
+    dock.classList.add('dragging');
+    bringToFront(kind);
+    try { head.setPointerCapture(e.pointerId); } catch (err) { console.warn('setPointerCapture failed', err); }
+    const pos = clampDockPos(dock, dr.left - sr.left, dr.top - sr.top);
+    setDockPos(dock, pos.x, pos.y);
+    e.preventDefault();
+  });
+}
+function updateDockDrag(clientX, clientY){
+  if(!state.pointerDrag || state.pointerDrag.kind !== 'dock') return;
+  const dock = state.pointerDrag.target === 'control' ? controlDock : dataDock;
+  const sr = getStageRect();
+  const x = clientX - sr.left - state.pointerDrag.offsetX;
+  const y = clientY - sr.top - state.pointerDrag.offsetY;
+  const pos = clampDockPos(dock, x, y);
+  setDockPos(dock, pos.x, pos.y);
+}
+function finishDockDrag(pointerId){
+  if(!state.pointerDrag || state.pointerDrag.kind !== 'dock') return;
+  const kind = state.pointerDrag.target;
+  const head = kind === 'control' ? controlHead : dataHead;
+  const dock = kind === 'control' ? controlDock : dataDock;
+  try { head.releasePointerCapture(pointerId); } catch (err) { console.warn('releasePointerCapture failed', err); }
+  dock.classList.remove('dragging');
+  state.pointerDrag = null;
+  resolveDrawerOverlap(true);
+}
+function beginVolumeDrag(pointerId){
+  state.volumeDrag = { pointerId };
+  volumeHandle.classList.add('dragging');
+  if(pointerId >= 0){ try { volumeTrack.setPointerCapture(pointerId); } catch (err) { console.warn('setPointerCapture failed', err); } }
+}
+function finishVolumeDrag(pointerId){
+  if(pointerId >= 0){ try { volumeTrack.releasePointerCapture(pointerId); } catch (err) { console.warn('releasePointerCapture failed', err); } }
+  volumeHandle.classList.remove('dragging');
+  state.volumeDrag = null;
+}
+function refreshInteractionLocks(){
+  const autoLocked = state.autoPlaying;
+  measureBtn.disabled = autoLocked;
+  fitBtn.disabled = autoLocked;
+  checkBtn.disabled = autoLocked;
+  volumeResetBtn.disabled = autoLocked;
+  resetBtn.disabled = autoLocked;
+  freeBtn.disabled = autoLocked;
+  if(autoLocked){ autoDemoBtn.textContent = '退出自动演示'; autoDemoBtn.disabled = false; }
+  else { autoDemoBtn.textContent = '自动演示'; autoDemoBtn.disabled = state.freeMode; }
+  freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+}
+function setFreeMode(on){
+  if(state.autoPlaying) return;
+  state.freeMode = !!on;
+  state.warningStep = -1;
+  doneMask.style.display = 'none';
+  if(state.freeMode){
+    taskCard.style.opacity = '.28';
+    taskCard.style.filter = 'grayscale(.6)';
+    showToast('自由模式：可自由切换材料、调体积、测量和拟合。');
+  }else{
+    taskCard.style.opacity = '1';
+    taskCard.style.filter = 'none';
+  }
+  updateModeHud();
+  refreshReadouts();
+}
+function resetAll(opts = {}){
+  const { preserveAuto = false, preserveFreeMode = state.freeMode, showTip = false } = opts;
+  clearTrackedTimers();
+  state.currentTask = 0;
+  state.completed = false;
+  state.warningStep = -1;
+  state.successCooldown = false;
+  state.records = [];
+  state.unseenRecordCount = 0;
+  state.material = 'aluminum';
+  state.volume = 20;
+  state.fitVisible = false;
+  state.analysisOk = false;
+  state.fitSummary = '';
+  state.measuredAtCurrent = false;
+  state.pointerDrag = null;
+  state.volumeDrag = null;
+  doneMask.style.display = 'none';
+  analysisBox.textContent = '分析：暂无。请先按步骤记录数据，再点击“线性拟合”。';
+  renderRecordTable();
+  refreshDataNotice();
+  setStepUI(0);
+  matButtons.forEach((btn)=>btn.classList.toggle('active', btn.dataset.key === 'aluminum'));
+  taskCard.style.opacity = preserveFreeMode ? '.28' : '1';
+  taskCard.style.filter = preserveFreeMode ? 'grayscale(.6)' : 'none';
+  state.freeMode = !!preserveFreeMode;
+  if(!preserveAuto){ state.autoPlaying = false; hideDemoCursor(); }
+  updateModeHud();
+  renderVolume();
+  updateSampleVisual();
+  drawGraph();
+  refreshReadouts();
+  if(showTip) showToast('实验已重置。');
+  state.dockMoved.control = false;
+  state.dockMoved.data = false;
+  initDockPositions(true);
+}
+
+function assertAutoRecorded(beforeLen){ if(state.records.length <= beforeLen) throw new Error('AUTO_RECORD_NOT_PERSISTED'); }
+function waitAuto(ms, runId = state.demoRunId){
+  return new Promise((resolve, reject)=>{
+    if(runId !== state.demoRunId) return reject(new Error('AUTO_DEMO_CANCELLED'));
+    const id = setTimeout(()=>{ untrackTimer(id); if(runId !== state.demoRunId) reject(new Error('AUTO_DEMO_CANCELLED')); else resolve(); }, ms);
+    trackTimer(id);
+  });
+}
+async function waitForAutoCondition(fn, timeoutMs, runId, code){
+  const start = performance.now();
+  while(performance.now() - start < timeoutMs){
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    if(fn()) return;
+    await waitAuto(80, runId);
+  }
+  throw new Error(code);
+}
+function setDemoCursor(x, y){
+  demoCursor.style.left = `${x}px`;
+  demoCursor.style.top = `${y}px`;
+  demoCursorPulse.style.left = `${x}px`;
+  demoCursorPulse.style.top = `${y}px`;
+}
+function hideDemoCursor(){
+  demoCursor.classList.remove('clicking');
+  demoCursorPulse.classList.remove('active');
+  demoCursor.style.left = '-200px';
+  demoCursor.style.top = '-200px';
+  demoCursorPulse.style.left = '-200px';
+  demoCursorPulse.style.top = '-200px';
+}
+async function moveDemoCursorTo(x, y, runId, ms = 220){
+  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+  const startX = Number.parseFloat(demoCursor.style.left || `${x}`) || x;
+  const startY = Number.parseFloat(demoCursor.style.top || `${y}`) || y;
+  const steps = Math.max(5, Math.round(ms / 16));
+  for(let i = 1; i <= steps; i += 1){
+    const nx = startX + (x - startX) * (i / steps);
+    const ny = startY + (y - startY) * (i / steps);
+    setDemoCursor(nx, ny);
+    await waitAuto(16, runId);
+  }
+}
+async function clickDemoCursor(ms = 180, runId = state.demoRunId){
+  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+  demoCursor.classList.add('clicking');
+  demoCursorPulse.classList.remove('active');
+  void demoCursorPulse.offsetWidth;
+  demoCursorPulse.classList.add('active');
+  await waitAuto(ms, runId);
+  demoCursor.classList.remove('clicking');
+}
+function elemCenterInStage(el){
+  const s = getStageRect();
+  const r = el.getBoundingClientRect();
+  return { x:r.left - s.left + r.width / 2, y:r.top - s.top + r.height / 2 };
+}
+async function demoClickElement(el, runId, action){
+  const p = elemCenterInStage(el);
+  await moveDemoCursorTo(p.x, p.y, runId, 240);
+  await clickDemoCursor(140, runId);
+  if(action) await action();
+  else el.click();
+  await waitAuto(180, runId);
+}
+async function demoDragVolumeTo(value, runId){
+  const trackRect = volumeTrack.getBoundingClientRect();
+  const handleRect = volumeHandle.getBoundingClientRect();
+  const startX = handleRect.left + handleRect.width / 2;
+  const startY = handleRect.top + handleRect.height / 2;
+  const usable = trackRect.width - volumeHandle.offsetWidth;
+  const targetRatio = (value - 10) / 90;
+  const endX = trackRect.left + targetRatio * usable + volumeHandle.offsetWidth / 2;
+  const endY = startY;
+  await moveDemoCursorTo(startX - getStageRect().left, startY - getStageRect().top, runId, 220);
+  beginVolumeDrag(-1);
+  await clickDemoCursor(120, runId);
+  const steps = 18;
+  for(let i = 1; i <= steps; i += 1){
+    const cx = startX + (endX - startX) * (i / steps);
+    updateVolumeFromClientX(cx);
+    setDemoCursor(cx - getStageRect().left, endY - getStageRect().top);
+    await waitAuto(28, runId);
+  }
+  finishVolumeDrag(-1);
+  await waitAuto(160, runId);
+}
+function stopAutoDemo(byUser = false){
+  if(!state.autoPlaying) return;
+  state.demoRunId += 1;
+  state.autoPlaying = false;
+  hideDemoCursor();
+  updateModeHud();
+  refreshInteractionLocks();
+  if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
+  if(byUser) showToast('已退出自动演示。');
+}
+async function startAutoDemo(){
+  if(state.autoPlaying || state.freeMode) return;
+  state.autoPlaying = true;
+  const runId = ++state.demoRunId;
+  updateModeHud();
+  refreshInteractionLocks();
+  resetAll({ preserveAuto:true, preserveFreeMode:false, showTip:false });
+  ensureAutoDrawerLayout();
+  setStatus('自动演示中');
+  try {
+    await demoClickElement(matButtons.find((btn)=>btn.dataset.key === 'aluminum'), runId, async ()=>{ setMaterial('aluminum', true); });
+    await demoDragVolumeTo(20, runId);
+    let before = state.records.length;
+    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
+    assertAutoRecorded(before);
+    before = state.records.length;
+    await demoClickElement(checkBtn, runId, async ()=>{ passCurrentTask(true); });
+    assertAutoRecorded(before);
+    await waitAuto(460, runId);
+
+    await demoDragVolumeTo(40, runId);
+    before = state.records.length;
+    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
+    assertAutoRecorded(before);
+    await waitAuto(180, runId);
+    await demoDragVolumeTo(60, runId);
+    before = state.records.length;
+    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
+    assertAutoRecorded(before);
+    before = state.records.length;
+    await demoClickElement(checkBtn, runId, async ()=>{ passCurrentTask(true); });
+    assertAutoRecorded(before);
+    await waitAuto(460, runId);
+
+    await demoClickElement(matButtons.find((btn)=>btn.dataset.key === 'iron'), runId, async ()=>{ setMaterial('iron', true); });
+    await demoDragVolumeTo(20, runId);
+    before = state.records.length;
+    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
+    assertAutoRecorded(before);
+    await demoDragVolumeTo(40, runId);
+    before = state.records.length;
+    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
+    assertAutoRecorded(before);
+    before = state.records.length;
+    await demoClickElement(checkBtn, runId, async ()=>{ passCurrentTask(true); });
+    assertAutoRecorded(before);
+    await waitAuto(460, runId);
+
+    before = state.records.length;
+    await demoClickElement(fitBtn, runId, async ()=>{ runFitAnalysis(true); });
+    await waitForAutoCondition(() => state.analysisOk, 1200, runId, 'AUTO_STEP4_NOT_READY');
+    before = state.records.length;
+    await demoClickElement(checkBtn, runId, async ()=>{ passCurrentTask(true); });
+    assertAutoRecorded(before);
+
+    if(!state.completed) throw new Error('AUTO_NOT_COMPLETED');
+    setStatus('挑战完成');
+  } catch (err) {
+    const msg = String(err && err.message ? err.message : err);
+    if(msg !== 'AUTO_DEMO_CANCELLED'){
+      console.error('[autoDemo] failed:', err);
+      if(msg.startsWith('AUTO_RECORD')) showToast('自动演示记录失败，请重试。');
+      else showToast('自动演示中断，已恢复可操作状态。');
+      if(!state.completed) setStatus('待操作');
+    }
+  } finally {
+    hideDemoCursor();
+    if(runId === state.demoRunId){
+      state.autoPlaying = false;
+      updateModeHud();
+      refreshInteractionLocks();
+      if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
+    }
+  }
+}
+
+function initHandlers(){
+  matButtons.forEach((btn)=>btn.addEventListener('click', ()=> setMaterial(btn.dataset.key, false)));
+  volumeTrack.addEventListener('pointerdown', (e)=>{
+    if(state.autoPlaying) return;
+    beginVolumeDrag(e.pointerId);
+    updateVolumeFromClientX(e.clientX);
+    e.preventDefault();
+  });
+  stage.addEventListener('pointermove', (e)=>{
+    if(state.pointerDrag && state.pointerDrag.kind === 'dock') updateDockDrag(e.clientX, e.clientY);
+    if(state.volumeDrag) updateVolumeFromClientX(e.clientX);
+  });
+  stage.addEventListener('pointerup', (e)=>{
+    if(state.pointerDrag && state.pointerDrag.kind === 'dock') finishDockDrag(e.pointerId);
+    if(state.volumeDrag) finishVolumeDrag(e.pointerId);
+  });
+  stage.addEventListener('pointercancel', (e)=>{
+    if(state.pointerDrag && state.pointerDrag.kind === 'dock') finishDockDrag(e.pointerId);
+    if(state.volumeDrag) finishVolumeDrag(e.pointerId);
+  });
+  attachDockDrag(controlHead, controlDock, 'control');
+  attachDockDrag(dataHead, dataDock, 'data');
+  controlToggleBtn.addEventListener('click', ()=>{ setControlCollapsed(!state.panelCollapsed); resolveDrawerOverlap(true); });
+  dataToggleBtn.addEventListener('click', ()=>{ setDataCollapsed(!state.dataCollapsed); resolveDrawerOverlap(true); });
+  measureBtn.addEventListener('click', ()=>{ measureCurrent(false); });
+  fitBtn.addEventListener('click', ()=>{ runFitAnalysis(false); });
+  checkBtn.addEventListener('click', ()=>{ passCurrentTask(false); });
+  volumeResetBtn.addEventListener('click', ()=>{ updateVolume(20); });
+  resetBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) resetAll({ preserveAuto:false, preserveFreeMode:state.freeMode, showTip:true }); });
+  freeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setFreeMode(!state.freeMode); });
+  autoDemoBtn.addEventListener('click', ()=>{
+    if(state.autoPlaying) stopAutoDemo(true);
+    else{
+      if(state.freeMode){ showToast('请先退出自由模式，再启动自动演示。'); return; }
+      startAutoDemo();
+    }
+  });
+  okBtn.addEventListener('click', ()=>{ doneMask.style.display = 'none'; });
+}
+
+function init(){
+  setControlCollapsed(true);
+  setDataCollapsed(true);
+  initHandlers();
+  resetAll({ preserveAuto:false, preserveFreeMode:false, showTip:false });
+  resizeCanvas();
+}
+
+const relayout = (()=>{
+  let t = 0;
+  return ()=>{
+    if(t){ clearTimeout(t); untrackTimer(t); }
+    t = trackTimer(setTimeout(()=>{
+      t = 0;
+      initDockPositions(false);
+      resolveDrawerOverlap(true);
+      renderVolume();
+      resizeCanvas();
+    }, 120));
+  };
+})();
+
+window.addEventListener('resize', relayout);
+window.addEventListener('orientationchange', relayout);
+window.addEventListener('beforeunload', ()=>{ clearTrackedTimers(); });
+
+init();
+</script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>

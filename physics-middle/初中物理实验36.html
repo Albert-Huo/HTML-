@@ -1,0 +1,1603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验36｜探究光的反射定律</title>
+  <!-- 目录依据：中小学实验教学目录 PDF 第 39 页，36.探究光的反射定律 -->
+  <!-- 教材依据：人教版八年级上册，第 4 章第 2 节“光的反射” -->
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --ink:#fff;
+      --card-bg:rgba(255,255,255,.08);
+      --panel-bg:rgba(15,15,15,.58);
+      --line:rgba(255,255,255,.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --dockShadow:0 14px 36px rgba(0,0,0,.42);
+    }
+    *{ box-sizing:border-box; }
+    html,body{ min-height:100%; }
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      letter-spacing:0;
+    }
+    button{ font:inherit; touch-action:manipulation; }
+    button.main,button.sub{
+      border:none;
+      border-radius:8px;
+      padding:8px 12px;
+      color:#fff;
+      cursor:pointer;
+      transition:background .2s,transform .05s,opacity .2s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      font-size:13px;
+    }
+    button.main{ background:#2e7d32; }
+    button.sub{ background:#444; }
+    button.main:hover,button.sub:hover{ background:#5a5a5a; }
+    button.main:active,button.sub:active{ transform:scale(.98); }
+    button.main:disabled,button.sub:disabled{ opacity:.5; cursor:not-allowed; }
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:980px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{ 0%{background-position:0 0;} 100%{background-position:-100% 0;} }
+    .task-card{
+      width:100%;
+      max-width:980px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+    }
+    .task-step{
+      background:rgba(255,255,255,.16);
+      border-radius:8px;
+      padding:6px 10px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .task-text{ min-width:0; line-height:1.55; }
+    #taskHint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+    .progress-dots{ display:flex; gap:6px; align-items:center; }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:rgba(255,255,255,.26);
+      outline:2px solid rgba(255,255,255,.12);
+    }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.45); }
+    .dot.warn{ background:#ff4d4f; outline-color:rgba(255,77,79,.58); box-shadow:0 0 10px rgba(255,77,79,.62); }
+    #stage{
+      width:100%;
+      max-width:980px;
+      height:66vh;
+      max-height:660px;
+      min-height:500px;
+      margin-top:10px;
+      border-radius:12px;
+      position:relative;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      background:#0b0f14;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 76% 25%, rgba(255,255,255,.06), transparent 42%),
+        radial-gradient(circle at 22% 78%, rgba(0,255,255,.05), transparent 46%);
+    }
+    .lab-area{
+      position:absolute;
+      inset:54px 10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.82);
+      overflow:hidden;
+    }
+    #labCanvas{
+      width:100%;
+      height:100%;
+      display:block;
+      touch-action:none;
+      cursor:crosshair;
+    }
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      background:rgba(0,0,0,.48);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:7px 10px;
+      font-size:12px;
+    }
+    .tag{
+      border:1px solid rgba(255,255,255,.26);
+      border-radius:999px;
+      padding:2px 8px;
+      font-weight:700;
+      color:#dce9ff;
+      background:rgba(255,255,255,.06);
+    }
+    .hint-lamp{
+      position:absolute;
+      left:10px;
+      top:56px;
+      z-index:22;
+      width:34px;
+      height:34px;
+      border-radius:8px;
+      display:grid;
+      place-items:center;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.2);
+      color:#ffd54f;
+      font-size:16px;
+      cursor:pointer;
+      padding:0;
+    }
+    .hint-lamp.flash{ animation:lampFlash .6s ease; }
+    @keyframes lampFlash{
+      0%,100%{ box-shadow:none; }
+      50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+    }
+    .hint-pop{
+      position:absolute;
+      left:10px;
+      top:96px;
+      z-index:23;
+      width:min(340px, calc(100% - 24px));
+      display:none;
+      padding:10px 12px;
+      border:1px solid rgba(255,209,102,.36);
+      border-radius:10px;
+      background:rgba(16,18,20,.9);
+      color:#f4efe2;
+      font-size:13px;
+      line-height:1.55;
+    }
+    .hint-pop.open{ display:block; }
+    .dock,.drawer{
+      position:absolute;
+      width:min(94%, 380px);
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:var(--panel-bg);
+      backdrop-filter:blur(6px);
+      box-shadow:var(--dockShadow);
+      overflow:hidden;
+      touch-action:none;
+      z-index:30;
+    }
+    .drawer.control{ top:10px; }
+    .drawer.data{ top:94px; }
+    .dock.dragging,.drawer.dragging{ box-shadow:0 20px 48px rgba(0,0,0,.55); }
+    .dockHead,.drawer-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none;
+    }
+    .dockHead:active,.drawer-header:active{ cursor:grabbing; }
+    .dockTitle,.drawer-title{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size:13px;
+      font-weight:700;
+      color:#e7f0ff;
+    }
+    .dockBtns,.drawer-actions{ display:flex; align-items:center; gap:6px; }
+    .iconBtn,.mini{
+      border:1px solid rgba(255,255,255,.2);
+      background:rgba(255,255,255,.08);
+      color:#e8f1ff;
+      border-radius:7px;
+      padding:4px 8px;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .drawer-body{
+      padding:10px;
+      max-height:360px;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    .drawer.collapsed .drawer-body{ display:none; }
+    .readout-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .readout{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      border-radius:8px;
+      padding:8px;
+      min-height:56px;
+    }
+    .readout b{ display:block; color:#cfe4ff; font-size:12px; margin-bottom:5px; }
+    .readout span{ color:#fff; font-size:13px; line-height:1.4; }
+    .control-row{ display:flex; gap:8px; flex-wrap:wrap; }
+    .control-row button{ flex:1 1 98px; }
+    .analysis{
+      margin-top:9px;
+      border:1px solid rgba(91,188,255,.32);
+      background:rgba(91,188,255,.08);
+      color:#d9ecff;
+      border-radius:8px;
+      padding:8px 10px;
+      font-size:13px;
+      line-height:1.55;
+    }
+    .analysis.ok{ border-color:rgba(61,220,151,.55); background:rgba(61,220,151,.12); color:#e7fff3; }
+    .badge{
+      display:none;
+      min-width:18px;
+      height:18px;
+      padding:0 5px;
+      border-radius:999px;
+      background:#ef476f;
+      color:#fff;
+      font-size:12px;
+      line-height:18px;
+      text-align:center;
+      animation:badgePulse .9s ease-in-out infinite;
+    }
+    .badge.show{ display:inline-block; }
+    @keyframes badgePulse{ 0%,100%{transform:scale(1);} 50%{transform:scale(1.14);} }
+    table.record{
+      width:100%;
+      border-collapse:collapse;
+      font-size:12px;
+      color:#e8f1ff;
+    }
+    table.record th,table.record td{
+      border:1px solid rgba(255,255,255,.1);
+      padding:6px;
+      vertical-align:top;
+      line-height:1.45;
+    }
+    table.record th{ background:rgba(255,255,255,.08); color:#cfe4ff; }
+    .empty{ margin:8px 2px; color:#aebbd0; font-size:12px; }
+    .chartWrap{
+      height:220px;
+      margin-top:10px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:8px;
+      overflow:hidden;
+      background:rgba(0,0,0,.18);
+    }
+    #recordChart{ width:100%; height:100%; display:block; }
+    .toolbar{
+      width:100%;
+      max-width:980px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin:10px 0 0;
+    }
+    .toast{
+      position:absolute;
+      left:50%;
+      bottom:24px;
+      transform:translateX(-50%) translateY(18px);
+      opacity:0;
+      pointer-events:none;
+      padding:10px 16px;
+      border-radius:999px;
+      background:rgba(0,0,0,.72);
+      border:1px solid rgba(255,255,255,.12);
+      color:#fff;
+      font-weight:800;
+      transition:.18s ease;
+      z-index:80;
+    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+    .checkmark{
+      position:absolute;
+      left:50%;
+      top:50%;
+      width:64px;
+      height:64px;
+      border-radius:50%;
+      transform:translate(-50%,-50%) scale(.7);
+      opacity:0;
+      pointer-events:none;
+      background:rgba(37,194,119,.96);
+      box-shadow:0 0 24px rgba(37,194,119,.55);
+      z-index:82;
+      transition:.18s ease;
+    }
+    .checkmark::before{
+      content:"";
+      position:absolute;
+      left:19px;
+      top:16px;
+      width:24px;
+      height:13px;
+      border-left:5px solid #fff;
+      border-bottom:5px solid #fff;
+      transform:rotate(-45deg);
+    }
+    .checkmark.active{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+    .modal-mask{
+      position:absolute;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,.58);
+      z-index:90;
+      padding:16px;
+    }
+    .modal{
+      width:min(390px, 92vw);
+      padding:18px 16px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.15);
+      background:#101317;
+      text-align:center;
+      box-shadow:0 18px 44px rgba(0,0,0,.42);
+    }
+    .modal h3{ margin:4px 0 8px; font-size:21px; }
+    .modal p{ margin:0; color:#cdd7e0; line-height:1.55; }
+    .modal .ok{
+      margin-top:14px;
+      border:none;
+      border-radius:8px;
+      padding:8px 18px;
+      background:var(--accent);
+      color:#07170f;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .demo-cursor{
+      position:absolute;
+      left:0;
+      top:0;
+      width:20px;
+      height:20px;
+      border-radius:50%;
+      border:2px solid #fff;
+      background:rgba(91,188,255,.8);
+      box-shadow:0 0 14px rgba(91,188,255,.8);
+      opacity:0;
+      z-index:72;
+      pointer-events:none;
+      transition:opacity .15s;
+    }
+    .demo-cursor.click{ animation:cursorClick .28s ease; }
+    @keyframes cursorClick{ 50%{ transform:scale(1.8); opacity:.55; } }
+    .explanation{
+      width:100%;
+      max-width:980px;
+      margin:14px 0 22px;
+      color:#e8f4ff;
+      line-height:1.66;
+      font-size:15px;
+    }
+    .explanation h2{ margin:0 0 8px; color:#9bd3ff; font-size:20px; }
+    .explanation ul{ margin:0; padding-left:22px; }
+    @media (max-width:720px){
+      body{ padding:8px; }
+      #spectrum,.task-card,#stage,.toolbar,.explanation{ max-width:100%; }
+      .task-card{ grid-template-columns:1fr; gap:7px; }
+      .task-step{ width:fit-content; }
+      .progress-dots{ justify-content:flex-start; }
+      #stage{ height:78vh; min-height:680px; }
+      .lab-area{ inset:96px 8px 10px; }
+      .hud{ max-width:calc(100% - 20px); }
+      .hint-lamp{ top:56px; }
+      .hint-pop{ top:96px; }
+      .drawer{ width:calc(100% - 24px); right:12px; }
+      .drawer.control{ top:112px; }
+      .drawer.data{ top:166px; }
+      .drawer-body{ max-height:260px; }
+      .toolbar button{ flex:1 1 132px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <section class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText"></div>
+      <div id="taskHint"></div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </section>
+
+  <main id="stage" aria-label="探究光的反射定律实验台">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+
+    <div class="lab-area" id="labArea">
+      <canvas id="labCanvas"></canvas>
+    </div>
+
+    <section class="dock drawer control collapsed" id="controlDock" aria-label="实验面板">
+      <div class="dockHead drawer-header" data-drag-handle>
+        <span class="dockTitle drawer-title">实验面板</span>
+        <div class="dockBtns drawer-actions">
+          <button class="iconBtn mini" id="controlToggleBtn" type="button">展开</button>
+        </div>
+      </div>
+      <div class="dockBody drawer-body">
+        <div class="readout-grid">
+          <div class="readout"><b>入射角</b><span id="angleReadout">35°</span></div>
+          <div class="readout"><b>反射角</b><span id="reflectReadout">35°</span></div>
+          <div class="readout"><b>纸板</b><span id="planeReadout">左右纸板共面</span></div>
+          <div class="readout"><b>结论</b><span id="summaryReadout">未分析</span></div>
+        </div>
+        <div class="control-row">
+          <button class="main" id="recordBtn" type="button">记录观察</button>
+          <button class="sub" id="foldBtn" type="button">折起纸板</button>
+          <button class="sub" id="analyzeBtn" type="button">分析结论</button>
+        </div>
+        <div class="analysis" id="analysisText">先改变入射角并记录两组角度，再折起右侧纸板观察反射光是否仍显示。</div>
+      </div>
+    </section>
+
+    <section class="dock drawer data collapsed" id="dataDock" aria-label="数据面板">
+      <div class="dockHead drawer-header" data-drag-handle>
+        <span class="dockTitle drawer-title">数据面板 <span class="dataNotice badge" id="dataNotice">0</span></span>
+        <div class="dockBtns drawer-actions">
+          <button class="iconBtn mini" id="dataToggleBtn" type="button">展开</button>
+        </div>
+      </div>
+      <div class="dockBody drawer-body">
+        <table class="record" id="recordTable">
+          <thead>
+            <tr><th>类别</th><th>操作</th><th>现象</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="empty" id="emptyRecords">还没有记录。按步骤操作后点击“记录观察”。</div>
+        <div class="chartWrap"><canvas id="recordChart"></canvas></div>
+      </div>
+    </section>
+
+    <div class="toast" id="toast">提示</div>
+    <div class="checkmark" id="checkmark"></div>
+    <div class="demo-cursor" id="demoCursor"></div>
+    <div class="modal-mask" id="doneMask">
+      <div class="modal">
+        <h3>实验完成</h3>
+        <p>你已经完成“探究光的反射定律”：反射角等于入射角，反射光线、入射光线和法线在同一平面内。</p>
+        <button class="ok" id="okBtn" type="button">OK</button>
+      </div>
+    </div>
+  </main>
+
+  <div class="toolbar">
+    <button class="sub" id="resetBtn" type="button">步骤重置</button>
+    <button class="sub" id="autoDemoBtn" type="button">自动演示</button>
+    <button class="sub" id="freeBtn" type="button">自由模式</button>
+  </div>
+
+  <section class="explanation">
+    <h2>实验名：探究光的反射定律</h2>
+    <ul>
+      <li><b>关键操作与现象：</b>让激光贴着纸板射到平面镜 O 点，改变入射角后，反射光方向随之改变；读出多组角度可见反射角等于入射角；将右侧纸板向后折起后，纸板上不能显示反射光。</li>
+      <li><b>实验结论：</b>在光的反射现象中，反射光线、入射光线和法线在同一平面内，反射光线和入射光线分居法线两侧，反射角等于入射角。</li>
+    </ul>
+  </section>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+
+    const stage = $("#stage");
+    const labArea = $("#labArea");
+    const canvas = $("#labCanvas");
+    const ctx = canvas.getContext("2d");
+    const recordChart = $("#recordChart");
+    const chartCtx = recordChart.getContext("2d");
+    const taskStepEl = $("#taskStep");
+    const taskTextEl = $("#taskText");
+    const taskHintEl = $("#taskHint");
+    const dotsEl = $("#dots");
+    const modeTag = $("#modeTag");
+    const statusTag = $("#statusTag");
+    const hintLamp = $("#hintLamp");
+    const hintPop = $("#hintPop");
+    const controlDrawer = $("#controlDock");
+    const dataDrawer = $("#dataDock");
+    const controlToggle = $("#controlToggleBtn");
+    const dataToggle = $("#dataToggleBtn");
+    const dataBadge = $("#dataNotice");
+    const recordBtn = $("#recordBtn");
+    const foldBtn = $("#foldBtn");
+    const analyzeBtn = $("#analyzeBtn");
+    const resetBtn = $("#resetBtn");
+    const autoDemoBtn = $("#autoDemoBtn");
+    const freeBtn = $("#freeBtn");
+    const toastEl = $("#toast");
+    const checkmarkEl = $("#checkmark");
+    const doneMask = $("#doneMask");
+    const okBtn = $("#okBtn");
+    const demoCursor = $("#demoCursor");
+    const angleReadout = $("#angleReadout");
+    const reflectReadout = $("#reflectReadout");
+    const planeReadout = $("#planeReadout");
+    const summaryReadout = $("#summaryReadout");
+    const analysisText = $("#analysisText");
+    const recordTableBody = $("#recordTable tbody");
+    const emptyRecords = $("#emptyRecords");
+
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const degToRad = (deg) => deg * Math.PI / 180;
+    const radToDeg = (rad) => rad * 180 / Math.PI;
+
+    const tasks = [
+      {
+        text: "拖动激光笔改变入射角，先记录一组较小入射角的反射现象。",
+        hint: "拖动黄色激光笔端点，让光贴着纸板射到 O 点；读出 ON 两侧的角度。",
+        detail: "保持纸板放平，拖动左侧黄色激光笔端点。先把入射角调到 20°~40°，观察反射光在法线另一侧出现，且反射角与入射角相等。",
+        check: () => hasRecord("angle-small")
+      },
+      {
+        text: "继续改变入射角，再记录一组较大入射角，比较两组数据。",
+        hint: "把入射角调大，观察反射光方向是否随之改变，并记录角度。",
+        detail: "将入射角调到 50°~70°。反射光仍在法线另一侧，反射角仍等于入射角，多次测量可以减少偶然性。",
+        check: () => hasRecord("angle-large")
+      },
+      {
+        text: "把右侧纸板向后折起，观察纸板上还能不能显示反射光。",
+        hint: "点击或拖动右侧纸板手柄折起纸板；反射光仍存在，但折起的纸板上看不到光迹。",
+        detail: "教材中的纸板 ENF 由两块纸板连接而成。折起显示反射光的一侧后，反射光离开纸板平面，纸板上不能显示反射光，由此验证三线共面。",
+        check: () => hasRecord("folded-plane")
+      },
+      {
+        text: "点击“分析结论”，归纳光的反射定律。",
+        hint: "需要先有两组角度记录和一组折纸板观察记录。",
+        detail: "把角度证据对应到“反射角等于入射角”，把折纸板证据对应到“反射光线、入射光线和法线在同一平面内”。",
+        check: () => state.analysisDone
+      }
+    ];
+
+    const state = {
+      currentTask: 0,
+      completed: false,
+      freeMode: false,
+      autoPlaying: false,
+      autoCancel: false,
+      draggingId: null,
+      stepWarning: false,
+      successCooldown: false,
+      timers: new Set(),
+      width: 0,
+      height: 0,
+      stageWidth: 0,
+      stageHeight: 0,
+      angle: 35,
+      boardFold: 0,
+      actionCount: 0,
+      records: [],
+      unseenRecords: 0,
+      lastObservation: null,
+      analysisDone: false,
+      drawerDrag: null
+    };
+
+    function schedule(fn, ms) {
+      const id = setTimeout(() => {
+        state.timers.delete(id);
+        fn();
+      }, ms);
+      state.timers.add(id);
+      return id;
+    }
+
+    function clearAllTimers() {
+      for (const id of state.timers) clearTimeout(id);
+      state.timers.clear();
+    }
+
+    function resizeCanvas() {
+      const stageRect = stage.getBoundingClientRect();
+      const rect = labArea.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      state.width = rect.width;
+      state.height = rect.height;
+      state.stageWidth = stageRect.width;
+      state.stageHeight = stageRect.height;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      recordChart.width = Math.round(recordChart.clientWidth * dpr);
+      recordChart.height = Math.round(recordChart.clientHeight * dpr);
+      chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      fitDrawers();
+      draw();
+      drawRecordChart();
+    }
+
+    function initDots() {
+      dotsEl.innerHTML = "";
+      tasks.forEach(() => {
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        dotsEl.appendChild(dot);
+      });
+    }
+
+    function updateDots() {
+      [...dotsEl.children].forEach((dot, index) => {
+        dot.classList.toggle("done", state.completed || index < state.currentTask);
+        dot.classList.toggle("active", !state.completed && index === state.currentTask && !state.stepWarning);
+        dot.classList.toggle("warn", !state.completed && index === state.currentTask && state.stepWarning);
+      });
+    }
+
+    function setStepUI(index) {
+      const next = clamp(index, 0, tasks.length - 1);
+      state.currentTask = next;
+      state.stepWarning = false;
+      taskStepEl.textContent = `步骤 ${next + 1} / ${tasks.length}`;
+      taskTextEl.textContent = tasks[next].text;
+      taskHintEl.textContent = tasks[next].hint;
+      hintPop.textContent = tasks[next].detail;
+      updateDots();
+      updateStatus();
+      draw();
+    }
+
+    function updateStatus(text) {
+      if (text) {
+        statusTag.textContent = `状态：${text}`;
+        return;
+      }
+      if (state.completed) statusTag.textContent = "状态：已完成";
+      else if (state.autoPlaying) statusTag.textContent = "状态：自动演示";
+      else if (state.lastObservation) statusTag.textContent = `状态：${state.lastObservation.short}`;
+      else statusTag.textContent = "状态：待操作";
+    }
+
+    function setModeLabel() {
+      if (state.autoPlaying) modeTag.textContent = "模式：自动演示";
+      else modeTag.textContent = state.freeMode ? "模式：自由" : "模式：引导";
+    }
+
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toastEl.classList.remove("show"), 1500);
+    }
+
+    function showCheck() {
+      checkmarkEl.classList.add("active");
+      clearTimeout(showCheck.timer);
+      showCheck.timer = setTimeout(() => checkmarkEl.classList.remove("active"), 520);
+    }
+
+    function warnCurrentStep(message) {
+      state.stepWarning = true;
+      updateDots();
+      hintLamp.classList.remove("flash");
+      void hintLamp.offsetWidth;
+      hintLamp.classList.add("flash");
+      showToast(message);
+      schedule(() => {
+        state.stepWarning = false;
+        updateDots();
+      }, 1200);
+    }
+
+    function hasRecord(key) {
+      return state.records.some((record) => record.key === key);
+    }
+
+    function readyForAnalysis() {
+      return tasks[0].check() && tasks[1].check() && tasks[2].check();
+    }
+
+    function passStepIfReady({ quiet = false } = {}) {
+      if (state.freeMode || state.completed || state.successCooldown) return false;
+      if (!tasks[state.currentTask].check()) {
+        if (!quiet) warnCurrentStep("当前步骤的证据还不完整。");
+        return false;
+      }
+      state.successCooldown = true;
+      schedule(() => { state.successCooldown = false; }, 360);
+      showCheck();
+      if (state.currentTask >= tasks.length - 1) {
+        state.completed = true;
+        prepareCompletionView();
+        updateDots();
+        updateStatus();
+        doneMask.style.display = "flex";
+      } else {
+        setStepUI(state.currentTask + 1);
+      }
+      return true;
+    }
+
+    function prepareCompletionView() {
+      delete controlDrawer.dataset.moved;
+      delete dataDrawer.dataset.moved;
+      setDrawerCollapsed(controlDrawer, true);
+      setDrawerCollapsed(dataDrawer, false);
+    }
+
+    function setLastObservation(observation) {
+      state.lastObservation = observation;
+      updateReadouts();
+      updateStatus(observation.short);
+    }
+
+    function currentObservation() {
+      const angle = Math.round(state.angle);
+      if (state.boardFold >= 45) {
+        return {
+          category: "共面",
+          key: "folded-plane",
+          label: "三线共面",
+          action: `右侧纸板折起约 ${Math.round(state.boardFold)}°`,
+          note: "折起的纸板上看不到反射光，说明反射光线仍在原来的入射光线和法线所在平面内。",
+          short: "折板看不到反射光"
+        };
+      }
+      const key = angle <= 42 ? "angle-small" : angle >= 50 ? "angle-large" : "angle-mid";
+      return {
+        category: "角度",
+        key,
+        label: "角度关系",
+        action: `入射角 i = ${angle}°`,
+        note: `反射光线位于法线另一侧，反射角 r = ${angle}°，与入射角相等。`,
+        short: key === "angle-large" ? "大入射角已观察" : key === "angle-small" ? "小入射角已观察" : "中等角度"
+      };
+    }
+
+    function refreshObservation() {
+      if (state.actionCount <= 0) return;
+      setLastObservation(currentObservation());
+    }
+
+    function recordLastObservation({ auto = false } = {}) {
+      if (state.actionCount <= 0 || !state.lastObservation) {
+        warnCurrentStep("请先拖动激光笔或折起纸板，完成一次有效观察。");
+        return false;
+      }
+      const obs = state.lastObservation;
+      if (!state.freeMode && state.currentTask === 0 && obs.key !== "angle-small") {
+        warnCurrentStep("步骤1需要先记录 20°~40° 的较小入射角。");
+        return false;
+      }
+      if (!state.freeMode && state.currentTask === 1 && obs.key !== "angle-large") {
+        warnCurrentStep("步骤2需要记录 50°~70° 的较大入射角。");
+        return false;
+      }
+      if (!state.freeMode && state.currentTask === 2 && obs.key !== "folded-plane") {
+        warnCurrentStep("步骤3需要折起右侧纸板后再记录。");
+        return false;
+      }
+      if (!state.records.some((record) => record.key === obs.key)) {
+        state.records.push({ ...obs, time: Date.now() });
+        if (dataDrawer.classList.contains("collapsed")) {
+          state.unseenRecords += 1;
+          updateBadge();
+        }
+        renderRecords();
+        showToast("已记录观察");
+      } else if (!auto) {
+        showToast("这组现象已经记录过");
+      }
+      const beforeStep = state.currentTask;
+      const advanced = passStepIfReady({ quiet: true });
+      if (!advanced && !state.freeMode && beforeStep === state.currentTask) {
+        updateDots();
+      }
+      return true;
+    }
+
+    function renderRecords() {
+      recordTableBody.innerHTML = "";
+      state.records.forEach((record) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${record.label}</td><td>${record.action}</td><td>${record.note}</td>`;
+        recordTableBody.appendChild(row);
+      });
+      emptyRecords.style.display = state.records.length ? "none" : "block";
+      drawRecordChart();
+    }
+
+    function drawRecordChart() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = recordChart.clientWidth || 320;
+      const h = recordChart.clientHeight || 210;
+      const nextW = Math.round(w * dpr);
+      const nextH = Math.round(h * dpr);
+      if (recordChart.width !== nextW || recordChart.height !== nextH) {
+        recordChart.width = nextW;
+        recordChart.height = nextH;
+        chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      chartCtx.clearRect(0, 0, w, h);
+      chartCtx.fillStyle = "rgba(0,0,0,.16)";
+      chartCtx.fillRect(0, 0, w, h);
+      const rows = [
+        { title:"小入射角", ready:hasRecord("angle-small"), color:"#ffd54f", text:"i = r" },
+        { title:"大入射角", ready:hasRecord("angle-large"), color:"#3ddc97", text:"方向改变，i = r" },
+        { title:"折纸板", ready:hasRecord("folded-plane"), color:"#5bbcff", text:"三线共面" }
+      ];
+      chartCtx.font = "700 12px Arial";
+      rows.forEach((row, index) => {
+        const y = 26 + index * 62;
+        chartCtx.fillStyle = row.ready ? row.color : "rgba(255,255,255,.42)";
+        chartCtx.textAlign = "left";
+        chartCtx.fillText(row.title, 14, y);
+        chartCtx.strokeStyle = row.ready ? row.color : "rgba(255,255,255,.22)";
+        chartCtx.lineWidth = 2;
+        chartCtx.beginPath();
+        chartCtx.moveTo(96, y + 10);
+        chartCtx.lineTo(156, y - 22);
+        chartCtx.moveTo(156, y - 22);
+        chartCtx.lineTo(216, y + 10);
+        chartCtx.stroke();
+        chartCtx.strokeStyle = "rgba(255,255,255,.18)";
+        chartCtx.beginPath();
+        chartCtx.moveTo(156, y - 34);
+        chartCtx.lineTo(156, y + 22);
+        chartCtx.stroke();
+        chartCtx.fillStyle = "rgba(220,233,255,.76)";
+        chartCtx.font = "12px Arial";
+        chartCtx.fillText(row.ready ? row.text : "待记录", 238, y);
+        chartCtx.font = "700 12px Arial";
+      });
+    }
+
+    function updateBadge() {
+      dataBadge.textContent = String(state.unseenRecords);
+      dataBadge.classList.toggle("show", state.unseenRecords > 0 && dataDrawer.classList.contains("collapsed"));
+    }
+
+    function updateReadouts() {
+      const angle = Math.round(state.angle);
+      angleReadout.textContent = `${angle}°`;
+      reflectReadout.textContent = state.boardFold >= 45 ? "纸板上不可见" : `${angle}°`;
+      planeReadout.textContent = state.boardFold >= 45 ? `右板折起 ${Math.round(state.boardFold)}°` : "左右纸板共面";
+      summaryReadout.textContent = state.analysisDone ? "结论已归纳" : "未分析";
+      foldBtn.textContent = state.boardFold >= 45 ? "放平纸板" : "折起纸板";
+    }
+
+    function setAngle(angle, markAction = true) {
+      const min = state.freeMode ? 8 : 18;
+      const max = state.freeMode ? 78 : 70;
+      state.angle = clamp(angle, min, max);
+      state.boardFold = 0;
+      if (markAction) state.actionCount += 1;
+      refreshObservation();
+      updateReadouts();
+      draw();
+    }
+
+    function setBoardFold(fold, markAction = true) {
+      state.boardFold = clamp(fold, 0, state.freeMode ? 88 : 82);
+      if (markAction) state.actionCount += 1;
+      refreshObservation();
+      updateReadouts();
+      draw();
+    }
+
+    function toggleFold() {
+      setBoardFold(state.boardFold >= 45 ? 0 : 72, true);
+      showToast(state.boardFold >= 45 ? "右侧纸板已折起" : "纸板已放平");
+    }
+
+    function analyzeConclusion() {
+      if (!readyForAnalysis()) {
+        warnCurrentStep("请先补齐两组角度记录和折纸板观察记录。");
+        return false;
+      }
+      state.analysisDone = true;
+      analysisText.classList.add("ok");
+      analysisText.innerHTML = "结论成立：多组测量中反射角都等于入射角；折起纸板后看不到反射光，说明反射光线、入射光线和法线在同一平面内。";
+      updateReadouts();
+      showToast("已归纳光的反射定律");
+      passStepIfReady({ quiet:true });
+      return true;
+    }
+
+    function resetScene({ keepMode = true } = {}) {
+      clearAllTimers();
+      state.completed = false;
+      state.autoCancel = false;
+      state.draggingId = null;
+      state.stepWarning = false;
+      state.successCooldown = false;
+      state.angle = 35;
+      state.boardFold = 0;
+      state.actionCount = 0;
+      state.records = [];
+      state.unseenRecords = 0;
+      state.lastObservation = null;
+      state.analysisDone = false;
+      if (!keepMode) state.freeMode = false;
+      doneMask.style.display = "none";
+      analysisText.classList.remove("ok");
+      analysisText.textContent = "先改变入射角并记录两组角度，再折起右侧纸板观察反射光是否仍显示。";
+      renderRecords();
+      updateBadge();
+      setModeLabel();
+      setStepUI(0);
+      updateReadouts();
+      draw();
+    }
+
+    function setFreeMode(on) {
+      state.freeMode = !!on;
+      freeBtn.textContent = state.freeMode ? "退出自由模式" : "自由模式";
+      autoDemoBtn.disabled = state.freeMode;
+      setModeLabel();
+      showToast(state.freeMode ? "自由模式下可任意调角度和折纸板。" : "已回到引导模式。");
+      draw();
+    }
+
+    function setDrawerCollapsed(drawer, collapsed) {
+      drawer.classList.toggle("collapsed", collapsed);
+      const toggle = drawer === controlDrawer ? controlToggle : dataToggle;
+      toggle.textContent = collapsed ? "展开" : "收起";
+      if (drawer === dataDrawer && !collapsed) {
+        state.unseenRecords = 0;
+        updateBadge();
+        drawRecordChart();
+      }
+      fitDrawers();
+    }
+
+    function fitDrawers() {
+      const areaWidth = state.stageWidth || state.width;
+      const areaHeight = state.stageHeight || state.height;
+      if (!areaWidth || !areaHeight) return;
+      [controlDrawer, dataDrawer].forEach((drawer, index) => {
+        const isMobile = areaWidth <= 720;
+        const collapsed = drawer.classList.contains("collapsed");
+        let targetWidth = 300;
+        if (isMobile && collapsed) targetWidth = Math.max(132, Math.min(152, Math.floor((areaWidth - 90) / 2)));
+        else if (isMobile) targetWidth = areaWidth - 24;
+        drawer.style.width = `${targetWidth}px`;
+        const rect = drawer.getBoundingClientRect();
+        let left = drawer.offsetLeft;
+        let top = drawer.offsetTop;
+        if (!drawer.dataset.moved) {
+          if (isMobile && collapsed) {
+            top = 52;
+            left = index === 0 ? areaWidth - (targetWidth * 2) - 18 : areaWidth - targetWidth - 8;
+          } else if (isMobile) {
+            left = 12;
+            if (index === 0) top = 104;
+            else if (!controlDrawer.classList.contains("collapsed")) top = controlDrawer.offsetTop + controlDrawer.offsetHeight + 8;
+            else top = 104;
+          } else {
+            const bothCollapsed = controlDrawer.classList.contains("collapsed") && dataDrawer.classList.contains("collapsed");
+            if (bothCollapsed && collapsed) {
+              top = 10;
+              left = index === 0
+                ? Math.max(12, areaWidth - rect.width - 12)
+                : Math.max(12, areaWidth - rect.width * 2 - 22);
+            } else {
+              left = Math.max(12, areaWidth - rect.width - 12);
+              top = index === 0 ? 10 : 94;
+            }
+          }
+        }
+        left = clamp(left, 8, Math.max(8, areaWidth - rect.width - 8));
+        top = clamp(top, 8, Math.max(8, areaHeight - 48));
+        drawer.style.left = `${left}px`;
+        drawer.style.right = "auto";
+        drawer.style.top = `${top}px`;
+      });
+    }
+
+    function pointerInRect(point, rect) {
+      return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
+    }
+
+    function layout() {
+      const w = state.width;
+      const h = state.height;
+      const isNarrow = w < 720;
+      const o = { x:w * .5, y:isNarrow ? h * .52 : h * .56 };
+      const boardW = Math.min(w - 72, isNarrow ? w - 48 : 720);
+      const boardH = Math.min(isNarrow ? h * .52 : h * .56, 360);
+      const board = { x:o.x - boardW / 2, y:Math.max(38, o.y - boardH + 28), w:boardW, h:boardH };
+      const rayLen = Math.min(boardW * .42, boardH * .72);
+      const theta = degToRad(state.angle);
+      const incidentStart = { x:o.x - Math.sin(theta) * rayLen, y:o.y - Math.cos(theta) * rayLen };
+      const reflectEnd = { x:o.x + Math.sin(theta) * rayLen, y:o.y - Math.cos(theta) * rayLen };
+      const laser = { x:incidentStart.x - 26, y:incidentStart.y - 13, w:52, h:26 };
+      const foldTab = { x:o.x + boardW * .34, y:board.y + 18, w:86, h:32 };
+      return { origin:o, board, incidentStart, reflectEnd, laser, foldTab, rayLen };
+    }
+
+    function drawRoundRect(x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.lineTo(x + w - rr, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+      ctx.lineTo(x + w, y + h - rr);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      ctx.lineTo(x + rr, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+      ctx.lineTo(x, y + rr);
+      ctx.quadraticCurveTo(x, y, x + rr, y);
+      ctx.closePath();
+    }
+
+    function draw() {
+      const w = state.width;
+      const h = state.height;
+      if (!w || !h) return;
+      ctx.clearRect(0, 0, w, h);
+      drawBackground(w, h);
+      const boxes = layout();
+      drawPaperBoard(boxes);
+      drawProtractor(boxes);
+      drawMirrorAndNormal(boxes);
+      drawLightRays(boxes);
+      drawLaser(boxes);
+      drawLabels(boxes);
+    }
+
+    function drawBackground(w, h) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,.045)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawPaperBoard({ board, origin, foldTab }) {
+      ctx.save();
+      const leftW = origin.x - board.x;
+      const fold = state.boardFold;
+      const rightW = board.x + board.w - origin.x;
+      ctx.fillStyle = "rgba(232,238,246,.9)";
+      drawRoundRect(board.x, board.y, leftW, board.h, 8);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.32)";
+      ctx.stroke();
+      const rightVisibleW = rightW * Math.cos(degToRad(fold));
+      const shade = fold >= 45 ? "rgba(166,184,208,.68)" : "rgba(232,238,246,.86)";
+      ctx.fillStyle = shade;
+      drawRoundRect(origin.x, board.y + Math.sin(degToRad(fold)) * 14, rightVisibleW, board.h - Math.sin(degToRad(fold)) * 28, 8);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.26)";
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(30,40,54,.35)";
+      ctx.lineWidth = 1;
+      for (let x = board.x + 28; x < board.x + board.w; x += 38) {
+        ctx.beginPath();
+        ctx.moveTo(x, board.y);
+        ctx.lineTo(x, board.y + board.h);
+        ctx.stroke();
+      }
+      for (let y = board.y + 26; y < board.y + board.h; y += 38) {
+        ctx.beginPath();
+        ctx.moveTo(board.x, y);
+        ctx.lineTo(board.x + board.w, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(14,24,35,.9)";
+      ctx.textAlign = "center";
+      ctx.font = "700 16px Arial";
+      ctx.fillText("纸板 EN", board.x + leftW / 2, board.y + 28);
+      ctx.fillText("纸板 NF", origin.x + Math.max(60, rightVisibleW / 2), board.y + 28);
+      ctx.fillStyle = state.boardFold >= 45 ? "rgba(255,183,77,.95)" : "rgba(91,188,255,.9)";
+      drawRoundRect(foldTab.x, foldTab.y, foldTab.w, foldTab.h, 8);
+      ctx.fill();
+      ctx.fillStyle = "#061018";
+      ctx.font = "700 12px Arial";
+      ctx.fillText(state.boardFold >= 45 ? "拖动放平" : "拖动折起", foldTab.x + foldTab.w / 2, foldTab.y + 21);
+      ctx.restore();
+    }
+
+    function drawMirrorAndNormal({ board, origin }) {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(40,50,62,.8)";
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.moveTo(board.x + 30, origin.y);
+      ctx.lineTo(board.x + board.w - 30, origin.y);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(127,208,255,.85)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(board.x + 40, origin.y - 7);
+      ctx.lineTo(board.x + board.w - 40, origin.y - 7);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(24,32,42,.65)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([8, 7]);
+      ctx.beginPath();
+      ctx.moveTo(origin.x, board.y + 16);
+      ctx.lineTo(origin.x, origin.y + 58);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "#17202b";
+      ctx.font = "700 14px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText("平面镜", board.x + 36, origin.y + 26);
+      ctx.textAlign = "center";
+      ctx.fillText("N", origin.x, board.y + 14);
+      ctx.fillText("O", origin.x + 14, origin.y + 22);
+      ctx.restore();
+    }
+
+    function drawProtractor({ origin }) {
+      ctx.save();
+      const r = 92;
+      ctx.strokeStyle = "rgba(24,32,42,.42)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(origin.x, origin.y, r, Math.PI, 0);
+      ctx.stroke();
+      for (let a = 0; a <= 180; a += 10) {
+        const rad = Math.PI - degToRad(a);
+        const inner = a % 30 === 0 ? r - 14 : r - 8;
+        ctx.beginPath();
+        ctx.moveTo(origin.x + Math.cos(rad) * inner, origin.y - Math.sin(rad) * inner);
+        ctx.lineTo(origin.x + Math.cos(rad) * r, origin.y - Math.sin(rad) * r);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(24,32,42,.62)";
+      ctx.font = "11px Arial";
+      ctx.textAlign = "center";
+      [30,60,90,120,150].forEach((a) => {
+        const rad = Math.PI - degToRad(a);
+        ctx.fillText(String(Math.abs(90 - a)), origin.x + Math.cos(rad) * (r + 16), origin.y - Math.sin(rad) * (r + 16));
+      });
+      ctx.restore();
+    }
+
+    function drawLightRays({ origin, incidentStart, reflectEnd }) {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineWidth = 4;
+      const gradIn = ctx.createLinearGradient(incidentStart.x, incidentStart.y, origin.x, origin.y);
+      gradIn.addColorStop(0, "rgba(255,235,59,.15)");
+      gradIn.addColorStop(1, "rgba(255,235,59,.98)");
+      ctx.strokeStyle = gradIn;
+      drawArrow(incidentStart.x, incidentStart.y, origin.x, origin.y, 13);
+      if (state.boardFold < 45) {
+        const gradOut = ctx.createLinearGradient(origin.x, origin.y, reflectEnd.x, reflectEnd.y);
+        gradOut.addColorStop(0, "rgba(61,220,151,.98)");
+        gradOut.addColorStop(1, "rgba(61,220,151,.2)");
+        ctx.strokeStyle = gradOut;
+        drawArrow(origin.x, origin.y, reflectEnd.x, reflectEnd.y, 13);
+      } else {
+        ctx.strokeStyle = "rgba(61,220,151,.22)";
+        ctx.setLineDash([8, 8]);
+        ctx.beginPath();
+        ctx.moveTo(origin.x, origin.y);
+        ctx.lineTo(reflectEnd.x, reflectEnd.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+      ctx.fillStyle = "rgba(255,255,255,.92)";
+      ctx.beginPath();
+      ctx.arc(origin.x, origin.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawArrow(x1, y1, x2, y2, head) {
+      const angle = Math.atan2(y2 - y1, x2 - x1);
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x2, y2);
+      ctx.lineTo(x2 - Math.cos(angle - .48) * head, y2 - Math.sin(angle - .48) * head);
+      ctx.lineTo(x2 - Math.cos(angle + .48) * head, y2 - Math.sin(angle + .48) * head);
+      ctx.closePath();
+      ctx.fillStyle = ctx.strokeStyle;
+      ctx.fill();
+    }
+
+    function drawLaser({ laser, incidentStart, origin }) {
+      const angle = Math.atan2(origin.y - incidentStart.y, origin.x - incidentStart.x);
+      ctx.save();
+      ctx.translate(incidentStart.x, incidentStart.y);
+      ctx.rotate(angle);
+      ctx.fillStyle = "#ffd54f";
+      drawRoundRect(-56, -12, 68, 24, 8);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.5)";
+      ctx.stroke();
+      ctx.fillStyle = "#24303b";
+      ctx.fillRect(-54, -6, 18, 12);
+      ctx.fillStyle = "#ff7043";
+      ctx.beginPath();
+      ctx.arc(14, 0, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,213,79,.68)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(laser.x, laser.y, laser.w, laser.h);
+      ctx.restore();
+    }
+
+    function drawLabels({ origin, incidentStart, reflectEnd }) {
+      const angle = Math.round(state.angle);
+      ctx.save();
+      ctx.fillStyle = "#eaf5ff";
+      ctx.textAlign = "center";
+      ctx.font = "700 17px Arial";
+      ctx.fillText("光的反射定律实验台", origin.x, 34);
+      ctx.font = "13px Arial";
+      ctx.fillStyle = "rgba(234,245,255,.76)";
+      ctx.fillText("拖动黄色激光笔改变入射角；拖动右上手柄折起纸板", origin.x, 58);
+      ctx.fillStyle = "#ffd54f";
+      ctx.font = "700 14px Arial";
+      ctx.fillText(`入射角 i = ${angle}°`, (incidentStart.x + origin.x) / 2 - 18, (incidentStart.y + origin.y) / 2 - 16);
+      ctx.fillStyle = state.boardFold < 45 ? "#3ddc97" : "rgba(61,220,151,.55)";
+      ctx.fillText(state.boardFold < 45 ? `反射角 r = ${angle}°` : "折起纸板上看不到反射光", (reflectEnd.x + origin.x) / 2 + 26, (reflectEnd.y + origin.y) / 2 - 16);
+      ctx.restore();
+    }
+
+    function stagePoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+    }
+
+    function angleFromPoint(point) {
+      const boxes = layout();
+      const dx = boxes.origin.x - point.x;
+      const dy = boxes.origin.y - point.y;
+      return clamp(radToDeg(Math.atan2(dx, Math.max(24, dy))), state.freeMode ? 8 : 18, state.freeMode ? 78 : 70);
+    }
+
+    function foldFromPoint(point) {
+      const boxes = layout();
+      return clamp((point.x - boxes.origin.x - boxes.board.w * .18) / (boxes.board.w * .32) * 86, 0, state.freeMode ? 88 : 82);
+    }
+
+    function onCanvasPointerDown(event) {
+      if (state.autoPlaying) return;
+      const p = stagePoint(event);
+      const boxes = layout();
+      if (pointerInRect(p, boxes.laser)) {
+        state.draggingId = "laser";
+        canvas.setPointerCapture(event.pointerId);
+        setAngle(angleFromPoint(p), true);
+        event.preventDefault();
+        return;
+      }
+      if (pointerInRect(p, boxes.foldTab)) {
+        state.draggingId = "fold";
+        canvas.setPointerCapture(event.pointerId);
+        setBoardFold(state.boardFold >= 45 ? 0 : 72, true);
+        event.preventDefault();
+        return;
+      }
+      const distToOrigin = Math.hypot(p.x - boxes.origin.x, p.y - boxes.origin.y);
+      if (distToOrigin < boxes.rayLen * .98 && p.x < boxes.origin.x && p.y < boxes.origin.y + 20) {
+        setAngle(angleFromPoint(p), true);
+      }
+    }
+
+    function onCanvasPointerMove(event) {
+      if (!state.draggingId || state.autoPlaying) return;
+      const p = stagePoint(event);
+      if (state.draggingId === "laser") {
+        setAngle(angleFromPoint(p), true);
+      } else if (state.draggingId === "fold") {
+        setBoardFold(foldFromPoint(p), true);
+      }
+      event.preventDefault();
+    }
+
+    function onCanvasPointerUp(event) {
+      if (!state.draggingId) return;
+      state.draggingId = null;
+      try { canvas.releasePointerCapture(event.pointerId); } catch (error) { console.warn("释放指针捕获失败", error); }
+      event.preventDefault();
+    }
+
+    function bindDrawer(drawer) {
+      const header = drawer.querySelector("[data-drag-handle]");
+      header.addEventListener("pointerdown", (event) => {
+        if (event.target.tagName === "BUTTON") return;
+        const rect = drawer.getBoundingClientRect();
+        const parent = stage.getBoundingClientRect();
+        drawer.dataset.moved = "true";
+        state.drawerDrag = {
+          drawer,
+          dx:event.clientX - rect.left,
+          dy:event.clientY - rect.top,
+          parentLeft:parent.left,
+          parentTop:parent.top
+        };
+        header.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+      header.addEventListener("pointermove", (event) => {
+        if (!state.drawerDrag || state.drawerDrag.drawer !== drawer) return;
+        const drag = state.drawerDrag;
+        const width = drawer.offsetWidth;
+        const height = drawer.offsetHeight;
+        const areaWidth = state.stageWidth || state.width;
+        const areaHeight = state.stageHeight || state.height;
+        const left = clamp(event.clientX - drag.parentLeft - drag.dx, 6, Math.max(6, areaWidth - width - 6));
+        const top = clamp(event.clientY - drag.parentTop - drag.dy, 6, Math.max(6, areaHeight - Math.min(height, 48) - 6));
+        drawer.style.left = `${left}px`;
+        drawer.style.top = `${top}px`;
+        drawer.style.right = "auto";
+        event.preventDefault();
+      });
+      header.addEventListener("pointerup", (event) => {
+        if (!state.drawerDrag) return;
+        try { header.releasePointerCapture(event.pointerId); } catch (error) { console.warn("释放抽屉指针捕获失败", error); }
+        state.drawerDrag = null;
+      });
+      header.addEventListener("pointercancel", () => {
+        state.drawerDrag = null;
+      });
+    }
+
+    function moveCursorTo(x, y, visible = true) {
+      const stageRect = stage.getBoundingClientRect();
+      const sceneRect = labArea.getBoundingClientRect();
+      const offsetX = sceneRect.left - stageRect.left;
+      const offsetY = sceneRect.top - stageRect.top;
+      demoCursor.style.opacity = visible ? "1" : "0";
+      demoCursor.style.transform = `translate(${offsetX + x - 10}px, ${offsetY + y - 10}px)`;
+    }
+
+    function clickCursor() {
+      demoCursor.classList.remove("click");
+      void demoCursor.offsetWidth;
+      demoCursor.classList.add("click");
+    }
+
+    async function animateCursorPath(points, duration = 500) {
+      if (points.length === 1) {
+        moveCursorTo(points[0].x, points[0].y);
+        await sleep(duration);
+        return;
+      }
+      const start = performance.now();
+      while (performance.now() - start < duration) {
+        if (state.autoCancel) throw new Error("AUTO_CANCELLED");
+        const t = (performance.now() - start) / duration;
+        const segment = Math.min(points.length - 2, Math.floor(t * (points.length - 1)));
+        const localT = (t * (points.length - 1)) - segment;
+        const a = points[segment];
+        const b = points[segment + 1];
+        moveCursorTo(lerp(a.x, b.x, localT), lerp(a.y, b.y, localT));
+        await sleep(16);
+      }
+      const last = points[points.length - 1];
+      moveCursorTo(last.x, last.y);
+    }
+
+    function pointForAngle(angle) {
+      const boxes = layout();
+      const theta = degToRad(angle);
+      return {
+        x: boxes.origin.x - Math.sin(theta) * boxes.rayLen,
+        y: boxes.origin.y - Math.cos(theta) * boxes.rayLen
+      };
+    }
+
+    async function animateAngle(targetAngle) {
+      const from = pointForAngle(state.angle);
+      const to = pointForAngle(targetAngle);
+      await animateCursorPath([from, to], 560);
+      for (let i = 0; i <= 20; i += 1) {
+        if (state.autoCancel) throw new Error("AUTO_CANCELLED");
+        setAngle(lerp(state.angle, targetAngle, .18), i === 0);
+        await sleep(18);
+      }
+      setAngle(targetAngle, true);
+      clickCursor();
+      await sleep(220);
+    }
+
+    async function animateFold(targetFold) {
+      const boxes = layout();
+      const from = { x:boxes.foldTab.x + boxes.foldTab.w / 2, y:boxes.foldTab.y + boxes.foldTab.h / 2 };
+      const to = { x:boxes.origin.x + boxes.board.w * .48, y:from.y };
+      await animateCursorPath([from, to], 520);
+      for (let i = 0; i <= 18; i += 1) {
+        if (state.autoCancel) throw new Error("AUTO_CANCELLED");
+        setBoardFold(lerp(state.boardFold, targetFold, .2), i === 0);
+        await sleep(18);
+      }
+      setBoardFold(targetFold, true);
+      clickCursor();
+      await sleep(240);
+    }
+
+    async function autoRecord(expectedKey) {
+      const before = state.records.length;
+      const ok = recordLastObservation({ auto:true });
+      await sleep(260);
+      if (!ok || !hasRecord(expectedKey) || state.records.length <= before) {
+        throw new Error(`AUTO_RECORD_NOT_PERSISTED:${expectedKey}`);
+      }
+    }
+
+    async function runAutoDemo() {
+      if (state.autoPlaying) {
+        state.autoCancel = true;
+        return;
+      }
+      state.autoPlaying = true;
+      state.autoCancel = false;
+      autoDemoBtn.textContent = "退出自动演示";
+      freeBtn.disabled = true;
+      setDrawerCollapsed(controlDrawer, false);
+      setDrawerCollapsed(dataDrawer, false);
+      setModeLabel();
+      resetScene({ keepMode:false });
+      state.autoPlaying = true;
+      autoDemoBtn.textContent = "退出自动演示";
+      setModeLabel();
+      try {
+        setStepUI(0);
+        await animateAngle(30);
+        await autoRecord("angle-small");
+        setStepUI(1);
+        await sleep(260);
+        await animateAngle(60);
+        await autoRecord("angle-large");
+        setStepUI(2);
+        await sleep(260);
+        await animateFold(72);
+        await autoRecord("folded-plane");
+        setStepUI(3);
+        await sleep(320);
+        analyzeConclusion();
+      } catch (error) {
+        if (String(error.message || error) !== "AUTO_CANCELLED") {
+          showToast(`自动演示中断：${error.message || error}`);
+        } else {
+          showToast("已退出自动演示");
+        }
+      } finally {
+        state.autoPlaying = false;
+        state.autoCancel = false;
+        autoDemoBtn.textContent = "自动演示";
+        freeBtn.disabled = false;
+        demoCursor.style.opacity = "0";
+        setModeLabel();
+        updateStatus();
+        draw();
+      }
+    }
+
+    function initEvents() {
+      canvas.addEventListener("pointerdown", onCanvasPointerDown);
+      canvas.addEventListener("pointermove", onCanvasPointerMove);
+      canvas.addEventListener("pointerup", onCanvasPointerUp);
+      canvas.addEventListener("pointercancel", onCanvasPointerUp);
+      recordBtn.addEventListener("click", () => recordLastObservation());
+      foldBtn.addEventListener("click", toggleFold);
+      analyzeBtn.addEventListener("click", analyzeConclusion);
+      resetBtn.addEventListener("click", () => {
+        const free = state.freeMode;
+        resetScene();
+        state.freeMode = free;
+        setFreeMode(free);
+        showToast("已重置当前实验。");
+      });
+      autoDemoBtn.addEventListener("click", runAutoDemo);
+      freeBtn.addEventListener("click", () => setFreeMode(!state.freeMode));
+      controlToggle.addEventListener("click", () => setDrawerCollapsed(controlDrawer, !controlDrawer.classList.contains("collapsed")));
+      dataToggle.addEventListener("click", () => setDrawerCollapsed(dataDrawer, !dataDrawer.classList.contains("collapsed")));
+      hintLamp.addEventListener("click", () => hintPop.classList.toggle("open"));
+      okBtn.addEventListener("click", () => {
+        doneMask.style.display = "none";
+      });
+      bindDrawer(controlDrawer);
+      bindDrawer(dataDrawer);
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeCanvas.timer);
+        resizeCanvas.timer = setTimeout(resizeCanvas, 120);
+      });
+    }
+
+    function init() {
+      initDots();
+      initEvents();
+      resizeCanvas();
+      setDrawerCollapsed(controlDrawer, true);
+      setDrawerCollapsed(dataDrawer, true);
+      resetScene();
+      requestAnimationFrame(() => {
+        resizeCanvas();
+        draw();
+      });
+      setTimeout(() => {
+        resizeCanvas();
+        draw();
+      }, 180);
+    }
+
+    init();
+    window.state = state;
+    window.setAngle = setAngle;
+    window.setBoardFold = setBoardFold;
+    window.recordLastObservation = recordLastObservation;
+    window.analyzeConclusion = analyzeConclusion;
+  </script>
+</body>
+</html>

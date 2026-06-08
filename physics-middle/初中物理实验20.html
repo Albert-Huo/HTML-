@@ -1,0 +1,2158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验20｜观察磁体对小铁球的作用（交互版）</title>
+  <style>
+    :root{
+      --bg:#1b1b1b;
+      --ink:#fff;
+      --card-bg:rgba(255,255,255,.08);
+      --panel-bg:rgba(14,18,24,.56);
+      --line:rgba(255,255,255,.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --danger:#ff6b6b;
+      --shadow:0 14px 36px rgba(0,0,0,.42);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:980px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{0%{background-position:0 0}100%{background-position:-100% 0}}
+
+    .task-card{
+      width:100%;
+      max-width:980px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition:opacity .2s,filter .2s;
+    }
+    .task-step{background:rgba(255,255,255,.16);border-radius:8px;padding:6px 10px;font-weight:700;white-space:nowrap}
+    .task-text{line-height:1.55}
+    .task-hint{color:#ffd54f;font-size:12px;opacity:.95;margin-top:2px}
+    .progress-dots{display:flex;gap:6px}
+    .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.26);outline:2px solid rgba(255,255,255,.12)}
+    .dot.active{background:var(--warn)}
+    .dot.done{background:var(--accent);outline-color:rgba(61,220,151,.45)}
+    .dot.warn{background:var(--danger);outline-color:rgba(255,107,107,.45)}
+
+    #stage{
+      width:100%;
+      max-width:980px;
+      height:68vh;
+      min-height:520px;
+      max-height:700px;
+      margin-top:10px;
+      border-radius:12px;
+      position:relative;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      background:#0b0f14;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 75% 26%, rgba(255,255,255,.06), transparent 40%),
+        radial-gradient(circle at 22% 76%, rgba(61,220,151,.05), transparent 42%);
+    }
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      background:rgba(0,0,0,.48);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:7px 10px;
+      font-size:12px;
+    }
+    .tag{border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:2px 8px;font-weight:700;color:#dce9ff;background:rgba(255,255,255,.06)}
+
+    .lab-area{
+      position:absolute;
+      inset:54px 10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.84);
+      overflow:hidden;
+    }
+    #scene{width:100%;height:100%;display:block;touch-action:none}
+
+    .dock{
+      position:absolute;
+      width:min(94%, 360px);
+      border-radius:12px;
+      border:1px solid rgba(214,229,255,.22);
+      background:linear-gradient(180deg, rgba(16,22,30,.58), rgba(10,15,22,.48));
+      backdrop-filter:blur(10px);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      touch-action:none;
+      z-index:30;
+    }
+    .dock.dragging{box-shadow:0 20px 48px rgba(0,0,0,.55)}
+    .dockHead{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none;
+    }
+    .dockHead:active{cursor:grabbing}
+    .dockTitle{font-size:13px;font-weight:700;color:#e7f0ff;display:flex;align-items:center;gap:8px}
+    .dataNotice{
+      display:none;
+      min-width:18px;
+      height:18px;
+      padding:0 5px;
+      border-radius:999px;
+      align-items:center;
+      justify-content:center;
+      background:#ff4d5e;
+      color:#fff;
+      font-size:11px;
+      font-weight:700;
+      box-shadow:0 0 12px rgba(255,77,94,.45);
+      animation:blinkBadge 1s ease-in-out infinite;
+    }
+    .dataNotice.show{display:inline-flex}
+    @keyframes blinkBadge{0%,100%{opacity:1}50%{opacity:.45}}
+    .dockBtns{display:flex;gap:6px}
+    .iconBtn{border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8f1ff;border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer}
+    .dockBody{padding:10px;max-height:360px;overflow:auto;-webkit-overflow-scrolling:touch}
+    .dockBody.collapsed{display:none}
+
+    .row{margin-bottom:8px;font-size:12px}
+    .status-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+    .pill{border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:4px 8px;font-size:11px;color:#e8f1ff;background:rgba(0,0,0,.28);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .btnRow{display:flex;gap:8px;flex-wrap:wrap}
+    button.main,button.sub{
+      border:none;
+      border-radius:8px;
+      padding:8px 12px;
+      color:#fff;
+      cursor:pointer;
+      transition:background .2s,transform .05s,opacity .2s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      font-size:13px;
+    }
+    button.main{background:#2e7d32}
+    button.sub{background:#444}
+    button.main:hover,button.sub:hover{background:#5a5a5a}
+    button.main:active,button.sub:active{transform:scale(.98)}
+    button.main:disabled,button.sub:disabled{opacity:.5;cursor:not-allowed}
+    .analysis{font-size:12px;line-height:1.6;color:#e3efff;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;background:rgba(0,0,0,.24);margin-top:8px}
+    .analysis.ok{border-color:rgba(61,220,151,.4)}
+    table.record{width:100%;border-collapse:collapse;font-size:12px}
+    table.record th,table.record td{border:1px solid rgba(255,255,255,.12);padding:4px 5px;text-align:center}
+    table.record th{background:rgba(255,255,255,.08);color:#dce9ff;font-weight:700}
+
+    .checkmark{
+      position:absolute;z-index:60;left:50%;top:18%;transform:translate(-50%,-50%) scale(.6);width:120px;height:120px;border-radius:50%;background:rgba(61,220,151,.15);border:3px solid var(--accent);display:none;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);animation:pop .55s ease-out;pointer-events:none;
+    }
+    .checkmark.active{display:flex}
+    .checkmark>div{width:60px;height:30px;border-left:8px solid var(--accent);border-bottom:8px solid var(--accent);transform:rotate(-45deg) translateY(-6px)}
+    @keyframes pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+
+    .toolbar{width:100%;max-width:980px;margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start}
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,.82);color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:200}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .modal-mask{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:300;background:rgba(0,0,0,.5)}
+    .modal{width:min(90vw,380px);background:#111;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:18px 16px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+    .modal h3{margin:8px 0 6px;font-size:20px}
+    .modal p{margin-top:0;line-height:1.55;color:#cfd8dc}
+    .modal .ok{margin-top:12px;background:var(--accent);color:#081a12;font-weight:700}
+    .explanation{width:100%;max-width:980px;margin:14px 0 20px;line-height:1.65;font-size:.95em;color:#e9f2ff}
+    .explanation h2{margin:.2em 0 .4em;color:#9bd3ff;font-size:1.15em}
+
+    #demoCursor{
+      position:absolute;
+      left:0;top:0;
+      width:20px;height:20px;
+      border-radius:50%;
+      border:2px solid rgba(255,255,255,.92);
+      background:rgba(122,209,255,.22);
+      box-shadow:0 0 18px rgba(122,209,255,.35);
+      transform:translate(-50%,-50%);
+      opacity:0;
+      z-index:80;
+      pointer-events:none;
+    }
+    #demoCursor::after{
+      content:"";
+      position:absolute;
+      inset:4px;
+      border-radius:50%;
+      background:rgba(255,255,255,.95);
+    }
+    #demoCursor.pulse{animation:cursorPulse .26s ease-out}
+    @keyframes cursorPulse{0%{transform:translate(-50%,-50%) scale(1)}60%{transform:translate(-50%,-50%) scale(1.5)}100%{transform:translate(-50%,-50%) scale(1)}}
+
+    @media (max-width:760px){
+      .task-card{grid-template-columns:1fr}
+      .task-step{width:fit-content}
+      #stage{height:78vh;max-height:960px}
+      .dock{width:min(96%, 360px)}
+      .hud{left:8px;right:8px}
+    }
+  
+
+/* exp35-ui-normalize: shared shell compatibility */
+.hint-lamp{
+  position:absolute;
+  left:10px;
+  top:56px;
+  z-index:42;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.2);
+  color:#ffd54f;
+  font-size:16px;
+  cursor:pointer;
+  padding:0;
+}
+.hint-lamp.flash{ animation:lampFlash35 .6s ease; }
+@keyframes lampFlash35{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+}
+.hint-pop{
+  position:absolute;
+  left:10px;
+  top:96px;
+  z-index:43;
+  width:min(330px, calc(100% - 24px));
+  display:none;
+  padding:10px 12px;
+  border:1px solid rgba(255,209,102,.36);
+  border-radius:10px;
+  background:rgba(16,18,20,.9);
+  color:#f4efe2;
+  font-size:13px;
+  line-height:1.55;
+}
+.hint-pop.open{ display:block; }
+.drawer{
+  border:1px solid var(--line, rgba(255,255,255,.12));
+  background:var(--panel-bg, rgba(15,15,15,.58));
+  backdrop-filter:blur(6px);
+  touch-action:none;
+}
+.drawer-header{ cursor:grab; user-select:none; -webkit-user-select:none; touch-action:none; }
+.drawer-header:active{ cursor:grabbing; }
+.drawer-title{ display:flex; align-items:center; gap:6px; }
+.drawer-actions{ display:flex; align-items:center; gap:6px; }
+.drawer-body{ max-height:360px; overflow:auto; -webkit-overflow-scrolling:touch; }
+.chartWrap.exp35-record-chart{
+  height:180px;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:8px;
+  overflow:hidden;
+  background:rgba(0,0,0,.18);
+}
+#recordChart{ width:100%; height:100%; display:block; }
+.explanation h2{ color:#9bd3ff; }
+.modal h3{ color:#fff; }
+@media (max-width:720px){
+  .hint-lamp{ top:56px; }
+  .hint-pop{ top:96px; }
+  .drawer-body{ max-height:260px; }
+}
+
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText"></div>
+      <div class="task-hint" id="taskHint"></div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </div>
+
+  <div id="stage">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待开始</span>
+    </div>
+
+    
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <div class="hint-pop" id="hintPop"></div>
+<div class="lab-area">
+      <canvas id="scene"></canvas>
+    </div>
+
+    <div class="dock drawer control" id="controlDock">
+      <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">控制面板</div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="controlBody">
+        <div class="status-grid">
+          <div class="pill" id="pillA">场景：静止观察</div>
+          <div class="pill" id="pillB">磁体：待放置</div>
+          <div class="pill" id="pillC">小球状态：静止</div>
+          <div class="pill" id="pillD">最近现象：未开始</div>
+        </div>
+        <div class="row" id="stageGuide">拖动条形磁体到指定位置；静止观察时磁体靠近小球会直接触发吸引，斜面观察时点击释放杆让小铁球下滚。</div>
+        <div class="btnRow" style="margin-top:8px;">
+          <button class="sub" id="resetBallBtn">小球归位</button>
+          <button class="sub" id="recordBtn">记录当前数据</button>
+          <button class="sub" id="checkBtn">确认观察 ✅</button>
+          <button class="sub" id="analyzeBtn">分析结论</button>
+        </div>
+        <div class="analysis" id="analysisText">暂无。请按步骤操作器材并记录数据后分析。</div>
+      </div>
+    </div>
+
+    <div class="dock drawer data" id="dataDock">
+      <div class="dockHead drawer-header" id="dataHead" data-drag-handle data-drag-handle>
+        <div class="dockTitle drawer-title">数据面板 <span class="dataNotice" id="dataNotice">0</span></div>
+        <div class="dockBtns drawer-actions"><button class="iconBtn" id="dataToggleBtn">展开</button></div>
+      </div>
+      <div class="dockBody collapsed drawer-body" id="dataBody">
+        <table class="record">
+          <thead>
+            <tr><th>场景</th><th>磁体位置</th><th>观察结果</th><th>备注</th></tr>
+          </thead>
+          <tbody id="recordBody"></tbody>
+        </table>
+      
+        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+    <div id="demoCursor"></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="sub" id="resetBtn">步骤重置</button>
+    <button class="sub" id="autoDemoBtn">自动演示</button>
+    <button class="sub" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">实验完成</h3>
+      <p id="doneText">你已完成“观察磁体对小铁球的作用”的核心操作链与现象分析。</p>
+      <button class="sub ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：观察磁体对小铁球的作用</h2>
+    <ul>
+      <li>关键操作与现象：把条形磁体拖到静止小铁球附近，可看到小铁球由静止开始向磁体运动；把磁体拖到小铁球运动前方或侧旁，再释放小铁球，可观察到速度变快或运动方向偏转。</li>
+      <li>关键操作与现象：通过记录“静止吸引、前方加速、侧旁偏转”三类现象，可比较磁体对小铁球不同运动状态的影响。</li>
+      <li>原理与结论：磁体对小铁球有力的作用，力既能使静止物体开始运动，也能使运动物体的快慢和方向发生改变，因此力可以改变物体的运动状态。</li>
+    </ul>
+  </div>
+
+  <script>
+    const TASKS = [
+      { text:'把<b>条形磁体</b>拖到静止小铁球附近，观察小铁球由静止开始运动，记录后再点“确认观察”。', hint:'提示：这一步不需要释放小球，磁体靠近静止小球后会直接产生吸引。' },
+      { text:'把磁体拖到小铁球<b>运动前方（甲）</b>，再点击<b>释放杆</b>让小铁球下滚，观察它先减速、再被磁体吸引加速靠近，记录后再点“确认观察”。', hint:'提示：这一步磁体要放在小铁球前方，现象应是“先慢下来，再明显靠近磁体”。' },
+      { text:'把磁体拖到小铁球运动路径<b>侧旁（乙）</b>，再点击<b>释放杆</b>让小铁球下滚，观察小铁球先沿原方向前进，后段再向磁体一侧偏转，记录后再点“确认观察”。', hint:'提示：这一步的关键现象是“后段偏向侧旁磁体”，不是一开始就拐弯。' },
+      { text:'点击“分析结论”后，还需点击“确认观察”才能完成本实验。', hint:'提示：结论要体现“力可以改变物体的运动状态”。' }
+    ];
+
+    const $ = (s)=>document.querySelector(s);
+    const stageEl = $('#stage');
+    const scene = $('#scene');
+    const taskCard = $('#taskCard');
+    const taskStepEl = $('#taskStep');
+    const taskTextEl = $('#taskText');
+    const taskHintEl = $('#taskHint');
+    const dotsEl = $('#dots');
+    const modeTag = $('#modeTag');
+    const statusTag = $('#statusTag');
+    const pillA = $('#pillA');
+    const pillB = $('#pillB');
+    const pillC = $('#pillC');
+    const pillD = $('#pillD');
+    const stageGuide = $('#stageGuide');
+    const controlDock = $('#controlDock');
+    const controlHead = $('#controlHead');
+    const controlBody = $('#controlBody');
+    const controlToggleBtn = $('#controlToggleBtn');
+    const dataDock = $('#dataDock');
+    const dataHead = $('#dataHead');
+    const dataBody = $('#dataBody');
+    const dataToggleBtn = $('#dataToggleBtn');
+    const dataNotice = $('#dataNotice');
+    const resetBallBtn = $('#resetBallBtn');
+    const recordBtn = $('#recordBtn');
+    const checkBtn = $('#checkBtn');
+    const analyzeBtn = $('#analyzeBtn');
+    const resetBtn = $('#resetBtn');
+    const autoDemoBtn = $('#autoDemoBtn');
+    const freeBtn = $('#freeBtn');
+    const analysisText = $('#analysisText');
+    const recordBody = $('#recordBody');
+    const checkmarkEl = $('#checkmark');
+    const toastEl = $('#toast');
+    const doneMaskEl = $('#doneMask');
+    const okBtn = $('#okBtn');
+    const demoCursor = $('#demoCursor');
+
+    const state = {
+      currentTask:0,
+      completed:false,
+      freeMode:false,
+      autoPlaying:false,
+      autoRunId:0,
+      successCooldown:false,
+      stepWarnIdx:-1,
+      records:[],
+      unseenRecordCount:0,
+      analysisOk:false,
+      analysisMode:null,
+      guidedAnalysisOk:false,
+      controlCollapsed:true,
+      dataCollapsed:true,
+      dockMoved:{control:false,data:false},
+      zTop:40,
+      timers:new Set(),
+      rafId:0,
+      lastTs:0,
+      draggingId:null,
+      apparatus:null
+    };
+
+    const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
+    const round = (n,p=2)=>Number(n.toFixed(p));
+    const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+    const guidedRecords = ()=> state.records.filter(r=>r.mode === 'guided');
+    const guidedConclusionText = '结论：磁体对小铁球有力的作用，力既能使静止的小铁球开始运动，也能使运动中的小铁球速度变快或运动方向发生改变，因此力可以改变物体的运动状态。';
+
+    function trackTimeout(fn, ms){
+      const id = setTimeout(()=>{ state.timers.delete(id); fn(); }, ms);
+      state.timers.add(id);
+      return id;
+    }
+    function clearAllTimers(){
+      for(const id of state.timers) clearTimeout(id);
+      state.timers.clear();
+    }
+    function showToast(msg){
+      toastEl.textContent = msg || '请继续尝试';
+      toastEl.classList.add('show');
+      clearTimeout(showToast.t);
+      showToast.t = setTimeout(()=>toastEl.classList.remove('show'), 1500);
+    }
+    function showCheck(){
+      checkmarkEl.classList.add('active');
+      clearTimeout(showCheck.t);
+      showCheck.t = setTimeout(()=>checkmarkEl.classList.remove('active'), 520);
+    }
+
+    function makeInitialApparatus(){
+      return {
+        magnetAnchor:'park',
+        magnetX:0,
+        magnetY:0,
+        magnetAngle:-0.32,
+        dragMagnet:false,
+        dragOffsetX:0,
+        dragOffsetY:0,
+        anchorPreview:'',
+        ballScene:'rest',
+        ballX:0,
+        ballY:0,
+        ballState:'静止',
+        motion:null,
+        lastObservation:null,
+        trail:[],
+        releasePulse:0,
+        released:false
+      };
+    }
+
+    function get20Geometry(W,H){
+      const narrow = W < 760;
+      const table = {
+        x: narrow ? 30 : 104,
+        y: narrow ? 164 : 154,
+        w: narrow ? W - 60 : W - 208,
+        h: narrow ? H - 266 : H - 254
+      };
+      const inner = {
+        x: table.x + (narrow ? 15 : 18),
+        y: table.y + (narrow ? 15 : 18),
+        w: table.w - (narrow ? 30 : 36),
+        h: table.h - (narrow ? 30 : 36)
+      };
+      const rampTop = { x: inner.x + (narrow ? 56 : 90), y: inner.y + (narrow ? 34 : 42) };
+      const rampBottom = { x: rampTop.x + (narrow ? 88 : 120), y: rampTop.y + (narrow ? 68 : 82) };
+      const restBall = { x: inner.x + inner.w * (narrow ? 0.58 : 0.62), y: inner.y + inner.h * (narrow ? 0.5 : 0.53) };
+      const rampVec = { x:rampBottom.x - rampTop.x, y:rampBottom.y - rampTop.y };
+      const rampLen = Math.hypot(rampVec.x, rampVec.y) || 1;
+      const rampTangent = { x:rampVec.x / rampLen, y:rampVec.y / rampLen };
+      const rampNormal = { x:-rampTangent.y, y:rampTangent.x };
+      const pathTangent = { x:rampTangent.x, y:rampTangent.y };
+      const pathNormal = { x:pathTangent.y, y:-pathTangent.x };
+      const pathStart = {
+        x: rampBottom.x + pathTangent.x * (narrow ? 16 : 18),
+        y: rampBottom.y + pathTangent.y * (narrow ? 16 : 18)
+      };
+      const maxLenX = (inner.x + inner.w - (narrow ? 78 : 102) - pathStart.x) / Math.max(pathTangent.x, 0.01);
+      const maxLenY = (inner.y + inner.h - (narrow ? 56 : 72) - pathStart.y) / Math.max(pathTangent.y, 0.01);
+      const pathLen = Math.max(narrow ? 150 : 220, Math.min(maxLenX, maxLenY));
+      const pathEnd = {
+        x: pathStart.x + pathTangent.x * pathLen,
+        y: pathStart.y + pathTangent.y * pathLen
+      };
+      const alongPath = (t, offset=0)=>({
+        x: pathStart.x + (pathEnd.x - pathStart.x) * t + pathNormal.x * offset,
+        y: pathStart.y + (pathEnd.y - pathStart.y) * t + pathNormal.y * offset
+      });
+      const sideGuide = { ...alongPath(0.34, narrow ? 18 : 22) };
+      const sideMagnet = { ...alongPath(0.34, narrow ? 30 : 38) };
+      const anchors = {
+        park:{ x: table.x + table.w - (narrow ? 56 : 86), y: table.y + (narrow ? 46 : 52), angle:-0.2, label:'待放置', kind:'park' },
+        rest:{ x:restBall.x + (narrow ? 64 : 76), y:restBall.y - 14, angle:-0.22, label:'静止球旁', kind:'rest' },
+        front:{ ...alongPath(0.76, 0), angle:0.02, label:'前方（甲）', kind:'front' },
+        side:{ ...sideMagnet, angle:0.2, label:'侧旁（乙）', kind:'side' },
+        rear:{ ...alongPath(0.32, narrow ? -52 : -62), angle:-0.28, label:'后侧', kind:'rear' },
+        high:{ x:rampBottom.x + (narrow ? 12 : 20), y:rampBottom.y - (narrow ? 64 : 78), angle:0.32, label:'高处旁', kind:'high' }
+      };
+      const frontTarget = { ...alongPath(0.7, 0) };
+      const weakTarget = { ...alongPath(0.74, 0) };
+      const sideTarget = {
+        x: sideGuide.x + pathTangent.x * (narrow ? 14 : 18) + pathNormal.x * (narrow ? 34 : 40),
+        y: sideGuide.y + pathTangent.y * (narrow ? 14 : 18) + pathNormal.y * (narrow ? 34 : 40)
+      };
+      const sideControl = {
+        x: sideGuide.x + (sideTarget.x - sideGuide.x) * 0.28,
+        y: sideGuide.y + (sideTarget.y - sideGuide.y) * 0.72
+      };
+      const deflectEntry = { ...alongPath(0.24, 0) };
+      return {
+        table,
+        inner,
+        rampTop,
+        rampBottom,
+        pathStart,
+        pathEnd,
+        restBall,
+        rampTangent,
+        rampNormal,
+        pathTangent,
+        pathNormal,
+        anchors,
+        release:{ x:rampTop.x - (narrow ? 14 : 18), y:rampTop.y - (narrow ? 12 : 16) },
+        targets:{
+          front: frontTarget,
+          weak: weakTarget,
+          side: sideTarget,
+          sideControl,
+          sideGuide,
+          deflectEntry
+        }
+      };
+    }
+
+    function getAnchorOrder(){ return ['park','rest','front','side','rear','high']; }
+
+    function setStatus(msg){ statusTag.textContent = `状态：${msg}`; }
+    function updateModeHud(){ modeTag.textContent = `模式：${state.autoPlaying ? '自动演示' : (state.freeMode ? '自由' : '引导')}`; }
+    function updateAutoDemoBtn(){
+      autoDemoBtn.textContent = state.autoPlaying ? '退出自动演示' : '自动演示';
+      autoDemoBtn.disabled = state.freeMode && !state.autoPlaying;
+      freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+    }
+
+    function setStepUI(i){
+      const idx = clamp(i, 0, TASKS.length - 1);
+      state.currentTask = idx;
+      taskStepEl.textContent = `步骤 ${idx + 1} / ${TASKS.length}`;
+      taskTextEl.innerHTML = TASKS[idx].text;
+      taskHintEl.textContent = TASKS[idx].hint;
+      [...dotsEl.children].forEach((d,n)=>{
+        d.classList.toggle('active', n === idx && !state.completed);
+        d.classList.toggle('done', n < idx || state.completed);
+        d.classList.toggle('warn', !state.completed && n === state.stepWarnIdx);
+      });
+    }
+    function initTaskUI(){
+      dotsEl.innerHTML = TASKS.map(()=>'<span class="dot"></span>').join('');
+      setStepUI(0);
+    }
+    function finishLab(){
+      if(state.completed) return;
+      state.completed = true;
+      state.stepWarnIdx = -1;
+      state.currentTask = TASKS.length - 1;
+      setStepUI(state.currentTask);
+      setStatus('挑战完成');
+      doneMaskEl.style.display = 'flex';
+    }
+
+    function pushRecord(rec){
+      state.records.push(rec);
+      if(state.records.length > 40) state.records.shift();
+      if(state.dataCollapsed){
+        state.unseenRecordCount += 1;
+        updateBadge();
+      }
+      renderRecords();
+    }
+
+    function setMagnetAnchor(anchorId, silent=false){
+      const rect = scene.getBoundingClientRect();
+      const g = get20Geometry(rect.width, rect.height);
+      const anchor = g.anchors[anchorId] || g.anchors.park;
+      state.apparatus.magnetAnchor = anchorId in g.anchors ? anchorId : 'park';
+      state.apparatus.magnetX = anchor.x;
+      state.apparatus.magnetY = anchor.y;
+      state.apparatus.magnetAngle = anchor.angle;
+      state.apparatus.anchorPreview = '';
+      if(!silent && state.apparatus.ballScene === 'rest' && anchor.kind === 'rest' && !state.apparatus.motion && state.apparatus.ballState === '静止'){
+        startRestAttraction(true);
+      }
+      updatePills();
+    }
+
+    function setBallAtRest(){
+      const rect = scene.getBoundingClientRect();
+      const g = get20Geometry(rect.width, rect.height);
+      state.apparatus.ballScene = 'rest';
+      state.apparatus.ballX = g.restBall.x;
+      state.apparatus.ballY = g.restBall.y;
+      state.apparatus.ballState = '静止';
+      state.apparatus.motion = null;
+      state.apparatus.trail = [];
+      state.apparatus.released = false;
+      updatePills();
+    }
+
+    function setBallAtSlopeStart(){
+      const rect = scene.getBoundingClientRect();
+      const g = get20Geometry(rect.width, rect.height);
+      state.apparatus.ballScene = 'slope';
+      state.apparatus.ballX = g.rampTop.x;
+      state.apparatus.ballY = g.rampTop.y;
+      state.apparatus.ballState = '待释放';
+      state.apparatus.motion = null;
+      state.apparatus.trail = [];
+      state.apparatus.released = false;
+      updatePills();
+    }
+
+    function syncGuidedScene(){
+      if(state.freeMode) return;
+      if(state.completed) return;
+      if(state.currentTask === 0) setBallAtRest();
+      else setBallAtSlopeStart();
+      setMagnetAnchor('park', true);
+      updatePills();
+    }
+
+    function chooseFreeResetScene(){
+      const anchor = state.apparatus.magnetAnchor;
+      return anchor === 'rest' ? 'rest' : 'slope';
+    }
+
+    function resetBall(showTip=true){
+      if(state.autoPlaying) return;
+      state.apparatus.lastObservation = null;
+      if(state.freeMode){
+        chooseFreeResetScene() === 'rest' ? setBallAtRest() : setBallAtSlopeStart();
+        setStatus('自由探索');
+      }else{
+        syncGuidedScene();
+        setStatus(state.completed ? '挑战完成' : '待开始');
+      }
+      if(showTip) showToast('小球已归位');
+    }
+
+    function makeObservation(type){
+      const modeLabel = state.freeMode ? '自由模式' : '引导模式';
+      if(type === 'start_move') return {
+        type,
+        sceneLabel:'静止观察',
+        magnetLabel:'静止球旁',
+        resultText:'小铁球由静止开始向磁体运动',
+        meterText:'由静止开始运动',
+        note:`${modeLabel} · 由静止变为运动`
+      };
+      if(type === 'speed_up') return {
+        type,
+        sceneLabel:'前方磁体（甲）',
+        magnetLabel:'前方',
+        resultText:'小铁球先在水平桌面上逐渐减速，接近前方磁体时又明显加速并被吸附过去',
+        meterText:'先减速，近磁铁时再加速',
+        note:`${modeLabel} · 先减速后被吸引加速`
+      };
+      if(type === 'deflect') return {
+        type,
+        sceneLabel:'侧旁磁体（乙）',
+        magnetLabel:'侧旁',
+        resultText:'小铁球先沿原方向前进，再平滑偏向磁体一侧，并掠过磁体后停下',
+        meterText:'沿弧线偏向磁体并停下',
+        note:`${modeLabel} · 轨迹平滑偏转`
+      };
+      if(type === 'weak') return {
+        type,
+        sceneLabel:'自由探索',
+        magnetLabel:'较远位置',
+        resultText:'小铁球变化不明显，仍大致沿原方向运动',
+        meterText:'变化不明显',
+        note:`${modeLabel} · 作用较弱`
+      };
+      return {
+        type:'free-custom',
+        sceneLabel:'自由探索',
+        magnetLabel:state.apparatus.magnetAnchor === 'rear' ? '后侧' : '自定义位置',
+        resultText:'小铁球受磁体作用，运动状态发生变化',
+        meterText:'运动状态发生变化',
+        note:`${modeLabel} · 自定义观察`
+      };
+    }
+
+    function startObservationMotion(type, announce=true){
+      if(state.apparatus.motion) return false;
+      const rect = scene.getBoundingClientRect();
+      const isNarrow = rect.width < 760;
+      const g = get20Geometry(rect.width, rect.height);
+      const ap = state.apparatus;
+      const from = { x:ap.ballX, y:ap.ballY };
+      ap.trail = [{ x:from.x, y:from.y }];
+      if(type === 'start_move'){
+        ap.motion = {
+          type,
+          start:performance.now(),
+          duration:760,
+          from
+        };
+        ap.ballState = '被吸引';
+        if(announce) setStatus('磁体靠近，小铁球开始向磁体运动');
+        return true;
+      }
+      if(type === 'speed_up'){
+        const rampExit = { x:g.pathStart.x, y:g.pathStart.y };
+        const frontProj = projectToPath(g.targets.front, rampExit, g.pathTangent, g.pathNormal);
+        ap.motion = {
+          type,
+          start:performance.now(),
+          lastTs:performance.now(),
+          elapsed:0,
+          phase:'ramp',
+          rampTop:{ x:g.rampTop.x, y:g.rampTop.y },
+          rampExit,
+          rampControl:{ x:(g.rampTop.x + rampExit.x) / 2 - 10, y:g.rampTop.y + 26 },
+          rampLen: Math.hypot(rampExit.x - g.rampTop.x, rampExit.y - g.rampTop.y) || 1,
+          rampU:0,
+          rampSpeed:0,
+          tangent:{ x:g.pathTangent.x, y:g.pathTangent.y },
+          normal:{ x:g.pathNormal.x, y:g.pathNormal.y },
+          frontS: frontProj.s,
+          frontTarget:{ x:g.targets.front.x, y:g.targets.front.y },
+          s:0,
+          vS:0
+        };
+        ap.ballState = '先减速，接近磁体后再加速';
+        ap.released = true;
+        if(announce) setStatus('小铁球先逐渐减速，接近前方磁体时又加速靠近');
+        return true;
+      }
+      if(type === 'deflect'){
+        const rampExit = { x:g.pathStart.x, y:g.pathStart.y };
+        const entryProj = projectToPath(g.targets.deflectEntry, rampExit, g.pathTangent, g.pathNormal);
+        const stopProj = projectToPath(g.targets.side, rampExit, g.pathTangent, g.pathNormal);
+        const magnetProj = projectToPath(g.anchors.side, rampExit, g.pathTangent, g.pathNormal);
+        const curvePull = {
+          x: g.targets.sideGuide.x + g.pathTangent.x * (isNarrow ? 12 : 14) + g.pathNormal.x * (isNarrow ? 36 : 44),
+          y: g.targets.sideGuide.y + g.pathTangent.y * (isNarrow ? 12 : 14) + g.pathNormal.y * (isNarrow ? 36 : 44)
+        };
+        ap.motion = {
+          type,
+          start:performance.now(),
+          lastTs:performance.now(),
+          elapsed:0,
+          phase:'ramp',
+          rampTop:{ x:g.rampTop.x, y:g.rampTop.y },
+          rampExit,
+          rampControl:{ x:(g.rampTop.x + rampExit.x) / 2 - 8, y:g.rampTop.y + 28 },
+          rampLen: Math.hypot(rampExit.x - g.rampTop.x, rampExit.y - g.rampTop.y) || 1,
+          rampU:0,
+          rampSpeed:0,
+          tangent:{ x:g.pathTangent.x, y:g.pathTangent.y },
+          normal:{ x:g.pathNormal.x, y:g.pathNormal.y },
+          entryS: entryProj.s,
+          magS: magnetProj.s,
+          stopS: stopProj.s + (isNarrow ? 22 : 28),
+          stopN: stopProj.n,
+          stopTarget:{ x:g.targets.side.x, y:g.targets.side.y },
+          curveStart:null,
+          curveLead:null,
+          curveLeadLen: isNarrow ? 104 : 126,
+          curveDuration: isNarrow ? 1.84 : 2.08,
+          curvePull,
+          minX: g.inner.x + 11,
+          maxX: g.inner.x + g.inner.w - 11,
+          minY: g.inner.y + 11,
+          maxY: g.inner.y + g.inner.h - 11,
+          s:0,
+          vS:0,
+          curveU:0,
+          curveElapsed:0
+        };
+        ap.ballState = '先直行，再沿弧线偏向侧旁磁体';
+        ap.released = true;
+        if(announce) setStatus('小铁球先沿原方向前进，再沿弧线偏向侧旁磁体');
+        return true;
+      }
+      if(type === 'weak'){
+        ap.motion = {
+          type,
+          start:performance.now(),
+          duration:1740,
+          rampTop:{ x:g.rampTop.x, y:g.rampTop.y },
+          rampExit:{ x:g.pathStart.x, y:g.pathStart.y },
+          from:{ x:g.pathStart.x, y:g.pathStart.y },
+          c1:{
+            x:g.pathStart.x + g.pathTangent.x * 100,
+            y:g.pathStart.y + g.pathTangent.y * 100
+          },
+          c2:{
+            x:g.targets.weak.x - g.pathTangent.x * 84,
+            y:g.targets.weak.y - g.pathTangent.y * 84
+          },
+          to:{ x:g.targets.weak.x, y:g.targets.weak.y }
+        };
+        ap.ballState = '沿原方向下滚';
+        ap.released = true;
+        if(announce) setStatus('小铁球沿原方向下滚，磁体作用较弱');
+        return true;
+      }
+      return false;
+    }
+
+    function startRestAttraction(announce=true){
+      if(state.apparatus.ballScene !== 'rest') return false;
+      return startObservationMotion('start_move', announce);
+    }
+
+    function releaseBall(announce=true){
+      if(state.apparatus.motion){
+        if(announce) showToast('请等待当前运动结束');
+        return false;
+      }
+      if(state.apparatus.ballScene !== 'slope'){
+        if(announce) showToast('当前是静止观察场景，不需要释放小球');
+        return false;
+      }
+      const kind = state.apparatus.magnetAnchor === 'front'
+        ? 'speed_up'
+        : state.apparatus.magnetAnchor === 'side'
+          ? 'deflect'
+          : 'weak';
+      return startObservationMotion(kind, announce);
+    }
+
+    function buildRecord(){
+      const obs = state.apparatus.lastObservation;
+      if(!obs){
+        showToast('请先拖动磁体并完成一次可观察的现象');
+        return null;
+      }
+      return {
+        c1:obs.sceneLabel,
+        c2:obs.magnetLabel,
+        c3:obs.resultText,
+        c4:obs.note,
+        resultType:obs.type,
+        mode:state.freeMode ? 'free' : 'guided'
+      };
+    }
+
+    function addRecord(){
+      const rec = buildRecord();
+      if(!rec) return false;
+      if(!state.freeMode){
+        if(state.currentTask === 0 && rec.resultType !== 'start_move'){
+          showToast('当前步骤需要记录“静止小铁球开始运动”的现象');
+          return false;
+        }
+        if(state.currentTask === 1 && rec.resultType !== 'speed_up'){
+          showToast('当前步骤需要记录“前方磁体使小铁球先慢后快地靠近”的现象');
+          return false;
+        }
+        if(state.currentTask === 2 && rec.resultType !== 'deflect'){
+          showToast('当前步骤需要记录“侧旁磁体使小铁球偏转”的现象');
+          return false;
+        }
+        if(state.currentTask > 2){
+          showToast('当前步骤不是记录步骤');
+          return false;
+        }
+      }
+      pushRecord(rec);
+      setStatus(state.freeMode ? '已记录，可继续自由探索' : '已记录，等待确认');
+      return true;
+    }
+
+    function renderRecords(){
+      recordBody.innerHTML = '';
+      if(!state.records.length){
+        recordBody.innerHTML = '<tr><td colspan="4" style="color:#9db4d6;">暂无记录</td></tr>';
+        return;
+      }
+      for(const r of [...state.records].slice(-12).reverse()){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.c1}</td><td>${r.c2}</td><td>${r.c3}</td><td>${r.c4}</td>`;
+        recordBody.appendChild(tr);
+      }
+    }
+
+    function analyzeConclusion(showToastMsg=true){
+      const rs = state.records;
+      let ok = false;
+      let msg = '';
+      if(state.freeMode){
+        ok = rs.length >= 2;
+        msg = ok
+          ? '结论：自由模式下的多组记录表明，磁体可以使静止小铁球开始运动，也能让运动中的小铁球速度或方向发生变化。'
+          : '请至少获得2组记录后再分析。';
+        state.analysisMode = ok ? 'free' : null;
+      }else{
+        const gr = guidedRecords();
+        const a = gr.find(r=>r.resultType === 'start_move');
+        const b = gr.find(r=>r.resultType === 'speed_up');
+        const c = gr.find(r=>r.resultType === 'deflect');
+        ok = !!(a && b && c);
+        msg = ok ? guidedConclusionText : '请先完成“静止吸引、前方加速、侧旁偏转”三组教材记录后再分析。';
+        state.guidedAnalysisOk = ok;
+        state.analysisMode = ok ? 'guided' : null;
+      }
+      state.analysisOk = ok;
+      analysisText.textContent = msg;
+      analysisText.classList.toggle('ok', ok);
+      if(showToastMsg) showToast(ok ? '分析完成：结论成立' : '分析未通过，请补充实验记录');
+      setStatus(ok ? '分析完成，等待确认' : '分析未通过');
+      return ok;
+    }
+
+    function checkStepPass(step){
+      const rs = guidedRecords();
+      if(step === 0) return rs.some(r=>r.resultType === 'start_move');
+      if(step === 1) return rs.some(r=>r.resultType === 'speed_up');
+      if(step === 2) return rs.some(r=>r.resultType === 'deflect');
+      if(step === 3) return state.guidedAnalysisOk && state.analysisMode === 'guided';
+      return false;
+    }
+
+    function goToGuidedStep(idx){
+      setStepUI(idx);
+      syncGuidedScene();
+    }
+
+    function tryPassStep(showFailToast=true, fromAuto=false){
+      if(state.freeMode || state.completed || state.successCooldown) return false;
+      const ok = checkStepPass(state.currentTask);
+      if(!ok){
+        state.stepWarnIdx = state.currentTask;
+        setStepUI(state.currentTask);
+        if(showFailToast){
+          const msg = state.currentTask === 0
+            ? '请先完成“静止小铁球被磁体吸引”记录，再点击“确认观察”。'
+            : state.currentTask === 1
+              ? '请先完成“前方磁体使小铁球先慢后快地靠近”记录，再点击“确认观察”。'
+              : state.currentTask === 2
+                ? '请先完成“侧旁磁体使小铁球偏转”记录，再点击“确认观察”。'
+                : '请先完成分析结论，再点击“确认观察”。';
+          showToast(msg);
+        }
+        return false;
+      }
+      state.stepWarnIdx = -1;
+      showCheck();
+      if(state.currentTask >= TASKS.length - 1){
+        finishLab();
+        return true;
+      }
+      const nextStep = state.currentTask + 1;
+      if(fromAuto){
+        goToGuidedStep(nextStep);
+        return true;
+      }
+      state.successCooldown = true;
+      trackTimeout(()=>{
+        goToGuidedStep(nextStep);
+        state.successCooldown = false;
+      }, 360);
+      return true;
+    }
+
+    function recalcProgress(){
+      if(state.completed || state.freeMode) return;
+      let idx = 0;
+      while(idx < TASKS.length && checkStepPass(idx)) idx += 1;
+      if(idx >= TASKS.length) finishLab();
+      else goToGuidedStep(idx);
+    }
+
+    function updatePills(){
+      const ap = state.apparatus;
+      const anchorLabelMap = {
+        park:'待放置',
+        rest:'静止球旁',
+        front:'前方（甲）',
+        side:'侧旁（乙）',
+        rear:'后侧',
+        high:'高处旁'
+      };
+      const sceneLabel = ap.ballScene === 'rest' ? '水平静止' : '斜坡释放';
+      const magnetLabel = anchorLabelMap[ap.anchorPreview || ap.magnetAnchor] || '自定义位置';
+      pillA.textContent = `场景：${state.freeMode ? '自由探索' : sceneLabel}`;
+      pillB.textContent = `磁体：${magnetLabel}`;
+      pillC.textContent = `小球状态：${ap.ballState}`;
+      pillD.textContent = `最近现象：${ap.lastObservation ? ap.lastObservation.resultText : '未开始'}`;
+      stageGuide.textContent = state.freeMode
+        ? '自由模式：可把磁体拖到板面不同位置；静止场景下可观察小球被吸引，斜面场景下点击释放杆可继续探索前方加速、侧旁偏转等多种现象。'
+        : (state.currentTask === 0
+            ? '先把磁体拖到静止小铁球附近；磁体靠近后，小铁球会自动向磁体运动。'
+            : '先把磁体拖到目标位置，再点击左上短斜坡处的释放杆让小铁球下滚。');
+    }
+
+    function clearBadge(){
+      state.unseenRecordCount = 0;
+      updateBadge();
+    }
+    function updateBadge(){
+      const v = state.unseenRecordCount;
+      dataNotice.textContent = v > 99 ? '99+' : String(v);
+      dataNotice.classList.toggle('show', v > 0);
+    }
+    function clearData(showTip=true){
+      state.records = [];
+      state.analysisOk = false;
+      state.analysisMode = null;
+      state.guidedAnalysisOk = false;
+      clearBadge();
+      analysisText.classList.remove('ok');
+      analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
+      renderRecords();
+      if(showTip) showToast('数据已清空');
+    }
+
+    function setFreeMode(on){
+      state.freeMode = !!on;
+      updateModeHud();
+      updateAutoDemoBtn();
+      if(state.freeMode){
+        taskCard.style.opacity = '.74';
+        taskCard.style.filter = 'saturate(.8)';
+        setStatus('自由探索');
+      }else{
+        if(state.analysisMode === 'free'){
+          state.analysisOk = false;
+          state.analysisMode = state.guidedAnalysisOk ? 'guided' : null;
+          analysisText.classList.toggle('ok', state.guidedAnalysisOk);
+          analysisText.textContent = state.guidedAnalysisOk ? guidedConclusionText : '暂无。请按步骤操作器材并记录数据后分析。';
+        }
+        taskCard.style.opacity = '1';
+        taskCard.style.filter = 'none';
+        recalcProgress();
+        setStatus(state.completed ? '挑战完成' : '待开始');
+      }
+      updatePills();
+    }
+
+    function bringToFront(kind){
+      state.zTop += 1;
+      if(kind==='control') controlDock.style.zIndex = String(state.zTop);
+      if(kind==='data') dataDock.style.zIndex = String(state.zTop);
+    }
+    function setDockPos(el, x, y){
+      const stage = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const nx = clamp(x, 4, stage.width - r.width - 4);
+      const ny = clamp(y, 4, stage.height - r.height - 4);
+      el.style.left = `${nx}px`;
+      el.style.top = `${ny}px`;
+      el.style.right = 'auto';
+      el.style.bottom = 'auto';
+    }
+    function snapDockToEdges(el){
+      const stage = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const x = r.left - stage.left;
+      const y = r.top - stage.top;
+      const leftGap = x;
+      const rightGap = stage.width - (x + r.width);
+      const topGap = y;
+      const bottomGap = stage.height - (y + r.height);
+      const m = 14;
+      let nx = x, ny = y;
+      if(leftGap < m) nx = 4;
+      else if(rightGap < m) nx = stage.width - r.width - 4;
+      if(topGap < m) ny = 4;
+      else if(bottomGap < m) ny = stage.height - r.height - 4;
+      setDockPos(el, nx, ny);
+    }
+    function makeDockDraggable(el, head, kind){
+      let dragging = false, offX = 0, offY = 0;
+      head.addEventListener('pointerdown', (e)=>{
+        if(e.target.closest('button')) return;
+        dragging = true;
+        el.classList.add('dragging');
+        bringToFront(kind);
+        const r = el.getBoundingClientRect();
+        offX = e.clientX - r.left;
+        offY = e.clientY - r.top;
+        state.dockMoved[kind] = true;
+        head.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      head.addEventListener('pointermove', (e)=>{
+        if(!dragging) return;
+        const stage = stageEl.getBoundingClientRect();
+        setDockPos(el, e.clientX - stage.left - offX, e.clientY - stage.top - offY);
+        e.preventDefault();
+      });
+      const end = ()=>{
+        if(!dragging) return;
+        dragging = false;
+        el.classList.remove('dragging');
+        snapDockToEdges(el);
+      };
+      head.addEventListener('pointerup', end);
+      head.addEventListener('pointercancel', end);
+    }
+    function setControlCollapsed(on){
+      state.controlCollapsed = !!on;
+      controlBody.classList.toggle('collapsed', on);
+      controlToggleBtn.textContent = on ? '展开' : '收起';
+      bringToFront('control');
+    }
+    function setDataCollapsed(on){
+      state.dataCollapsed = !!on;
+      dataBody.classList.toggle('collapsed', on);
+      dataToggleBtn.textContent = on ? '展开' : '收起';
+      bringToFront('data');
+      if(!on) clearBadge();
+    }
+    function initDockPositions(force=false){
+      const stage = stageEl.getBoundingClientRect();
+      const cr = controlDock.getBoundingClientRect();
+      const dr = dataDock.getBoundingClientRect();
+      const pad = 10;
+      if(force || !state.dockMoved.control) setDockPos(controlDock, stage.width - cr.width - pad, pad);
+      if(force || !state.dockMoved.data) setDockPos(dataDock, stage.width - dr.width - pad, Math.min(pad + cr.height + 12, stage.height - dr.height - pad));
+    }
+
+    function setDemoCursorVisible(on){ demoCursor.style.opacity = on ? '1' : '0'; }
+    function centerOfXY(x,y){ return { x, y }; }
+    function centerOf(el){
+      const stageRect = stageEl.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return { x:r.left - stageRect.left + r.width/2, y:r.top - stageRect.top + r.height/2 };
+    }
+    async function moveDemoCursorTo(x, y, ms=220){
+      demoCursor.style.transition = `left ${ms}ms linear, top ${ms}ms linear`;
+      demoCursor.style.left = `${x}px`;
+      demoCursor.style.top = `${y}px`;
+      await sleep(ms);
+    }
+    async function pulseDemoCursor(ms=160){
+      demoCursor.classList.remove('pulse');
+      void demoCursor.offsetWidth;
+      demoCursor.classList.add('pulse');
+      await sleep(ms);
+      demoCursor.classList.remove('pulse');
+    }
+
+    function restoreAutoDemoUI(){
+      state.autoPlaying = false;
+      updateModeHud();
+      updateAutoDemoBtn();
+      resetBallBtn.disabled = false;
+      recordBtn.disabled = false;
+      checkBtn.disabled = false;
+      analyzeBtn.disabled = false;
+      resetBtn.disabled = false;
+      freeBtn.disabled = false;
+      setDemoCursorVisible(false);
+    }
+    function requestStopAutoDemo(){
+      if(!state.autoPlaying) return;
+      state.autoPlaying = false;
+      state.autoRunId += 1;
+      restoreAutoDemoUI();
+      setStatus('已退出自动演示');
+      showToast('已退出自动演示');
+    }
+
+    function resetFlow(showTip=true){
+      clearAllTimers();
+      state.completed = false;
+      state.successCooldown = false;
+      state.stepWarnIdx = -1;
+      doneMaskEl.style.display = 'none';
+      state.apparatus = makeInitialApparatus();
+      clearData(false);
+      setStepUI(0);
+      setMagnetAnchor('park', true);
+      syncGuidedScene();
+      setStatus(state.freeMode ? '自由探索' : '待开始');
+      updatePills();
+      if(showTip) showToast('实验已重置');
+    }
+
+    function drawRoundedRect(ctx, x, y, w, h, r, fillStyle, strokeStyle){
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.arcTo(x+w, y, x+w, y+h, r);
+      ctx.arcTo(x+w, y+h, x, y+h, r);
+      ctx.arcTo(x, y+h, x, y, r);
+      ctx.arcTo(x, y, x+w, y, r);
+      ctx.closePath();
+      if(fillStyle){ ctx.fillStyle = fillStyle; ctx.fill(); }
+      if(strokeStyle){ ctx.strokeStyle = strokeStyle; ctx.stroke(); }
+    }
+    function drawBoard(ctx, g){
+      const {table, inner} = g;
+      drawRoundedRect(ctx, table.x, table.y, table.w, table.h, 18, '#dcc09b', '#8a6747');
+      drawRoundedRect(ctx, inner.x, inner.y, inner.w, inner.h, 12, '#dff0fb', '#99c0d6');
+      const gloss = ctx.createLinearGradient(inner.x, inner.y, inner.x, inner.y + inner.h);
+      gloss.addColorStop(0, 'rgba(255,255,255,.22)');
+      gloss.addColorStop(1, 'rgba(255,255,255,.03)');
+      ctx.fillStyle = gloss;
+      drawRoundedRect(ctx, inner.x, inner.y, inner.w, inner.h, 12, gloss);
+      ctx.strokeStyle = 'rgba(255,255,255,.18)';
+      ctx.lineWidth = 1;
+      for(let i=1;i<8;i++){
+        const y = inner.y + inner.h * (i / 8);
+        ctx.beginPath();
+        ctx.moveTo(inner.x + 8, y);
+        ctx.lineTo(inner.x + inner.w - 8, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#b48b5b';
+      ctx.fillRect(table.x + 18, table.y + table.h, 12, 34);
+      ctx.fillRect(table.x + table.w - 30, table.y + table.h, 12, 34);
+      ctx.fillRect(table.x + 18, table.y + 18, 12, 34);
+      ctx.fillRect(table.x + table.w - 30, table.y + 18, 12, 34);
+    }
+    function drawRamp(ctx, g){
+      const {rampTop, rampBottom, rampNormal} = g;
+      const topHalf = 18;
+      const bottomHalf = 12;
+      const a1 = { x:rampTop.x + rampNormal.x * topHalf, y:rampTop.y + rampNormal.y * topHalf };
+      const a2 = { x:rampTop.x - rampNormal.x * topHalf, y:rampTop.y - rampNormal.y * topHalf };
+      const b1 = { x:rampBottom.x + rampNormal.x * bottomHalf, y:rampBottom.y + rampNormal.y * bottomHalf };
+      const b2 = { x:rampBottom.x - rampNormal.x * bottomHalf, y:rampBottom.y - rampNormal.y * bottomHalf };
+      ctx.fillStyle = '#d4dce4';
+      ctx.beginPath();
+      ctx.moveTo(a1.x, a1.y);
+      ctx.lineTo(b1.x, b1.y);
+      ctx.lineTo(b2.x, b2.y);
+      ctx.lineTo(a2.x, a2.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#7f8892';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.strokeStyle = '#edf3f8';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(rampTop.x + rampNormal.x * 8, rampTop.y + rampNormal.y * 8);
+      ctx.lineTo(rampBottom.x + rampNormal.x * 5, rampBottom.y + rampNormal.y * 5);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(rampTop.x - rampNormal.x * 8, rampTop.y - rampNormal.y * 8);
+      ctx.lineTo(rampBottom.x - rampNormal.x * 5, rampBottom.y - rampNormal.y * 5);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(112,124,136,.55)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(rampTop.x, rampTop.y);
+      ctx.lineTo(rampBottom.x, rampBottom.y);
+      ctx.stroke();
+    }
+    function drawRelease(ctx, g){
+      const {release, rampTop} = g;
+      drawRoundedRect(ctx, release.x - 10, release.y - 36, 20, 70, 9, '#c9d3df', '#f5f8ff');
+      ctx.strokeStyle = '#6c7b88';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(release.x + 4, release.y - 10);
+      ctx.lineTo(rampTop.x - 8, rampTop.y - 4);
+      ctx.stroke();
+      ctx.fillStyle = '#dce8f5';
+      ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillText('释放杆', release.x - 24, release.y - 44);
+      if(state.apparatus.ballScene === 'slope' && !state.apparatus.motion){
+        ctx.strokeStyle = 'rgba(255,215,117,.85)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(release.x, release.y - 2, 18 + state.apparatus.releasePulse * 3, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+    function drawMagnet(ctx, x, y, angle, label){
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      drawRoundedRect(ctx, -28, -9, 56, 18, 6, '#12202a', '#e1eef7');
+      drawRoundedRect(ctx, -26, -7, 26, 14, 4, '#3da9ff');
+      drawRoundedRect(ctx, 0, -7, 26, 14, 4, '#ff5b5b');
+      ctx.fillStyle = 'rgba(255,255,255,.22)';
+      ctx.fillRect(-18, -5, 36, 3);
+      ctx.restore();
+    }
+    function drawBall(ctx, x, y){
+      const grad = ctx.createRadialGradient(x - 4, y - 6, 2, x, y, 12);
+      grad.addColorStop(0, '#adb4bb');
+      grad.addColorStop(.28, '#5c646c');
+      grad.addColorStop(1, '#090c10');
+      ctx.fillStyle = 'rgba(0,0,0,.32)';
+      ctx.beginPath();
+      ctx.ellipse(x + 2, y + 10, 11, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.5)';
+      ctx.stroke();
+    }
+    function drawTrail(ctx, trail){
+      if(!trail || trail.length < 2) return;
+      ctx.strokeStyle = 'rgba(255,255,255,.46)';
+      ctx.lineWidth = 1.8;
+      ctx.setLineDash([5,7]);
+      ctx.beginPath();
+      ctx.moveTo(trail[0].x, trail[0].y);
+      for(let i=1;i<trail.length;i++) ctx.lineTo(trail[i].x, trail[i].y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function draw20(ctx, W, H){
+      const ap = state.apparatus;
+      const g = get20Geometry(W,H);
+      const floorY = H - 70;
+      ctx.fillStyle = '#2f343a';
+      ctx.fillRect(0, floorY, W, 70);
+      ctx.fillStyle = 'rgba(255,255,255,.08)';
+      ctx.fillRect(0, floorY, W, 2);
+
+      drawBoard(ctx, g);
+      drawRamp(ctx, g);
+      drawRelease(ctx, g);
+      drawTrail(ctx, ap.trail);
+      drawBall(ctx, ap.ballX, ap.ballY);
+      drawMagnet(ctx, ap.magnetX, ap.magnetY, ap.magnetAngle);
+
+      if(!state.freeMode){
+        const targetAnchor = state.currentTask === 0 ? 'rest' : state.currentTask === 1 ? 'front' : state.currentTask === 2 ? 'side' : null;
+        if(targetAnchor){
+          const a = g.anchors[targetAnchor];
+          ctx.strokeStyle = 'rgba(255,215,117,.85)';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([7,5]);
+          ctx.beginPath();
+          ctx.arc(a.x, a.y, 34, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillStyle = '#d7e7f7';
+      ctx.fillText(ap.ballScene === 'rest' ? '静止观察区' : '短斜坡释放区', W < 760 ? 60 : 126, W < 760 ? 126 : 118);
+
+      const narrow = W < 760;
+      const meter = narrow
+        ? { x: W - 176, y: H - 214, w: 152, h: 102 }
+        : { x: W - 232, y: H - 220, w: 188, h: 108 };
+      const panelX = meter.x, panelY = meter.y, panelW = meter.w, panelH = meter.h;
+      drawRoundedRect(ctx, panelX, panelY, panelW, panelH, 18, 'rgba(18,28,40,.88)', '#95b7d8');
+      ctx.fillStyle = '#dce9ff';
+      ctx.font = `bold ${narrow ? 13 : 14}px -apple-system,Segoe UI`;
+      ctx.fillText('现象指示仪', panelX + (narrow ? 38 : 56), panelY + 22);
+      drawRoundedRect(ctx, panelX + 16, panelY + 28, panelW - 32, 34, 10, '#0a1119');
+      ctx.fillStyle = '#7fd1ff';
+      ctx.font = `bold ${narrow ? 13 : 14}px -apple-system,Segoe UI`;
+      ctx.fillText(ap.lastObservation ? (ap.lastObservation.meterText || ap.lastObservation.resultText) : '等待观察', panelX + 24, panelY + 49);
+      ctx.fillStyle = '#dce9ff';
+      ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillText(`磁体位置: ${state.freeMode ? '自由' : (ap.magnetAnchor === 'rest' ? '静止球旁' : ap.magnetAnchor === 'front' ? '前方' : ap.magnetAnchor === 'side' ? '侧旁' : '待放置')}`, panelX + 18, panelY + 76);
+      ctx.fillText(`小球状态: ${ap.ballState}`, panelX + 18, panelY + 94);
+    }
+
+    function drawScene(){
+      const rect = scene.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(1, Math.floor(rect.width * dpr));
+      const h = Math.max(1, Math.floor(rect.height * dpr));
+      if(scene.width !== w || scene.height !== h){ scene.width = w; scene.height = h; }
+      const ctx = scene.getContext('2d');
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.clearRect(0,0,w,h);
+      ctx.scale(dpr,dpr);
+      draw20(ctx, rect.width, rect.height);
+    }
+
+    function cubic(p0,p1,p2,p3,t){
+      const k = 1 - t;
+      return {
+        x: k*k*k*p0.x + 3*k*k*t*p1.x + 3*k*t*t*p2.x + t*t*t*p3.x,
+        y: k*k*k*p0.y + 3*k*k*t*p1.y + 3*k*t*t*p2.y + t*t*t*p3.y
+      };
+    }
+    function quadratic(p0,p1,p2,t){
+      const k = 1 - t;
+      return {
+        x: k*k*p0.x + 2*k*t*p1.x + t*t*p2.x,
+        y: k*k*p0.y + 2*k*t*p1.y + t*t*p2.y
+      };
+    }
+    function linePoint(p0, p1, t){
+      return {
+        x: p0.x + (p1.x - p0.x) * t,
+        y: p0.y + (p1.y - p0.y) * t
+      };
+    }
+    function vecDot(ax, ay, bx, by){ return ax * bx + ay * by; }
+    function smoothstep01(t){
+      const v = clamp(t, 0, 1);
+      return v * v * (3 - 2 * v);
+    }
+    function projectToPath(point, origin, tangent, normal){
+      const dx = point.x - origin.x;
+      const dy = point.y - origin.y;
+      return {
+        s: vecDot(dx, dy, tangent.x, tangent.y),
+        n: vecDot(dx, dy, normal.x, normal.y)
+      };
+    }
+    function pushTrailPoint(ap){
+      const trail = ap.trail;
+      if(!trail.length || Math.hypot(ap.ballX - trail[trail.length - 1].x, ap.ballY - trail[trail.length - 1].y) > 8){
+        trail.push({ x:ap.ballX, y:ap.ballY });
+        if(trail.length > 42) trail.shift();
+      }
+    }
+    function advanceFrontPhysics(motion, ap, dt){
+      motion.elapsed += dt;
+      if(motion.phase === 'ramp'){
+        motion.rampSpeed = Math.min(motion.rampSpeed + 920 * dt, 340);
+        motion.rampU = Math.min(1, motion.rampU + (motion.rampSpeed * dt) / motion.rampLen);
+        const u = smoothstep01(motion.rampU);
+        const pos = quadratic(motion.rampTop, motion.rampControl, motion.rampExit, u);
+        ap.ballX = round(pos.x, 2);
+        ap.ballY = round(pos.y, 2);
+        if(motion.rampU >= 1){
+          motion.phase = 'coast';
+          motion.s = 0;
+          motion.vS = Math.max(motion.rampSpeed * 0.76, 168);
+          ap.ballX = round(motion.rampExit.x, 2);
+          ap.ballY = round(motion.rampExit.y, 2);
+        }
+      }else{
+        const dist = motion.frontS - motion.s;
+        if(motion.phase === 'coast'){
+          const magnetic = dist < 54 ? 10 + 900 / (dist * dist + 1800) : 0;
+          const rolling = 104 + motion.vS * 0.82;
+          motion.vS = Math.max(0, motion.vS + (magnetic - rolling) * dt);
+          if(dist > 118) motion.vS = Math.max(motion.vS, 74);
+          else if(dist > 82) motion.vS = Math.max(motion.vS, 28);
+          else if(dist > 56) motion.vS = Math.max(motion.vS, 6);
+          if(dist < 32 || motion.elapsed > 2.35){
+            motion.phase = 'pause';
+            motion.pauseElapsed = 0;
+            motion.vS = Math.min(motion.vS, 6);
+          }
+        }else if(motion.phase === 'pause'){
+          motion.pauseElapsed += dt;
+          if(motion.pauseElapsed < 0.18){
+            motion.vS = Math.max(10, motion.vS - (28 + motion.vS * 1.9) * dt);
+          }else if(motion.pauseElapsed < 0.32){
+            motion.vS = Math.max(8, motion.vS - (22 + motion.vS * 1.8) * dt);
+          }else{
+            motion.vS = Math.max(8, motion.vS - (8 + motion.vS * 0.8) * dt);
+          }
+          if(motion.pauseElapsed > 0.46 || dist < 20){
+            motion.phase = 'capture';
+            motion.vS = Math.max(motion.vS, 5);
+          }
+        }else{
+          const captureGate = smoothstep01((32 - dist) / 18);
+          const magnetic = 420 + captureGate * 520 + 12800 / (dist * dist + 520);
+          const rolling = 34 + motion.vS * 0.26;
+          motion.vS = Math.max(18, motion.vS + (magnetic - rolling) * dt);
+        }
+        motion.s += motion.vS * dt;
+        if(motion.s >= motion.frontS - 4 || motion.elapsed > 4.6){
+          ap.ballX = round(motion.frontTarget.x, 2);
+          ap.ballY = round(motion.frontTarget.y, 2);
+          return true;
+        }
+        ap.ballX = round(motion.rampExit.x + motion.tangent.x * motion.s, 2);
+        ap.ballY = round(motion.rampExit.y + motion.tangent.y * motion.s, 2);
+      }
+      return false;
+    }
+    function advanceDeflectPhysics(motion, ap, dt){
+      motion.elapsed += dt;
+      if(motion.phase === 'ramp'){
+        motion.rampSpeed = Math.min(motion.rampSpeed + 900 * dt, 332);
+        motion.rampU = Math.min(1, motion.rampU + (motion.rampSpeed * dt) / motion.rampLen);
+        const u = smoothstep01(motion.rampU);
+        const pos = quadratic(motion.rampTop, motion.rampControl, motion.rampExit, u);
+        ap.ballX = round(pos.x, 2);
+        ap.ballY = round(pos.y, 2);
+        if(motion.rampU >= 1){
+          motion.phase = 'glide';
+          motion.s = 0;
+          motion.vS = Math.max(motion.rampSpeed * 0.72, 156);
+          ap.ballX = round(motion.rampExit.x, 2);
+          ap.ballY = round(motion.rampExit.y, 2);
+        }
+      }else if(motion.phase === 'glide'){
+        const dist = motion.magS - motion.s;
+        const rolling = 104 + motion.vS * 0.82;
+        motion.vS = Math.max(0, motion.vS - rolling * dt);
+        if(dist > 118) motion.vS = Math.max(motion.vS, 74);
+        else if(dist > 82) motion.vS = Math.max(motion.vS, 28);
+        else if(dist > 56) motion.vS = Math.max(motion.vS, 6);
+        motion.s += motion.vS * dt;
+        ap.ballX = round(motion.rampExit.x + motion.tangent.x * motion.s, 2);
+        ap.ballY = round(motion.rampExit.y + motion.tangent.y * motion.s, 2);
+        if(motion.s >= motion.entryS){
+          motion.phase = 'curve';
+          motion.curveStart = { x: ap.ballX, y: ap.ballY };
+          motion.curveLead = {
+            x: ap.ballX + motion.tangent.x * motion.curveLeadLen + motion.normal.x * (motion.curveLeadLen * 0.44),
+            y: ap.ballY + motion.tangent.y * motion.curveLeadLen + motion.normal.y * (motion.curveLeadLen * 0.44)
+          };
+          motion.curveElapsed = 0;
+        }
+      }else{
+        motion.curveElapsed += dt;
+        motion.curveU = smoothstep01(motion.curveElapsed / motion.curveDuration);
+        const pos = cubic(motion.curveStart, motion.curveLead, motion.curvePull, motion.stopTarget, motion.curveU);
+        ap.ballX = round(clamp(pos.x, motion.minX, motion.maxX), 2);
+        ap.ballY = round(clamp(pos.y, motion.minY, motion.maxY), 2);
+        if(motion.curveU >= 0.995 || motion.elapsed > 4.2){
+          ap.ballX = round(motion.stopTarget.x, 2);
+          ap.ballY = round(motion.stopTarget.y, 2);
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function finishObservation(type){
+      state.apparatus.lastObservation = makeObservation(type);
+      state.apparatus.ballState = type === 'start_move' ? '已靠近磁体' : (type === 'speed_up' ? '已靠上前方磁体' : (type === 'deflect' ? '已向侧旁偏转停下' : '已停止'));
+      updatePills();
+    }
+
+    function updateMotion(ts){
+      const ap = state.apparatus;
+      ap.releasePulse = 0.5 + 0.5 * Math.sin(ts / 240);
+      const motion = ap.motion;
+      if(!motion) return;
+      const dt = Math.min(Math.max((ts - (motion.lastTs || ts)) / 1000, 0.001), 0.032);
+      motion.lastTs = ts;
+      const p = motion.duration ? clamp((ts - motion.start) / motion.duration, 0, 1) : 0;
+      if(motion.type === 'start_move'){
+        const mx = ap.magnetX;
+        const my = ap.magnetY;
+        const dx = mx - motion.from.x;
+        const dy = my - motion.from.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const target = { x: mx - dx / len * 22, y: my - dy / len * 22 };
+        const eased = 1 - Math.pow(1 - p, 2.2);
+        ap.ballX = round(motion.from.x + (target.x - motion.from.x) * eased, 2);
+        ap.ballY = round(motion.from.y + (target.y - motion.from.y) * eased, 2);
+      }else if(motion.type === 'speed_up'){
+        if(advanceFrontPhysics(motion, ap, dt)){
+          pushTrailPoint(ap);
+          ap.motion = null;
+          finishObservation(motion.type);
+          return;
+        }
+      }else if(motion.type === 'deflect'){
+        if(advanceDeflectPhysics(motion, ap, dt)){
+          pushTrailPoint(ap);
+          ap.motion = null;
+          finishObservation(motion.type);
+          return;
+        }
+      }else if(motion.type === 'weak'){
+        if(p < 0.36){
+          const t = p / 0.36;
+          const eased = t * t;
+          const pos = quadratic(motion.rampTop, { x:(motion.rampTop.x + motion.rampExit.x) / 2 - 8, y:motion.rampTop.y + 26 }, motion.rampExit, eased);
+          ap.ballX = round(pos.x, 2);
+          ap.ballY = round(pos.y, 2);
+        }else{
+          const t = 1 - Math.pow(1 - ((p - 0.36) / 0.64), 1.45);
+          const pos = cubic(motion.from, motion.c1, motion.c2, motion.to, t);
+          ap.ballX = round(pos.x, 2);
+          ap.ballY = round(pos.y, 2);
+        }
+      }
+      pushTrailPoint(ap);
+      if(p >= 1){
+        ap.motion = null;
+        finishObservation(motion.type);
+      }
+    }
+    function loop(ts){
+      state.lastTs = ts;
+      updateMotion(ts);
+      drawScene();
+      state.rafId = requestAnimationFrame(loop);
+    }
+
+    function getScenePoint(e){
+      const r = scene.getBoundingClientRect();
+      return { x:e.clientX - r.left, y:e.clientY - r.top };
+    }
+
+    function hitMagnet(pt){
+      const ap = state.apparatus;
+      return Math.abs(pt.x - ap.magnetX) <= 34 && Math.abs(pt.y - ap.magnetY) <= 22;
+    }
+    function hitRelease(pt){
+      const rect = scene.getBoundingClientRect();
+      const g = get20Geometry(rect.width, rect.height);
+      return Math.hypot(pt.x - g.release.x, pt.y - (g.release.y - 2)) <= 22;
+    }
+    function hitBall(pt){
+      const ap = state.apparatus;
+      return Math.hypot(pt.x - ap.ballX, pt.y - ap.ballY) <= 14;
+    }
+
+    function nearestAnchor(x,y){
+      const rect = scene.getBoundingClientRect();
+      const g = get20Geometry(rect.width, rect.height);
+      let best = 'park', bestDist = Infinity;
+      for(const key of getAnchorOrder()){
+        const a = g.anchors[key];
+        const d = Math.hypot(x - a.x, y - a.y);
+        if(d < bestDist){ bestDist = d; best = key; }
+      }
+      return { key: best, dist: bestDist };
+    }
+    function guidedTargetAnchor(){
+      if(state.freeMode || state.completed) return '';
+      if(state.currentTask === 0) return 'rest';
+      if(state.currentTask === 1) return 'front';
+      if(state.currentTask === 2) return 'side';
+      return '';
+    }
+
+    function updateMagnetDrag(pt){
+      state.apparatus.magnetX = pt.x;
+      state.apparatus.magnetY = pt.y;
+      const rect = scene.getBoundingClientRect();
+      const g = get20Geometry(rect.width, rect.height);
+      let preview = '';
+      const targetKey = guidedTargetAnchor();
+      if(targetKey){
+        const target = g.anchors[targetKey];
+        if(Math.hypot(pt.x - target.x, pt.y - target.y) < 130) preview = targetKey;
+      }
+      if(!preview){
+        const near = nearestAnchor(pt.x, pt.y);
+        preview = near.dist < 120 ? near.key : '';
+      }
+      state.apparatus.anchorPreview = preview;
+      if(state.apparatus.ballScene === 'rest' && !state.apparatus.motion && state.apparatus.ballState === '静止'){
+        const d = Math.hypot(pt.x - state.apparatus.ballX, pt.y - state.apparatus.ballY);
+        if(d < 110) startRestAttraction(false);
+      }
+      updatePills();
+    }
+
+    function commitMagnetDrop(announce=true){
+      const rect = scene.getBoundingClientRect();
+      const g = get20Geometry(rect.width, rect.height);
+      const targetKey = guidedTargetAnchor();
+      let anchorKey = 'park';
+      if(targetKey){
+        const target = g.anchors[targetKey];
+        if(Math.hypot(state.apparatus.magnetX - target.x, state.apparatus.magnetY - target.y) < 130){
+          anchorKey = targetKey;
+        }
+      }
+      if(anchorKey === 'park'){
+        const near = nearestAnchor(state.apparatus.magnetX, state.apparatus.magnetY);
+        anchorKey = near.dist < 120 ? near.key : 'park';
+      }
+      setMagnetAnchor(anchorKey, true);
+      const anchor = g.anchors[anchorKey] || g.anchors.park;
+      state.apparatus.magnetX = anchor.x;
+      state.apparatus.magnetY = anchor.y;
+      state.apparatus.magnetAngle = anchor.angle;
+      state.apparatus.anchorPreview = '';
+      updatePills();
+      if(announce){
+        setStatus(anchorKey === 'park' ? '磁体已回到待放置区' : `磁体已放到${anchor.label}`);
+      }
+      if(state.apparatus.ballScene === 'rest' && anchorKey === 'rest' && !state.apparatus.motion && state.apparatus.ballState === '静止'){
+        startRestAttraction(true);
+      }
+    }
+
+    async function autoDragMagnetTo(anchorKey, ensure){
+      const rect = scene.getBoundingClientRect();
+      const g = get20Geometry(rect.width, rect.height);
+      const from = { x: state.apparatus.magnetX, y: state.apparatus.magnetY };
+      const to = g.anchors[anchorKey];
+      await moveDemoCursorTo(from.x, from.y, 160); ensure();
+      await pulseDemoCursor(120); ensure();
+      state.apparatus.dragMagnet = true;
+      for(let i=1;i<=8;i++){
+        const x = from.x + (to.x - from.x) * (i / 8);
+        const y = from.y + (to.y - from.y) * (i / 8);
+        updateMagnetDrag({ x, y });
+        state.apparatus.anchorPreview = anchorKey;
+        await moveDemoCursorTo(x, y, 55);
+        ensure();
+      }
+      state.apparatus.dragMagnet = false;
+      commitMagnetDrop(false);
+      ensure();
+      await sleep(180);
+      ensure();
+    }
+
+    async function autoReleaseBall(ensure){
+      const rect = scene.getBoundingClientRect();
+      const g = get20Geometry(rect.width, rect.height);
+      await moveDemoCursorTo(g.release.x, g.release.y - 2, 180);
+      ensure();
+      await pulseDemoCursor(120);
+      ensure();
+      releaseBall(false);
+      await sleep(120);
+      ensure();
+    }
+
+    async function autoDemo(){
+      if(state.autoPlaying){
+        requestStopAutoDemo();
+        return;
+      }
+      if(state.freeMode) return;
+      const runId = ++state.autoRunId;
+      state.autoPlaying = true;
+      updateModeHud();
+      updateAutoDemoBtn();
+      resetBallBtn.disabled = true;
+      recordBtn.disabled = true;
+      checkBtn.disabled = true;
+      analyzeBtn.disabled = true;
+      resetBtn.disabled = true;
+      freeBtn.disabled = true;
+
+      const ensure = ()=>{ if(!state.autoPlaying || runId !== state.autoRunId) throw new Error('auto-cancelled'); };
+      const wait = async (ms)=>{ await sleep(ms); ensure(); };
+      const waitMotion = async (timeout=2600)=>{
+        const started = performance.now();
+        while(state.apparatus.motion && performance.now() - started < timeout){
+          await wait(60);
+        }
+        if(state.apparatus.motion) throw new Error('AUTO_MOTION_TIMEOUT');
+      };
+      const waitObservation = async (type, timeout=1800)=>{
+        const started = performance.now();
+        while((!state.apparatus.lastObservation || state.apparatus.lastObservation.type !== type) && performance.now() - started < timeout){
+          await wait(60);
+        }
+        if(!state.apparatus.lastObservation || state.apparatus.lastObservation.type !== type){
+          throw new Error(`AUTO_OBSERVATION_${type}_NOT_READY`);
+        }
+      };
+      const doAction = async (el, action, ms=220)=>{
+        const c = centerOf(el);
+        await moveDemoCursorTo(c.x, c.y, 220);
+        await pulseDemoCursor(120);
+        action();
+        await wait(ms);
+      };
+      const doRecord = async (expectedType)=>{
+        const before = state.records.length;
+        if(expectedType) await waitObservation(expectedType, 1800);
+        await moveDemoCursorTo(centerOf(recordBtn).x, centerOf(recordBtn).y, 220);
+        await pulseDemoCursor(120);
+        let ok = addRecord();
+        if(!ok && expectedType){
+          await waitObservation(expectedType, 720);
+          ok = addRecord();
+        }
+        if(!ok) throw new Error('AUTO_RECORD_FAILED');
+        await wait(160);
+        if(state.records.length <= before) throw new Error('AUTO_RECORD_NOT_PERSISTED');
+      };
+
+      try{
+        resetFlow(false);
+        setFreeMode(false);
+        setControlCollapsed(false);
+        setDataCollapsed(true);
+        initDockPositions(true);
+        setDemoCursorVisible(true);
+        updateModeHud();
+
+        goToGuidedStep(0);
+        setStatus('自动演示：静止吸引');
+        await autoDragMagnetTo('rest', ensure);
+        await waitMotion(1800);
+        await doRecord('start_move');
+        await doAction(checkBtn, ()=>{ if(!tryPassStep(false, true)) throw new Error('AUTO_STEP1_NOT_PASSED'); }, 180);
+
+        setStatus('自动演示：前方先慢后快地靠近');
+        await autoDragMagnetTo('front', ensure);
+        await autoReleaseBall(ensure);
+        await waitMotion(3200);
+        await doRecord('speed_up');
+        await doAction(checkBtn, ()=>{ if(!tryPassStep(false, true)) throw new Error('AUTO_STEP2_NOT_PASSED'); }, 180);
+
+        setStatus('自动演示：后段向侧旁偏转');
+        await autoDragMagnetTo('side', ensure);
+        await autoReleaseBall(ensure);
+        await waitMotion(3400);
+        await doRecord('deflect');
+        await doAction(checkBtn, ()=>{ if(!tryPassStep(false, true)) throw new Error('AUTO_STEP3_NOT_PASSED'); }, 180);
+
+        setStatus('自动演示：分析结论');
+        await doAction(analyzeBtn, ()=>{ if(!analyzeConclusion(false)) throw new Error('AUTO_ANALYSIS_NOT_READY'); }, 240);
+        await doAction(checkBtn, ()=>{ if(!tryPassStep(false, true)) throw new Error('AUTO_STEP4_NOT_PASSED'); }, 180);
+      }catch(err){
+        if(err && err.message !== 'auto-cancelled'){
+          console.error('[autoDemo] failed:', err);
+          setStatus('自动演示失败');
+          showToast('自动演示失败，请重试');
+        }
+      }finally{
+        if(runId === state.autoRunId) restoreAutoDemoUI();
+      }
+    }
+
+    function bindEvents(){
+      controlToggleBtn.addEventListener('click', ()=>setControlCollapsed(!state.controlCollapsed));
+      dataToggleBtn.addEventListener('click', ()=>setDataCollapsed(!state.dataCollapsed));
+      resetBallBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) resetBall(true); });
+      recordBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) addRecord(); });
+      checkBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) tryPassStep(true, false); });
+      analyzeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) analyzeConclusion(true); });
+      resetBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) resetFlow(true); });
+      autoDemoBtn.addEventListener('click', autoDemo);
+      freeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setFreeMode(!state.freeMode); });
+      okBtn.addEventListener('click', ()=>{ doneMaskEl.style.display = 'none'; });
+
+      const onResize = (()=>{
+        let t = 0;
+        return ()=>{
+          clearTimeout(t);
+          t = setTimeout(()=>{
+            if(!state.dockMoved.control || !state.dockMoved.data) initDockPositions(false);
+            snapDockToEdges(controlDock);
+            snapDockToEdges(dataDock);
+            if(state.apparatus.magnetAnchor){ setMagnetAnchor(state.apparatus.magnetAnchor, true); }
+            if(state.apparatus.ballScene === 'rest' && !state.apparatus.motion) setBallAtRest();
+            if(state.apparatus.ballScene === 'slope' && !state.apparatus.motion && !state.apparatus.released) setBallAtSlopeStart();
+            drawScene();
+          }, 130);
+        };
+      })();
+      window.addEventListener('resize', onResize);
+      window.addEventListener('orientationchange', onResize);
+      document.addEventListener('gesturestart', e=>e.preventDefault(), { passive:false });
+      controlDock.addEventListener('pointerdown', ()=>bringToFront('control'));
+      dataDock.addEventListener('pointerdown', ()=>bringToFront('data'));
+      makeDockDraggable(controlDock, controlHead, 'control');
+      makeDockDraggable(dataDock, dataHead, 'data');
+
+      scene.addEventListener('pointerdown', (e)=>{
+        if(state.autoPlaying) return;
+        const pt = getScenePoint(e);
+        if(hitMagnet(pt) && !state.apparatus.motion){
+          state.draggingId = 'magnet';
+          state.apparatus.dragMagnet = true;
+          state.apparatus.dragOffsetX = pt.x - state.apparatus.magnetX;
+          state.apparatus.dragOffsetY = pt.y - state.apparatus.magnetY;
+          scene.setPointerCapture(e.pointerId);
+          e.preventDefault();
+          return;
+        }
+        if((hitRelease(pt) || (state.apparatus.ballScene === 'slope' && hitBall(pt))) && !state.apparatus.motion){
+          if(releaseBall(true)){
+            scene.setPointerCapture(e.pointerId);
+            e.preventDefault();
+          }
+        }
+      });
+      scene.addEventListener('pointermove', (e)=>{
+        if(state.draggingId !== 'magnet') return;
+        const pt = getScenePoint(e);
+        updateMagnetDrag({ x: pt.x - state.apparatus.dragOffsetX, y: pt.y - state.apparatus.dragOffsetY });
+        e.preventDefault();
+      });
+      const end = ()=>{
+        if(state.draggingId !== 'magnet') return;
+        state.draggingId = null;
+        state.apparatus.dragMagnet = false;
+        commitMagnetDrop(true);
+      };
+      scene.addEventListener('pointerup', end);
+      scene.addEventListener('pointercancel', end);
+    }
+
+    function init(){
+      state.apparatus = makeInitialApparatus();
+      initTaskUI();
+      updateModeHud();
+      updateAutoDemoBtn();
+      renderRecords();
+      setControlCollapsed(true);
+      setDataCollapsed(true);
+      bindEvents();
+      initDockPositions(true);
+      setMagnetAnchor('park', true);
+      syncGuidedScene();
+      setStatus('待开始');
+      if(state.rafId) cancelAnimationFrame(state.rafId);
+      state.rafId = requestAnimationFrame(loop);
+    }
+
+    init();
+  </script>
+
+<script id="exp35-ui-normalize-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var hintLamp = $("#hintLamp");
+  var hintPop = $("#hintPop");
+  var taskHint = $("#taskHint");
+  var taskText = $("#taskText");
+  var dataDock = $("#dataDock");
+  var dataNotice = $("#dataNotice");
+  var recordBody = $("#recordBody");
+  var recordChart = $("#recordChart");
+  var modalTitle = $("#doneMask .modal h3");
+
+  try {
+    if (typeof state !== "undefined") window.state = state;
+  } catch (_) {}
+
+  if (modalTitle && !/实验完成/.test(modalTitle.textContent || "")) {
+    modalTitle.textContent = "实验完成";
+  }
+
+  function updateHintText(){
+    if (!hintPop) return;
+    var hint = taskHint ? taskHint.textContent.trim() : "";
+    var text = taskText ? taskText.textContent.trim() : "";
+    hintPop.textContent = hint || text || "按步骤操作器材，观察现象并记录数据。";
+  }
+
+  if (hintLamp && hintPop && !hintLamp.dataset.exp35Bound) {
+    hintLamp.dataset.exp35Bound = "1";
+    updateHintText();
+    hintLamp.addEventListener("click", function(){
+      updateHintText();
+      hintPop.classList.toggle("open");
+    });
+  }
+
+  function drawRecordChart(){
+    if (!recordChart) return;
+    var ctx = recordChart.getContext("2d");
+    if (!ctx) return;
+    var dpr = window.devicePixelRatio || 1;
+    var w = recordChart.clientWidth || 320;
+    var h = recordChart.clientHeight || 180;
+    var nextW = Math.max(1, Math.round(w * dpr));
+    var nextH = Math.max(1, Math.round(h * dpr));
+    if (recordChart.width !== nextW || recordChart.height !== nextH) {
+      recordChart.width = nextW;
+      recordChart.height = nextH;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = "rgba(155,211,255,.22)";
+    ctx.lineWidth = 1;
+    for (var x = 24; x < w; x += 32) {
+      ctx.beginPath(); ctx.moveTo(x, 14); ctx.lineTo(x, h - 18); ctx.stroke();
+    }
+    for (var y = 28; y < h - 8; y += 30) {
+      ctx.beginPath(); ctx.moveTo(12, y); ctx.lineTo(w - 12, y); ctx.stroke();
+    }
+    var rows = recordBody ? Array.from(recordBody.querySelectorAll("tr")).filter(function(row){
+      return row.querySelectorAll("td").length > 1 && !/当前无记录|暂无|还没有记录/.test(row.textContent);
+    }) : [];
+    ctx.font = "700 13px Arial";
+    ctx.fillStyle = "#cfe4ff";
+    ctx.fillText("记录概览", 16, 24);
+    if (!rows.length) {
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(235,245,255,.64)";
+      ctx.fillText("完成步骤后，这里显示记录进度。", 16, 52);
+      return;
+    }
+    var max = Math.max(3, rows.length);
+    rows.slice(0, 8).forEach(function(row, index){
+      var barW = (w - 96) * ((index + 1) / max);
+      var y = 46 + index * 20;
+      ctx.fillStyle = ["#ffd54f", "#3ddc97", "#5bbcff", "#ef476f"][index % 4];
+      ctx.fillRect(72, y - 10, barW, 9);
+      ctx.fillStyle = "rgba(235,245,255,.86)";
+      ctx.font = "12px Arial";
+      ctx.fillText("记录 " + (index + 1), 16, y);
+    });
+  }
+
+  if (recordBody && recordChart && !recordChart.dataset.exp35Bound) {
+    recordChart.dataset.exp35Bound = "1";
+    new MutationObserver(drawRecordChart).observe(recordBody, { childList:true, subtree:true, characterData:true });
+    window.addEventListener("resize", drawRecordChart);
+    setTimeout(drawRecordChart, 60);
+  }
+
+  if (dataDock && dataNotice && !dataDock.dataset.exp35NoticeBound) {
+    dataDock.dataset.exp35NoticeBound = "1";
+    var clearNotice = function(){
+      dataNotice.textContent = "0";
+      dataNotice.classList.remove("show");
+      dataNotice.classList.add("hidden");
+    };
+    dataDock.addEventListener("click", function(evt){
+      if (evt.target && evt.target.id === "dataToggleBtn") setTimeout(clearNotice, 20);
+    });
+  }
+})();
+</script>
+
+
+<script id="exp35-ui-completion-drawer-fit">
+(function(){
+  "use strict";
+  var $ = function(selector){ return document.querySelector(selector); };
+  var stage = $("#stage");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlBody = $("#controlBody");
+  var dataBody = $("#dataBody");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+
+  function isDone(){
+    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
+    var stateDone = false;
+    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
+    return modalDone || stateDone;
+  }
+
+  function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (dock) dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function placeDock(dock, left, top){
+    if (!dock || !stage) return;
+    var sw = stage.clientWidth;
+    var sh = stage.clientHeight;
+    var w = dock.offsetWidth || 160;
+    var h = dock.offsetHeight || 44;
+    var x = Math.max(10, Math.min(left, sw - w - 10));
+    var y = Math.max(10, Math.min(top, sh - h - 10));
+    dock.style.left = x + "px";
+    dock.style.top = y + "px";
+    dock.style.right = "auto";
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+  }
+
+  if (!stage || !controlDock || !dataDock) return;
+  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  setInterval(fitCompletionDrawers, 450);
+})();
+</script>
+
+</body>
+</html>
