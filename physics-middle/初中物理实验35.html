@@ -1,0 +1,2450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验35｜体验不同声音的特性</title>
+  <!-- 目录依据：中小学实验教学目录 PDF 第 39 页，35.体验不同声音的特性 -->
+  <!-- 教材依据：人教版八年级上册，第 2 章第 2 节“声音的特性” -->
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --ink:#fff;
+      --card-bg:rgba(255,255,255,.08);
+      --panel-bg:rgba(15,15,15,.58);
+      --line:rgba(255,255,255,.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --dockShadow:0 14px 36px rgba(0,0,0,.42);
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ min-height:100%; }
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      letter-spacing:0;
+    }
+    button{ font:inherit; touch-action:manipulation; }
+    button.main, button.sub{
+      border:none;
+      border-radius:8px;
+      padding:8px 12px;
+      color:#fff;
+      cursor:pointer;
+      transition:background .2s, transform .05s, opacity .2s;
+      user-select:none;
+      -webkit-tap-highlight-color:transparent;
+      font-size:13px;
+    }
+    button.main{ background:#2e7d32; }
+    button.sub{ background:#444; }
+    button.main:hover, button.sub:hover{ background:#5a5a5a; }
+    button.main:active, button.sub:active{ transform:scale(.98); }
+    button.main:disabled, button.sub:disabled{ opacity:.5; cursor:not-allowed; }
+
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:980px;
+      height:40px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,.15);
+      margin:0 0 12px;
+      background:#000;
+      flex-shrink:0;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);
+      background-size:200% 100%;
+      animation:flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{ 0%{background-position:0 0;} 100%{background-position:-100% 0;} }
+
+    .task-card{
+      width:100%;
+      max-width:980px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition:opacity .2s, filter .2s;
+    }
+    .task-step{
+      background:rgba(255,255,255,.16);
+      border-radius:8px;
+      padding:6px 10px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .task-text{ min-width:0; line-height:1.55; }
+    #taskHint{
+      color:#ffd54f;
+      font-size:12px;
+      opacity:.95;
+      margin-top:2px;
+    }
+    .progress-dots{ display:flex; gap:6px; align-items:center; }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:rgba(255,255,255,.26);
+      outline:2px solid rgba(255,255,255,.12);
+    }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.45); }
+    .dot.warn{ background:#ff4d4f; outline-color:rgba(255,77,79,.58); box-shadow:0 0 10px rgba(255,77,79,.62); }
+
+    #stage{
+      width:100%;
+      max-width:980px;
+      height:66vh;
+      max-height:660px;
+      min-height:500px;
+      margin-top:10px;
+      border-radius:12px;
+      position:relative;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      background:#0b0f14;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 76% 25%, rgba(255,255,255,.06), transparent 42%),
+        radial-gradient(circle at 22% 78%, rgba(0,255,255,.05), transparent 46%);
+    }
+    .lab-area{
+      position:absolute;
+      inset:54px 10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.82);
+      overflow:hidden;
+    }
+    #labCanvas{
+      width:100%;
+      height:100%;
+      display:block;
+      touch-action:none;
+      cursor:crosshair;
+    }
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      background:rgba(0,0,0,.48);
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:7px 10px;
+      font-size:12px;
+    }
+    .tag{
+      border:1px solid rgba(255,255,255,.26);
+      border-radius:999px;
+      padding:2px 8px;
+      font-weight:700;
+      color:#dce9ff;
+      background:rgba(255,255,255,.06);
+    }
+    .hint-lamp{
+      position:absolute;
+      left:10px;
+      top:56px;
+      z-index:22;
+      width:34px;
+      height:34px;
+      border-radius:8px;
+      display:grid;
+      place-items:center;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.2);
+      color:#ffd54f;
+      font-size:16px;
+      cursor:pointer;
+      padding:0;
+    }
+    .hint-lamp.flash{ animation:lampFlash .6s ease; }
+    @keyframes lampFlash{
+      0%,100%{ box-shadow:none; }
+      50%{ box-shadow:0 0 22px rgba(255,77,79,.86); border-color:#ff4d4f; color:#ffb0b0; }
+    }
+    .audio-toggle{
+      position:absolute;
+      left:52px;
+      top:56px;
+      z-index:22;
+      width:34px;
+      height:34px;
+      border-radius:8px;
+      display:grid;
+      place-items:center;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.2);
+      color:#dce9ff;
+      font-size:15px;
+      cursor:pointer;
+      padding:0;
+    }
+    .audio-toggle.muted{
+      color:#9fb0c4;
+      opacity:.72;
+    }
+    .audio-toggle.ready{
+      border-color:rgba(61,220,151,.42);
+      box-shadow:0 0 12px rgba(61,220,151,.16);
+    }
+    .hint-pop{
+      position:absolute;
+      left:10px;
+      top:96px;
+      z-index:23;
+      width:min(330px, calc(100% - 24px));
+      display:none;
+      padding:10px 12px;
+      border:1px solid rgba(255,209,102,.36);
+      border-radius:10px;
+      background:rgba(16,18,20,.9);
+      color:#f4efe2;
+      font-size:13px;
+      line-height:1.55;
+    }
+    .hint-pop.open{ display:block; }
+
+    .dock,
+    .drawer{
+      position:absolute;
+      width:min(94%, 380px);
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:var(--panel-bg);
+      backdrop-filter:blur(6px);
+      box-shadow:var(--dockShadow);
+      overflow:hidden;
+      touch-action:none;
+      z-index:30;
+    }
+    .drawer.control{ top:10px; }
+    .drawer.data{ top:94px; }
+    .dock.dragging, .drawer.dragging{ box-shadow:0 20px 48px rgba(0,0,0,.55); }
+    .dockHead,
+    .drawer-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:8px;
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.04);
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+      touch-action:none;
+    }
+    .dockHead:active, .drawer-header:active{ cursor:grabbing; }
+    .dockTitle,
+    .drawer-title{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      font-size:13px;
+      font-weight:700;
+      color:#e7f0ff;
+    }
+    .dockBtns,
+    .drawer-actions{ display:flex; align-items:center; gap:6px; }
+    .iconBtn,
+    .mini{
+      border:1px solid rgba(255,255,255,.2);
+      background:rgba(255,255,255,.08);
+      color:#e8f1ff;
+      border-radius:7px;
+      padding:4px 8px;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .dataNotice,
+    .badge{
+      display:none;
+      min-width:18px;
+      height:18px;
+      padding:0 4px;
+      border-radius:999px;
+      background:#ff3040;
+      color:#fff;
+      font-size:11px;
+      line-height:18px;
+      text-align:center;
+      font-weight:800;
+      box-shadow:0 0 0 2px rgba(255,48,64,.26);
+      animation:dataNoticeBlink .9s ease-in-out infinite;
+    }
+    .dataNotice.show, .badge.show{ display:inline-block; }
+    @keyframes dataNoticeBlink{
+      0%,100%{ transform:scale(1); opacity:1; }
+      50%{ transform:scale(1.18); opacity:.56; }
+    }
+    .dockBody,
+    .drawer-body{
+      padding:10px;
+      max-height:330px;
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+    .drawer.collapsed .drawer-body{ display:none; }
+    .drawer.collapsed{ background:var(--panel-bg); }
+    .readout-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-bottom:10px;
+    }
+    .readout{
+      min-height:54px;
+      padding:8px;
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,.1);
+      background:rgba(255,255,255,.07);
+      overflow:hidden;
+    }
+    .readout b{ display:block; font-size:12px; color:#bfd2e5; margin-bottom:3px; }
+    .readout span{ font-size:14px; color:#fff; }
+    .control-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      margin-top:8px;
+    }
+    .analysis{
+      margin-top:10px;
+      padding:9px 10px;
+      border-radius:10px;
+      border:1px solid rgba(91,188,255,.25);
+      background:rgba(91,188,255,.08);
+      color:#dcefff;
+      font-size:13px;
+      line-height:1.5;
+    }
+    table.record{
+      width:100%;
+      border-collapse:collapse;
+      font-size:12px;
+      color:#edf7ff;
+      margin-top:8px;
+    }
+    table.record th, table.record td{
+      border:1px solid rgba(255,255,255,.12);
+      padding:4px 5px;
+      text-align:center;
+      vertical-align:top;
+    }
+    table.record th{ background:rgba(255,255,255,.08); color:#dce9ff; font-weight:700; }
+    .chartWrap{ margin-top:8px; border:1px solid rgba(255,255,255,.12); border-radius:10px; background:rgba(0,0,0,.25); overflow:hidden; }
+    #recordChart{ width:100%; height:210px; display:block; }
+    .empty{
+      color:#aebbc8;
+      font-size:13px;
+      line-height:1.5;
+      padding:4px 0 2px;
+    }
+    .toolbar{
+      width:100%;
+      max-width:980px;
+      margin-top:10px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:9px;
+      align-items:center;
+    }
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:22px;
+      transform:translateX(-50%) translateY(14px);
+      z-index:90;
+      max-width:min(620px, calc(100vw - 28px));
+      padding:10px 14px;
+      border-radius:8px;
+      background:rgba(0,0,0,.82);
+      border:1px solid rgba(255,255,255,.13);
+      color:#fff;
+      font-size:14px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .22s, transform .22s;
+    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+    .checkmark{
+      position:absolute;
+      left:50%;
+      top:22%;
+      z-index:50;
+      width:108px;
+      height:108px;
+      border-radius:50%;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      transform:translate(-50%,-50%);
+      border:3px solid var(--accent);
+      background:rgba(61,220,151,.15);
+      box-shadow:0 0 36px rgba(61,220,151,.42), inset 0 0 18px rgba(61,220,151,.22);
+      pointer-events:none;
+      animation:pop .45s ease-out;
+    }
+    .checkmark.active{ display:flex; }
+    .checkmark div{
+      width:54px;
+      height:28px;
+      border-left:8px solid var(--accent);
+      border-bottom:8px solid var(--accent);
+      transform:rotate(-45deg) translateY(-5px);
+    }
+    @keyframes pop{
+      from{ transform:translate(-50%,-50%) scale(.55); opacity:.2; }
+      to{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+    }
+    .demo-cursor{
+      position:absolute;
+      z-index:60;
+      width:20px;
+      height:20px;
+      border-radius:50%;
+      border:2px solid #fff;
+      background:rgba(91,188,255,.68);
+      box-shadow:0 0 18px rgba(91,188,255,.8);
+      transform:translate(-100px,-100px);
+      pointer-events:none;
+      opacity:0;
+    }
+    .demo-cursor.click{ animation:cursorClick .28s ease; }
+    @keyframes cursorClick{
+      from{ box-shadow:0 0 0 0 rgba(255,255,255,.85), 0 0 18px rgba(91,188,255,.8); }
+      to{ box-shadow:0 0 0 18px rgba(255,255,255,0), 0 0 18px rgba(91,188,255,.8); }
+    }
+    .modal-mask{
+      position:fixed;
+      inset:0;
+      z-index:100;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      background:rgba(0,0,0,.54);
+      padding:18px;
+    }
+    .modal{
+      width:min(390px, 92vw);
+      padding:18px 16px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.15);
+      background:#101317;
+      text-align:center;
+      box-shadow:0 18px 44px rgba(0,0,0,.42);
+    }
+    .modal h3{ margin:4px 0 8px; font-size:21px; }
+    .modal p{ margin:0; color:#cdd7e0; line-height:1.55; }
+    .modal .ok{
+      margin-top:14px;
+      border:none;
+      border-radius:8px;
+      padding:8px 18px;
+      background:var(--accent);
+      color:#07170f;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .explanation{
+      width:100%;
+      max-width:980px;
+      margin:14px 0 22px;
+      color:#e8f4ff;
+      line-height:1.66;
+      font-size:15px;
+    }
+    .explanation h2{ margin:0 0 8px; color:#9bd3ff; font-size:20px; }
+    .explanation ul{ margin:0; padding-left:22px; }
+
+    @media (max-width:720px){
+      body{ padding:8px; }
+      #spectrum,.task-card,#stage,.toolbar,.explanation{ max-width:100%; }
+      .task-card{ grid-template-columns:1fr; gap:7px; }
+      .task-step{ width:fit-content; }
+      .progress-dots{ justify-content:flex-start; }
+      #stage{ height:78vh; min-height:680px; }
+      .lab-area{ inset:96px 8px 10px; }
+      .hud{ max-width:calc(100% - 20px); }
+      .hint-lamp{ top:56px; }
+      .hint-pop{ top:96px; }
+      .drawer{
+        width:calc(100% - 24px);
+        right:12px;
+      }
+      .drawer.control{ top:112px; }
+      .drawer.data{ top:166px; }
+      .drawer-body{ max-height:260px; }
+      .toolbar button{ flex:1 1 132px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <section class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 4</div>
+    <div class="task-text">
+      <div id="taskText"></div>
+      <div id="taskHint"></div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </section>
+
+  <main id="stage" aria-label="体验不同声音的特性实验台">
+    <div class="hud">
+      <span class="tag" id="modeTag">模式：引导</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <button class="audio-toggle" id="audioToggle" type="button" aria-label="音效开关" title="音效开关">🔊</button>
+    <div class="hint-pop" id="hintPop"></div>
+
+    <div class="lab-area" id="labArea">
+      <canvas id="labCanvas"></canvas>
+    </div>
+
+    <section class="dock drawer control collapsed" id="controlDock" aria-label="实验面板">
+      <div class="dockHead drawer-header" data-drag-handle>
+        <span class="dockTitle drawer-title">实验面板</span>
+        <div class="dockBtns drawer-actions">
+          <button class="iconBtn mini" id="controlToggleBtn" type="button">展开</button>
+        </div>
+      </div>
+      <div class="dockBody drawer-body">
+        <div class="readout-grid">
+          <div class="readout"><b>钢尺</b><span id="pitchReadout">伸出长度 16 cm</span></div>
+          <div class="readout"><b>音叉</b><span id="loudReadout">等待敲击</span></div>
+          <div class="readout"><b>波形</b><span id="waveReadout">等待观察</span></div>
+          <div class="readout"><b>结论</b><span id="summaryReadout">未分析</span></div>
+        </div>
+        <div class="control-row">
+          <button class="main" id="recordBtn" type="button">记录观察</button>
+          <button class="sub" id="analyzeBtn" type="button">分析结论</button>
+        </div>
+        <div class="analysis" id="analysisText">先完成钢尺、音叉和乐器波形三组体验，再归纳音调、响度和音色。</div>
+      </div>
+    </section>
+
+    <section class="dock drawer data collapsed" id="dataDock" aria-label="数据面板">
+      <div class="dockHead drawer-header" data-drag-handle>
+        <span class="dockTitle drawer-title">数据面板 <span class="dataNotice badge" id="dataNotice">0</span></span>
+        <div class="dockBtns drawer-actions">
+          <button class="iconBtn mini" id="dataToggleBtn" type="button">展开</button>
+        </div>
+      </div>
+      <div class="dockBody drawer-body">
+        <table class="record" id="recordTable">
+          <thead>
+            <tr><th>类别</th><th>操作</th><th>现象</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="empty" id="emptyRecords">还没有记录。按步骤操作后点击“记录观察”。</div>
+        <div class="chartWrap"><canvas id="recordChart"></canvas></div>
+      </div>
+    </section>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+    <div class="demo-cursor" id="demoCursor"></div>
+  </main>
+
+  <div class="toolbar">
+    <button class="sub" id="resetBtn" type="button">步骤重置</button>
+    <button class="sub" id="autoDemoBtn" type="button">自动演示</button>
+    <button class="sub" id="freeBtn" type="button">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>实验完成</h3>
+      <p>你已经完成“体验不同声音的特性”：频率影响音调，振幅影响响度，材料和结构影响音色。</p>
+      <button class="ok" id="okBtn" type="button">OK</button>
+    </div>
+  </div>
+
+  <section class="explanation">
+    <h2>实验名：体验不同声音的特性</h2>
+    <ul>
+      <li><b>关键操作与现象：</b>改变钢尺伸出长度并拨动，短伸出时振动更快、音调更高；用不同力度敲击音叉，乒乓球弹开幅度随响度增大；选择不同乐器时，音调和响度相近但波形形状不同。</li>
+      <li><b>实验结论：</b>音调由发声体振动频率决定，频率越高音调越高；响度主要与振幅有关，振幅越大响度越大；音色与发声体的材料、结构和振动方式有关。</li>
+    </ul>
+  </section>
+
+  <script>
+    const $ = (selector) => document.querySelector(selector);
+
+    const stage = $("#stage");
+    const labArea = $("#labArea");
+    const canvas = $("#labCanvas");
+    const ctx = canvas.getContext("2d");
+    const recordChart = $("#recordChart");
+    const chartCtx = recordChart.getContext("2d");
+    const taskStepEl = $("#taskStep");
+    const taskTextEl = $("#taskText");
+    const taskHintEl = $("#taskHint");
+    const dotsEl = $("#dots");
+    const modeTag = $("#modeTag");
+    const statusTag = $("#statusTag");
+    const hintLamp = $("#hintLamp");
+    const hintPop = $("#hintPop");
+    const audioToggle = $("#audioToggle");
+    const controlDrawer = $("#controlDock");
+    const dataDrawer = $("#dataDock");
+    const controlToggle = $("#controlToggleBtn");
+    const dataToggle = $("#dataToggleBtn");
+    const dataBadge = $("#dataNotice");
+    const recordBtn = $("#recordBtn");
+    const analyzeBtn = $("#analyzeBtn");
+    const resetBtn = $("#resetBtn");
+    const autoDemoBtn = $("#autoDemoBtn");
+    const freeBtn = $("#freeBtn");
+    const toastEl = $("#toast");
+    const checkmarkEl = $("#checkmark");
+    const doneMask = $("#doneMask");
+    const okBtn = $("#okBtn");
+    const demoCursor = $("#demoCursor");
+    const pitchReadout = $("#pitchReadout");
+    const loudReadout = $("#loudReadout");
+    const waveReadout = $("#waveReadout");
+    const summaryReadout = $("#summaryReadout");
+    const analysisText = $("#analysisText");
+    const recordTableBody = $("#recordTable tbody");
+    const emptyRecords = $("#emptyRecords");
+
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+    const tasks = [
+      {
+        text: "拖动钢尺伸出端，分别拨动长伸出和短伸出，记录两组音调。",
+        hint: "点击页面后可听声；拖动钢尺右端的蓝色圆柄改变伸出长度，点击钢尺自由端拨动。长伸出音调低，短伸出音调高。",
+        detail: "先把钢尺伸出调长并点击钢尺自由端拨动，记录低音调；再拖动蓝色圆柄把伸出部分调短并拨动，记录高音调。波形越密集，频率越高。",
+        check: () => hasRecord("pitch-low") && hasRecord("pitch-high")
+      },
+      {
+        text: "拉开小锤后松手敲击音叉，分别记录轻敲和重敲时的响度。",
+        hint: "小锤拉得越远，敲击越强，乒乓球被弹开的幅度越大，声音越响。",
+        detail: "拖住音叉左侧的小锤向左拉，松手后小锤会敲击音叉。先小幅拉开记录轻敲，再大幅拉开记录重敲。",
+        check: () => hasRecord("loud-soft") && hasRecord("loud-loud")
+      },
+      {
+        text: "点击至少两种乐器，比较相同音调、相近响度下波形形状的差异。",
+        hint: "不同乐器材料和结构不同，波形形状不同，所以音色不同。",
+        detail: "右侧三张乐器板都按相同基准音调显示波形。依次点击两种以上乐器，再记录比较结果。",
+        check: () => uniqueRecordCount("timbre") >= 2
+      },
+      {
+        text: "点击“分析结论”，归纳音调、响度和音色分别由什么因素决定。",
+        hint: "需要先有音调、响度、音色三类记录。",
+        detail: "分析时把三组证据对应到三个概念：频率对应音调，振幅对应响度，材料和结构对应音色。",
+        check: () => state.analysisDone
+      }
+    ];
+
+    const instruments = [
+      { id:"guitar", name:"弦乐器", color:"#ffd166", shape:"saw", detail:"同一音高下，弦的泛音使波形有尖峰。" },
+      { id:"flute", name:"管乐器", color:"#5bbcff", shape:"sine", detail:"同一音高下，空气柱振动的波形更圆滑。" },
+      { id:"drum", name:"打击乐器", color:"#ff8a80", shape:"pulse", detail:"同一节奏下，鼓面振动起落更陡。" }
+    ];
+
+    const audioState = {
+      ctx: null,
+      input: null,
+      master: null,
+      activeGains: new Set(),
+      warned: false,
+      uiMuted: false,
+      uiUnlocked: false,
+      uiLast: new Map()
+    };
+
+    const state = {
+      currentTask: 0,
+      completed: false,
+      freeMode: false,
+      autoPlaying: false,
+      autoCancel: false,
+      draggingId: null,
+      dragOffset: { x:0, y:0 },
+      successCooldown: false,
+      stepWarning: false,
+      rafId: 0,
+      timers: new Set(),
+      width: 0,
+      height: 0,
+      stageWidth: 0,
+      stageHeight: 0,
+      rulerLength: 165,
+      rulerPhase: 0,
+      rulerAmp: 0,
+      rulerFreq: 250,
+      hammerPull: 0,
+      hammerPhase: 0,
+      forkAmp: 0,
+      ballOffset: 0,
+      selectedInstrument: null,
+      waveMode: "idle",
+      waveShape: "sine",
+      waveAmp: 18,
+      records: [],
+      unseenRecords: 0,
+      lastObservation: null,
+      analysisDone: false,
+      drawerDrag: null
+    };
+
+    function schedule(fn, ms) {
+      const id = setTimeout(() => {
+        state.timers.delete(id);
+        fn();
+      }, ms);
+      state.timers.add(id);
+      return id;
+    }
+
+    function clearAllTimers() {
+      for (const id of state.timers) clearTimeout(id);
+      state.timers.clear();
+    }
+
+    function resizeCanvas() {
+      const stageRect = stage.getBoundingClientRect();
+      const rect = labArea.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      state.width = rect.width;
+      state.height = rect.height;
+      state.stageWidth = stageRect.width;
+      state.stageHeight = stageRect.height;
+      canvas.width = Math.round(rect.width * dpr);
+      canvas.height = Math.round(rect.height * dpr);
+      canvas.style.width = `${rect.width}px`;
+      canvas.style.height = `${rect.height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      recordChart.width = Math.round(recordChart.clientWidth * dpr);
+      recordChart.height = Math.round(recordChart.clientHeight * dpr);
+      chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      fitDrawers();
+      draw();
+      drawRecordChart();
+    }
+
+    function initDots() {
+      dotsEl.innerHTML = "";
+      tasks.forEach(() => {
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        dotsEl.appendChild(dot);
+      });
+    }
+
+    function updateDots() {
+      [...dotsEl.children].forEach((dot, index) => {
+        dot.classList.toggle("done", state.completed || index < state.currentTask);
+        dot.classList.toggle("active", !state.completed && index === state.currentTask && !state.stepWarning);
+        dot.classList.toggle("warn", !state.completed && index === state.currentTask && state.stepWarning);
+      });
+    }
+
+    function setStepUI(index) {
+      const next = clamp(index, 0, tasks.length - 1);
+      state.currentTask = next;
+      state.stepWarning = false;
+      taskStepEl.textContent = `步骤 ${next + 1} / ${tasks.length}`;
+      taskTextEl.innerHTML = tasks[next].text;
+      taskHintEl.textContent = tasks[next].hint;
+      hintPop.textContent = tasks[next].detail;
+      updateDots();
+      updateStatus();
+      if (state.width && state.height) draw();
+    }
+
+    function updateStatus(text) {
+      if (text) {
+        statusTag.textContent = `状态：${text}`;
+        return;
+      }
+      if (state.completed) statusTag.textContent = "状态：已完成";
+      else if (state.autoPlaying) statusTag.textContent = "状态：自动演示";
+      else if (state.lastObservation) statusTag.textContent = `状态：${state.lastObservation.short}`;
+      else statusTag.textContent = "状态：待操作";
+    }
+
+    function setModeLabel() {
+      if (state.autoPlaying) modeTag.textContent = "模式：自动演示";
+      else modeTag.textContent = state.freeMode ? "模式：自由" : "模式：引导";
+    }
+
+    function showToast(message) {
+      toastEl.textContent = message;
+      toastEl.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toastEl.classList.remove("show"), 1500);
+    }
+
+    function showCheck() {
+      checkmarkEl.classList.add("active");
+      clearTimeout(showCheck.timer);
+      showCheck.timer = setTimeout(() => checkmarkEl.classList.remove("active"), 520);
+      playUiSound("step");
+    }
+
+    function warnCurrentStep(message) {
+      state.stepWarning = true;
+      updateDots();
+      hintLamp.classList.remove("flash");
+      void hintLamp.offsetWidth;
+      hintLamp.classList.add("flash");
+      showToast(message);
+      playUiSound("warn");
+      schedule(() => {
+        state.stepWarning = false;
+        updateDots();
+      }, 1200);
+    }
+
+    function hasRecord(key) {
+      return state.records.some((record) => record.key === key);
+    }
+
+    function uniqueRecordCount(category) {
+      return new Set(state.records.filter((record) => record.category === category).map((record) => record.key)).size;
+    }
+
+    function readyForAnalysis() {
+      return tasks[0].check() && tasks[1].check() && tasks[2].check();
+    }
+
+    function passStepIfReady({ quiet = false } = {}) {
+      if (state.freeMode || state.completed || state.successCooldown) return false;
+      if (!tasks[state.currentTask].check()) {
+        if (!quiet) warnCurrentStep("当前步骤的证据还不完整。");
+        return false;
+      }
+      state.successCooldown = true;
+      schedule(() => { state.successCooldown = false; }, 360);
+      showCheck();
+      if (state.currentTask >= tasks.length - 1) {
+        state.completed = true;
+        prepareCompletionView();
+        updateDots();
+        updateStatus();
+        doneMask.style.display = "flex";
+        playUiSound("finish");
+      } else {
+        setStepUI(state.currentTask + 1);
+      }
+      return true;
+    }
+
+    function prepareCompletionView() {
+      delete controlDrawer.dataset.moved;
+      delete dataDrawer.dataset.moved;
+      setDrawerCollapsed(controlDrawer, true);
+      setDrawerCollapsed(dataDrawer, false);
+    }
+
+    function setLastObservation(observation) {
+      state.lastObservation = observation;
+      updateReadouts();
+      updateStatus(observation.short);
+    }
+
+    function recordLastObservation({ auto = false } = {}) {
+      const obs = state.lastObservation;
+      if (!obs) {
+        warnCurrentStep("请先完成一次有效操作，再记录观察。");
+        return false;
+      }
+      if (!state.freeMode && state.currentTask === 0 && obs.category !== "pitch") {
+        warnCurrentStep("步骤1需要记录钢尺音调变化。");
+        return false;
+      }
+      if (!state.freeMode && state.currentTask === 1 && obs.category !== "loudness") {
+        warnCurrentStep("步骤2需要记录音叉响度变化。");
+        return false;
+      }
+      if (!state.freeMode && state.currentTask === 2 && obs.category !== "timbre") {
+        warnCurrentStep("步骤3需要记录不同乐器的音色差异。");
+        return false;
+      }
+      if (!state.freeMode && state.currentTask === 0 && !["pitch-low","pitch-high"].includes(obs.key)) {
+        warnCurrentStep("请分别记录长伸出低音调和短伸出高音调。");
+        return false;
+      }
+      if (!state.freeMode && state.currentTask === 1 && !["loud-soft","loud-loud"].includes(obs.key)) {
+        warnCurrentStep("请分别记录轻敲和重敲的响度。");
+        return false;
+      }
+      if (!state.records.some((record) => record.key === obs.key)) {
+        state.records.push({ ...obs, time: Date.now() });
+        if (dataDrawer.classList.contains("collapsed")) {
+          state.unseenRecords += 1;
+          updateBadge();
+        }
+        renderRecords();
+        showToast("已记录观察");
+        playUiSound("record");
+      } else if (!auto) {
+        showToast("这组现象已经记录过");
+      }
+      const beforeStep = state.currentTask;
+      const advanced = passStepIfReady({ quiet: true });
+      if (!advanced && !state.freeMode && beforeStep === state.currentTask) {
+        updateDots();
+      }
+      return true;
+    }
+
+    function renderRecords() {
+      recordTableBody.innerHTML = "";
+      state.records.forEach((record) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `<td>${record.label}</td><td>${record.action}</td><td>${record.note}</td>`;
+        recordTableBody.appendChild(row);
+      });
+      emptyRecords.style.display = state.records.length ? "none" : "block";
+      drawRecordChart();
+    }
+
+    function drawRecordChart() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = recordChart.clientWidth || 320;
+      const h = recordChart.clientHeight || 210;
+      const nextW = Math.round(w * dpr);
+      const nextH = Math.round(h * dpr);
+      if (recordChart.width !== nextW || recordChart.height !== nextH) {
+        recordChart.width = nextW;
+        recordChart.height = nextH;
+        chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      chartCtx.clearRect(0, 0, w, h);
+      chartCtx.fillStyle = "rgba(0,0,0,.16)";
+      chartCtx.fillRect(0, 0, w, h);
+      const rows = [
+        {
+          title:"频率 → 音调",
+          ready:hasRecord("pitch-low") && hasRecord("pitch-high"),
+          color:"#ffd54f",
+          left:"长尺：低频低音",
+          right:"短尺：高频高音",
+          draw:(x, y, rowW) => {
+            drawMiniWave(chartCtx, x, y, rowW * .42, 14, 1.5, 6, "rgba(255,213,79,.55)");
+            drawMiniWave(chartCtx, x + rowW * .54, y, rowW * .42, 14, 4.2, 6, "#ffd54f");
+          }
+        },
+        {
+          title:"振幅 → 响度",
+          ready:hasRecord("loud-soft") && hasRecord("loud-loud"),
+          color:"#3ddc97",
+          left:"轻敲：小振幅",
+          right:"重敲：大响度",
+          draw:(x, y, rowW) => {
+            drawMiniWave(chartCtx, x, y, rowW * .42, 7, 2.8, 5, "rgba(61,220,151,.5)");
+            drawMiniWave(chartCtx, x + rowW * .54, y, rowW * .42, 18, 2.8, 5, "#3ddc97");
+          }
+        },
+        {
+          title:"波形 → 音色",
+          ready:uniqueRecordCount("timbre") >= 2,
+          color:"#5bbcff",
+          left:"同音高",
+          right:"形状不同",
+          draw:(x, y, rowW) => {
+            drawMiniWave(chartCtx, x, y, rowW * .28, 12, 2.4, 4, "#5bbcff");
+            drawMiniWave(chartCtx, x + rowW * .35, y, rowW * .28, 12, 2.4, 4, "#ff8a80", "pulse");
+            drawMiniWave(chartCtx, x + rowW * .7, y, rowW * .28, 12, 2.4, 4, "#ffd166", "saw");
+          }
+        }
+      ];
+      chartCtx.font = "700 12px Arial";
+      rows.forEach((row, index) => {
+        const rowTop = 12 + index * 62;
+        const graphX = 92;
+        const graphW = Math.max(120, w - 112);
+        chartCtx.fillStyle = row.ready ? row.color : "rgba(255,255,255,.42)";
+        chartCtx.textAlign = "left";
+        chartCtx.fillText(row.title, 12, rowTop + 18);
+        chartCtx.strokeStyle = row.ready ? "rgba(255,255,255,.2)" : "rgba(255,255,255,.08)";
+        chartCtx.strokeRect(graphX, rowTop, graphW, 42);
+        row.draw(graphX + 8, rowTop + 21, graphW - 16);
+        chartCtx.fillStyle = "rgba(220,233,255,.7)";
+        chartCtx.font = "11px Arial";
+        chartCtx.fillText(row.left, graphX + 8, rowTop + 56);
+        chartCtx.textAlign = "right";
+        chartCtx.fillText(row.ready ? row.right : "待补证据", Math.min(w - 10, graphX + graphW), rowTop + 56);
+        chartCtx.font = "700 12px Arial";
+      });
+    }
+
+    function drawMiniWave(targetCtx, x, y, w, amp, freq, cycles, color, shape = "sine") {
+      targetCtx.save();
+      targetCtx.strokeStyle = color;
+      targetCtx.lineWidth = 2;
+      targetCtx.beginPath();
+      for (let i = 0; i <= w; i += 2) {
+        const p = i / w;
+        let v = Math.sin(p * Math.PI * 2 * freq);
+        if (shape === "pulse") v = Math.sin(p * Math.PI * 2 * freq) > .32 ? .8 : -.55;
+        if (shape === "saw") v = ((p * cycles) % 1) * 2 - 1;
+        const px = x + i;
+        const py = y + v * amp;
+        if (i === 0) targetCtx.moveTo(px, py);
+        else targetCtx.lineTo(px, py);
+      }
+      targetCtx.stroke();
+      targetCtx.restore();
+    }
+
+    function updateBadge() {
+      dataBadge.textContent = String(state.unseenRecords);
+      dataBadge.classList.toggle("show", state.unseenRecords > 0 && dataDrawer.classList.contains("collapsed"));
+    }
+
+    function updateReadouts() {
+      const cm = Math.round(mapRulerLengthToCm(state.rulerLength));
+      const pitch = state.rulerFreq >= 520 ? "高" : state.rulerFreq <= 330 ? "低" : "中";
+      pitchReadout.textContent = `伸出长度 ${cm} cm，音调${pitch}`;
+      if (state.forkAmp > 0 || state.ballOffset > 0) {
+        loudReadout.textContent = `振幅 ${Math.round(state.forkAmp)}，球偏转 ${Math.round(state.ballOffset)} px`;
+      } else {
+        loudReadout.textContent = "等待敲击";
+      }
+      if (state.selectedInstrument) {
+        const item = instruments.find((entry) => entry.id === state.selectedInstrument);
+        waveReadout.textContent = `${item.name}波形`;
+      } else if (state.waveMode === "pitch") {
+        waveReadout.textContent = `频率约 ${Math.round(state.rulerFreq)} Hz`;
+      } else if (state.waveMode === "loudness") {
+        waveReadout.textContent = `振幅约 ${Math.round(state.waveAmp)}`;
+      } else {
+        waveReadout.textContent = "等待观察";
+      }
+      summaryReadout.textContent = state.analysisDone ? "结论已归纳" : "未分析";
+    }
+
+    function ensureAudio() {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) {
+        if (!audioState.warned) {
+          audioState.warned = true;
+          showToast("当前浏览器不支持声音播放。");
+        }
+        return null;
+      }
+      if (!audioState.ctx) {
+        const ctx = new AudioCtx();
+        const compressor = ctx.createDynamicsCompressor();
+        const master = ctx.createGain();
+        compressor.threshold.value = -18;
+        compressor.knee.value = 22;
+        compressor.ratio.value = 7;
+        compressor.attack.value = 0.004;
+        compressor.release.value = 0.22;
+        master.gain.value = 0.82;
+        compressor.connect(master);
+        master.connect(ctx.destination);
+        audioState.ctx = ctx;
+        audioState.input = compressor;
+        audioState.master = master;
+      }
+      if (audioState.ctx.state === "suspended") {
+        audioState.ctx.resume().catch((error) => console.warn("音频恢复失败", error));
+      }
+      return audioState;
+    }
+
+    function syncAudioToggle() {
+      audioToggle.classList.toggle("muted", audioState.uiMuted);
+      audioToggle.classList.toggle("ready", audioState.uiUnlocked && !audioState.uiMuted);
+      audioToggle.textContent = audioState.uiMuted ? "🔇" : "🔊";
+      audioToggle.setAttribute("aria-pressed", String(!audioState.uiMuted));
+      audioToggle.title = audioState.uiMuted ? "开启音效" : (audioState.uiUnlocked ? "关闭音效" : "点击后开启音效");
+    }
+
+    function unlockLabAudio() {
+      const audio = ensureAudio();
+      if (!audio || !audio.ctx) {
+        syncAudioToggle();
+        return null;
+      }
+      audio.uiUnlocked = true;
+      if (audio.ctx.state === "suspended") {
+        audio.ctx.resume()
+          .then(() => {
+            audio.uiUnlocked = true;
+            syncAudioToggle();
+          })
+          .catch((error) => console.warn("界面音效解锁失败", error));
+      }
+      syncAudioToggle();
+      return audio;
+    }
+
+    function playUiSound(kind, { force = false } = {}) {
+      if (audioState.uiMuted) return;
+      const nowMs = performance.now();
+      const gap = kind === "finish" ? 520 : 120;
+      const last = audioState.uiLast.get(kind) || 0;
+      if (!force && nowMs - last < gap) return;
+      audioState.uiLast.set(kind, nowMs);
+      const audio = unlockLabAudio();
+      if (!audio || !audio.ctx || !audio.input) return;
+      const audioCtx = audio.ctx;
+      const start = audioCtx.currentTime + 0.012;
+      const patterns = {
+        record: {
+          peak: 0.12,
+          duration: 0.18,
+          tones: [
+            { frequency: 740, offset: 0, duration: 0.08, type: "triangle" },
+            { frequency: 988, offset: 0.055, duration: 0.08, type: "sine" }
+          ]
+        },
+        step: {
+          peak: 0.13,
+          duration: 0.24,
+          tones: [
+            { frequency: 660, offset: 0, duration: 0.07, type: "sine" },
+            { frequency: 880, offset: 0.085, duration: 0.1, type: "triangle" }
+          ]
+        },
+        finish: {
+          peak: 0.15,
+          duration: 0.5,
+          tones: [
+            { frequency: 523.25, offset: 0, duration: 0.14, type: "triangle" },
+            { frequency: 659.25, offset: 0.12, duration: 0.14, type: "triangle" },
+            { frequency: 783.99, offset: 0.24, duration: 0.2, type: "sine" }
+          ]
+        },
+        hint: {
+          peak: 0.08,
+          duration: 0.2,
+          tones: [
+            { frequency: 1046.5, offset: 0, duration: 0.07, type: "sine" },
+            { frequency: 1318.5, offset: 0.09, duration: 0.06, type: "sine" }
+          ]
+        },
+        warn: {
+          peak: 0.09,
+          duration: 0.28,
+          tones: [
+            { frequency: 220, offset: 0, duration: 0.12, type: "sawtooth" },
+            { frequency: 196, offset: 0.105, duration: 0.14, type: "sine" }
+          ]
+        }
+      };
+      const pattern = patterns[kind] || patterns.hint;
+      const output = audioCtx.createGain();
+      output.gain.setValueAtTime(0.0001, start);
+      output.gain.linearRampToValueAtTime(pattern.peak, start + 0.012);
+      output.gain.exponentialRampToValueAtTime(0.0001, start + pattern.duration);
+      output.connect(audio.input);
+      pattern.tones.forEach((tone) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        const toneStart = start + tone.offset;
+        osc.type = tone.type;
+        osc.frequency.setValueAtTime(tone.frequency, toneStart);
+        gain.gain.setValueAtTime(0.95, toneStart);
+        gain.gain.exponentialRampToValueAtTime(0.0001, toneStart + tone.duration);
+        osc.connect(gain);
+        gain.connect(output);
+        osc.start(toneStart);
+        osc.stop(toneStart + tone.duration + 0.04);
+      });
+      window.setTimeout(() => {
+        try {
+          output.disconnect();
+        } catch (error) {
+          console.warn("界面音效节点断开失败", error);
+        }
+      }, Math.ceil((pattern.duration + 0.25) * 1000));
+    }
+
+    window.labAudio = {
+      play: playUiSound,
+      setMuted(value) {
+        audioState.uiMuted = Boolean(value);
+        syncAudioToggle();
+      },
+      get muted() {
+        return audioState.uiMuted;
+      },
+      get unlocked() {
+        return audioState.uiUnlocked;
+      }
+    };
+
+    function createVoiceOutput(ctx, start, duration, peak) {
+      const output = ctx.createGain();
+      output.gain.setValueAtTime(0.0001, start);
+      output.gain.linearRampToValueAtTime(peak, start + 0.012);
+      output.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      output.connect(audioState.input);
+      audioState.activeGains.add(output.gain);
+      window.setTimeout(() => {
+        audioState.activeGains.delete(output.gain);
+        try {
+          output.disconnect();
+        } catch (error) {
+          console.warn("音频节点断开失败", error);
+        }
+      }, Math.ceil((duration + 0.35) * 1000));
+      return output;
+    }
+
+    function createNoiseSource(ctx, seconds) {
+      const length = Math.max(1, Math.floor(ctx.sampleRate * seconds));
+      const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < length; i += 1) {
+        const fade = 1 - i / length;
+        data[i] = (Math.random() * 2 - 1) * fade;
+      }
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      return source;
+    }
+
+    function addOscillator(ctx, output, start, duration, frequency, type, gainValue, detune = 0) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(Math.max(24, frequency), start);
+      osc.detune.setValueAtTime(detune, start);
+      gain.gain.setValueAtTime(gainValue, start);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(gain);
+      gain.connect(output);
+      osc.start(start);
+      osc.stop(start + duration + 0.04);
+      return osc;
+    }
+
+    function silenceActiveAudio() {
+      if (!audioState.ctx) return;
+      const now = audioState.ctx.currentTime;
+      audioState.activeGains.forEach((gain) => {
+        gain.cancelScheduledValues(now);
+        gain.setTargetAtTime(0.0001, now, 0.018);
+      });
+    }
+
+    function playRulerSound() {
+      const audio = ensureAudio();
+      if (!audio) return;
+      const ctx = audio.ctx;
+      const start = ctx.currentTime + 0.004;
+      const freq = clamp(state.rulerFreq, 170, 680);
+      const lengthRatio = clamp((state.rulerLength - 82) / 168, 0, 1);
+      const duration = lerp(0.86, 1.65, lengthRatio);
+      const output = createVoiceOutput(ctx, start, duration, 0.22);
+      const filter = ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(clamp(freq * 2.4, 520, 2200), start);
+      filter.Q.setValueAtTime(3.2, start);
+      filter.connect(output);
+      [
+        [1, "triangle", 0.72, 0],
+        [2.62, "sine", 0.34, -5],
+        [5.18, "sine", 0.18, 4],
+        [8.7, "sine", 0.08, -2]
+      ].forEach(([ratio, type, gain, detune]) => addOscillator(ctx, filter, start, duration, freq * ratio, type, gain, detune));
+      const noise = createNoiseSource(ctx, 0.075);
+      const noiseFilter = ctx.createBiquadFilter();
+      const noiseGain = ctx.createGain();
+      noiseFilter.type = "highpass";
+      noiseFilter.frequency.setValueAtTime(900, start);
+      noiseGain.gain.setValueAtTime(0.035, start);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.075);
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(output);
+      noise.start(start);
+      noise.stop(start + 0.08);
+    }
+
+    function playForkSound(pull) {
+      const audio = ensureAudio();
+      if (!audio) return;
+      const ctx = audio.ctx;
+      const start = ctx.currentTime + 0.006;
+      const strength = clamp(pull / 96, 0.16, 1.15);
+      const duration = lerp(1.25, 2.45, strength);
+      const output = createVoiceOutput(ctx, start, duration, lerp(0.07, 0.22, strength));
+      addOscillator(ctx, output, start, duration, 440, "sine", 0.92, -1.5);
+      addOscillator(ctx, output, start, duration * 0.82, 440.8, "sine", 0.38, 1.5);
+      addOscillator(ctx, output, start, duration * 0.45, 880, "sine", 0.055, 0);
+    }
+
+    function playGuitarSound(ctx, start) {
+      const output = createVoiceOutput(ctx, start, 1.45, 0.2);
+      const base = 392;
+      [1, 2, 3, 4, 5, 6].forEach((ratio, index) => {
+        addOscillator(ctx, output, start, 1.45 - index * 0.12, base * ratio, index === 0 ? "triangle" : "sine", 0.82 / (index + 1), index % 2 ? -4 : 3);
+      });
+      const pluck = createNoiseSource(ctx, 0.045);
+      const pluckGain = ctx.createGain();
+      pluckGain.gain.setValueAtTime(0.04, start);
+      pluckGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.045);
+      pluck.connect(pluckGain);
+      pluckGain.connect(output);
+      pluck.start(start);
+      pluck.stop(start + 0.05);
+    }
+
+    function playFluteSound(ctx, start) {
+      const duration = 1.35;
+      const output = createVoiceOutput(ctx, start, duration, 0.16);
+      const osc = ctx.createOscillator();
+      const vibrato = ctx.createOscillator();
+      const vibratoGain = ctx.createGain();
+      const breath = createNoiseSource(ctx, duration);
+      const breathFilter = ctx.createBiquadFilter();
+      const breathGain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(392, start);
+      vibrato.frequency.setValueAtTime(5.2, start);
+      vibratoGain.gain.setValueAtTime(8, start);
+      vibrato.connect(vibratoGain);
+      vibratoGain.connect(osc.detune);
+      breathFilter.type = "bandpass";
+      breathFilter.frequency.setValueAtTime(1700, start);
+      breathFilter.Q.setValueAtTime(0.8, start);
+      breathGain.gain.setValueAtTime(0.004, start);
+      breathGain.gain.linearRampToValueAtTime(0.018, start + 0.08);
+      breathGain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(output);
+      breath.connect(breathFilter);
+      breathFilter.connect(breathGain);
+      breathGain.connect(output);
+      osc.start(start);
+      vibrato.start(start);
+      breath.start(start);
+      osc.stop(start + duration + 0.02);
+      vibrato.stop(start + duration + 0.02);
+      breath.stop(start + duration + 0.02);
+    }
+
+    function playDrumSound(ctx, start) {
+      const output = createVoiceOutput(ctx, start, 0.62, 0.24);
+      const tone = ctx.createOscillator();
+      const toneGain = ctx.createGain();
+      const noise = createNoiseSource(ctx, 0.22);
+      const noiseFilter = ctx.createBiquadFilter();
+      const noiseGain = ctx.createGain();
+      tone.type = "sine";
+      tone.frequency.setValueAtTime(180, start);
+      tone.frequency.exponentialRampToValueAtTime(82, start + 0.28);
+      toneGain.gain.setValueAtTime(0.72, start);
+      toneGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.52);
+      noiseFilter.type = "lowpass";
+      noiseFilter.frequency.setValueAtTime(1100, start);
+      noiseGain.gain.setValueAtTime(0.18, start);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
+      tone.connect(toneGain);
+      toneGain.connect(output);
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(output);
+      tone.start(start);
+      noise.start(start);
+      tone.stop(start + 0.58);
+      noise.stop(start + 0.24);
+    }
+
+    function playInstrumentSound(id) {
+      const audio = ensureAudio();
+      if (!audio) return;
+      const ctx = audio.ctx;
+      const start = ctx.currentTime + 0.006;
+      if (id === "guitar") playGuitarSound(ctx, start);
+      else if (id === "flute") playFluteSound(ctx, start);
+      else if (id === "drum") playDrumSound(ctx, start);
+    }
+
+    function mapRulerLengthToCm(length) {
+      return 8 + (length - 82) * (16 / 168);
+    }
+
+    function pitchFromRuler(length) {
+      return clamp(780 - length * 2.65, 180, 640);
+    }
+
+    function rulerPitchKey(length) {
+      if (length >= 176) return "pitch-low";
+      if (length <= 122) return "pitch-high";
+      return "pitch-mid";
+    }
+
+    function pluckRuler() {
+      const key = rulerPitchKey(state.rulerLength);
+      state.rulerFreq = pitchFromRuler(state.rulerLength);
+      playRulerSound();
+      state.rulerAmp = 20;
+      state.waveMode = "pitch";
+      state.waveShape = "sine";
+      state.waveAmp = 18;
+      state.selectedInstrument = null;
+      const cm = Math.round(mapRulerLengthToCm(state.rulerLength));
+      const isHigh = key === "pitch-high";
+      const isLow = key === "pitch-low";
+      const label = isHigh ? "音调" : isLow ? "音调" : "音调";
+      const action = isHigh ? `短伸出 ${cm} cm 后拨动钢尺` : isLow ? `长伸出 ${cm} cm 后拨动钢尺` : `中等伸出 ${cm} cm 后拨动钢尺`;
+      const note = isHigh ? "钢尺振动快，波形密，音调高。" : isLow ? "钢尺振动慢，波形疏，音调低。" : "音调处在中间，可继续调长或调短比较。";
+      setLastObservation({
+        category:"pitch",
+        key,
+        label,
+        action,
+        note,
+        short: isHigh ? "短钢尺高音调" : isLow ? "长钢尺低音调" : "中等音调"
+      });
+      showToast(isHigh ? "短伸出：振动快，音调高" : isLow ? "长伸出：振动慢，音调低" : "继续调到更长或更短再比较");
+      animateFrame();
+    }
+
+    function strikeFork(pull) {
+      const strength = clamp(pull, 16, state.freeMode ? 110 : 95);
+      playForkSound(strength);
+      state.hammerPull = 0;
+      state.hammerPhase = 1;
+      state.forkAmp = strength * .34;
+      state.ballOffset = strength * .66;
+      state.waveMode = "loudness";
+      state.waveShape = "sine";
+      state.waveAmp = clamp(strength * .42, 10, 44);
+      state.selectedInstrument = null;
+      const key = strength >= 68 ? "loud-loud" : strength <= 42 ? "loud-soft" : "loud-mid";
+      const action = key === "loud-loud" ? "大幅拉开小锤后重敲音叉" : key === "loud-soft" ? "小幅拉开小锤后轻敲音叉" : "中等力度敲击音叉";
+      const note = key === "loud-loud" ? "音叉振幅大，乒乓球弹开幅度大，声音响。" : key === "loud-soft" ? "音叉振幅小，乒乓球弹开幅度小，声音较弱。" : "响度处在中间，可继续比较轻敲和重敲。";
+      setLastObservation({
+        category:"loudness",
+        key,
+        label:"响度",
+        action,
+        note,
+        short: key === "loud-loud" ? "重敲响度大" : key === "loud-soft" ? "轻敲响度小" : "中等响度"
+      });
+      showToast(key === "loud-loud" ? "振幅变大，声音更响" : key === "loud-soft" ? "振幅较小，声音较弱" : "继续比较更轻或更重的敲击");
+      animateFrame();
+    }
+
+    function selectInstrument(id) {
+      const item = instruments.find((entry) => entry.id === id);
+      if (!item) return;
+      playInstrumentSound(id);
+      state.selectedInstrument = id;
+      state.waveMode = "timbre";
+      state.waveShape = item.shape;
+      state.waveAmp = 20;
+      setLastObservation({
+        category:"timbre",
+        key:`timbre-${id}`,
+        label:"音色",
+        action:`选择${item.name}并观察波形`,
+        note:item.detail,
+        short:`${item.name}音色`
+      });
+      showToast(`${item.name}：波形形状改变，音色不同`);
+      animateFrame();
+    }
+
+    function analyzeConclusion() {
+      if (!readyForAnalysis()) {
+        warnCurrentStep("请先补齐音调、响度和音色的观察记录。");
+        return false;
+      }
+      state.analysisDone = true;
+      analysisText.innerHTML = "结论成立：钢尺伸出越短，振动越快，音调越高；音叉振幅越大，响度越大；不同乐器即使音调和响度相近，波形形状仍不同，说明音色与发声体材料、结构有关。";
+      updateReadouts();
+      showToast("已归纳声音的三个特性");
+      passStepIfReady({ quiet:true });
+      return true;
+    }
+
+    function resetScene({ keepMode = true } = {}) {
+      silenceActiveAudio();
+      stopAnimation();
+      clearAllTimers();
+      state.completed = false;
+      state.autoCancel = false;
+      state.draggingId = null;
+      state.stepWarning = false;
+      state.rulerLength = 165;
+      state.rulerPhase = 0;
+      state.rulerAmp = 0;
+      state.rulerFreq = pitchFromRuler(state.rulerLength);
+      state.hammerPull = 0;
+      state.hammerPhase = 0;
+      state.forkAmp = 0;
+      state.ballOffset = 0;
+      state.selectedInstrument = null;
+      state.waveMode = "idle";
+      state.waveShape = "sine";
+      state.waveAmp = 18;
+      state.records = [];
+      state.unseenRecords = 0;
+      state.lastObservation = null;
+      state.analysisDone = false;
+      if (!keepMode) state.freeMode = false;
+      doneMask.style.display = "none";
+      analysisText.textContent = "先完成钢尺、音叉和乐器波形三组体验，再归纳音调、响度和音色。";
+      renderRecords();
+      updateBadge();
+      setModeLabel();
+      setStepUI(0);
+      updateReadouts();
+      draw();
+    }
+
+    function setFreeMode(on) {
+      state.freeMode = !!on;
+      freeBtn.textContent = state.freeMode ? "退出自由模式" : "自由模式";
+      autoDemoBtn.disabled = state.freeMode;
+      setModeLabel();
+      if (state.freeMode) {
+        showToast("自由模式下可任意比较，不自动推进步骤。");
+      } else {
+        showToast("已回到引导模式。");
+      }
+      draw();
+    }
+
+    function setDrawerCollapsed(drawer, collapsed) {
+      drawer.classList.toggle("collapsed", collapsed);
+      const toggle = drawer === controlDrawer ? controlToggle : dataToggle;
+      toggle.textContent = collapsed ? "展开" : "收起";
+      if (drawer === dataDrawer && !collapsed) {
+        state.unseenRecords = 0;
+        updateBadge();
+      }
+      fitDrawers();
+      if (drawer === dataDrawer && !collapsed) drawRecordChart();
+    }
+
+    function fitDrawers() {
+      const areaWidth = state.stageWidth || state.width;
+      const areaHeight = state.stageHeight || state.height;
+      if (!areaWidth || !areaHeight) return;
+      [controlDrawer, dataDrawer].forEach((drawer, index) => {
+        const isMobile = areaWidth <= 720;
+        const collapsed = drawer.classList.contains("collapsed");
+        let targetWidth = 300;
+        if (isMobile && collapsed) targetWidth = Math.max(132, Math.min(152, Math.floor((areaWidth - 90) / 2)));
+        else if (isMobile) targetWidth = areaWidth - 24;
+        drawer.style.width = `${targetWidth}px`;
+        const rect = drawer.getBoundingClientRect();
+        let left = drawer.offsetLeft;
+        let top = drawer.offsetTop;
+        if (!drawer.dataset.moved) {
+          if (isMobile && collapsed) {
+            top = 52;
+            left = index === 0 ? areaWidth - (targetWidth * 2) - 18 : areaWidth - targetWidth - 8;
+          } else if (isMobile) {
+            left = 12;
+            if (index === 0) {
+              top = 104;
+            } else if (!controlDrawer.classList.contains("collapsed")) {
+              top = controlDrawer.offsetTop + controlDrawer.offsetHeight + 8;
+            } else {
+              top = 104;
+            }
+          } else {
+            const bothCollapsed = controlDrawer.classList.contains("collapsed") && dataDrawer.classList.contains("collapsed");
+            if (bothCollapsed && collapsed) {
+              top = 10;
+              left = index === 0
+                ? Math.max(12, areaWidth - rect.width - 12)
+                : Math.max(12, areaWidth - rect.width * 2 - 22);
+            } else {
+              left = Math.max(12, areaWidth - rect.width - 12);
+              top = index === 0 ? 10 : 94;
+            }
+          }
+        }
+        left = clamp(left, 8, Math.max(8, areaWidth - rect.width - 8));
+        top = clamp(top, 8, Math.max(8, areaHeight - 48));
+        drawer.style.left = `${left}px`;
+        drawer.style.right = "auto";
+        drawer.style.top = `${top}px`;
+      });
+    }
+
+    function pointerInRect(point, rect) {
+      return point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h;
+    }
+
+    function visibleSections() {
+      if (state.freeMode) {
+        return { ruler:true, fork:true, instruments:true, scope:true, summary:false };
+      }
+      if (state.currentTask === 0) return { ruler:true, fork:false, instruments:false, scope:true, summary:false };
+      if (state.currentTask === 1) return { ruler:false, fork:true, instruments:false, scope:true, summary:false };
+      if (state.currentTask === 2) return { ruler:false, fork:false, instruments:true, scope:true, summary:false };
+      return { ruler:false, fork:false, instruments:false, scope:true, summary:true };
+    }
+
+    function layout() {
+      const w = state.width;
+      const h = state.height;
+      const isNarrow = w < 720;
+      const visible = visibleSections();
+      const free = state.freeMode;
+      let clampX = Math.max(68, w * .11);
+      let rulerY = isNarrow ? Math.max(96, h * .18) : h * .24;
+      let forkX = isNarrow ? Math.max(118, w * .23) : Math.max(90, w * .17);
+      let forkY = isNarrow ? Math.max(340, h * .6) : h * .58;
+      let rulerScale = 1;
+      let forkScale = 1;
+      let instrumentScale = 1;
+      const scope = {
+        x: Math.max(270, w * .44),
+        y: Math.max(188, h * .36),
+        w: Math.min(360, w * .42),
+        h: Math.min(135, h * .23)
+      };
+      if (free) {
+        if (isNarrow) {
+          scope.x = 24;
+          scope.y = Math.min(h - 124, Math.max(forkY + 120, h * .78));
+          scope.w = w - 48;
+          scope.h = Math.min(118, h * .2);
+        }
+      } else if (state.currentTask === 0) {
+        rulerScale = isNarrow ? 1.18 : 1.28;
+        clampX = Math.max(54, (w - state.rulerLength * rulerScale) / 2 - 16);
+        rulerY = isNarrow ? h * .34 : h * .44;
+        scope.x = Math.max(36, (w - Math.min(520, w * .74)) / 2);
+        scope.y = isNarrow ? h * .68 : h * .64;
+        scope.w = Math.min(520, w - 72);
+        scope.h = Math.min(150, h * .24);
+      } else if (state.currentTask === 1) {
+        forkScale = isNarrow ? 1.55 : 1.8;
+        forkX = w / 2 - 68 * forkScale;
+        forkY = isNarrow ? h * .42 : h * .45;
+        scope.x = Math.max(36, (w - Math.min(520, w * .72)) / 2);
+        scope.y = isNarrow ? h * .72 : h * .67;
+        scope.w = Math.min(520, w - 72);
+        scope.h = Math.min(140, h * .22);
+      } else if (state.currentTask === 2) {
+        instrumentScale = isNarrow ? 1.15 : 1.35;
+        scope.x = Math.max(36, (w - Math.min(520, w * .72)) / 2);
+        scope.y = isNarrow ? h * .72 : h * .67;
+        scope.w = Math.min(520, w - 72);
+        scope.h = Math.min(140, h * .22);
+      } else {
+        scope.x = Math.max(36, (w - Math.min(620, w * .76)) / 2);
+        scope.y = isNarrow ? h * .48 : h * .44;
+        scope.w = Math.min(620, w - 72);
+        scope.h = Math.min(170, h * .26);
+      }
+      const rulerHandleR = 12 * rulerScale;
+      const rulerBodyH = 16 * rulerScale;
+      const instrumentCardW = free
+        ? (isNarrow ? (w - 64) / 3 : 96)
+        : (isNarrow ? Math.min(112, (w - 64) / 3) : 128);
+      const instrumentCardH = (free ? 76 : 92) * instrumentScale;
+      const instrumentGap = free ? 10 : (isNarrow ? 10 : 20);
+      const instrumentStartX = free
+        ? (isNarrow ? 32 : Math.max(560, w - 342))
+        : (w - (instrumentCardW * instrumentScale * 3 + instrumentGap * 2)) / 2;
+      const instrumentY = free
+        ? (isNarrow ? Math.max(174, Math.min(220, h * .34)) : h * .18)
+        : (isNarrow ? h * .3 : h * .34);
+      return {
+        visible,
+        ruler: {
+          clampX,
+          y: rulerY,
+          length: state.rulerLength,
+          scale: rulerScale,
+          h: rulerBodyH,
+          tip: { x: clampX + state.rulerLength * rulerScale - rulerHandleR, y: rulerY - 22 * rulerScale, w: rulerHandleR * 2, h: 44 * rulerScale },
+          body: { x: clampX, y: rulerY - rulerBodyH / 2, w: state.rulerLength * rulerScale, h: rulerBodyH }
+        },
+        fork: {
+          x: forkX,
+          y: forkY,
+          scale: forkScale,
+          hammer: { x: forkX - (82 + state.hammerPull) * forkScale, y: forkY - 34 * forkScale, w: 58 * forkScale, h: 52 * forkScale },
+          pullZone: { x: forkX - 150 * forkScale, y: forkY - 62 * forkScale, w: 130 * forkScale, h: 96 * forkScale }
+        },
+        scope,
+        instruments: instruments.map((item, index) => {
+          const cardW = instrumentCardW * instrumentScale;
+          return { ...item, x:instrumentStartX + index * (cardW + instrumentGap), y:instrumentY, w:cardW, h:instrumentCardH };
+        }),
+        summary: {
+          x: Math.max(36, (w - Math.min(620, w * .76)) / 2),
+          y: isNarrow ? Math.max(112, h * .18) : Math.max(110, h * .2),
+          w: Math.min(620, w - 72),
+          h: isNarrow ? 190 : 170
+        }
+      };
+    }
+
+    function drawRoundRect(x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.lineTo(x + w - rr, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+      ctx.lineTo(x + w, y + h - rr);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      ctx.lineTo(x + rr, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+      ctx.lineTo(x, y + rr);
+      ctx.quadraticCurveTo(x, y, x + rr, y);
+      ctx.closePath();
+    }
+
+    function draw() {
+      const w = state.width;
+      const h = state.height;
+      ctx.clearRect(0, 0, w, h);
+      drawBackground(w, h);
+      const boxes = layout();
+      if (boxes.visible.ruler) drawRuler(boxes.ruler);
+      if (boxes.visible.fork) drawTuningFork(boxes.fork);
+      if (boxes.visible.instruments) drawInstruments(boxes.instruments);
+      if (boxes.visible.scope) drawScope(boxes.scope);
+      if (boxes.visible.summary) drawSummaryBench(boxes.summary);
+      if (boxes.visible.ruler) drawLabels(boxes);
+    }
+
+    function drawBackground(w, h) {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,.045)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < w; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawRuler(ruler) {
+      const vib = Math.sin(state.rulerPhase) * state.rulerAmp;
+      const s = ruler.scale || 1;
+      const len = ruler.length * s;
+      const bodyH = ruler.h || 16;
+      const handleR = 12 * s;
+      const axisY = (localX, offset = vib) => {
+        const p = clamp(localX / Math.max(len, 1), 0, 1);
+        return ruler.y + offset * (p * p * (3 - 2 * p));
+      };
+      const drawRulerBody = (offset = vib) => {
+        const steps = 24;
+        ctx.beginPath();
+        for (let i = 0; i <= steps; i += 1) {
+          const x = len * i / steps;
+          const y = axisY(x, offset) - bodyH / 2;
+          if (i === 0) ctx.moveTo(ruler.clampX + x, y);
+          else ctx.lineTo(ruler.clampX + x, y);
+        }
+        for (let i = steps; i >= 0; i -= 1) {
+          const x = len * i / steps;
+          ctx.lineTo(ruler.clampX + x, axisY(x, offset) + bodyH / 2);
+        }
+        ctx.closePath();
+      };
+      ctx.save();
+      ctx.fillStyle = "rgba(20,24,28,.86)";
+      drawRoundRect(ruler.clampX - 34 * s, ruler.y - 44 * s, 36 * s, 88 * s, 8 * s);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.22)";
+      ctx.stroke();
+      if (state.rulerAmp > 2) {
+        ctx.strokeStyle = "rgba(91,188,255,.18)";
+        ctx.lineWidth = 1.4 * s;
+        [-state.rulerAmp * .58, state.rulerAmp * .58].forEach((offset) => {
+          ctx.beginPath();
+          for (let i = 0; i <= 24; i += 1) {
+            const x = len * i / 24;
+            const y = axisY(x, offset);
+            if (i === 0) ctx.moveTo(ruler.clampX + x, y);
+            else ctx.lineTo(ruler.clampX + x, y);
+          }
+          ctx.stroke();
+        });
+      }
+      ctx.fillStyle = "#cfd7df";
+      drawRulerBody();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,.45)";
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(34,38,45,.78)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= ruler.length; i += 10) {
+        const x = i * s;
+        const y = axisY(x) - bodyH / 2;
+        const tick = (i % 50 === 0 ? 11 : 7) * s;
+        ctx.beginPath();
+        ctx.moveTo(ruler.clampX + x, y);
+        ctx.lineTo(ruler.clampX + x, y + tick);
+        ctx.stroke();
+      }
+      const tipY = axisY(len);
+      ctx.fillStyle = "#5bbcff";
+      ctx.beginPath();
+      ctx.arc(ruler.clampX + len, tipY, handleR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(91,188,255,.5)";
+      ctx.beginPath();
+      ctx.moveTo(ruler.clampX + len - 28 * s, axisY(len - 28 * s));
+      ctx.quadraticCurveTo(ruler.clampX + len - 14 * s, axisY(len - 14 * s), ruler.clampX + len, tipY);
+      ctx.stroke();
+      ctx.fillStyle = "#eaf5ff";
+      ctx.textAlign = "center";
+      ctx.font = `700 ${Math.round(15 * s)}px Arial`;
+      ctx.fillText("钢尺音调台", ruler.clampX + len / 2, ruler.y - 58 * s);
+      ctx.font = `${Math.round(12 * s)}px Arial`;
+      ctx.fillStyle = "rgba(234,245,255,.72)";
+      ctx.fillText("拖动蓝色圆柄调长度，点击自由端拨动", ruler.clampX + len / 2, ruler.y + 46 * s);
+      ctx.restore();
+    }
+
+    function drawTuningFork(fork) {
+      const t = performance.now() / 1000;
+      const s = fork.scale || 1;
+      const osc = Math.sin(t * 28) * state.forkAmp * .12;
+      const baseX = fork.x;
+      const baseY = fork.y;
+      const ballR = 18 * s;
+      const forkRightEdge = baseX + 42 * s;
+      const ballAnchorX = forkRightEdge + ballR;
+      const ballAnchorY = baseY - 68 * s;
+      const swingAngle = clamp(state.ballOffset / 1200, 0, .08);
+      const stringLen = 74 * s;
+      const ballX = ballAnchorX + Math.sin(swingAngle) * stringLen;
+      const ballY = ballAnchorY + Math.cos(swingAngle) * stringLen;
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "rgba(255,255,255,.2)";
+      ctx.lineWidth = 2 * s;
+      ctx.beginPath();
+      ctx.moveTo(baseX - 32 * s, baseY + 54 * s);
+      ctx.lineTo(baseX + 154 * s, baseY + 54 * s);
+      ctx.stroke();
+      ctx.strokeStyle = "#e8eef5";
+      ctx.lineWidth = 8 * s;
+      ctx.beginPath();
+      ctx.moveTo(baseX + osc * s, baseY - 42 * s);
+      ctx.lineTo(baseX + osc * s, baseY + 20 * s);
+      ctx.moveTo(baseX + 38 * s - osc * s, baseY - 42 * s);
+      ctx.lineTo(baseX + 38 * s - osc * s, baseY + 20 * s);
+      ctx.moveTo(baseX, baseY + 20 * s);
+      ctx.quadraticCurveTo(baseX + 19 * s, baseY + 42 * s, baseX + 38 * s, baseY + 20 * s);
+      ctx.moveTo(baseX + 19 * s, baseY + 33 * s);
+      ctx.lineTo(baseX + 19 * s, baseY + 62 * s);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,.42)";
+      ctx.lineWidth = 1.5 * s;
+      ctx.beginPath();
+      ctx.moveTo(ballAnchorX, ballAnchorY);
+      ctx.lineTo(ballX, ballY);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,209,102,.96)";
+      ctx.beginPath();
+      ctx.arc(ballX, ballY, ballR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.68)";
+      ctx.stroke();
+      if (state.forkAmp > .8) {
+        drawSoundRings(baseX + 18 * s, baseY - 6 * s, s, state.forkAmp);
+      }
+      drawHammer(fork, osc);
+      ctx.fillStyle = "#eaf5ff";
+      ctx.textAlign = "left";
+      ctx.font = `700 ${Math.round(14 * s)}px Arial`;
+      ctx.fillText("音叉响度台", baseX - 46 * s, baseY - 70 * s);
+      ctx.font = `${Math.round(12 * s)}px Arial`;
+      ctx.fillStyle = "rgba(234,245,255,.72)";
+      ctx.fillText("拉开小锤松手，比较乒乓球偏转幅度", baseX - 46 * s, baseY + 88 * s);
+      ctx.restore();
+    }
+
+    function drawSoundRings(x, y, s, amp) {
+      ctx.save();
+      ctx.strokeStyle = `rgba(91,188,255,${clamp(amp / 42, .18, .55)})`;
+      ctx.lineWidth = 1.2 * s;
+      for (let i = 0; i < 3; i += 1) {
+        ctx.beginPath();
+        ctx.arc(x, y, (22 + i * 18) * s, -0.75, 0.75);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawHammer(fork, osc = 0) {
+      const s = fork.scale || 1;
+      const hammer = fork.hammer;
+      const pullAngle = clamp(state.hammerPull / 95, 0, 1) * -26;
+      ctx.save();
+      ctx.translate(hammer.x + (1.5 + osc) * s, hammer.y + 34 * s);
+      ctx.rotate((pullAngle * Math.PI) / 180);
+      ctx.strokeStyle = "#c2b59b";
+      ctx.lineWidth = 6 * s;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(48 * s, -28 * s);
+      ctx.stroke();
+      const headX = 58 * s;
+      const headY = -34 * s;
+      const headR = 17 * s;
+      const headGradient = ctx.createRadialGradient(headX - 5 * s, headY - 6 * s, 2 * s, headX, headY, headR);
+      headGradient.addColorStop(0, "#b47a58");
+      headGradient.addColorStop(1, "#7c4a35");
+      ctx.fillStyle = headGradient;
+      ctx.beginPath();
+      ctx.arc(headX, headY, headR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.26)";
+      ctx.lineWidth = 3 * s;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawInstruments(cards) {
+      ctx.save();
+      cards.forEach((card) => {
+        const active = state.selectedInstrument === card.id;
+        const iconR = Math.min(24, card.w * .18);
+        ctx.fillStyle = active ? "rgba(255,255,255,.18)" : "rgba(255,255,255,.08)";
+        ctx.strokeStyle = active ? card.color : "rgba(255,255,255,.16)";
+        ctx.lineWidth = active ? 2 : 1;
+        drawRoundRect(card.x, card.y, card.w, card.h, 8);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = card.color;
+        ctx.beginPath();
+        ctx.arc(card.x + card.w / 2, card.y + card.h * .36, iconR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#061018";
+        ctx.font = `700 ${Math.max(14, Math.round(card.w * .14))}px Arial`;
+        ctx.textAlign = "center";
+        const icon = card.id === "guitar" ? "弦" : card.id === "flute" ? "管" : "鼓";
+        ctx.fillText(icon, card.x + card.w / 2, card.y + card.h * .36 + 5);
+        ctx.fillStyle = "#eaf5ff";
+        ctx.font = `700 ${Math.max(13, Math.round(card.w * .12))}px Arial`;
+        ctx.fillText(card.name, card.x + card.w / 2, card.y + card.h - 16);
+      });
+      if (cards.length) {
+        ctx.fillStyle = "#eaf5ff";
+        ctx.textAlign = "left";
+        ctx.font = "700 16px Arial";
+        ctx.fillText("音色比较台", cards[0].x, cards[0].y - 16);
+      }
+      ctx.restore();
+    }
+
+    function drawScope(scope) {
+      ctx.save();
+      ctx.fillStyle = "rgba(1,7,11,.72)";
+      drawRoundRect(scope.x, scope.y, scope.w, scope.h, 8);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(91,188,255,.28)";
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(91,188,255,.12)";
+      ctx.lineWidth = 1;
+      for (let x = scope.x + 20; x < scope.x + scope.w; x += 30) {
+        ctx.beginPath();
+        ctx.moveTo(x, scope.y + 10);
+        ctx.lineTo(x, scope.y + scope.h - 22);
+        ctx.stroke();
+      }
+      for (let y = scope.y + 18; y < scope.y + scope.h - 20; y += 24) {
+        ctx.beginPath();
+        ctx.moveTo(scope.x + 10, y);
+        ctx.lineTo(scope.x + scope.w - 10, y);
+        ctx.stroke();
+      }
+      const mid = scope.y + scope.h * .48;
+      ctx.strokeStyle = "rgba(56,217,141,.95)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const freq = state.waveMode === "pitch" ? state.rulerFreq / 110 : 3.4;
+      for (let i = 0; i <= scope.w - 24; i += 2) {
+        const x = scope.x + 12 + i;
+        const p = i / (scope.w - 24);
+        const y = mid + waveValue(p, freq) * state.waveAmp;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.fillStyle = "#dcefff";
+      ctx.font = "12px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText(scopeLabel(), scope.x + 12, scope.y + scope.h - 10);
+      ctx.restore();
+    }
+
+    function drawSummaryBench(summary) {
+      ctx.save();
+      drawRoundRect(summary.x, summary.y, summary.w, summary.h, 12);
+      ctx.fillStyle = "rgba(255,255,255,.07)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,.16)";
+      ctx.stroke();
+      ctx.fillStyle = "#eaf5ff";
+      ctx.font = "700 18px Arial";
+      ctx.textAlign = "left";
+      ctx.fillText("声音特性归纳台", summary.x + 18, summary.y + 30);
+      const rows = [
+        { name:"音调", factor:"频率", evidence:hasRecord("pitch-low") && hasRecord("pitch-high"), color:"#ffd54f" },
+        { name:"响度", factor:"振幅", evidence:hasRecord("loud-soft") && hasRecord("loud-loud"), color:"#3ddc97" },
+        { name:"音色", factor:"材料、结构和振动方式", evidence:uniqueRecordCount("timbre") >= 2, color:"#5bbcff" }
+      ];
+      rows.forEach((row, index) => {
+        const y = summary.y + 58 + index * 36;
+        ctx.fillStyle = row.evidence ? row.color : "rgba(255,255,255,.3)";
+        ctx.beginPath();
+        ctx.arc(summary.x + 24, y - 4, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = row.evidence ? "#f3f9ff" : "rgba(220,233,255,.52)";
+        ctx.font = "700 14px Arial";
+        ctx.fillText(`${row.name} ← ${row.factor}`, summary.x + 42, y);
+        ctx.font = "12px Arial";
+        ctx.fillStyle = "rgba(220,233,255,.72)";
+        ctx.fillText(row.evidence ? "证据已记录" : "还缺观察记录", summary.x + summary.w - 110, y);
+      });
+      ctx.restore();
+    }
+
+    function waveValue(p, freq) {
+      const phase = p * Math.PI * 2 * freq + state.rulerPhase * .08;
+      if (state.waveShape === "saw") {
+        return ((p * freq) % 1) * 2 - 1;
+      }
+      if (state.waveShape === "pulse") {
+        return Math.sin(phase) > .35 ? .9 : -.55;
+      }
+      return Math.sin(phase);
+    }
+
+    function scopeLabel() {
+      if (state.waveMode === "pitch") return `钢尺波形：频率约 ${Math.round(state.rulerFreq)} Hz`;
+      if (state.waveMode === "loudness") return `音叉波形：振幅约 ${Math.round(state.waveAmp)}`;
+      if (state.waveMode === "timbre") {
+        const item = instruments.find((entry) => entry.id === state.selectedInstrument);
+        return `乐器波形：${item ? item.name : ""}的音色`;
+      }
+      return "示波器：等待声音信号";
+    }
+
+    function drawLabels(boxes) {
+      ctx.save();
+      ctx.fillStyle = "rgba(255,255,255,.7)";
+      ctx.font = "12px Arial";
+      ctx.textAlign = "center";
+      const cm = Math.round(mapRulerLengthToCm(state.rulerLength));
+      const s = boxes.ruler.scale || 1;
+      ctx.fillText(`伸出长度约 ${cm} cm`, boxes.ruler.clampX + boxes.ruler.length * s / 2, boxes.ruler.y + 68 * s);
+      ctx.restore();
+    }
+
+    function animateFrame() {
+      if (state.rafId) return;
+      const tick = () => {
+        state.rulerPhase += state.rulerFreq / 55;
+        state.rulerAmp *= .94;
+        state.forkAmp *= .95;
+        state.ballOffset *= .965;
+        if (state.hammerPhase > 0) state.hammerPhase *= .8;
+        draw();
+        if (state.rulerAmp > .4 || state.forkAmp > .4 || state.ballOffset > .5) {
+          state.rafId = requestAnimationFrame(tick);
+        } else {
+          state.rulerAmp = 0;
+          state.forkAmp = 0;
+          state.ballOffset = 0;
+          state.rafId = 0;
+          draw();
+        }
+      };
+      state.rafId = requestAnimationFrame(tick);
+    }
+
+    function stopAnimation() {
+      if (state.rafId) cancelAnimationFrame(state.rafId);
+      state.rafId = 0;
+      demoCursor.style.opacity = "0";
+    }
+
+    function stagePoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      };
+    }
+
+    function onCanvasPointerDown(event) {
+      if (state.autoPlaying) return;
+      const p = stagePoint(event);
+      const boxes = layout();
+      if (boxes.visible.ruler && pointerInRect(p, boxes.ruler.tip)) {
+        state.draggingId = "ruler";
+        canvas.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+      if (boxes.visible.fork && pointerInRect(p, boxes.fork.pullZone)) {
+        state.draggingId = "hammer";
+        canvas.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+      const card = boxes.visible.instruments ? boxes.instruments.find((item) => pointerInRect(p, item)) : null;
+      if (card) {
+        selectInstrument(card.id);
+        return;
+      }
+      if (boxes.visible.ruler && pointerInRect(p, boxes.ruler.body)) {
+        pluckRuler();
+      }
+    }
+
+    function onCanvasPointerMove(event) {
+      if (!state.draggingId || state.autoPlaying) return;
+      const p = stagePoint(event);
+      const boxes = layout();
+      if (state.draggingId === "ruler") {
+        const min = state.freeMode ? 72 : 84;
+        const max = state.freeMode ? 258 : 235;
+        state.rulerLength = clamp((p.x - boxes.ruler.clampX) / (boxes.ruler.scale || 1), min, max);
+        state.rulerFreq = pitchFromRuler(state.rulerLength);
+        updateReadouts();
+        draw();
+      } else if (state.draggingId === "hammer") {
+        const s = boxes.fork.scale || 1;
+        state.hammerPull = clamp((boxes.fork.x - p.x) / s - 82, 0, state.freeMode ? 112 : 96);
+        loudReadout.textContent = `拉开 ${Math.round(state.hammerPull)} px`;
+        draw();
+      }
+      event.preventDefault();
+    }
+
+    function onCanvasPointerUp(event) {
+      if (!state.draggingId) return;
+      const ended = state.draggingId;
+      state.draggingId = null;
+      try {
+        canvas.releasePointerCapture(event.pointerId);
+      } catch {}
+      if (ended === "hammer") {
+        const pull = state.hammerPull;
+        if (pull < 12) {
+          state.hammerPull = 0;
+          draw();
+          showToast("把小锤向左拉开后再松手敲击。");
+        } else {
+          strikeFork(pull);
+        }
+      }
+      event.preventDefault();
+    }
+
+    function bindDrawer(drawer) {
+      const header = drawer.querySelector("[data-drag-handle]");
+      header.addEventListener("pointerdown", (event) => {
+        if (event.target.tagName === "BUTTON") return;
+        const rect = drawer.getBoundingClientRect();
+        const parent = stage.getBoundingClientRect();
+        drawer.dataset.moved = "true";
+        state.drawerDrag = {
+          drawer,
+          dx: event.clientX - rect.left,
+          dy: event.clientY - rect.top,
+          parentLeft: parent.left,
+          parentTop: parent.top
+        };
+        header.setPointerCapture(event.pointerId);
+        event.preventDefault();
+      });
+      header.addEventListener("pointermove", (event) => {
+        if (!state.drawerDrag || state.drawerDrag.drawer !== drawer) return;
+        const drag = state.drawerDrag;
+        const width = drawer.offsetWidth;
+        const height = drawer.offsetHeight;
+        const areaWidth = state.stageWidth || state.width;
+        const areaHeight = state.stageHeight || state.height;
+        const left = clamp(event.clientX - drag.parentLeft - drag.dx, 6, Math.max(6, areaWidth - width - 6));
+        const top = clamp(event.clientY - drag.parentTop - drag.dy, 6, Math.max(6, areaHeight - Math.min(height, 48) - 6));
+        drawer.style.left = `${left}px`;
+        drawer.style.top = `${top}px`;
+        drawer.style.right = "auto";
+        event.preventDefault();
+      });
+      header.addEventListener("pointerup", (event) => {
+        if (!state.drawerDrag) return;
+        try { header.releasePointerCapture(event.pointerId); } catch {}
+        state.drawerDrag = null;
+      });
+      header.addEventListener("pointercancel", () => {
+        state.drawerDrag = null;
+      });
+    }
+
+    function moveCursorTo(x, y, visible = true) {
+      const stageRect = stage.getBoundingClientRect();
+      const sceneRect = labArea.getBoundingClientRect();
+      const offsetX = sceneRect.left - stageRect.left;
+      const offsetY = sceneRect.top - stageRect.top;
+      demoCursor.style.opacity = visible ? "1" : "0";
+      demoCursor.style.transform = `translate(${offsetX + x - 10}px, ${offsetY + y - 10}px)`;
+    }
+
+    function clickCursor() {
+      demoCursor.classList.remove("click");
+      void demoCursor.offsetWidth;
+      demoCursor.classList.add("click");
+    }
+
+    async function animateCursorPath(points, duration = 500) {
+      if (points.length === 1) {
+        moveCursorTo(points[0].x, points[0].y);
+        await sleep(duration);
+        return;
+      }
+      const start = performance.now();
+      while (performance.now() - start < duration) {
+        if (state.autoCancel) throw new Error("AUTO_CANCELLED");
+        const t = (performance.now() - start) / duration;
+        const segment = Math.min(points.length - 2, Math.floor(t * (points.length - 1)));
+        const localT = (t * (points.length - 1)) - segment;
+        const a = points[segment];
+        const b = points[segment + 1];
+        moveCursorTo(lerp(a.x, b.x, localT), lerp(a.y, b.y, localT));
+        await sleep(16);
+      }
+      const last = points[points.length - 1];
+      moveCursorTo(last.x, last.y);
+    }
+
+    async function animateRulerLength(targetLength) {
+      const boxes = layout();
+      const start = state.rulerLength;
+      const s = boxes.ruler.scale || 1;
+      const from = { x: boxes.ruler.clampX + start * s, y: boxes.ruler.y };
+      const to = { x: boxes.ruler.clampX + targetLength * s, y: boxes.ruler.y };
+      await animateCursorPath([from, to], 520);
+      for (let i = 0; i <= 20; i += 1) {
+        if (state.autoCancel) throw new Error("AUTO_CANCELLED");
+        state.rulerLength = lerp(start, targetLength, i / 20);
+        state.rulerFreq = pitchFromRuler(state.rulerLength);
+        updateReadouts();
+        draw();
+        await sleep(20);
+      }
+      clickCursor();
+    }
+
+    async function animateHammerStrike(strength, duration = 500) {
+      const boxes = layout();
+      const fork = boxes.fork;
+      const s = fork.scale || 1;
+      const start = { x: fork.hammer.x + fork.hammer.w * .7, y: fork.hammer.y + fork.hammer.h * .48 };
+      const target = {
+        x: fork.x - (82 + strength) * s + fork.hammer.w * .62,
+        y: fork.hammer.y + fork.hammer.h * .48
+      };
+      await animateCursorPath([start, target], duration);
+      state.hammerPull = strength;
+      draw();
+      clickCursor();
+      await sleep(260);
+      strikeFork(strength);
+    }
+
+    async function autoRecord(expectedKey) {
+      const before = state.records.length;
+      const ok = recordLastObservation({ auto:true });
+      await sleep(260);
+      if (!ok || !hasRecord(expectedKey) || state.records.length <= before) {
+        throw new Error(`AUTO_RECORD_NOT_PERSISTED:${expectedKey}`);
+      }
+    }
+
+    async function runAutoDemo() {
+      if (state.autoPlaying) {
+        state.autoCancel = true;
+        return;
+      }
+      unlockLabAudio();
+      state.autoPlaying = true;
+      state.autoCancel = false;
+      autoDemoBtn.textContent = "退出自动演示";
+      freeBtn.disabled = true;
+      setDrawerCollapsed(controlDrawer, false);
+      setDrawerCollapsed(dataDrawer, false);
+      setModeLabel();
+      resetScene({ keepMode:false });
+      state.autoPlaying = true;
+      autoDemoBtn.textContent = "退出自动演示";
+      setModeLabel();
+      try {
+        setStepUI(0);
+        await animateRulerLength(218);
+        pluckRuler();
+        await sleep(520);
+        await autoRecord("pitch-low");
+        await animateRulerLength(96);
+        pluckRuler();
+        await sleep(520);
+        await autoRecord("pitch-high");
+        setStepUI(1);
+        await sleep(260);
+
+        await animateHammerStrike(30, 420);
+        await sleep(520);
+        await autoRecord("loud-soft");
+
+        await animateHammerStrike(86, 520);
+        await sleep(520);
+        await autoRecord("loud-loud");
+        setStepUI(2);
+        await sleep(260);
+
+        let cards = layout().instruments;
+        await animateCursorPath([{ x: cards[0].x + cards[0].w / 2, y: cards[0].y + 38 }], 120);
+        clickCursor();
+        selectInstrument(cards[0].id);
+        await sleep(430);
+        await autoRecord(`timbre-${cards[0].id}`);
+        cards = layout().instruments;
+        await animateCursorPath([{ x: cards[1].x + cards[1].w / 2, y: cards[1].y + 38 }], 360);
+        clickCursor();
+        selectInstrument(cards[1].id);
+        await sleep(430);
+        await autoRecord(`timbre-${cards[1].id}`);
+        setStepUI(3);
+        await sleep(320);
+        analyzeConclusion();
+      } catch (error) {
+        if (String(error.message || error) !== "AUTO_CANCELLED") {
+          showToast(`自动演示中断：${error.message || error}`);
+        } else {
+          showToast("已退出自动演示");
+        }
+      } finally {
+        state.autoPlaying = false;
+        state.autoCancel = false;
+        autoDemoBtn.textContent = "自动演示";
+        freeBtn.disabled = false;
+        demoCursor.style.opacity = "0";
+        setModeLabel();
+        updateStatus();
+        draw();
+      }
+    }
+
+    function initEvents() {
+      document.addEventListener("pointerdown", () => {
+        unlockLabAudio();
+      }, { passive:true });
+      canvas.addEventListener("pointerdown", onCanvasPointerDown);
+      canvas.addEventListener("pointermove", onCanvasPointerMove);
+      canvas.addEventListener("pointerup", onCanvasPointerUp);
+      canvas.addEventListener("pointercancel", onCanvasPointerUp);
+      recordBtn.addEventListener("click", () => recordLastObservation());
+      analyzeBtn.addEventListener("click", analyzeConclusion);
+      resetBtn.addEventListener("click", () => {
+        const free = state.freeMode;
+        resetScene();
+        state.freeMode = free;
+        setFreeMode(free);
+        showToast("已重置当前实验。");
+      });
+      autoDemoBtn.addEventListener("click", runAutoDemo);
+      freeBtn.addEventListener("click", () => setFreeMode(!state.freeMode));
+      controlToggle.addEventListener("click", () => setDrawerCollapsed(controlDrawer, !controlDrawer.classList.contains("collapsed")));
+      dataToggle.addEventListener("click", () => setDrawerCollapsed(dataDrawer, !dataDrawer.classList.contains("collapsed")));
+      audioToggle.addEventListener("click", (event) => {
+        event.stopPropagation();
+        audioState.uiMuted = !audioState.uiMuted;
+        if (!audioState.uiMuted) {
+          unlockLabAudio();
+          playUiSound("hint", { force:true });
+        }
+        syncAudioToggle();
+      });
+      hintLamp.addEventListener("click", () => {
+        hintPop.classList.toggle("open");
+        playUiSound("hint");
+      });
+      okBtn.addEventListener("click", () => {
+        doneMask.style.display = "none";
+      });
+      bindDrawer(controlDrawer);
+      bindDrawer(dataDrawer);
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeCanvas.timer);
+        resizeCanvas.timer = setTimeout(resizeCanvas, 120);
+      });
+    }
+
+    function init() {
+      initDots();
+      initEvents();
+      syncAudioToggle();
+      resizeCanvas();
+      setDrawerCollapsed(controlDrawer, true);
+      setDrawerCollapsed(dataDrawer, true);
+      resetScene();
+      requestAnimationFrame(() => {
+        resizeCanvas();
+        draw();
+      });
+      setTimeout(() => {
+        resizeCanvas();
+        draw();
+      }, 180);
+    }
+
+    init();
+  </script>
+</body>
+</html>
