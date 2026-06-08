@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1" />
+<title>海底气泡沉船 · 交互版</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97; --warn:#ffb74d; --ink:#e9f2ff;
+    --ocean-top:#0066b2; --ocean-bottom:#001a33;
+  }
+  body{
+    background:#0e0f13; color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+    margin:0; padding:10px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡 */
+  .task-card{
+    width:100%; max-width:980px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;
+    padding:12px 14px;
+    backdrop-filter:blur(6px);
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    align-items:center;
+    gap:10px;
+    transition:opacity .2s, filter .2s;
+  }
+  .task-step{
+    background:rgba(255,255,255,.15);
+    border-radius:8px;
+    padding:6px 10px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .task-text{ line-height:1.55; }
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{
+    width:10px; height:10px; border-radius:50%;
+    background:rgba(255,255,255,.25);
+    outline:2px solid rgba(255,255,255,.15);
+  }
+  .dot.active{ background:var(--warn); }
+  .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,.5); }
+
+  /* 舞台 */
+  #stageWrap{
+    width:100%; max-width:980px;
+    height:60vh; max-height:560px;
+    margin-top:10px;
+  }
+  #stage{
+    position:relative;
+    width:100%; height:100%;
+    border-radius:12px; overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+    background:linear-gradient(to top, var(--ocean-bottom) 60%, #87ceeb 60%);
+  }
+
+  .ocean{
+    position:absolute; left:0; right:0; bottom:0; height:62%;
+    background:linear-gradient(to top, var(--ocean-bottom) 0%, var(--ocean-top) 100%);
+    overflow:hidden;
+  }
+  .surface{
+    position:absolute; left:-10%; width:120%; height:16%;
+    top:-8px;
+    background:radial-gradient(ellipse at center, rgba(255,255,255,.45), rgba(255,255,255,.10) 60%, rgba(255,255,255,0) 70%);
+    opacity:.25; filter:blur(8px);
+    animation:wave 6s ease-in-out infinite;
+  }
+  @keyframes wave{
+    0%,100%{ transform:translateY(0) translateX(0); }
+    50%{ transform:translateY(-6px) translateX(8px); }
+  }
+
+  /* 轮船 */
+  #ship{
+    position:absolute;
+    width:220px;
+    bottom:calc(62% - 30px);
+    left:50%;
+    transform:translateX(-50%) rotate(0deg);
+    transition: bottom 2.4s ease, transform 2.4s ease;
+    z-index:5;
+    filter: drop-shadow(0 8px 14px rgba(0,0,0,.35));
+  }
+  #ship.tilt{
+    bottom:calc(50% - 30px);
+    transform:translateX(-50%) rotate(6deg);
+  }
+  #ship.sink{
+    bottom:calc(44% - 30px);
+    transform:translateX(-50%) rotate(10deg);
+  }
+
+  /* 气泡 */
+  .bubble{
+    position:absolute; bottom:0;
+    border-radius:50%;
+    background:radial-gradient(circle at 30% 30%, #fff, rgba(255,255,255,.78) 45%, rgba(255,255,255,.1) 70%);
+    box-shadow:0 0 10px rgba(255,255,255,.4);
+    opacity:.95;
+    pointer-events:none;
+    --rise:180px; --drift:10px; --dur:2.2s;
+    animation: rise var(--dur) ease-out forwards,
+               drift calc(var(--dur)*1.05) ease-in-out forwards;
+  }
+  @keyframes rise{
+    to{ transform:translateY(calc(-1*var(--rise))); }
+  }
+  @keyframes drift{
+    0%{ margin-left:0; opacity:.95; }
+    50%{ margin-left:var(--drift); }
+    100%{ margin-left:calc(var(--drift)*0.2); opacity:.98; }
+  }
+
+  /* 画面内控制面板 */
+  .in-canvas{
+    position:absolute;
+    right:12px; top:12px;
+    z-index:10;
+    display:flex; flex-direction:column; gap:8px;
+    background:rgba(0,0,0,.55);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;
+    padding:8px;
+    backdrop-filter:blur(6px);
+    min-width:150px;
+  }
+  .in-canvas button, .toolbar button{
+    padding:8px 12px;
+    background:#444; color:#fff;
+    border:none; border-radius:8px;
+    cursor:pointer;
+    transition:background .25s, transform .05s, opacity .2s;
+    user-select:none;
+    font-size:14px;
+    touch-action: manipulation;
+  }
+  .in-canvas button:hover, .toolbar button:hover{ background:#5a5a5a; }
+  .in-canvas button:active, .toolbar button:active{ transform:scale(.98); }
+  .in-canvas button:disabled, .toolbar button:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .rateBox{ margin-top:6px; }
+  #rateLabel{ font-size:12px; color:#e0f2ff; margin-bottom:2px; }
+  #rateSlider{ width:140px; }
+  .rateTicks{
+    display:flex; justify-content:space-between;
+    font-size:11px; opacity:.8; margin-top:1px;
+  }
+
+  /* 对勾、Toast、完成弹窗 */
+  .checkmark{
+    position:absolute; z-index:50;
+    left:50%; top:22%;
+    transform:translate(-50%,-50%) scale(.6);
+    width:120px; height:120px;
+    border-radius:50%;
+    background:rgba(61,220,151,.15);
+    border:3px solid var(--accent);
+    display:none; align-items:center; justify-content:center;
+    box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);
+  }
+  .checkmark.active{ display:flex; }
+  .checkmark>div{
+    width:60px; height:30px;
+    border-left:8px solid var(--accent);
+    border-bottom:8px solid var(--accent);
+    transform:rotate(-45deg) translateY(-6px);
+  }
+
+  .toast{
+    position:fixed; left:50%; bottom:24px;
+    transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,.8); color:#fff;
+    padding:10px 14px;
+    border-radius:10px;
+    box-shadow:0 6px 18px rgba(0,0,0,.35);
+    font-size:14px;
+    opacity:0; pointer-events:none;
+    transition:opacity .25s, transform .25s;
+    z-index:200;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.5);
+    display:none; align-items:center; justify-content:center;
+    z-index:300;
+  }
+  .modal{
+    width:min(90vw,360px);
+    background:#111; color:#fff;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:14px;
+    padding:18px 16px;
+    text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+  .modal h3{ margin:8px 0 6px; font-size:20px; }
+  .modal p{ color:#cfd8dc; margin-top:0; }
+  .modal .ok{
+    margin-top:12px;
+    background:var(--accent); color:#081a12;
+    font-weight:700;
+    border:none; border-radius:10px;
+    padding:10px 14px;
+  }
+
+  /* 底部三按钮 */
+  .toolbar{
+    width:100%; max-width:980px;
+    margin-top:10px;
+    display:flex; gap:10px; flex-wrap:wrap;
+    justify-content:flex-start;
+  }
+
+  /* 说明 */
+  .explain{
+    width:100%; max-width:980px;
+    margin:14px 0 20px;
+    line-height:1.65;
+    font-size:.95em;
+    color:var(--ink);
+  }
+  .explain h2{
+    margin:.2em 0 .4em;
+    color:#9bd3ff;
+    font-size:1.15em;
+  }
+
+  @media (max-width:600px){
+    .in-canvas{ font-size:13px; }
+    .toolbar button{ flex:1; }
+  }
+</style>
+</head>
+<body>
+  <!-- 顶部彩条 -->
+  <div id="spectrum"></div>
+
+  <!-- 步骤卡 -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">
+        保持<strong>气泡速率为「低」</strong>，点击右上角<strong>「冒泡」</strong>几次，观察：船依然稳定漂浮。
+      </div>
+      <div class="task-hint" id="taskHint">提示：速率低，气泡不够密集，不足以明显改变浮力平衡。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <!-- 舞台 -->
+  <div id="stageWrap">
+    <div id="stage">
+      <div class="ocean" id="ocean">
+        <div class="surface"></div>
+      </div>
+
+      <!-- 轮船 -->
+      <div id="ship" aria-label="轮船">
+        <svg width="220" height="120" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+          <!-- 船身与甲板 -->
+          <polygon points="0,80 200,80 180,100 20,100" fill="#555"/>
+          <rect x="20" y="60" width="160" height="20" fill="#eee"/>
+          <rect x="50" y="40" width="100" height="30" fill="#ccc"/>
+          <!-- 舷窗 -->
+          <g fill="#888">
+            <rect x="60" y="50" width="15" height="10"/>
+            <rect x="90" y="50" width="15" height="10"/>
+            <rect x="120" y="50" width="15" height="10"/>
+          </g>
+          <!-- 桅杆 -->
+          <rect x="85" y="20" width="10" height="20" fill="#777"/>
+          <rect x="105" y="20" width="10" height="20" fill="#777"/>
+        </svg>
+      </div>
+
+      <!-- 画面内控制 -->
+      <div class="in-canvas">
+        <button id="bubbleBtn">冒泡</button>
+        <button id="sceneResetBtn">重置场景</button>
+
+        <div class="rateBox">
+          <div id="rateLabel">气泡速率：低</div>
+          <input type="range" id="rateSlider" min="1" max="3" step="1" value="1" />
+          <div class="rateTicks">
+            <span>低</span><span>中</span><span>高</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 对勾 -->
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <!-- 底部三按钮 -->
+  <div class="toolbar">
+    <button id="stepResetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">再试一试：请按当前步骤的提示来操作</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你体验了：低速少量气泡→中速气泡变密船开始倾斜→（系统已复位）高速大量气泡让船再次明显下沉。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h2>为什么「气泡速率很大 + 大量气泡聚在船底」会让船下沉？</h2>
+    <ul>
+      <li><b>浮力公式（概念版）</b>：浮力 ≈「周围水的平均密度」×「排开体积」× g。</li>
+      <li><b>气泡越多、越密集</b>，水里掺杂的空气越多，船底附近的「水 + 气泡」平均密度越低。</li>
+      <li><b>当平均密度降低到一定程度</b>，浮力减小到不足以托住船，船就会开始倾斜、下沉。</li>
+      <li>本动画用滑块控制「气泡速率」，并在每步之间自动复位场景，让你清晰地分三次观察变化。</li>
+    </ul>
+  </div>
+
+<script>
+/* ===== DOM 引用 ===== */
+var stage       = document.getElementById('stage');
+var ocean       = document.getElementById('ocean');
+var ship        = document.getElementById('ship');
+
+var bubbleBtn   = document.getElementById('bubbleBtn');
+var sceneResetBtn = document.getElementById('sceneResetBtn');
+var rateSlider  = document.getElementById('rateSlider');
+var rateLabel   = document.getElementById('rateLabel');
+
+var taskCard    = document.getElementById('taskCard');
+var taskStepEl  = document.getElementById('taskStep');
+var taskTextEl  = document.getElementById('taskText');
+var taskHintEl  = document.getElementById('taskHint');
+var dots        = [
+  document.getElementById('dot1'),
+  document.getElementById('dot2'),
+  document.getElementById('dot3')
+];
+
+var stepResetBtn = document.getElementById('stepResetBtn');
+var autoDemoBtn  = document.getElementById('autoDemoBtn');
+var freeBtn      = document.getElementById('freeBtn');
+var checkmark    = document.getElementById('checkmark');
+var toast        = document.getElementById('toast');
+var doneMask     = document.getElementById('doneMask');
+var okBtn        = document.getElementById('okBtn');
+
+/* ===== 状态变量 ===== */
+var freeMode       = false;
+var autoPlaying    = false;
+var completed      = false;
+var currentTask    = 0;
+
+var totalBubbles   = 0;
+var tiltTriggered  = false;
+var sinkTriggered  = false;
+
+var bubbleRate     = 1;   // 1=低 2=中 3=高
+
+var TILT_THRESHOLD       = 18;
+var SINK_THRESHOLD       = 38;
+var MIN_BUBBLES_STEP1    = 2;
+
+/* 步骤切换锁 & 旧气泡屏蔽 */
+var transitioningStep    = false;
+var ignoreBubbleEvents   = false;
+
+/* ===== 步骤定义（严格：必须调对速率 + 条件满足才通过） ===== */
+var tasks = [
+  {
+    id:'low_rate',
+    text:'保持<strong>气泡速率为「低」</strong>，点击右上角<strong>「冒泡」</strong>几次，观察：船依然稳定漂浮。',
+    hint:'提示：速率低、气泡稀疏时，船底附近水的平均密度变化不大。',
+    pass:function(){
+      return bubbleRate === 1 &&
+             totalBubbles >= MIN_BUBBLES_STEP1 &&
+             !tiltTriggered &&
+             !sinkTriggered;
+    }
+  },
+  {
+    id:'tilt',
+    text:'把<strong>气泡速率调到「中」或「高」</strong>，继续点击冒泡，让气泡在船底越聚越多，船将开始<b>倾斜下沉</b>。',
+    hint:'提示：中速以上 + 气泡数达到一定值，才会触发船体倾斜。',
+    pass:function(){
+      return (bubbleRate === 2 || bubbleRate === 3) &&
+             tiltTriggered;
+    }
+  },
+  {
+    id:'sink_more',
+    text:'（系统已帮你把场景复位）现在把<strong>气泡速率调到「高」</strong>，继续冒泡，让大量气泡聚在船底，观察船体<b>明显下沉</b>（完成）。',
+    hint:'提示：第三步需要在高速下再次冒出大量气泡，才会让船明显下沉并通过。',
+    pass:function(){
+      return bubbleRate === 3 &&
+             sinkTriggered;
+    }
+  }
+];
+
+/* ===== 工具函数 ===== */
+function updateRateLabel(){
+  var name = '低';
+  if (bubbleRate === 2) name = '中';
+  if (bubbleRate === 3) name = '高';
+  rateLabel.textContent = '气泡速率：' + name;
+}
+
+function setStepUI(i){
+  if (i < 0) i = 0;
+  if (i >= tasks.length) i = tasks.length-1;
+  currentTask = i;
+
+  for (var k=0; k<dots.length; k++){
+    var base = 'dot';
+    if (k < i) base += ' done';
+    else if (k === i) base += ' active';
+    dots[k].className = base;
+  }
+  taskStepEl.textContent = '步骤 ' + (i+1) + ' / ' + tasks.length;
+  taskTextEl.innerHTML   = tasks[i].text;
+  taskHintEl.textContent = tasks[i].hint;
+}
+
+function showCheck(){
+  checkmark.classList.add('active');
+  setTimeout(function(){ checkmark.classList.remove('active'); }, 520);
+}
+
+function showToast(msg){
+  toast.textContent = msg || '再试一试';
+  toast.classList.add('show');
+  setTimeout(function(){ toast.classList.remove('show'); }, 1200);
+}
+
+function showDone(){
+  doneMask.style.display = 'flex';
+}
+
+/* shipRect & 距离计算 */
+function shipRect(){
+  return ship.getBoundingClientRect();
+}
+function riseDistanceToShipBottom(){
+  var sr = shipRect();
+  var d = window.innerHeight - sr.bottom;
+  if (d < 80) d = 80;
+  return d;
+}
+
+/* ===== 清空场景（用于按钮 & 步骤间自动复位） ===== */
+function clearBubbles(silent){
+  var list = ocean.querySelectorAll('.bubble');
+  for (var i=0; i<list.length; i++){
+    var node = list[i];
+    if (node && node.parentNode){
+      node.parentNode.removeChild(node);
+    }
+  }
+  totalBubbles = 0;
+  tiltTriggered = false;
+  sinkTriggered = false;
+  ship.classList.remove('tilt');
+  ship.classList.remove('sink');
+
+  if (!silent && !freeMode){
+    showToast('场景已重置');
+  }
+}
+
+/* ===== 气泡逻辑 ===== */
+function createSingleBubble(isFromAuto){
+  var b = document.createElement('div');
+  b.className = 'bubble';
+
+  var size = 10 + Math.random()*18;
+  b.style.width  = size + 'px';
+  b.style.height = size + 'px';
+
+  var rise = riseDistanceToShipBottom();
+  b.style.setProperty('--rise', rise + 'px');
+
+  var dur  = 1.8 + Math.random()*0.8;
+  b.style.setProperty('--dur', dur + 's');
+
+  var driftVal = (Math.random()<0.5 ? -1 : 1) * (8 + Math.random()*16);
+  b.style.setProperty('--drift', driftVal + 'px');
+
+  var sr = shipRect();
+  var minX = sr.left;
+  var maxX = sr.right - size;
+  if (maxX <= minX) maxX = minX + 10;
+  var left = minX + Math.random()*(maxX - minX);
+
+  b.style.left = left + 'px';
+  b.style.bottom = '0px';
+
+  ocean.appendChild(b);
+
+  b.addEventListener('animationend', function(){
+    if (ignoreBubbleEvents) return;  // 旧气泡直接忽略
+
+    b.style.animation = 'none';
+    b.style.transform = 'translateY(' + (-rise) + 'px)';
+    b.style.zIndex = 6;
+
+    totalBubbles++;
+
+    if (!tiltTriggered && bubbleRate >= 2 && totalBubbles >= TILT_THRESHOLD){
+      tiltTriggered = true;
+      ship.classList.add('tilt');
+    }
+    if (!sinkTriggered && bubbleRate >= 3 && totalBubbles >= SINK_THRESHOLD){
+      sinkTriggered = true;
+      ship.classList.add('sink');
+    }
+
+    if (!freeMode && !autoPlaying && !isFromAuto){
+      nextTaskIfPassed();
+    }
+  });
+}
+
+/* 按当前速率一次“冒泡”：速率越高，单次冒出的气泡越多 */
+function spawnBurst(isFromAuto){
+  var n = 1;
+  if (bubbleRate === 2) n = 3;
+  if (bubbleRate === 3) n = 6;
+
+  for (var i=0; i<n; i++){
+    (function(idx){
+      setTimeout(function(){
+        createSingleBubble(!!isFromAuto);
+      }, idx*80);
+    })(i);
+  }
+}
+
+/* 自动演示用：固定数量、固定间隔的冒泡 */
+function spawnMany(count, interval, isFromAuto){
+  var i = 0;
+  function tick(){
+    if (i >= count) return;
+    createSingleBubble(!!isFromAuto);
+    i++;
+    setTimeout(tick, interval);
+  }
+  tick();
+}
+
+/* ===== 步骤推进逻辑（带锁 & 自动复位） ===== */
+function nextTaskIfPassed(){
+  if (completed || transitioningStep) return;
+  var t = tasks[currentTask];
+  if (!t) return;
+
+  if (t.pass()){
+    transitioningStep = true;
+    ignoreBubbleEvents = true;  // 后续旧气泡一律忽略
+    showCheck();
+
+    var prevIndex = currentTask;
+    setTimeout(function(){
+      dots[prevIndex].classList.remove('active');
+      dots[prevIndex].classList.add('done');
+
+      currentTask++;
+      if (currentTask >= tasks.length){
+        completed = true;
+        clearBubbles(true); // 最终也顺便清一下
+        showDone();
+      } else {
+        // 步骤之间自动复位场景，相当于把“重置场景”整合进下一步
+        clearBubbles(true);
+        dots[currentTask].classList.add('active');
+        setStepUI(currentTask);
+      }
+
+      ignoreBubbleEvents = false;
+      transitioningStep  = false;
+    }, 520);
+  }
+}
+
+/* ===== 自由模式、步骤重置 ===== */
+function setFreeMode(on){
+  freeMode = on;
+  taskCard.style.opacity = on ? 0.25 : 1;
+  taskCard.style.filter  = on ? 'grayscale(0.6)' : 'none';
+  freeBtn.textContent    = on ? '退出自由模式' : '自由模式';
+  autoDemoBtn.disabled   = on;
+  if (on){
+    toast.classList.remove('show');
+    doneMask.style.display = 'none';
+  }
+}
+
+function stepReset(){
+  autoPlaying        = false;
+  completed          = false;
+  transitioningStep  = false;
+  ignoreBubbleEvents = false;
+  currentTask        = 0;
+
+  for (var i=0; i<dots.length; i++){
+    dots[i].className = 'dot' + (i===0 ? ' active' : '');
+  }
+  setStepUI(0);
+  clearBubbles(true);
+
+  bubbleRate = 1;
+  rateSlider.value = '1';
+  updateRateLabel();
+}
+
+/* ===== 自动演示 ===== */
+function autoDemo(){
+  if (freeMode || autoPlaying) return;
+  autoPlaying = true;
+  stepReset();
+
+  // Step 1：低速、少量冒泡
+  bubbleRate = 1;
+  rateSlider.value = '1';
+  updateRateLabel();
+  setStepUI(0);
+
+  spawnMany(4, 180, true);
+  setTimeout(function(){
+    nextTaskIfPassed();
+
+    // Step 2：中速，冒泡到“倾斜”
+    setStepUI(1);
+    bubbleRate = 2;
+    rateSlider.value = '2';
+    updateRateLabel();
+
+    spawnMany(20, 120, true);
+    setTimeout(function(){
+      nextTaskIfPassed();
+
+      // Step 3：系统已自动复位 → 高速，再次冒泡到“明显下沉”
+      setStepUI(2);
+      bubbleRate = 3;
+      rateSlider.value = '3';
+      updateRateLabel();
+
+      spawnMany(25, 100, true);
+      setTimeout(function(){
+        nextTaskIfPassed();
+        autoPlaying = false;
+      }, 3200);
+    }, 2600);
+  }, 2600);
+}
+
+/* ===== 交互绑定 ===== */
+rateSlider.oninput = function(){
+  bubbleRate = parseInt(this.value, 10) || 1;
+  updateRateLabel();
+};
+
+bubbleBtn.onclick = function(){
+  spawnBurst(false);
+};
+
+sceneResetBtn.onclick = function(){
+  clearBubbles(false);
+};
+
+stepResetBtn.onclick = function(){
+  stepReset();
+};
+
+autoDemoBtn.onclick = function(){
+  autoDemo();
+};
+
+freeBtn.onclick = function(){
+  setFreeMode(!freeMode);
+};
+
+okBtn.onclick = function(){
+  doneMask.style.display = 'none';
+};
+
+/* ===== 防止 iOS 连续点击导致页面放大（双击缩放） ===== */
+var lastTouchEnd = 0;
+document.addEventListener('touchend', function(e){
+  var now = Date.now();
+  if (now - lastTouchEnd <= 300){
+    e.preventDefault();
+  }
+  lastTouchEnd = now;
+}, false);
+
+/* ===== 初始化 ===== */
+function init(){
+  bubbleRate = parseInt(rateSlider.value, 10) || 1;
+  updateRateLabel();
+  setStepUI(0);
+  riseDistanceToShipBottom();
+}
+init();
+
+window.addEventListener('resize', function(){
+  riseDistanceToShipBottom();
+});
+</script>
+</body>
+</html>

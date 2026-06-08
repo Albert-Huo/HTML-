@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1"/>
+<title>路面撒盐融雪</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97; --warn:#ffb74d; --ink:#e9f2ff;
+    --ink-dim:#cfe8ff; --bg:#1a1a1a; --glass:rgba(15,15,15,0.55);
+  }
+  body{ background:var(--bg); color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center;}
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡 */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px; }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap;}
+  .task-text{ line-height:1.55; color:var(--ink);}
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 舞台容器 */
+  .stageWrap{ width:100%; max-width:900px; height:60vh; max-height:540px; margin-top:10px; }
+  .stage{ width:100%; height:100%; position:relative; overflow:hidden; border-radius:12px; background:#000; box-shadow:0 8px 24px rgba(0,0,0,.3); }
+  #simFrame{ position:absolute; inset:0; width:100%; height:100%; border:0; background:#000; }
+
+  /* 右上角控件 */
+  .in-canvas-controls{ position:absolute; right:10px; top:10px; z-index:20; display:flex; flex-direction:column; gap:8px;
+    background:var(--glass); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:8px; backdrop-filter: blur(6px); }
+  .in-canvas-controls button, .in-canvas-controls input[type="range"]{ width:200px; max-width:40vw; }
+  .btn{ padding:8px 10px; background:#444; color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer; transition:background .2s; }
+  .btn:hover{ background:#5a5a5a; }
+  .tempRow{ display:flex; align-items:center; gap:8px; font-size:12px; }
+  .tempVal{ font-variant-numeric: tabular-nums; width:54px; text-align:right; }
+
+  /* 下方三按钮 */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; }
+  .toolbar button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s, transform .05s, opacity .2s; user-select:none; }
+  .toolbar button:hover{ background:#5a5a5a;} .toolbar button:active{ transform:scale(.98);} .toolbar button:disabled{ opacity:.5; cursor:not-allowed;}
+
+  /* 对勾、提示与完成弹窗 */
+  .checkmark{ position:absolute; z-index: 120; left: 50%; top: 22%; transform: translate(-50%,-50%) scale(0.6);
+    width:120px; height:120px; border-radius:50%; background: rgba(61,220,151,0.15);
+    border: 3px solid var(--accent); display: none; align-items:center; justify-content:center;
+    box-shadow: 0 0 40px rgba(61,220,151,0.45), inset 0 0 20px rgba(61,220,151,0.25); }
+  .checkmark.active{ display:flex; }
+  .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.8); color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.35); font-size:14px; opacity:0; pointer-events:none; transition: opacity .25s, transform .25s; z-index: 200;}
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  .modal h3{ margin:8px 0 6px; font-size:20px;} .modal p{ color:#cfd8dc; margin-top:0;} .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; border:none; border-radius:10px; padding:10px 14px; }
+
+  .explain{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink);}
+  .explain h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em;}
+</style>
+</head>
+<body>
+  <!-- 顶部彩条 -->
+  <div id="spectrum"></div>
+
+  <!-- 步骤卡 -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">把温度调到 <b>≤ −5℃</b>（或点击“降温”），此时路面上仍有<b>积雪</b>。</div>
+      <div class="task-hint" id="taskHint">提示：这是交互判定；若动画提供钩子会同步温度。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <!-- 舞台：内联“纯动画”（无文字UI），并提供 SIM 钩子以配合外壳 -->
+  <div class="stageWrap">
+    <div class="stage" id="stage">
+      <iframe id="simFrame" title="积雪动画（内联）" srcdoc='
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  html,body{height:100%;margin:0;}
+  .wrap{position:relative;width:100%;height:100%;background:#0b0f1a;overflow:hidden;}
+  /* 路面 */
+  .road{position:absolute;left:0;right:0;bottom:0;height:36%;
+    background:#2f3842;
+    background-image: radial-gradient(circle at 10% 10%, rgba(255,255,255,0.06) 0 6%, transparent 7%),
+                      radial-gradient(circle at 70% 30%, rgba(255,255,255,0.05) 0 5%, transparent 6%),
+                      linear-gradient(0deg, #2b333c, #3a4551);
+  }
+  .center-line{position:absolute;left:0;right:0;top:50%;height:4px;background: repeating-linear-gradient(90deg,#ddd 0 40px, transparent 40px 80px);opacity:.7;filter:blur(.5px);}
+  /* 积雪：小白球，分批融化；只出现在路面区域 */
+  .flake{position:absolute;width:10px;height:10px;border-radius:50%;background:#f3f7ff;box-shadow:0 0 6px rgba(255,255,255,.8);opacity:1;transition:opacity 1.2s ease;}
+  /* 水渍 */
+  .puddle{position:absolute;border-radius:50%;background:rgba(120,180,255,.28);filter:blur(.3px);opacity:0;transition:opacity 1s ease;}
+  /* 盐粒 */
+  .salt{position:absolute;width:4px;height:4px;border-radius:50%;background:#e8ecef;opacity:0;transform:translateY(-40vh);
+        transition:transform 1.2s ease, opacity .4s ease;}
+</style>
+</head>
+<body>
+<div class="wrap" id="W">
+  <div class="road"><div class="center-line"></div></div>
+  <div id="flakes"></div>
+  <div id="puddles"></div>
+  <div id="salts"></div>
+</div>
+
+<script>
+(function(){
+  var W = document.getElementById("W");
+  var flakesBox = document.getElementById("flakes");
+  var puddlesBox = document.getElementById("puddles");
+  var saltsBox = document.getElementById("salts");
+  var state = { temp:-2, salted:false };
+  var meltTimer = null;
+
+  function rand(a,b){ return Math.random()*(b-a)+a; }
+
+  /* --- 生成：积雪/水渍/盐粒（全部限制在“路面”高度范围） --- */
+  function makeFlakes(){
+    flakesBox.innerHTML = "";
+    var w = W.clientWidth, h = W.clientHeight;
+    var roadTop = h*0.64, roadBottom = h; /* 只在路面 */
+    var n = 60, i;
+    for(i=0;i<n;i++){
+      var x = rand(6, w-12), y = rand(roadTop+2, roadBottom-12);
+      var d = document.createElement("div");
+      d.className = "flake";
+      d.style.left = x+"px";
+      d.style.top  = y+"px";
+      d.dataset.melted = "0";
+      flakesBox.appendChild(d);
+    }
+  }
+  function makePuddles(){
+    puddlesBox.innerHTML = "";
+    var w = W.clientWidth, h = W.clientHeight, roadTop = h*0.64, roadBottom = h;
+    var n = 16, i;
+    for(i=0;i<n;i++){
+      var p = document.createElement("div");
+      p.className="puddle";
+      var x = rand(10, w-60), y = rand(roadTop+6, roadBottom-12);
+      var ww = rand(18, 46), hh = rand(10, 22);
+      p.style.left = x+"px"; p.style.top = y+"px"; p.style.width = ww+"px"; p.style.height = hh+"px";
+      puddlesBox.appendChild(p);
+    }
+  }
+  function makeSalts(){
+    saltsBox.innerHTML = "";
+    var w = W.clientWidth, i, n=28;
+    for(i=0;i<n;i++){
+      var s = document.createElement("div");
+      s.className="salt";
+      s.style.left = rand(10, w-10)+"px";
+      s.style.top  = "-20px";
+      saltsBox.appendChild(s);
+    }
+  }
+
+  /* --- 融雪逻辑 --- */
+  function meltSnow(step){
+    var left = [].slice.call(flakesBox.children).filter(function(f){ return f.dataset.melted!=="1"; });
+    var take = Math.min(step, left.length), i;
+    for(i=0;i<take;i++){ left[i].style.opacity="0"; left[i].dataset.melted="1"; }
+    var ps = puddlesBox.children; for(i=0;i<ps.length;i++){ ps[i].style.opacity="1"; }
+  }
+  function hidePuddles(){
+    var ps = puddlesBox.children, i; for(i=0;i<ps.length;i++){ ps[i].style.opacity="0"; }
+  }
+  function meltIfNeeded(){
+    if (meltTimer){ clearInterval(meltTimer); meltTimer=null; }
+    if(state.temp>=-1 || (state.salted && state.temp<=-1)){
+      meltTimer = setInterval(function(){
+        meltSnow(8);
+        var all = [].slice.call(flakesBox.children);
+        if(!all.length || all.every(function(f){return f.dataset.melted==="1";})){
+          clearInterval(meltTimer); meltTimer=null;
+        }
+      }, 220);
+    }
+  }
+
+  /* --- 盐粒落下 --- */
+  function dropSalt(){
+    var ss = saltsBox.children, i;
+    for(i=0;i<ss.length;i++){
+      (function(el,delay){
+        setTimeout(function(){
+          el.style.opacity="1";
+          el.style.transform="translateY("+(W.clientHeight*0.7)+"px)";
+        }, delay);
+      })(ss[i], i*40);
+    }
+  }
+
+  /* --- 重置一切到初始状态 --- */
+  function resetAll(){
+    if (meltTimer){ clearInterval(meltTimer); meltTimer=null; }
+    state.temp = -2; state.salted=false;
+    makeFlakes(); makePuddles(); makeSalts(); hidePuddles();
+  }
+
+  /* --- 首次生成 & 自适应 --- */
+  function layout(){ resetAll(); }
+  layout();
+  window.addEventListener("resize", function(){ layout(); });
+
+  /* --- 向外暴露 SIM 钩子 --- */
+  window.SIM = {
+    setTemp: function(c){ state.temp = c; meltIfNeeded(); },
+    addSalt: function(){ state.salted = true; dropSalt(); setTimeout(meltIfNeeded, 300); },
+    rinse: function(){ state.salted = false; hidePuddles(); },
+    resetScene: function(){ resetAll(); },
+    onState: function(){
+      var flakes = [].slice.call(flakesBox.children);
+      var melted = flakes.filter(function(f){ return f.dataset.melted==="1"; }).length;
+      var frac = flakes.length? (melted/flakes.length) : 1;
+      return { temp: state.temp, snow:true, brine: state.salted && state.temp<=-1, melted: frac>=0.9 };
+    }
+  };
+})();
+</script>
+</body>
+</html>'></iframe>
+
+      <!-- 右上角外壳控件 -->
+      <div class="in-canvas-controls" id="inCtl">
+        <div class="tempRow">
+          <span>温度</span>
+          <input id="tempSlider" type="range" min="-15" max="5" step="1" value="-2"/>
+          <span class="tempVal"><span id="tempValTxt">-2</span>℃</span>
+        </div>
+        <button class="btn" id="btnCool">降温至 −5℃</button>
+        <button class="btn" id="btnSalt">撒盐</button>
+        <button class="btn" id="btnRinse">清水冲洗</button>
+        <button class="btn" id="btnResetScene">重置场景</button>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <!-- 下方三按钮 -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">再试一试：请按步骤完成本环节</div>
+
+  <!-- 完成弹窗 -->
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你已完成：降低温度→撒盐→升温或继续撒盐，使<b>积雪</b>基本融化。</p>
+      <button class="ok" id="okBtn">好的</button>
+    </div>
+  </div>
+
+  <!-- 说明 -->
+  <div class="explain">
+    <h2>原理</h2>
+    <ul>
+      <li>撒盐会降低水的凝固点（冰点下降），于是积雪更容易融化，即<b>融雪</b>。</li>
+      <li>撒盐甚至可以让零下20摄氏度的冰雪融化。</li>
+    </ul>
+  </div>
+
+<script>
+/* ================= 外壳交互：不改动画，仅“温和对接” SIM 钩子 ================= */
+(function(){
+  var frame = document.getElementById("simFrame");
+  function frameSIM(){ try{ return frame.contentWindow && frame.contentWindow.SIM; }catch(e){ return null; } }
+  function callIf(name){
+    try{
+      var SIM = frameSIM();
+      if (SIM && typeof SIM[name]==="function"){
+        var args = Array.prototype.slice.call(arguments,1);
+        SIM[name].apply(SIM,args);
+      }
+    }catch(e){}
+  }
+
+  var taskCard = document.getElementById("taskCard");
+  var taskStepEl = document.getElementById("taskStep");
+  var taskTextEl = document.getElementById("taskText");
+  var taskHintEl = document.getElementById("taskHint");
+  var dots = [document.getElementById("dot1"),document.getElementById("dot2"),document.getElementById("dot3")];
+
+  var checkmark = document.getElementById("checkmark");
+  var toast = document.getElementById("toast");
+  var doneMask = document.getElementById("doneMask");
+  document.getElementById("okBtn").onclick = function(){ doneMask.style.display="none"; };
+
+  var btnReset = document.getElementById("resetBtn");
+  var btnAuto  = document.getElementById("autoDemoBtn");
+  var btnFree  = document.getElementById("freeBtn");
+
+  var tempSlider = document.getElementById("tempSlider");
+  var tempValTxt = document.getElementById("tempValTxt");
+  var btnCool    = document.getElementById("btnCool");
+  var btnSalt    = document.getElementById("btnSalt");
+  var btnRinse   = document.getElementById("btnRinse");
+  var btnResetScene = document.getElementById("btnResetScene");
+
+  var freeMode=false, autoPlaying=false, completed=false, successCooldown=false;
+  var currentTask=0;
+  var T = parseInt(tempSlider.value,10) || -2;
+
+  var tasks = [
+    { text:"把温度调到 ≤ −5℃，此时路面上仍有积雪。", hint:"这是交互判定；若动画提供 SIM.setTemp，将同步。", pass:function(){ return (T <= -5); } },
+    { text:"点击“撒盐”，形成盐水，积雪开始融化。", hint:"若动画提供 SIM.addSalt，会调用。", pass:function(){ var s=frameSIM(); if(!s||!s.onState)return true; var st=s.onState(); return !!st.brine || (st.melted===true); } },
+    { text:"把温度升到 ≥ −1℃ 或继续撒盐，视作“积雪基本融化（完成）”。", hint:"若动画 onState().melted 为 true 也算。", pass:function(){ var s=frameSIM(); if(s&&s.onState){ var st=s.onState(); if(st && st.melted===true) return true; } return (T >= -1); } }
+  ];
+
+  function setStepUI(i){
+    if(i<0) i=0; if(i>tasks.length-1) i=tasks.length-1;
+    for(var k=0;k<dots.length;k++){
+      var cls="dot";
+      if(k<i) cls+=" done"; else if(k===i) cls+=" active";
+      dots[k].className=cls;
+    }
+    taskStepEl.innerText="步骤 "+(i+1)+" / "+tasks.length;
+    taskTextEl.innerText=tasks[i].text;
+    taskHintEl.innerText=tasks[i].hint;
+  }
+  function showCheck(){ checkmark.classList.add("active"); setTimeout(function(){ checkmark.classList.remove("active"); }, 520); }
+  function showToast(msg){ toast.innerText = msg || "再试一试：请按当前步骤的提示操作"; toast.classList.add("show"); clearTimeout(showToast._t); showToast._t=setTimeout(function(){ toast.classList.remove("show"); }, 1200); }
+  function showDone(){ doneMask.style.display="flex"; }
+  function setFree(on){
+    freeMode = on;
+    taskCard.style.opacity = on? .25 : 1;
+    taskCard.style.filter  = on? "grayscale(.6)" : "none";
+    btnFree.innerText = on? "退出自由模式" : "自由模式";
+    btnAuto.disabled = on;
+    toast.classList.remove("show"); doneMask.style.display="none";
+  }
+  function nextTask(){
+    showCheck();
+    setTimeout(function(){
+      dots[currentTask].classList.remove("active");
+      dots[currentTask].classList.add("done");
+      currentTask++;
+      if(currentTask>=tasks.length){ completed=true; setTimeout(showDone, 350); }
+      else { dots[currentTask].classList.add("active"); setStepUI(currentTask); }
+    }, 520);
+  }
+  function tryPass(){
+    if (successCooldown || completed || freeMode) return;
+    var ok = tasks[currentTask].pass();
+    if (ok){ successCooldown=true; nextTask(); setTimeout(function(){ successCooldown=false; }, 400); }
+    else { showToast(); }
+  }
+
+  function syncTempUI(val){ T = val|0; tempSlider.value = String(T); tempValTxt.textContent = T; }
+
+  /* 控件事件 */
+  tempSlider.addEventListener("input", function(e){
+    syncTempUI(parseInt(e.target.value,10));
+    callIf("setTemp", T);
+    if (!freeMode) tryPass();
+  });
+  btnCool.onclick = function(){ syncTempUI(-5); callIf("setTemp", -5); if (!freeMode) tryPass(); };
+  btnSalt.onclick = function(){ callIf("addSalt"); if (!freeMode) tryPass(); };
+  btnRinse.onclick = function(){ callIf("rinse"); if (!freeMode) showToast("已清水冲洗：如需完成，请再次撒盐或升温"); };
+  btnResetScene.onclick = function(){ callIf("resetScene"); syncTempUI(-2); callIf("setTemp",-2); showToast("已重置场景"); };
+
+  var sleep = function(ms){ return new Promise(function(r){ setTimeout(r,ms); }); };
+  async function autoDemo(){
+    if (freeMode || autoPlaying) return; autoPlaying = true;
+    try{
+      stepReset(); await sleep(250);
+      setStepUI(0); syncTempUI(-7); callIf("setTemp", -7); tryPass(); await sleep(500);
+      setStepUI(1); callIf("addSalt"); tryPass(); await sleep(700);
+      setStepUI(2); syncTempUI(-1); callIf("setTemp", -1); tryPass(); await sleep(450);
+    } finally { autoPlaying=false; }
+  }
+
+  /* ★ 修复：步骤重置 = 完全回到初始状态（含动画复位与温度） */
+  function stepReset(){
+    completed=false; currentTask=0; successCooldown=false;
+    setStepUI(0);
+    dots[0].className="dot active"; dots[1].className="dot"; dots[2].className="dot";
+    syncTempUI(-2);
+    callIf("resetScene");   // 重新生成积雪/盐粒/水渍
+    callIf("setTemp",-2);   // 同步温度
+  }
+
+  document.getElementById("resetBtn").onclick = function(){ if (!autoPlaying){ stepReset(); } };
+  document.getElementById("autoDemoBtn").onclick  = function(){ if (!autoPlaying){ autoDemo(); } };
+  document.getElementById("freeBtn").onclick  = function(){ setFree(!freeMode); };
+
+  setStepUI(0);
+})();
+</script>
+</body>
+</html>

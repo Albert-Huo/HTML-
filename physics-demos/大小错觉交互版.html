@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>艾宾浩斯大小错觉</title>
+<style>
+  :root{ --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --fg:#ffffffcc; }
+  body{ background:#141518; color:#fff; font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,sans-serif; margin:0; padding:12px; display:flex; flex-direction:column; align-items:center;}
+  #spectrum{ position:relative; width:100%; max-width:980px; height:38px; border-radius:10px; overflow:hidden; box-shadow:0 0 16px rgba(255,255,255,0.15); margin:8px 0 10px;}
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+
+  .task-card{ width:100%; max-width:980px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:10px 12px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;}
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:700; white-space:nowrap;}
+  .task-text{ line-height:1.6; color:var(--fg);} .task-hint{ color:#ffd54f; font-size:12px; opacity:.95;}
+  .progress-dots{ display:flex; gap:6px;} .dot{ width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.28);} 
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent);}
+
+  /* 工具条：仍保持原样式，但我们把它放到画面下方，并缩小与画面的间距 */
+  .toolbar{ width:100%; max-width:980px; margin:8px 0 8px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; }
+  button{ padding:9px 14px; background:#3a3d45; color:#fff; border:none; border-radius:10px; cursor:pointer; transition:.15s;}
+  button:hover{ background:#4b4f59;} button:disabled{opacity:.55;cursor:not-allowed;}
+  .choice-bar{ width:100%; max-width:980px; display:flex; gap:8px; margin:10px 0 4px; flex-wrap:wrap;}
+  .choice{ flex:1 1 160px; text-align:center; padding:10px 12px; border-radius:10px; background:#2a2e39; border:1px solid #ffffff1f; }
+  .choice.ok{ outline:3px solid var(--accent); background:#1b3a2b; }
+  .choice.bad{ outline:3px solid var(--error); background:#3a1b1b; }
+  .choice:disabled{ opacity:.55; pointer-events:none; }
+  .tip{ font-size:12px; color:#a0aec0; margin-top:4px;}
+
+  #stageWrap{ width:100%; max-width:980px; height:min(62vh,560px); }
+  #stage{ position:relative; width:100%; height:100%; background:#0d0f13; border-radius:14px; overflow:hidden; box-shadow: 0 12px 30px rgba(0,0,0,.35);}
+  .orb-group{ position:absolute; width:50%; height:100%; display:flex; align-items:center; justify-content:center; pointer-events:none;}
+  .left-group{ left:0; } .right-group{ right:0; }
+  .orb-area{ position:relative; width:min(86%,480px); height:min(86%,480px); }
+  .label{ position:absolute; top:14px; left:16px; background:#00000066; border:1px solid #ffffff2a; padding:4px 7px; border-radius:8px; font-size:12px; z-index:1;}
+
+  .sat{ position:absolute; border-radius:50%; pointer-events:none; opacity:.9; filter:drop-shadow(0 0 8px rgba(0,0,0,.25)); }
+  .sat.big{ width:120px; height:120px; background:#37d6c4; }
+  .sat.small{ width:40px; height:40px; background:#37d6c4; }
+
+  .core{ position:absolute; width:90px; height:90px; border-radius:50%;
+    background:radial-gradient(circle at 30% 30%,#ffffff,#52e6d7 60%,#1b9aaa 120%);
+    border:2px solid #3a86ff; cursor:grab; touch-action:none; z-index:10; user-select:none;
+    display:flex; align-items:center; justify-content:center; color:#001b2e; font-weight:700; font-size:14px;}
+  .core:active{ cursor:grabbing; }
+
+  .checkmark{ position:absolute; left:50%; top:30%; transform:translate(-50%,-50%) scale(.6); width:104px; height:104px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:4px solid var(--accent); display:none; align-items:center; justify-content:center; z-index:30;}
+  .checkmark>div{ width:56px;height:28px; border-left:7px solid var(--accent); border-bottom:7px solid var(--accent); transform:rotate(-45deg);}
+
+  .explain{ width:100%; max-width:980px; margin:12px 0 22px; background:#0e1117; border:1px solid #ffffff12; border-radius:12px; padding:14px 16px; color:var(--fg);}
+  .explain h3{ margin:6px 0 10px; color:#9bd3ff; }
+  .explain ul{ margin:6px 0 0 1.1em; line-height:1.7; }
+  .explain li{ margin:6px 0; }
+
+  .mask{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:100;}
+  .modal{ background:#0f1320; border:1px solid #ffffff22; padding:18px; border-radius:14px; max-width:380px; text-align:center; color:var(--fg);}
+  .modal h3{ margin:6px 0 8px; color:#a2e3a9;}
+  .ok{ margin-top:12px; background:var(--accent); padding:9px 18px; border-radius:10px; border:none; color:#00351f; font-weight:700; }
+
+  @media (max-width:720px){
+    .core{ width:80px; height:80px; font-size:12px;}
+    .sat.big{ width:100px; height:100px;} .sat.small{ width:34px; height:34px;}
+  }
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">观察：中间的两个圆，哪个更大？请在下面选择。</div>
+      <div class="task-hint" id="taskHint">提示：左边被大圆包围，右边被小圆包围，容易“看着不一样”。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <!-- 选择区保持不变 -->
+  <div class="choice-bar" id="choiceBar">
+    <button class="choice" data-choice="equal">一样大</button>
+    <button class="choice" data-choice="left">左边大</button>
+    <button class="choice" data-choice="right">右边大</button>
+  </div>
+  <div class="tip" id="choiceTip">步骤一：随便选一个，系统会提示“我们去验证一下”。</div>
+
+  <!-- 画面 -->
+  <div id="stageWrap">
+    <div id="stage">
+      <div class="label" aria-hidden="true">将两个小球拖到一起验证 ➜</div>
+
+      <div class="orb-group left-group"><div class="orb-area" id="leftArea"></div></div>
+      <div class="orb-group right-group"><div class="orb-area" id="rightArea"></div></div>
+
+      <!-- 两个可跨区拖动的小球 -->
+      <div class="core" id="coreL">L</div>
+      <div class="core" id="coreR">R</div>
+
+      <div class="checkmark" id="check"><div></div></div>
+    </div>
+  </div>
+
+  <!-- 三个按钮：已移动到画面下方，并靠左 -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="explain">
+    <h3>原理说明 · 艾宾浩斯（Ebbinghaus）大小错觉</h3>
+    <ul>
+      <li><b>错觉现象</b>：相同大小的中心圆，周围配<b>大圆</b>会让它显得更<b>小</b>；周围配<b>小圆</b>会让它显得更<b>大</b>。</li>
+      <li><b>关键原因</b>：<u>参照对比/周围背景影响</u>（上下文影响）。人脑在判断大小时会自动与周围进行对比。</li>
+      <li><b>如何验证</b>：把两个中心圆<b>拖拽重叠</b>，你会发现它们直径完全一致。</li>
+      <li><b>生活里的例子</b>：相框边宽/屏幕边框/摆放环境不同，都会影响“看起来大小”的主观感受。</li>
+    </ul>
+  </div>
+
+  <div class="mask" id="doneMask">
+    <div class="modal">
+      <h3>完成，你真棒！🎉</h3>
+      <p>你完成了三个步骤，并掌握了“参照对比导致的大小错觉”。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+const stage = $('#stage');
+const leftArea = $('#leftArea'), rightArea = $('#rightArea');
+const coreL = $('#coreL'), coreR = $('#coreR');
+const check = $('#check');
+const doneMask = $('#doneMask'); $('#okBtn').onclick = () => doneMask.style.display='none';
+const dots = [$('#dot1'), $('#dot2'), $('#dot3')];
+
+const resetBtn = $('#resetBtn');
+const autoBtn  = $('#autoBtn');
+const freeBtn  = $('#freeBtn');
+
+let currentStep = 0;
+let autoPlaying = false;
+let freeMode = false;
+
+/* 置顶层计数器 —— 关键新增 */
+let zCounter = 10;
+
+function setStepUI(i){
+  currentStep = i;
+  dots.forEach((d,idx)=>{ d.className='dot'; if(idx<i) d.classList.add('done'); else if(idx===i) d.classList.add('active');});
+  $('#taskStep').textContent = `步骤 ${i+1} / 3`;
+  if(i===0){
+    $('#taskText').textContent = '观察：中间的两个圆，哪个更大？请在下面选择。';
+    $('#taskHint').textContent = '提示：左边被大圆包围，右边被小圆包围，容易“看着不一样”。';
+    showChoiceStep1();
+  } else if(i===1){
+    $('#taskText').textContent = '拖动：把两个中心小球重叠对齐（中心距离≤10px）。';
+    $('#taskHint').textContent = '提示：可跨区域拖动任意一个到另一个上。';
+    $('#choiceBar').style.display = 'none'; $('#choiceTip').style.display = 'none';
+  } else {
+    $('#taskText').textContent = '判断：造成错觉的主要原因是什么？';
+    $('#taskHint').textContent = '提示：想一想“参照/对比”的作用。';
+    showChoiceStep3();
+  }
+}
+function flashCheckThenNext() {
+  check.style.display='flex';
+  setTimeout(()=>{ check.style.display='none';
+    if(currentStep===2){ doneMask.style.display='flex'; }
+    else setStepUI(currentStep+1);
+  },550);
+}
+
+/* 选择题逻辑 */
+function showChoiceStep1(){
+  $('#choiceBar').style.display = 'flex'; $('#choiceTip').style.display = 'block';
+  restoreChoiceBarForStep1();
+  const btns = $$('#choiceBar .choice');
+  btns.forEach(btn=>{
+    btn.classList.remove('ok','bad');
+    btn.onclick = ()=>{
+      if (freeMode) return;
+      btns.forEach(b=>b.classList.remove('ok','bad'));
+      btn.classList.add('ok');
+      alert('我们去验证一下');
+      flashCheckThenNext();
+    };
+  });
+}
+function showChoiceStep3(){
+  const btns = $$('#choiceBar .choice');
+  $('#choiceBar').style.display = 'flex'; $('#choiceTip').style.display = 'block';
+  btns[0].textContent = '参照对比 / 背景影响'; btns[0].dataset.choice='reason';
+  btns[1].textContent = '光线强弱不同'; btns[1].dataset.choice='light';
+  btns[2].textContent = '两圆本来就不同'; btns[2].dataset.choice='diff';
+  btns.forEach(b=>b.classList.remove('ok','bad'));
+  btns.forEach(btn=>{
+    btn.onclick = ()=>{
+      if (freeMode) return;
+      btns.forEach(b=>b.classList.remove('ok','bad'));
+      if(btn.dataset.choice==='reason'){ btn.classList.add('ok'); flashCheckThenNext(); }
+      else{ btn.classList.add('bad'); if(!autoPlaying) alert('提示：真正原因是“参照/对比”的上下文影响。'); }
+    };
+  });
+}
+function restoreChoiceBarForStep1(){
+  const btns = $$('#choiceBar .choice');
+  btns[0].textContent = '一样大'; btns[0].dataset.choice='equal';
+  btns[1].textContent = '左边大'; btns[1].dataset.choice='left';
+  btns[2].textContent = '右边大'; btns[2].dataset.choice='right';
+}
+
+/* 参照圆 */
+function placeRing(area, isBig){
+  const count = 5, R = isBig ? 145 : 120;
+  const centerX = area.clientWidth/2, centerY = area.clientHeight/2;
+  for(let i=0;i<count;i++){
+    const el = document.createElement('div');
+    el.className = 'sat '+(isBig?'big':'small');
+    const ang = -90 + i*(360/count);
+    const r = isBig ? 60 : 20;
+    const x = centerX + R*Math.cos(ang*Math.PI/180) - r;
+    const y = centerY + R*Math.sin(ang*Math.PI/180) - r;
+    el.style.left = x+'px'; el.style.top = y+'px';
+    area.appendChild(el);
+  }
+}
+function initRings(){
+  $$('#leftArea .sat, #rightArea .sat').forEach(n=>n.remove());
+  placeRing(leftArea, true);
+  placeRing(rightArea, false);
+  const lc = areaCenterOnStage(leftArea), rc = areaCenterOnStage(rightArea);
+  setCoreCenter(coreL, lc.x, lc.y);
+  setCoreCenter(coreR, rc.x, rc.y);
+}
+window.addEventListener('load', initRings);
+window.addEventListener('resize', initRings);
+
+/* 坐标/拖拽（以 #stage 为坐标系，可跨区） */
+function stageRect(){ return stage.getBoundingClientRect(); }
+function setCoreCenter(el, stageX, stageY){
+  el.style.left = (stageX - el.offsetWidth/2) + 'px';
+  el.style.top  = (stageY - el.offsetHeight/2) + 'px';
+}
+function centerInStage(el){
+  const st = stageRect();
+  const rect = el.getBoundingClientRect();
+  return { x: rect.left - st.left + rect.width/2, y: rect.top - st.top + rect.height/2 };
+}
+function areaCenterOnStage(areaEl){
+  const st = stageRect();
+  const ar = areaEl.getBoundingClientRect();
+  return { x: ar.left - st.left + ar.width/2, y: ar.top - st.top + ar.height/2 };
+}
+
+let dragging=null, offsetX=0, offsetY=0;
+function startDrag(e, core){
+  dragging = core;
+  const rect = core.getBoundingClientRect();
+  offsetX = e.clientX - rect.left;
+  offsetY = e.clientY - rect.top;
+  core.setPointerCapture(e.pointerId);
+
+  /* 关键新增：谁被拖动，谁置顶 */
+  zCounter += 1;
+  core.style.zIndex = zCounter;
+}
+function moveDrag(e){
+  if(!dragging) return;
+  const st = stageRect();
+  let left = e.clientX - st.left - offsetX;
+  let top  = e.clientY - st.top  - offsetY;
+  left = Math.max(0, Math.min(st.width - dragging.offsetWidth, left));
+  top  = Math.max(0, Math.min(st.height - dragging.offsetHeight, top));
+  dragging.style.left = left + 'px';
+  dragging.style.top  = top + 'px';
+}
+function endDrag(){
+  if(!dragging) return;
+  if(freeMode){ dragging = null; return; }
+  if(currentStep===1){
+    const c1 = centerInStage(coreL), c2 = centerInStage(coreR);
+    const d = Math.hypot(c1.x-c2.x, c1.y-c2.y);
+    if(d <= 10){ flashCheckThenNext(); }
+  }
+  dragging = null;
+}
+[coreL, coreR].forEach(el=>{
+  el.addEventListener('pointerdown', e=>startDrag(e, el));
+  el.addEventListener('pointermove', moveDrag);
+  el.addEventListener('pointerup', endDrag);
+  el.addEventListener('pointercancel', endDrag);
+});
+
+/* 自由模式：禁用/恢复步骤相关控件 */
+function setStepControlsDisabled(disabled){
+  resetBtn.disabled = disabled;
+  autoBtn.disabled  = disabled;
+  $$('#choiceBar .choice').forEach(b=> b.disabled = disabled);
+}
+
+/* 三大按钮 */
+resetBtn.onclick = ()=>{
+  if (freeMode) return;
+  autoPlaying = false; freeMode = false;
+  setStepControlsDisabled(false);
+  freeBtn.textContent = '自由模式';
+  restoreChoiceBarForStep1();
+  initRings();
+  setStepUI(0);
+};
+freeBtn.onclick = ()=>{
+  freeMode = !freeMode;
+  setStepControlsDisabled(freeMode);
+  freeBtn.textContent = freeMode ? '退出自由模式' : '自由模式';
+  if(freeMode){
+    $('#taskText').textContent='自由探索：可随意拖拽、观察错觉变化。';
+    $('#taskHint').textContent='（步骤控件已禁用，退出自由模式可继续任务）';
+  }else{
+    setStepUI(currentStep);
+  }
+};
+autoBtn.onclick = async ()=>{
+  if (freeMode) return;
+  autoPlaying = true;
+  restoreChoiceBarForStep1();
+  setStepUI(0);
+  await sleep(500);
+  const anyBtn = $$('#choiceBar .choice')[2];
+  anyBtn.classList.add('ok');
+  alert('我们去验证一下');
+  flashCheckThenNext();
+
+  await sleep(650);
+  const target = centerInStage(coreL);
+  smoothMoveTo(coreR, target.x, target.y, 600, ()=>{
+    const d = Math.hypot(centerInStage(coreL).x - centerInStage(coreR).x,
+                         centerInStage(coreL).y - centerInStage(coreR).y);
+    if(d<=10 && currentStep===1) flashCheckThenNext();
+  });
+
+  await sleep(1400);
+  const btns = $$('#choiceBar .choice');
+  btns[0].textContent = '参照对比 / 背景影响'; btns[0].dataset.choice='reason';
+  btns[0].classList.add('ok');
+  await sleep(600);
+  flashCheckThenNext();
+  autoPlaying = false;
+};
+
+/* 动画辅助 */
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function smoothMoveTo(el, stageX, stageY, duration=600, cb){
+  const targetLeft = stageX - el.offsetWidth/2;
+  const targetTop  = stageY - el.offsetHeight/2;
+  el.style.transition = `left ${duration}ms ease-out, top ${duration}ms ease-out`;
+  requestAnimationFrame(()=>{
+    el.style.left = `${targetLeft}px`;
+    el.style.top  = `${targetTop}px`;
+  });
+  setTimeout(()=>{ el.style.transition='none'; cb && cb(); }, duration);
+}
+
+/* 启动 */
+setStepUI(0);
+stage.addEventListener('touchstart', ()=>{}, {passive:true});
+</script>
+</body>
+</html>

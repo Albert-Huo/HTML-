@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>恒星引擎：核聚变模拟</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#ff9800; /* 聚变的橙色能量感 */
+    --accent-glow: rgba(255, 152, 0, 0.6);
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+    --ink:#e9f2ff;
+  }
+  body{ background:#0a0a12; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center; overflow-x: hidden;}
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 任务卡片UI框架 */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s;}
+  .task-step{ background:rgba(255,152,0,0.2); color: var(--accent); border: 1px solid var(--accent-glow); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); transition: all 0.3s ease; }
+  .dot.active{ background:var(--accent); box-shadow: 0 0 8px var(--accent-glow);} 
+  .dot.done{ background:var(--accent); outline-color:var(--accent);}
+
+  /* 画布容器 */
+  #canvasWrap{ width:100%; max-width:900px; height:60vh; max-height:520px; margin-top:10px; position: relative; }
+  #canvas{ 
+    width:100%; height:100%; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,.5); position:relative; overflow:hidden; touch-action:none;
+    /* 恒星核心背景 */
+    background: radial-gradient(circle at center, #ffad33 0%, #ff5722 30%, #4e1f14 70%, #1a0a0a 100%);
+  }
+  #canvas::after {
+    content: ''; position: absolute; inset: 0; opacity: 0.2;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay; pointer-events: none;
+  }
+
+  /* 粒子样式 */
+  .particle {
+    position: absolute; border-radius: 50%; 
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 15px currentColor, inset 0 0 10px rgba(255,255,255,0.5);
+    cursor: grab; touch-action: none;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 14px; text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    user-select: none;
+    transition: transform 0.1s linear, box-shadow 0.2s ease; z-index: 5;
+  }
+  .particle:active { cursor: grabbing; scale: 1.1; }
+  .p { width: 40px; height: 40px; background: #ff3d00; color: #fff; box-shadow: 0 0 20px #ff3d00; }
+  .d { width: 50px; height: 50px; background: #ff9100; color: #fff; box-shadow: 0 0 25px #ff9100; }
+  .he3 { width: 60px; height: 60px; background: #ffea00; color: #aa5500; box-shadow: 0 0 30px #ffea00; }
+  .he4 { width: 70px; height: 70px; background: #ffffff; color: #ff5722; box-shadow: 0 0 50px #ffffff, 0 0 100px #ff9100; animation: pulse 1.5s infinite alternate; }
+
+  @keyframes pulse { 0% { scale: 1; box-shadow: 0 0 40px #fff; } 100% { scale: 1.05; box-shadow: 0 0 70px #fff, 0 0 120px #ff9100; } }
+  @keyframes shake { 0% { transform: translate(-51%, -50%) } 50% { transform: translate(-49%, -50%) } 100% { transform: translate(-50%, -50%) } }
+  .repelling { animation: shake 0.1s infinite; }
+
+  /* --- 升级版聚变核爆特效 --- */
+  /* 1. 核心光球闪光 */
+  .fusion-flash {
+    position: absolute; width: 120px; height: 120px; border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    /* 更强烈、层次更丰富的核心光芒 */
+    background: radial-gradient(circle, #ffffff 10%, #fff59d 40%, #ff9800 70%, transparent 100%);
+    box-shadow: 0 0 60px #ffeb3b, 0 0 120px #ff5722;
+    pointer-events: none; z-index: 20;
+    animation: flashPop 0.7s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  }
+  @keyframes flashPop {
+    0% { scale: 0.1; opacity: 1; }
+    30% { scale: 4.5; opacity: 1; filter: brightness(1.5); } /* 快速膨胀并变亮 */
+    100% { scale: 6.0; opacity: 0; filter: brightness(1); } /* 扩散消失 */
+  }
+
+  /* 2. 冲击波圆环 */
+  .shockwave {
+    position: absolute; width: 100px; height: 100px; border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    border: 4px solid rgba(255, 235, 59, 0.9);
+    box-shadow: 0 0 30px rgba(255, 87, 34, 0.6), inset 0 0 20px rgba(255, 152, 0, 0.5);
+    pointer-events: none; z-index: 19;
+    animation: shockwaveExpand 0.5s ease-out forwards;
+  }
+  @keyframes shockwaveExpand {
+    0% { scale: 0.5; opacity: 1; border-width: 8px; }
+    100% { scale: 10; opacity: 0; border-width: 1px; }
+  }
+
+  /* 3. 粒子飞溅爆炸 */
+  .particle-burst {
+      position: absolute; left: 0; top: 0; width: 0; height: 0;
+      pointer-events: none; z-index: 18;
+  }
+  .burst-particle {
+      position: absolute; width: 8px; height: 8px; border-radius: 50%;
+      background: #ffeb3b; box-shadow: 0 0 12px #ff5722;
+      animation: burstMove 0.6s ease-out forwards;
+  }
+  @keyframes burstMove {
+      0% { transform: translate(0, 0) scale(1.2); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+  }
+
+  /* 4. 全屏白光闪烁 (最强核爆时触发) */
+  .screen-flash {
+    position: fixed; inset: 0; background: rgba(255, 255, 255, 0.9);
+    z-index: 1000; pointer-events: none; opacity: 0; mix-blend-mode: plus-lighter;
+    animation: screenFlashAnim 0.4s ease-out forwards;
+  }
+  @keyframes screenFlashAnim {
+    0% { opacity: 1; } 100% { opacity: 0; }
+  }
+  /* --- 特效结束 --- */
+
+
+  /* 工具栏 */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s, transform .05s, opacity .2s; user-select:none; font-weight: 600;}
+  button:hover{ background:#5a5a5a;} button:active{ transform:scale(.98);} button:disabled{ opacity:.5; cursor:not-allowed;}
+  #resetBtn { background: #d84315; } #resetBtn:hover { background: #bf360c; }
+  #autoDemoBtn { background: #0097a7; } #autoDemoBtn:hover { background: #00838f; }
+
+  /* Checkmark & Toast & Modal */
+  .checkmark{ position:absolute; z-index:50; left:50%; top:30%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(255,152,0,0.2);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center; box-shadow:0 0 50px var(--accent-glow), inset 0 0 20px var(--accent-glow); animation:pop .55s ease-out;}
+  .checkmark.active{ display:flex;} .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.85); color:#fff; padding:12px 18px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.5); border: 1px solid rgba(255,152,0,0.3);
+    font-size:15px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; text-align: center;}
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.8); display:none; align-items:center; justify-content:center; z-index:300; backdrop-filter: blur(8px); }
+  .modal{ width:min(90vw,400px); background:#1a1a1a; color:#fff; border:2px solid var(--accent); border-radius:14px; padding:24px 20px; text-align:center; box-shadow:0 10px 60px rgba(255,87,34,0.5);}
+  .modal h3{ margin:8px 0 12px; font-size:24px; color: var(--accent); text-shadow: 0 0 10px var(--accent-glow);} .modal p{ color:#cfd8dc; margin-top:0; line-height: 1.6;} .modal .ok{ margin-top:16px; background:linear-gradient(45deg, var(--accent), #ff5722); color:#fff; font-weight:800; font-size: 18px; padding: 12px 28px; border:none; box-shadow: 0 4px 15px rgba(255,87,34,0.4);} .modal .ok:hover { background:linear-gradient(45deg, #ffb74d, #ff8a65); }
+
+  /* 说明区域 */
+  .explanation{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.7; font-size:1em; color:var(--ink); background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px;}
+  .explanation h2{ margin:.2em 0 .6em; color:var(--accent); font-size:1.3em; border-bottom: 1px solid rgba(255,152,0,0.3); padding-bottom: 8px;} 
+  .explanation ul{ margin:.2em 0 .2em 1.1em; padding-left: 1em;}
+  .explanation li { margin-bottom: 8px; }
+  .highlight { color: var(--accent); font-weight: bold; }
+
+  @media (max-width:600px){
+    .explanation{ font-size:.9em;}
+    .toolbar button{ flex:1; }
+    .task-step { font-size: 12px; }
+    #canvasWrap { height: 55vh; }
+  }
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">核心任务启动：将两个<strong>质子(H)</strong>强行捏合，制造<strong>氘核(D)</strong>。</div>
+      <div class="task-hint" id="taskHint">提示：它们带同种电荷会强烈排斥，你需要快速用力拖拽将它们按在一起。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="canvas">
+        </div>
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">斥力太强了！需要更靠近一点才能发生聚变。</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">核心点火成功！🌞</h3>
+      <p>祝贺你！你完整模拟了太阳核心的<strong>质子-质子链反应</strong>。<br>伴随着巨大的核爆能量释放，你制造出了稳定的氦-4。</p>
+      <button class="ok" id="okBtn">太震撼了</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>太阳是如何发光的？(核聚变)</h2>
+    <p>太阳核心温度高达 1500 万摄氏度，巨大的压力和热量迫使原子核克服电磁斥力结合在一起，这个过程叫<strong>核聚变</strong>，每次结合都会引发微型的<strong>核爆炸</strong>，释放出惊人的能量。</p>
+    <ul>
+      <li><strong>第一步 (H + H → D)：</strong> 两个质子（氢原子核）融合，一个变为中子，形成重氢，也就是<span class="highlight">氘(D)</span>。这是最难的一步。</li>
+      <li><strong>第二步 (D + H → He-3)：</strong> 氘核与另一个质子融合，形成轻的<span class="highlight">氦-3(He-3)</span>，释放更多能量。</li>
+      <li><strong>第三步 (He-3 + He-3 → He-4 + 2H)：</strong> 两个氦-3融合，引发最强烈的聚变爆炸，形成稳定的<span class="highlight">氦-4(He-4)</span>，并剧烈抛出两个多余的质子重新开始循环。</li>
+    </ul>
+  </div>
+
+<script>
+/* ------------ DOM & State ------------ */
+const canvas = document.getElementById('canvas');
+const checkmark = document.getElementById('checkmark');
+const toast = document.getElementById('toast');
+const doneMask = document.getElementById('doneMask');
+const okBtn = document.getElementById('okBtn');
+
+const taskStepEl = document.getElementById('taskStep');
+const taskTextEl = document.getElementById('taskText');
+const taskHintEl = document.getElementById('taskHint');
+const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+
+const btnReset = document.getElementById('resetBtn');
+const btnAuto = document.getElementById('autoDemoBtn');
+const btnFree = document.getElementById('freeBtn');
+const taskCard = document.getElementById('taskCard');
+
+let freeMode = false, completed = false, autoPlaying = false;
+let currentTask = 0;
+let particles = [];
+let particleIdCounter = 0;
+let draggedParticle = null;
+let animationFrameId = null;
+
+// 物理参数
+const REPULSION_STRENGTH = 4500; // 斥力强度
+const FUSION_DISTANCE = 35; // 聚变发生的距离阈值 (稍微调大一点点)
+const FRICTION = 0.95; // 环境摩擦力
+
+/* ------------ Tasks Definition ------------ */
+const tasks = [
+  { // Step 1: H + H -> D
+    text: '核心任务启动：将两个<strong>质子(H)</strong>强行捏合，制造<strong>氘核(D)</strong>。',
+    hint: '提示：它们带同种电荷会强烈排斥，用力拖拽将它们按在一起，引发第一次核爆点火。',
+    setup: () => { spawnParticles('p', 6); },
+    check: () => particles.some(p => p.type === 'd')
+  },
+  { // Step 2: D + H -> He3
+    text: '能量升级：将新产生的<strong>氘核(D)</strong>与另一个<strong>质子(H)</strong>融合，制造<strong>氦-3</strong>。',
+    hint: '提示：寻找你刚才制造的橙色氘核，让它撞击红色的质子，引发更强的爆炸。',
+    setup: () => { if(particles.filter(p=>p.type==='p').length < 2) spawnParticles('p', 2); }, // 确保有足够的质子
+    check: () => particles.some(p => p.type === 'he3')
+  },
+  { // Step 3: He3 + He3 -> He4 + 2H
+    text: '终极聚变：我们需要两个<strong>氦-3</strong>。系统已为你补充。现在，将两个黄色的氦-3融合！',
+    hint: '提示：这是产生巨大能量的最后一步，将两个最大的黄色核心撞在一起，见证终极核爆！',
+    setup: () => { 
+      const he3Count = particles.filter(p => p.type === 'he3').length;
+      if (he3Count < 2) spawnParticles('he3', 2 - he3Count);
+    },
+    check: () => particles.some(p => p.type === 'he4')
+  }
+];
+
+/* ------------ Particle System ------------ */
+class Particle {
+  constructor(type, x, y) {
+    this.id = particleIdCounter++;
+    this.type = type;
+    this.x = x; this.y = y;
+    this.vx = (Math.random() - 0.5) * 3; 
+    this.vy = (Math.random() - 0.5) * 3;
+    this.el = document.createElement('div');
+    this.el.className = `particle ${type}`;
+    this.el.textContent = type.toUpperCase();
+    this.radius = type==='p'?20 : type==='d'?25 : type==='he3'?30 : 35;
+    this.mass = type==='p'?1 : type==='d'?2 : type==='he3'?3 : 4; 
+    canvas.appendChild(this.el);
+    this.updateEl();
+  }
+  updateEl() { this.el.style.left = `${this.x}px`; this.el.style.top = `${this.y}px`; }
+}
+
+function spawnParticles(type, count) {
+  const padding = 60;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  for (let i = 0; i < count; i++) {
+    particles.push(new Particle(type, padding + Math.random() * (W - padding*2), padding + Math.random() * (H - padding*2)));
+  }
+}
+
+// --- 升级版核爆特效函数 ---
+function createFusionEffect(x, y, scale=1) {
+  const container = document.getElementById('canvas');
+
+  // 1. 核心光球闪光
+  const flash = document.createElement('div');
+  flash.className = 'fusion-flash';
+  flash.style.left = `${x}px`; flash.style.top = `${y}px`;
+  // 根据 scale 调整基础大小
+  flash.style.transform = `translate(-50%, -50%) scale(${scale * 0.7})`; 
+  container.appendChild(flash);
+  setTimeout(() => flash.remove(), 800);
+
+  // 2. 冲击波 (中等反应及以上触发)
+  if (scale >= 1.8) {
+    const wave = document.createElement('div');
+    wave.className = 'shockwave';
+    wave.style.left = `${x}px`; wave.style.top = `${y}px`;
+    wave.style.transform = `translate(-50%, -50%) scale(${scale * 0.5})`;
+    container.appendChild(wave);
+    setTimeout(() => wave.remove(), 600);
+  }
+
+  // 3. 粒子飞溅爆炸 (大型反应触发)
+  if (scale >= 2.8) {
+      const burst = document.createElement('div');
+      burst.className = 'particle-burst';
+      burst.style.left = `${x}px`; burst.style.top = `${y}px`;
+      container.appendChild(burst);
+      // 生成飞溅粒子
+      for(let i=0; i<16; i++) {
+          const p = document.createElement('div');
+          p.className = 'burst-particle';
+          const angle = (Math.PI * 2 * i) / 16 + Math.random()*0.5;
+          const dist = 120 + Math.random() * 150;
+          p.style.setProperty('--tx', `${Math.cos(angle) * dist * scale * 0.25}px`);
+          p.style.setProperty('--ty', `${Math.sin(angle) * dist * scale * 0.25}px`);
+          burst.appendChild(p);
+      }
+      setTimeout(() => burst.remove(), 700);
+  }
+
+  // 4. 全屏闪光 & 强力震动 (终极反应触发)
+  if (scale >= 3.5) {
+    const screenFlash = document.createElement('div');
+    screenFlash.className = 'screen-flash';
+    document.body.appendChild(screenFlash);
+    setTimeout(() => screenFlash.remove(), 400);
+    // 强烈的三段式震动
+    if (navigator.vibrate) navigator.vibrate([80, 40, 150, 40, 250]);
+  } else if (scale >= 2.0) {
+    // 中等震动
+    if (navigator.vibrate) navigator.vibrate([60, 30, 100]);
+  } else {
+    // 轻微震动
+    if (navigator.vibrate) navigator.vibrate(scale * 50);
+  }
+}
+
+/* ------------ Physics Loop ------------ */
+function physicsStep() {
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  
+  for (let i = 0; i < particles.length; i++) {
+    const p1 = particles[i];
+    if (p1 === draggedParticle) continue;
+
+    // 边界反弹
+    if (p1.x < p1.radius) { p1.x = p1.radius; p1.vx = Math.abs(p1.vx)*0.8; }
+    if (p1.x > W - p1.radius) { p1.x = W - p1.radius; p1.vx = -Math.abs(p1.vx)*0.8; }
+    if (p1.y < p1.radius) { p1.y = p1.radius; p1.vy = Math.abs(p1.vy)*0.8; }
+    if (p1.y > H - p1.radius) { p1.y = H - p1.radius; p1.vy = -Math.abs(p1.vy)*0.8; }
+
+    // 粒子斥力
+    let isRepelling = false;
+    for (let j = i + 1; j < particles.length; j++) {
+      const p2 = particles[j];
+      const dx = p1.x - p2.x; const dy = p1.y - p2.y;
+      const distSq = dx*dx + dy*dy;
+      const dist = Math.sqrt(distSq);
+      const minDist = p1.radius + p2.radius;
+
+      if (dist < minDist * 2.5 && dist > 5) {
+        const force = REPULSION_STRENGTH / distSq / Math.sqrt(p1.mass * p2.mass); 
+        const fx = (dx / dist) * force; const fy = (dy / dist) * force;
+        p1.vx += fx; p1.vy += fy; p2.vx -= fx; p2.vy -= fy;
+        if (dist < minDist * 1.3) isRepelling = true;
+      }
+    }
+    p1.el.classList.toggle('repelling', isRepelling && !draggedParticle);
+
+    p1.vx *= FRICTION; p1.vy *= FRICTION;
+    p1.x += p1.vx; p1.y += p1.vy;
+    p1.updateEl();
+  }
+
+  if (draggedParticle && !completed) detectFusion(draggedParticle);
+  animationFrameId = requestAnimationFrame(physicsStep);
+}
+
+function detectFusion(p1) {
+  for (let i = 0; i < particles.length; i++) {
+    const p2 = particles[i];
+    if (p1 === p2 || p2.isFusing) continue;
+    const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    
+    if (dist < FUSION_DISTANCE) {
+      let newType = null; let scale = 1;
+      // 任务模式规则
+      if (!freeMode) {
+        if (currentTask === 0 && p1.type === 'p' && p2.type === 'p') { newType = 'd'; scale=1.5; }
+        else if (currentTask === 1 && ((p1.type === 'd' && p2.type === 'p') || (p1.type === 'p' && p2.type === 'd'))) { newType = 'he3'; scale=2.5; }
+        else if (currentTask === 2 && p1.type === 'he3' && p2.type === 'he3') { newType = 'he4'; scale=4.0; }
+      } 
+      // 自由模式规则 (优化：给予更大的 scale 以触发震撼特效)
+      else {
+         if (p1.type === 'p' && p2.type === 'p') { newType = 'd'; scale = 1.5; }
+         else if ((p1.type === 'd' && p2.type === 'p') || (p1.type === 'p' && p2.type === 'd')) { newType = 'he3'; scale = 2.5; }
+         // 自由模式下 He3+He3 给予最大的 scale
+         else if (p1.type === 'he3' && p2.type === 'he3') { newType = 'he4'; scale = 4.5; }
+      }
+
+      if (newType) { performFusion(p1, p2, newType, scale); break; }
+    }
+  }
+}
+
+function performFusion(p1, p2, newType, scale) {
+  p1.isFusing = true; p2.isFusing = true; draggedParticle = null;
+  const midX = (p1.x + p2.x) / 2, midY = (p1.y + p2.y) / 2;
+  
+  // 触发升级版的核爆特效
+  createFusionEffect(midX, midY, scale);
+  
+  p1.el.remove(); p2.el.remove();
+  particles = particles.filter(p => p !== p1 && p !== p2);
+  
+  setTimeout(() => { // 稍微延迟生成新粒子，让爆炸先展示
+      const newParticle = new Particle(newType, midX, midY);
+      particles.push(newParticle);
+      // He3+He3 -> He4 时喷射出两个高速质子
+      if (newType === 'he4') {
+        for(let k=0; k<2; k++){
+            const p = new Particle('p', midX, midY);
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 20 + Math.random()*10; // 更高的喷射速度
+            p.vx = Math.cos(angle) * speed; p.vy = Math.sin(angle) * speed;
+            particles.push(p);
+        }
+      }
+      if (!freeMode) checkTaskCompletion();
+  }, 150);
+}
+
+/* ------------ Task Flow & UI ------------ */
+function updateTaskUI() {
+  dots.forEach((d,i) => {
+    d.className = 'dot';
+    if (i < currentTask) d.classList.add('done');
+    if (i === currentTask) d.classList.add('active');
+  });
+  taskStepEl.textContent = `步骤 ${currentTask + 1} / ${tasks.length}`;
+  taskTextEl.innerHTML = tasks[currentTask].text;
+  taskHintEl.textContent = tasks[currentTask].hint;
+}
+
+function checkTaskCompletion() {
+  if (tasks[currentTask].check()) {
+    showCheckmark();
+    setTimeout(() => {
+      currentTask++;
+      if (currentTask >= tasks.length) {
+        completed = true; dots[currentTask-1].classList.add('done'); showDone();
+      } else {
+        updateTaskUI(); tasks[currentTask].setup();
+      }
+    }, 1200); // 延长等待时间以展示特效
+  }
+}
+
+function showCheckmark() { checkmark.classList.add('active'); setTimeout(() => checkmark.classList.remove('active'), 800); }
+function showToast(msg) { toast.textContent = msg; toast.classList.add('show'); setTimeout(() => toast.classList.remove('show'), 2000); }
+function showDone() { doneMask.style.display = 'flex'; }
+okBtn.onclick = () => doneMask.style.display = 'none';
+
+function resetFlow() {
+  if (autoPlaying) return;
+  completed = false; currentTask = 0;
+  particles.forEach(p => p.el.remove()); particles = [];
+  updateTaskUI(); tasks[0].setup();
+  if (!animationFrameId) physicsStep();
+  if (!freeMode) showToast('场景已重置，准备好引发新的核爆了吗？');
+}
+
+/* ------------ Interaction ------------ */
+function getPointerPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return { x: (e.touches?e.touches[0].clientX:e.clientX) - rect.left, y: (e.touches?e.touches[0].clientY:e.clientY) - rect.top };
+}
+function handleStart(e) {
+    if (autoPlaying || completed) return;
+    if (e.target.classList.contains('particle')) {
+        draggedParticle = particles.find(p => p.el === e.target);
+        draggedParticle.vx = 0; draggedParticle.vy = 0;
+    }
+}
+function handleMove(e) {
+    if (!draggedParticle) return;
+    e.preventDefault(); const pos = getPointerPos(e);
+    draggedParticle.x = pos.x; draggedParticle.y = pos.y; draggedParticle.updateEl();
+}
+function handleEnd() { draggedParticle = null; }
+
+canvas.addEventListener('mousedown', handleStart); canvas.addEventListener('touchstart', handleStart, {passive:false});
+window.addEventListener('mousemove', handleMove, {passive:false}); window.addEventListener('touchmove', handleMove, {passive:false});
+window.addEventListener('mouseup', handleEnd); window.addEventListener('touchend', handleEnd);
+
+/* ------------ Auto Demo ------------ */
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+async function autoDemo() {
+    if (autoPlaying || freeMode) return;
+    autoPlaying = true; btnAuto.disabled = true; btnReset.disabled = true;
+    resetFlow(); await sleep(1000);
+
+    const findPair = (t1, t2) => {
+        const p1 = particles.find(p => p.type === t1 && !p.isFusing);
+        const p2 = particles.find(p => p.type === t2 && p !== p1 && !p.isFusing);
+        return (p1 && p2) ? [p1, p2] : null;
+    };
+
+    async function simulateFusion(p1, p2, targetType, scale) {
+        draggedParticle = p1; const steps = 25; const startX = p1.x, startY = p1.y;
+        for (let i = 1; i <= steps; i++) {
+            if (!p1.el.parentNode || !p2.el.parentNode) break;
+            const t = i / steps;
+            p1.x = startX + (p2.x - startX) * t; p1.y = startY + (p2.y - startY) * t;
+            p1.updateEl();
+            if (i > steps - 4) {
+                if (Math.hypot(p1.x - p2.x, p1.y - p2.y) < FUSION_DISTANCE * 1.2) {
+                     performFusion(p1, p2, targetType, scale); return;
+                }
+            }
+            await sleep(25);
+        }
+        draggedParticle = null;
+    }
+
+    let pair = findPair('p', 'p'); if (pair) await simulateFusion(pair[0], pair[1], 'd', 1.5); await sleep(1800);
+    pair = findPair('d', 'p'); if (pair) await simulateFusion(pair[0], pair[1], 'he3', 2.5); await sleep(1800);
+    await sleep(500); pair = findPair('he3', 'he3'); if (pair) await simulateFusion(pair[0], pair[1], 'he4', 4.0); await sleep(1500);
+
+    autoPlaying = false; btnAuto.disabled = false; btnReset.disabled = false;
+}
+
+/* ------------ Buttons & Init ------------ */
+btnReset.onclick = resetFlow; btnAuto.onclick = autoDemo;
+btnFree.onclick = () => {
+  freeMode = !freeMode;
+  btnFree.textContent = freeMode ? '退出自由模式' : '自由模式';
+  btnAuto.disabled = freeMode;
+  taskCard.style.opacity = freeMode ? 0.3 : 1; taskCard.style.filter = freeMode ? 'grayscale(0.8)' : 'none';
+  if (freeMode) {
+      showToast('自由模式开启：尽情制造核爆吧！尝试合成最大的 He4。');
+      if(particles.length < 6) spawnParticles('p', 6); // 补充更多原料
+  } else { resetFlow(); }
+};
+
+resetFlow();
+</script>
+</body>
+</html>

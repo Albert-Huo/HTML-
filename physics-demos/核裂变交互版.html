@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>核裂变链式反应</title>
+  <style>
+    :root{
+      --card-bg: rgba(255,255,255,0.08);
+      --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --energy:#ffeb3b;
+    }
+    body {
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 10px;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+    /* ====== 任务卡片 ====== */
+    .task-card{
+      width: 100%; max-width: 900px; background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 12px;
+      padding: 12px 16px; backdrop-filter: blur(8px);
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+      margin-bottom: 10px;
+      transition: opacity 0.3s;
+    }
+    .task-card.dimmed { opacity: 0.3; pointer-events: none; filter: grayscale(0.8); }
+    
+    .task-step{ background: rgba(255,255,255,0.15); border-radius: 6px; padding: 4px 10px; font-weight: 700; font-size: 14px; white-space: nowrap; }
+    .task-text{ font-size: 15px; line-height: 1.4; }
+    .task-hint{ color: #ffd54f; font-size: 12px; opacity: 0.9; margin-top: 4px; display: block; }
+    .progress-dots{ display: flex; gap:6px; }
+    .dot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,0.2); transition: all 0.3s; }
+    .dot.active{ background: var(--warn); transform: scale(1.2); box-shadow: 0 0 8px var(--warn); }
+    .dot.done{ background: var(--accent); }
+
+    /* ====== 画布容器 ====== */
+    #canvasWrap {
+      width: 100%; max-width: 900px; height: 55vh; max-height: 500px; min-height: 300px;
+      position: relative; border-radius: 12px; overflow: hidden;
+      background: #000;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    @keyframes heavyShake {
+      0% { transform: translate(0, 0); }
+      20% { transform: translate(-4px, 4px); }
+      40% { transform: translate(4px, -4px); }
+      60% { transform: translate(-4px, -4px); }
+      80% { transform: translate(4px, 4px); }
+      100% { transform: translate(0, 0); }
+    }
+    .shake-screen { animation: heavyShake 0.2s linear infinite; }
+
+    /* ====== 游戏元素 ====== */
+    .uranium {
+      position: absolute; width: 44px; height: 44px; margin-left:-22px; margin-top:-22px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #4facfe, #00f2fe, #003366);
+      box-shadow: 0 0 5px rgba(0,150,255,0.4);
+      display: flex; justify-content: center; align-items: center;
+      font-size: 10px; font-weight: bold; color: rgba(255,255,255,0.9);
+      z-index: 10;
+    }
+    .uranium.unstable {
+      background: radial-gradient(circle at 30% 30%, #ff9a9e, #ff0000);
+      animation: heavyShake 0.3s linear infinite; 
+    }
+
+    .neutron {
+      position: absolute; width: 8px; height: 8px; margin-left:-4px; margin-top:-4px;
+      background: #fff; border-radius: 50%;
+      box-shadow: 0 0 6px #fff, 0 0 12px var(--accent);
+      z-index: 20; pointer-events: none; will-change: transform;
+      left: 0; top: 0; 
+    }
+    .neutron.super {
+      width: 12px; height: 12px; margin-left:-6px; margin-top:-6px;
+      background: #ffff00;
+      box-shadow: 0 0 15px #ffeb3b, 0 0 25px #ff5722;
+    }
+
+    /* 发射口标记 */
+    .launcher-marker {
+      position: absolute; left: 0; top: 50%; width: 12px; height: 24px;
+      background: #444; transform: translateY(-50%);
+      border-radius: 0 4px 4px 0; border: 1px solid #666;
+    }
+
+    .fragment {
+      position: absolute; width: 24px; height: 24px; margin-left:-12px; margin-top:-12px;
+      border-radius: 50%;
+      background: #76ff03; opacity: 0.7;
+      display: flex; justify-content: center; align-items: center;
+      font-size: 9px; color: #000; font-weight: bold;
+      z-index: 5; transition: transform 0.8s ease-out, opacity 0.8s;
+      left: 0; top: 0;
+    }
+
+    .control-rod {
+      position: absolute; width: 14px; height: 160px; margin-left:-7px; margin-top:-80px;
+      background: linear-gradient(90deg, #666, #999, #666);
+      border: 1px solid #444; border-radius: 4px;
+      z-index: 8; transition: top 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .flash-overlay {
+      position: absolute; inset: 0; background: white;
+      opacity: 0; pointer-events: none; z-index: 100; mix-blend-mode: overlay;
+      transition: opacity 0.1s;
+    }
+
+    /* ====== 仪表盘 ====== */
+    .hud {
+      position: absolute; top: 12px; right: 12px;
+      background: rgba(0,0,0,0.7); padding: 8px 12px;
+      border-radius: 8px; border: 1px solid rgba(255,255,255,0.15);
+      font-family: monospace; font-size: 13px; z-index: 50; pointer-events: none;
+    }
+    .hud div { margin-bottom: 4px; display: flex; justify-content: space-between; gap: 12px; }
+    .val-energy { color: var(--energy); font-weight: 900; }
+    .val-count { color: var(--accent); font-weight: 900; }
+
+    /* ====== 自由模式面板 ====== */
+    .free-panel {
+      position: absolute; top: 12px; left: 12px;
+      background: rgba(40, 40, 40, 0.9); padding: 10px 14px;
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
+      z-index: 60; display: none; font-size: 13px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .free-panel.active { display: block; animation: fadeIn 0.3s; }
+    .fp-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .fp-row:last-child { margin-bottom: 0; }
+    .fp-label { color: #ccc; width: 60px; }
+    input[type=range] { width: 100px; accent-color: var(--accent); }
+    input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+    .fp-val { font-weight: bold; color: var(--accent); width: 24px; text-align: right;}
+
+    @keyframes fadeIn { from{opacity:0; transform:translateY(-5px)} to{opacity:1; transform:translateY(0)} }
+
+    /* ====== 画布控制按钮 ====== */
+    .canvas-ctrl {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 10px; z-index: 50;
+    }
+    .btn {
+      background: #333; color: white; border: 1px solid rgba(255,255,255,0.2);
+      padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 14px;
+      transition: all 0.2s; white-space: nowrap; font-weight: 600;
+    }
+    .btn:hover:not(:disabled) { background: #444; transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.primary { background: var(--warn); color: #1a1a1a; border-color: transparent; }
+    .btn.danger { background: rgba(255, 107, 107, 0.2); color: #ff6b6b; border-color: #ff6b6b; }
+
+    /* ====== 底部工具栏 ====== */
+    .toolbar {
+      width: 100%; max-width: 900px; margin-top: 12px;
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+    .tool-btn {
+      background: #2a2a2a; color: #ccc; border: none;
+      padding: 10px 16px; border-radius: 6px; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tool-btn:hover { background: #3a3a3a; color: #fff; }
+
+    /* ====== 弹窗与提示 ====== */
+    .toast {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.85); color: #fff; padding: 10px 20px; border-radius: 30px;
+      opacity: 0; pointer-events: none; transition: all 0.3s; z-index: 200;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .modal-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: none; align-items: center; justify-content: center; z-index: 999;
+      backdrop-filter: blur(5px);
+    }
+    .modal {
+      background: #1e1e1e; padding: 24px; border-radius: 16px;
+      width: 90%; max-width: 360px; text-align: center;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .modal h3 { color: var(--accent); margin-top: 0; font-size: 24px; }
+    .modal p { color: #ddd; line-height: 1.6; margin-bottom: 20px; }
+    .modal button {
+      background: var(--accent); color: #000; border: none;
+      padding: 10px 30px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px;
+    }
+
+    .checkmark {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+      width: 100px; height: 100px; border-radius: 50%;
+      background: rgba(61, 220, 151, 0.2); border: 4px solid var(--accent);
+      z-index: 60; display: flex; align-items: center; justify-content: center; pointer-events: none;
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .checkmark.show { transform: translate(-50%, -50%) scale(1); }
+    .checkmark::after {
+      content: ""; width: 50px; height: 25px;
+      border-left: 6px solid var(--accent); border-bottom: 6px solid var(--accent);
+      transform: rotate(-45deg) translateY(-5px);
+    }
+
+    .explanation {
+      width: 100%; max-width: 900px; margin: 20px 0;
+      color: #aaa; font-size: 14px; line-height: 1.6;
+    }
+    .explanation strong { color: #fff; }
+  </style>
+</head>
+<body>
+
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">1 / 3</div>
+    <div>
+      <div class="task-text" id="taskText">载入中...</div>
+      <span class="task-hint" id="taskHint"></span>
+    </div>
+    <div class="progress-dots">
+      <div class="dot active" id="dot1"></div>
+      <div class="dot" id="dot2"></div>
+      <div class="dot" id="dot3"></div>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="flashOverlay" class="flash-overlay"></div>
+    <div class="launcher-marker"></div>
+    
+    <div class="free-panel" id="freePanel">
+      <div class="fp-row">
+        <span class="fp-label">原子数</span>
+        <input type="range" id="atomRange" min="1" max="100" value="50">
+        <span class="fp-val" id="atomVal">50</span>
+      </div>
+      <div class="fp-row">
+        <span class="fp-label">控制棒</span>
+        <input type="checkbox" id="rodCheck" checked>
+        <span style="font-size:12px;color:#999;margin-left:4px">(启用)</span>
+      </div>
+    </div>
+
+    <div id="reactorContainer"></div>
+    <div id="projectileContainer"></div>
+    <div id="rodContainer"></div>
+    <div class="checkmark" id="checkmark"></div>
+
+    <div class="hud">
+      <div><span>能量:</span><span class="val-energy" id="energyVal">0 MeV</span></div>
+      <div><span>中子:</span><span class="val-count" id="neutronVal">0</span></div>
+      <div><span>进度:</span><span id="progressVal">0%</span></div>
+    </div>
+
+    <div class="canvas-ctrl">
+      <button class="btn primary" id="fireBtn">🚀 发射中子</button>
+      <button class="btn" id="rodBtn" style="display:none">🛑 插入控制棒</button>
+      <button class="btn danger" id="resetStepBtn">↺ 步骤重置</button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="fullResetBtn">全部重置</button>
+    <button class="tool-btn" id="autoDemoBtn">自动演示</button>
+    <button class="tool-btn" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="explanation">
+    <h3>🔬 科学原理</h3>
+    <p>1. <strong>单次裂变</strong>：慢中子撞击 U-235 原子核，原子核分裂并释放能量和 2-3 个新中子。</p>
+    <p>2. <strong>链式反应 (核爆)</strong>：高密度下，新中子呈指数级引发更多裂变，瞬间释放巨大能量。</p>
+    <p>3. <strong>可控反应 (核电)</strong>：使用控制棒吸收多余中子，保持反应平稳进行，避免堆芯熔毁。</p>
+  </div>
+
+  <div class="toast" id="toast">提示信息</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>🎉 实验完美达成！</h3>
+      <p>你已经掌握了核物理的三大关键：<br>触发裂变、引爆能量、以及驾驭它。</p>
+      <button id="closeModalBtn">太棒了</button>
+    </div>
+  </div>
+
+<script>
+(function() {
+  /* ================= 状态管理 ================= */
+  const state = {
+    taskId: 0,
+    isFreeMode: false,
+    isRunning: false,
+    isAutoPlaying: false,
+    atoms: [],
+    neutrons: [],
+    rods: [],
+    energy: 0,
+    fissionCount: 0,
+    taskCompleted: false
+  };
+
+  // 自由模式配置
+  const freeConfig = {
+    count: 50,
+    rods: true
+  };
+
+  /* ================= 任务配置 ================= */
+  const tasks = [
+    {
+      title: "观察<b>单次裂变</b>现象",
+      hint: "点击“发射中子”，观察单个中子如何击碎原子核。",
+      type: 'basic',
+      setup: () => initScenario(1, false),
+      check: () => state.fissionCount >= 1
+    },
+    {
+      title: "触发<b>链式反应</b> (高能预警！)",
+      hint: "密度已增加。点击发射，见证指数级裂变引发的核爆能量！",
+      type: 'explosion',
+      setup: () => initScenario(35, false),
+      check: () => state.fissionCount >= 25
+    },
+    {
+      title: "实现<b>可控平稳裂变</b>",
+      hint: "已插入控制棒。目标：让反应缓慢进行，裂变掉 >20% 的燃料即可。",
+      type: 'control',
+      setup: () => initScenario(35, true),
+      check: () => {
+        const ratio = state.fissionCount / (state.atoms.length + state.fissionCount);
+        return state.neutrons.length === 0 && ratio >= 0.2 && ratio <= 0.8;
+      }
+    }
+  ];
+
+  /* ================= DOM 缓存 ================= */
+  const els = {};
+  const ids = ['canvasWrap', 'reactorContainer', 'projectileContainer', 'rodContainer', 
+               'flashOverlay', 'energyVal', 'neutronVal', 'progressVal', 'fireBtn', 
+               'rodBtn', 'resetStepBtn', 'fullResetBtn', 'autoDemoBtn', 'freeBtn', 'freePanel', 'atomRange', 'atomVal', 'rodCheck', 'taskCard',
+               'toast', 'checkmark', 'doneMask', 'closeModalBtn', 'taskStep', 'taskText', 'taskHint'];
+  
+  function cacheDOM() {
+    let missing = false;
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if(el) els[id] = el;
+      else missing = true;
+    });
+    return !missing;
+  }
+
+  /* ================= 核心引擎 ================= */
+  let rafId = null;
+  let timeouts = [];
+
+  function safeTimeout(fn, ms) {
+    const id = setTimeout(() => {
+      fn();
+      timeouts = timeouts.filter(t => t !== id);
+    }, ms);
+    timeouts.push(id);
+  }
+
+  function clearTimeouts() {
+    timeouts.forEach(clearTimeout);
+    timeouts = [];
+  }
+
+  function getCanvasRect() {
+    if(!els.canvasWrap) return { w: 800, h: 500 };
+    return { w: els.canvasWrap.clientWidth, h: els.canvasWrap.clientHeight };
+  }
+
+  // --- 实体生成 ---
+  function spawnAtom(x, y) {
+    const el = document.createElement('div');
+    el.className = 'uranium';
+    el.innerText = 'U-235';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    els.reactorContainer.appendChild(el);
+    state.atoms.push({ x, y, el, active: true, r: 22 });
+  }
+
+  function spawnRod(x, y) {
+    const el = document.createElement('div');
+    el.className = 'control-rod';
+    el.style.left = x + 'px';
+    el.style.top = y + 'px'; 
+    els.rodContainer.appendChild(el);
+    state.rods.push({ x, y, el, active: true, w: 14, h: 160 });
+  }
+
+  function spawnNeutron(x, y, angle, isSuper = false) {
+    const el = document.createElement('div');
+    el.className = isSuper ? 'neutron super' : 'neutron';
+    els.projectileContainer.appendChild(el);
+
+    let speed = 4;
+    // 速度配置
+    if (state.isFreeMode) speed = 5;
+    else {
+      const type = tasks[state.taskId].type;
+      if (type === 'explosion') speed = 8;
+      else if (type === 'control') speed = 1.8;
+    }
+
+    state.neutrons.push({
+      x, y, el,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed
+    });
+  }
+
+  function createFragments(x, y) {
+    ['Kr', 'Ba'].forEach((txt, i) => {
+      const el = document.createElement('div');
+      el.className = 'fragment';
+      el.innerText = txt;
+      el.style.transform = `translate(${x}px, ${y}px)`;
+      els.reactorContainer.appendChild(el);
+      
+      const angle = Math.random() * 6.28;
+      const dist = 40;
+      setTimeout(() => {
+        const dx = Math.cos(angle)*dist;
+        const dy = Math.sin(angle)*dist;
+        el.style.transform = `translate(${x + dx}px, ${y + dy}px)`;
+        el.style.opacity = '0';
+      }, 20);
+      setTimeout(() => { if(el.parentNode) el.remove(); }, 1000);
+    });
+  }
+
+  // --- 物理逻辑 ---
+  function triggerFission(idx) {
+    const atom = state.atoms[idx];
+    if(!atom || !atom.active) return;
+    
+    atom.active = false;
+    state.fissionCount++;
+    
+    // 能量计算
+    let addEnergy = 200;
+    let isSuper = false;
+    let count = Math.random() > 0.5 ? 3 : 2;
+
+    if (!state.isFreeMode) {
+      const type = tasks[state.taskId].type;
+      if(type === 'explosion') {
+        addEnergy = 500;
+        count = 4 + Math.floor(Math.random() * 3);
+        isSuper = true;
+        shakeScreen();
+        flashScreen('yellow');
+      } else if (type === 'control') {
+        // 控制模式反应慢一点，增加一点中子数防止太快熄火
+        if(Math.random() > 0.4) count = 3; 
+        flashScreen('white');
+      } else {
+        flashScreen('white');
+      }
+    } else {
+      // 自由模式：普通效果
+      flashScreen('white');
+    }
+
+    state.energy += addEnergy;
+    atom.el.classList.add('unstable');
+    
+    safeTimeout(() => {
+      if(!atom.el.parentNode) return;
+      atom.el.remove();
+      createFragments(atom.x, atom.y);
+      for(let i=0; i<count; i++) {
+        spawnNeutron(atom.x, atom.y, Math.random() * 6.28, isSuper);
+      }
+    }, 100);
+  }
+
+  function shakeScreen() {
+    els.canvasWrap.classList.remove('shake-screen');
+    void els.canvasWrap.offsetWidth;
+    els.canvasWrap.classList.add('shake-screen');
+    safeTimeout(() => els.canvasWrap.classList.remove('shake-screen'), 300);
+  }
+
+  function flashScreen(color) {
+    els.flashOverlay.style.background = color === 'yellow' ? 'rgba(255, 235, 59, 0.5)' : 'rgba(255,255,255,0.8)';
+    els.flashOverlay.style.opacity = '1';
+    safeTimeout(() => els.flashOverlay.style.opacity = '0', 150);
+  }
+
+  // --- 主循环 ---
+  function gameLoop() {
+    if(!state.isRunning && state.neutrons.length === 0) return;
+
+    const { w, h } = getCanvasRect();
+    const type = state.isFreeMode ? 'free' : tasks[state.taskId].type;
+
+    for (let i = state.neutrons.length - 1; i >= 0; i--) {
+      const n = state.neutrons[i];
+      n.x += n.vx;
+      n.y += n.vy;
+
+      let remove = false;
+
+      // 1. 边界检测
+      if (n.x < 0 || n.x > w || n.y < 0 || n.y > h) remove = true;
+
+      // 2. 控制棒吸收
+      if (!remove) {
+        for (const rod of state.rods) {
+          // 慢速模式下判定宽一点
+          const hitW = rod.w + (type === 'control' ? 8 : 4);
+          if (Math.abs(n.x - rod.x) < hitW/2 && Math.abs(n.y - rod.y) < rod.h/2) {
+            remove = true; 
+            break;
+          }
+        }
+      }
+
+      // 3. 原子核撞击
+      if (!remove) {
+        for (let j = 0; j < state.atoms.length; j++) {
+          const a = state.atoms[j];
+          if (a.active) {
+            const dx = n.x - a.x;
+            const dy = n.y - a.y;
+            // 爆炸模式判定范围大
+            const hitR = type === 'explosion' ? 30 : 22;
+            if (dx*dx + dy*dy < hitR*hitR) {
+              triggerFission(j);
+              remove = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (remove) {
+        if(n.el.parentNode) n.el.remove();
+        state.neutrons.splice(i, 1);
+      } else {
+        n.el.style.transform = `translate(${n.x}px, ${n.y}px)`;
+      }
+    }
+
+    updateHUD();
+    checkTask();
+    rafId = requestAnimationFrame(gameLoop);
+  }
+
+  function updateHUD() {
+    els.energyVal.innerText = state.energy + " MeV";
+    els.neutronVal.innerText = state.neutrons.length;
+    const total = state.atoms.length + state.fissionCount;
+    const pct = total > 0 ? Math.round((state.fissionCount / total) * 100) : 0;
+    els.progressVal.innerText = pct + "%";
+  }
+
+  function checkTask() {
+    // 自由模式、已完成或演示中不检测
+    if (state.isFreeMode || state.taskCompleted || state.isAutoPlaying) return;
+
+    const type = tasks[state.taskId].type;
+    
+    // 控制模式必须等静止
+    if (type === 'control' && state.neutrons.length > 0) return; 
+
+    const success = tasks[state.taskId].check();
+    
+    if (success) {
+      state.taskCompleted = true; 
+      showCheckmark();
+      safeTimeout(nextTask, 1500);
+    } else if (state.neutrons.length === 0 && !success) {
+      if (!state.failDebounce) {
+        state.failDebounce = true;
+        let msg = "未达到目标，请点击重置再试";
+        if (type === 'control') msg = "裂变比例需超过 20% 即可";
+        showToast(msg);
+        safeTimeout(() => state.failDebounce = false, 2000);
+      }
+    }
+  }
+
+  function nextTask() {
+    document.getElementById(`dot${state.taskId+1}`).classList.replace('active', 'done');
+    
+    if (state.taskId < tasks.length - 1) {
+      state.taskId++;
+      loadTask(state.taskId);
+      document.getElementById(`dot${state.taskId+1}`).classList.add('active');
+    } else {
+      els.doneMask.style.display = 'flex';
+    }
+  }
+
+  /* ================= 场景控制 ================= */
+  function initScenario(count, hasRods) {
+    state.isRunning = false;
+    cancelAnimationFrame(rafId);
+    clearTimeouts();
+    state.taskCompleted = false; 
+    
+    els.reactorContainer.innerHTML = '';
+    els.projectileContainer.innerHTML = '';
+    els.rodContainer.innerHTML = '';
+    
+    state.atoms = [];
+    state.neutrons = [];
+    state.rods = [];
+    state.energy = 0;
+    state.fissionCount = 0;
+    
+    updateHUD();
+
+    const { w, h } = getCanvasRect();
+    const cx = w/2, cy = h/2;
+
+    if (count === 1) {
+      spawnAtom(cx, cy);
+    } else {
+      const rows = 5;
+      const cols = Math.ceil(count / rows);
+      const spacing = 60;
+      const startX = cx - ((cols-1)*spacing)/2;
+      const startY = cy - ((rows-1)*spacing)/2;
+
+      for(let r=0; r<rows; r++) {
+        for(let c=0; c<cols; c++) {
+          if (state.atoms.length >= count) break;
+          const jx = (Math.random()-0.5) * 10;
+          const jy = (Math.random()-0.5) * 10;
+          spawnAtom(startX + c*spacing + jx, startY + r*spacing + jy);
+        }
+      }
+
+      if (hasRods) {
+        spawnRod(cx - spacing*1.5, cy);
+        spawnRod(cx - spacing*0.5, cy);
+        spawnRod(cx + spacing*0.5, cy);
+        spawnRod(cx + spacing*1.5, cy);
+        els.rodBtn.style.display = 'block';
+        toggleRods(false); 
+      } else {
+        els.rodBtn.style.display = 'none';
+      }
+    }
+
+    els.fireBtn.disabled = false;
+    state.isRunning = true;
+    gameLoop();
+  }
+
+  function loadTask(id) {
+    state.taskId = id;
+    const t = tasks[id];
+    els.taskStep.innerText = `${id+1} / 3`;
+    els.taskText.innerHTML = t.title;
+    els.taskHint.innerText = t.hint;
+    t.setup();
+  }
+
+  /* ================= 交互动作 ================= */
+  function fire() {
+    if(state.atoms.length === 0) return;
+    
+    const { w, h } = getCanvasRect();
+    const startY = h/2; 
+    const startX = 0;   
+    
+    let targetX = 0;
+    let targetY = h/2;
+
+    // 智能瞄准
+    if(state.atoms.length === 1) {
+        targetX = state.atoms[0].x;
+        targetY = state.atoms[0].y;
+    } else {
+        let targetAtom = null;
+        let minScore = Infinity;
+        
+        state.atoms.forEach(a => {
+            if(!a.active) return;
+            const score = a.x + Math.abs(a.y - startY) * 0.5;
+            if (score < minScore) { 
+                minScore = score; 
+                targetAtom = a; 
+            }
+        });
+        
+        if (targetAtom) {
+            targetX = targetAtom.x;
+            targetY = targetAtom.y;
+        } else {
+            targetX = w;
+            targetY = h/2;
+        }
+    }
+
+    const angle = Math.atan2(targetY - startY, targetX - startX);
+    spawnNeutron(startX + 10, startY, angle); 
+    
+    els.fireBtn.disabled = true;
+    safeTimeout(() => { if(!state.isAutoPlaying) els.fireBtn.disabled = false; }, 2000);
+  }
+
+  function toggleRods(forceState) {
+    if(state.rods.length === 0) return;
+    const { h } = getCanvasRect();
+    const active = (typeof forceState === 'boolean') ? forceState : (state.rods[0].y < 0);
+    
+    state.rods.forEach(r => {
+      r.y = active ? h/2 : -200;
+      r.el.style.top = r.y + 'px';
+    });
+    
+    els.rodBtn.innerText = active ? '⬆️ 拔出控制棒' : '🛑 插入控制棒';
+  }
+
+  /* ================= 自由模式面板逻辑 ================= */
+  function updateFreeConfig() {
+    freeConfig.count = parseInt(els.atomRange.value);
+    freeConfig.rods = els.rodCheck.checked;
+    els.atomVal.innerText = freeConfig.count;
+    
+    // 如果当前在自由模式，实时刷新场景
+    if(state.isFreeMode && !state.isAutoPlaying) {
+      initScenario(freeConfig.count, freeConfig.rods);
+    }
+  }
+
+  /* ================= 全局控制 ================= */
+  function showToast(msg) {
+    els.toast.innerText = msg;
+    els.toast.classList.add('show');
+    setTimeout(() => els.toast.classList.remove('show'), 2500);
+  }
+
+  function showCheckmark() {
+    els.checkmark.classList.add('show');
+    setTimeout(() => els.checkmark.classList.remove('show'), 1000);
+  }
+
+  function resetCurrent() {
+    if(state.isFreeMode) initScenario(freeConfig.count, freeConfig.rods);
+    else loadTask(state.taskId);
+  }
+
+  function fullReset() {
+    // 强制退出自由模式
+    state.isFreeMode = false;
+    els.freeBtn.innerText = "自由模式";
+    els.doneMask.style.display = 'none';
+    
+    els.taskCard.classList.remove('dimmed');
+    els.freePanel.classList.remove('active');
+
+    [1,2,3].forEach(i => {
+      const d = document.getElementById('dot'+i);
+      d.classList.remove('active', 'done');
+      if(i===1) d.classList.add('active');
+    });
+
+    loadTask(0);
+    showToast("已重置所有步骤");
+  }
+
+  function toggleFreeMode() {
+    state.isFreeMode = !state.isFreeMode;
+    els.freeBtn.innerText = state.isFreeMode ? "退出自由" : "自由模式";
+    
+    if(state.isFreeMode) {
+      els.taskCard.classList.add('dimmed');
+      els.freePanel.classList.add('active');
+      initScenario(freeConfig.count, freeConfig.rods);
+      showToast("自由模式：可自定义实验参数");
+    } else {
+      els.taskCard.classList.remove('dimmed');
+      els.freePanel.classList.remove('active');
+      loadTask(state.taskId);
+    }
+  }
+
+  async function autoDemo() {
+    if(state.isAutoPlaying) return;
+    state.isAutoPlaying = true;
+    
+    // 强制退出自由模式并重置
+    fullReset(); 
+    els.autoDemoBtn.disabled = true;
+
+    const wait = ms => new Promise(r => safeTimeout(r, ms));
+
+    // ==== Step 1 ====
+    await wait(800); fire();
+    await wait(3000); 
+
+    // ==== Step 2 ====
+    loadTask(1);
+    document.getElementById('dot2').classList.add('active');
+    document.getElementById('dot1').classList.replace('active', 'done');
+    
+    await wait(1000); fire();
+    await wait(4500); 
+
+    // ==== Step 3 ====
+    loadTask(2);
+    document.getElementById('dot3').classList.add('active');
+    document.getElementById('dot2').classList.replace('active', 'done');
+    
+    await wait(1000); toggleRods(true);
+    await wait(1000); fire();
+    await wait(6000); 
+
+    state.isAutoPlaying = false;
+    els.autoDemoBtn.disabled = false;
+  }
+
+  function init() {
+    if(!cacheDOM()) { console.error("DOM missing"); return; }
+
+    els.fireBtn.onclick = fire;
+    els.rodBtn.onclick = () => toggleRods();
+    els.resetStepBtn.onclick = resetCurrent;
+    els.fullResetBtn.onclick = fullReset;
+    els.autoDemoBtn.onclick = autoDemo;
+    els.freeBtn.onclick = toggleFreeMode;
+    els.closeModalBtn.onclick = () => els.doneMask.style.display = 'none';
+
+    // 自由模式面板事件
+    els.atomRange.oninput = updateFreeConfig;
+    els.rodCheck.onchange = updateFreeConfig;
+
+    loadTask(0);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+</script>
+</body>
+</html>

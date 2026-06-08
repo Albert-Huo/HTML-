@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<title>小狗听到的声｜交互闯关（模板同款+自动判定｜最终版）</title>
+<style>
+  :root{--card-bg:rgba(255,255,255,.08);--border:rgba(255,255,255,.12);--accent:#3ddc97;--warn:#ffb74d;--ink:#fff;--muted:#cfd8dc;--blue:#84a8ff}
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:#1a1a1a;color:var(--ink);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial;display:flex;flex-direction:column;align-items:center;padding:10px;padding-top:env(safe-area-inset-top,0px)}
+  .sticky-wrap{position:sticky;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:50;width:100%;max-width:900px}
+  .titlebar{width:100%;text-align:center;margin-top:6px;margin-bottom:6px}
+  .titlebar h1{margin:0;font-size:20px;font-weight:600;letter-spacing:.2px}
+  .titlebar .sub{margin-top:2px;font-size:12px;color:#b9c6d3;font-weight:600}
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  .task-card{width:100%;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;backdrop-filter:blur(6px);margin-bottom:10px;transition:opacity .2s,filter .2s}
+  .task-card.disabled{opacity:.45;filter:grayscale(50%)} .task-step{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 10px;font-weight:700;white-space:nowrap}
+  .task-text{line-height:1.6} .task-hint{color:#ffd54f;font-size:12px;opacity:.95}
+  .progress-dots{display:flex;gap:6px}.dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25)}.dot.active{background:var(--warn)}.dot.done{background:var(--accent)}
+  .stage{width:100%;max-width:900px;background:#000;border-radius:12px;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.3);padding:12px;position:relative;isolation:isolate;overflow:visible}
+  .stageGrid{display:grid;grid-template-columns:1fr 240px;gap:12px}@media (max-width:820px){.stageGrid{grid-template-columns:1fr}}
+  .panel{background:#03050c;border:1px solid var(--border);border-radius:10px;padding:12px;overflow:visible;box-shadow:0 0 0 1px rgba(132,168,255,.12),0 0 0 6px rgba(132,168,255,.06)}
+  .toolsTop{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px;padding-left:2px}
+  .pill{background:rgba(255,255,255,.15);border:1px solid var(--border);border-radius:999px;padding:6px 12px;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;max-width:100%;white-space:nowrap}
+  .pill.off{opacity:.5;filter:saturate(.35)} .dot-mini{width:9px;height:9px;border-radius:50%}
+  .human .dot-mini{background:#ffd166}.dog .dot-mini{background:#7ee28f} #freqRead b{font-weight:800}
+  canvas{width:100%;height:280px;display:block;background:#05070f;border-radius:8px;contain:paint;box-shadow:inset 0 0 0 1px rgba(132,168,255,.15)}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px}.label{color:var(--muted);font-size:12px}
+  .slider{width:100%;max-width:440px;accent-color:#66ccff}
+  button{padding:10px 16px;background:#444;color:#fff;border:none;border-radius:8px;cursor:pointer;transition:.2s;font-weight:700}
+  button:hover{background:#5a5a5a} button:disabled{opacity:.45;cursor:not-allowed}
+  .dogWin{background:#0b0f1a;border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;overflow:visible}
+  .dogCanvas{display:flex;justify-content:center;align-items:center;height:180px;overflow:visible;position:relative}
+  .dog{position:relative;width:120px;height:75px;border-radius:46px;background:#c68b59;filter:drop-shadow(0 8px 20px rgba(0,0,0,.35))}
+  .dog:before{content:"";position:absolute;left:-30px;top:12px;width:72px;height:52px;background:#c68b59;border-radius:50px}
+  .ear{position:absolute;left:-12px;top:-6px;width:22px;height:28px;background:#9a6b40;border-radius:8px 14px 0 14px;transform-origin:70% 10%}
+  .ear.right{left:14px;transform-origin:30% 10%}
+  .eye{position:absolute;left:-6px;top:32px;width:10px;height:10px;background:#111;border-radius:50%}
+  .eye.sleep{height:2px;border-radius:2px;top:36px;background:#111}
+  .tail{position:absolute;right:-8px;top:8px;width:12px;height:40px;background:#c68b59;border-radius:10px;transform-origin:50% 0%}
+  @keyframes tailBase{0%,100%{transform:rotate(18deg)}50%{transform:rotate(-22deg)}}
+  @keyframes wag{0%,100%{transform:rotate(6deg)}50%{transform:rotate(-10deg)}}
+  .tail.wag{animation:tailBase 220ms ease-in-out infinite}.ear.wag{animation:wag 800ms ease-in-out infinite}
+  .alert .tail.wag{animation-duration:150ms}.alert .ear.wag{animation-duration:500ms}
+  .alertGlow{position:absolute;inset:10px;border-radius:14px;pointer-events:none;opacity:0}
+  .alert .alertGlow{opacity:.9;box-shadow:0 0 36px rgba(255,214,102,.35) inset,0 0 24px rgba(255,214,102,.25)}
+  .bubble{position:absolute;right:4px;top:-8px;background:#ffd166;color:#2a2000;font-weight:800;border-radius:10px;padding:3px 6px;font-size:12px;opacity:0;transform:translateY(-6px) scale(.95)}
+  @keyframes bub{0%{opacity:0;transform:translateY(6px) scale(.9)}30%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateY(-10px) scale(1)}}
+  .bubble.show{animation:bub 1.2s ease-out both}
+  .zz{position:absolute;right:-6px;top:-8px;color:#b6c8ff;opacity:0;font-weight:800}
+  @keyframes zz{0%{opacity:0;transform:translateY(0) scale(.9)}25%{opacity:.9;transform:translateY(-10px) scale(1)}100%{opacity:0;transform:translateY(-26px) scale(1.1)}}
+  .zz.show{animation:zz 3.6s ease-in-out infinite}
+  .miniNote{font-size:12px;color:#cfd8dc}
+  .toolbar-bottom{width:100%;max-width:900px;display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;justify-content:flex-start}
+  .exCard{width:100%;max-width:900px;background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-top:10px}
+  .pillGrey{background:rgba(255,255,255,.15);border:1px solid var(--border);border-radius:999px;padding:6px 10px;font-weight:700;font-size:13px;margin-right:6px}
+  .hintBar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:60;background:rgba(13,16,22,.96);border:1px solid rgba(255,255,255,.18);color:#e9f2ff;padding:8px 12px;border-radius:12px;display:none;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .hintBar.show{display:block;animation:hintFade 2.2s ease both}
+  @keyframes hintFade{0%{opacity:0;transform:translate(-50%,6px)}10%{opacity:1;transform:translate(-50%,0)}80%{opacity:1}100%{opacity:0}}
+  .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:120;align-items:center;justify-content:center;padding:20px}
+  .modal{background:#0d0f15;border:1px solid var(--border);color:#fff;border-radius:14px;padding:18px 16px;text-align:center;max-width:520px;width:calc(100% - 24px)}
+  .modal .ok{margin-top:12px;background:var(--accent);color:#081a12;font-weight:700}
+  @media (max-width:560px){.slider{max-width:100%}.toolbar-bottom{flex-direction:column}}
+</style>
+</head>
+<body>
+  <div class="sticky-wrap">
+    <div id="spectrum" aria-hidden="true"></div>
+    <div id="stepBar" class="task-card" role="region" aria-label="闯关步骤与进度">
+      <div class="task-step" id="taskStep">步骤一</div>
+      <div class="task-text" id="taskText">把频率调到 <b>≈10 Hz</b>（允许 8–12 Hz），并点击「播放」。本步应：<b>人听不到</b>、<b>狗听不到</b>（狗睡觉）。<br><span class="task-hint">提示：很多设备在 18 kHz 以上发声能力较弱，即使正在播放你可能也听不到。</span></div>
+      <div class="progress-dots"><span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span></div>
+    </div>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="stageGrid">
+      <div class="panel">
+        <div class="toolsTop">
+          <span id="badgeHuman" class="pill human off"><span class="dot-mini"></span>👂 人类：<b>听不到</b></span>
+          <span id="badgeDog" class="pill dog off"><span class="dot-mini"></span>🐶 小狗：<b>听不到</b></span>
+          <span id="freqRead" class="pill"><span class="dot-mini" style="background:#66ccff"></span><b>频率：0 Hz</b></span>
+        </div>
+
+        <canvas id="wave"></canvas>
+
+        <div class="toolbar">
+          <span class="label">频率（非线性 0 → 60,000 Hz）</span>
+          <input id="slider" class="slider" type="range" min="0" max="300" step="1" value="0" aria-label="频率滑块">
+          <button id="play" aria-pressed="false" aria-label="播放或停止">▶ 播放</button>
+        </div>
+
+        <div class="toolbar">
+          <span class="label">音量</span>
+          <input id="vol" class="slider" type="range" min="0" max="1" step="0.01" value="0.4" aria-label="音量滑块">
+          <span class="label">频段：</span>
+          <div style="height:10px;flex:0 0 240px;border-radius:999px;overflow:hidden;border:1px solid var(--border)">
+            <div style="height:100%;width:12%;background:#394264;float:left"></div>
+            <div style="height:100%;width:70%;background:#3a6edb;float:left"></div>
+            <div style="height:100%;width:12%;background:#7d53e0;float:left"></div>
+            <div style="height:100%;width:6%;background:#a97df0;float:left"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dogWin" id="dogWin">
+        <div class="alertGlow"></div>
+        <div class="dogCanvas">
+          <div class="dog" id="dog">
+            <div class="ear wag" id="earL"></div>
+            <div class="ear right wag" id="earR"></div>
+            <div class="eye sleep" id="eye"></div>
+            <div class="tail" id="tail"></div>
+            <div class="zz" id="zz">Zz</div>
+          </div>
+          <div class="bubble" id="bubble">👂！</div>
+        </div>
+        <div class="miniNote">徽章显示“听得到”时，小狗醒来并摇尾巴；否则睡觉打呼。</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar-bottom">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="exCard">
+    <span class="pillGrey">人类可听：<b>20–20,000 Hz</b></span>
+    <span class="pillGrey">小狗可听：<b>15–50,000 Hz</b></span>
+    <p style="margin:.5em 0 0;color:#e9f2ff">声音是<strong>机械波</strong>。当频率低于 20 Hz（次声）或高于 20 kHz（超声）时，人耳通常听不到；小狗在超声段仍可能敏感。许多设备在 &gt;18 kHz 的输出会变弱或失真。</p>
+  </div>
+
+  <div class="hintBar" id="hintBar">提示</div>
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>完成，你真棒！🎉</h3>
+      <p>你已经完成：次声（人犬都听不到）→ 可听声（人犬都听到）→ 超声（只有小狗听到）。</p>
+      <button class="ok" id="doneOk">好的</button>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const HUMAN_MIN=20,HUMAN_MAX=20000, DOG_MIN=15,DOG_MAX=50000, MAX_FREQ=60000;
+  const STEPS=[
+    {name:'步骤一',text:'把频率调到 <b>≈10 Hz</b>（允许 8–12 Hz），并点击「播放」。本步应：<b>人听不到</b>、<b>狗听不到</b>（狗睡觉）。',range:[8,12],needHuman:false,needDog:false},
+    {name:'步骤二',text:'把频率调到 <b>≈1000 Hz</b>（允许 800–1200 Hz），并「播放」。本步应：<b>人听得到</b>、<b>狗听得到</b>。',range:[800,1200],needHuman:true,needDog:true},
+    {name:'步骤三',text:'把频率调到 <b>≈30,000 Hz</b>（允许 28–32 kHz），并「播放」。本步应：<b>人听不到</b>、<b>狗听得到</b>。',range:[28000,32000],needHuman:false,needDog:true},
+  ];
+
+  const el={canvas:wave, slider:slider, vol:vol, play:play, freqRead:freqRead, badgeHuman:badgeHuman, badgeDog:badgeDog,
+            dog:dog, earL:earL, earR:earR, eye:eye, tail:tail, zz:zz, dogWin:dogWin, bubble:bubble,
+            taskStep:taskStep, taskText:taskText, dot1:dot1, dot2:dot2, dot3:dot3, stepBar:stepBar,
+            resetBtn:resetBtn, autoBtn:autoDemoBtn, freeBtn:freeBtn, hintBar:hintBar, doneMask:doneMask, doneOk:doneOk};
+
+  const state={freq:0,playing:false,ctx:null,osc:null,gain:null,raf:null,lastDrawTs:0,mode:'step',stepIndex:0,holdTimer:null,lastZone:''};
+
+  function mapSliderToFreq(v){
+    v=Number(v);
+    if(v<=50) return (v/50)*20;
+    if(v<=200){ const t=(v-50)/150; return 20*Math.pow(20000/20,t); }
+    if(v<=260) return 20000+(v-200)/60*(50000-20000);
+    return 50000+(v-260)/40*(60000-50000);
+  }
+  function mapFreqToSlider(f){
+    f=Math.max(0,Math.min(MAX_FREQ,f));
+    if(f<=20) return (f/20)*50;
+    if(f<=20000){ const t=Math.log(f/20)/Math.log(20000/20); return 50+t*150; }
+    if(f<=50000) return 200+(f-20000)/30000*60;
+    return 260+(f-50000)/10000*40;
+  }
+
+  function ensureAudio(){
+    if(!state.ctx){
+      const AC=window.AudioContext||window.webkitAudioContext;
+      state.ctx=new AC();
+      state.gain=state.ctx.createGain();
+      state.gain.gain.value=Number(el.vol.value);
+      state.gain.connect(state.ctx.destination);
+    }
+  }
+  function startTone(){
+    ensureAudio(); if(state.playing) return;
+    state.ctx.resume&&state.ctx.resume();
+    state.osc=state.ctx.createOscillator();
+    state.osc.type='sine';
+    state.osc.frequency.setValueAtTime(state.freq,state.ctx.currentTime);
+    state.osc.connect(state.gain);
+    const g=state.gain.gain, now=state.ctx.currentTime;
+    g.cancelScheduledValues(now); g.setTargetAtTime(0,now,0.001); g.setTargetAtTime(Number(el.vol.value),now+0.012,0.008);
+    state.osc.start(); state.playing=true; el.play.setAttribute('aria-pressed','true'); el.play.textContent='⏸ 停止';
+    startRAF();
+  }
+  function stopTone(){
+    if(!state.ctx||!state.playing){ stopRAF(); return; }
+    const now=state.ctx.currentTime; state.gain.gain.setTargetAtTime(0,now,0.01);
+    try{state.osc.stop(now+0.03);}catch(e){}
+    state.playing=false; el.play.setAttribute('aria-pressed','false'); el.play.textContent='▶ 播放';
+    stopRAF();
+  }
+  function setVolume(){ if(!state.gain) return; const now=state.ctx.currentTime; state.gain.gain.cancelScheduledValues(now); state.gain.gain.setTargetAtTime(Number(el.vol.value),now,0.01); }
+
+  const ctx2d=el.canvas.getContext('2d');
+  function resizeCanvas(){
+    const dpr=Math.max(1,window.devicePixelRatio||1);
+    const rect=el.canvas.getBoundingClientRect();
+    el.canvas.width=Math.round(rect.width*dpr);
+    el.canvas.height=Math.round(rect.height*dpr);
+    ctx2d.setTransform(dpr,0,0,dpr,0,0);
+    drawWave(0);
+  }
+  window.addEventListener('resize',resizeCanvas,{passive:true});
+  function startRAF(){ if(state.raf) return; const loop=ts=>{ state.raf=requestAnimationFrame(loop); if(ts-state.lastDrawTs<33) return; state.lastDrawTs=ts; drawWave(ts); }; state.raf=requestAnimationFrame(loop); }
+  function stopRAF(){ if(state.raf){ cancelAnimationFrame(state.raf); state.raf=null; } drawWave(0); }
+  function drawWave(t){
+    const w=el.canvas.clientWidth, h=el.canvas.clientHeight;
+    ctx2d.clearRect(0,0,w,h);
+    const grad=ctx2d.createLinearGradient(0,0,0,h); grad.addColorStop(0,'#05070f'); grad.addColorStop(1,'#0a0f1e');
+    ctx2d.fillStyle=grad; ctx2d.fillRect(0,0,w,h);
+    ctx2d.strokeStyle='#1b243f'; ctx2d.lineWidth=1;
+    for(let y=0;y<h;y+=40){ ctx2d.beginPath(); ctx2d.moveTo(0,y); ctx2d.lineTo(w,y); ctx2d.stroke(); }
+    const mid=h/2; ctx2d.strokeStyle='#293a7a'; ctx2d.beginPath(); ctx2d.moveTo(0,mid); ctx2d.lineTo(w,mid); ctx2d.stroke();
+
+    const f=state.freq;
+    let amp=40; if(f<20) amp=30; else if(f>18000&&f<30000) amp=26; else if(f>=30000) amp=20;
+
+    /* ✅ 关键修复：频率↑ → 周期数↑ → 波长变短 */
+    const cycles = state.playing ? (1 + 11 * (f / MAX_FREQ)) : 6; // 1~12 周期
+    const periodPx = Math.max(12, w / cycles);
+    const k = (Math.PI * 2) / periodPx;
+    const phase = state.playing ? (t * 0.012) : 0;
+
+    ctx2d.lineWidth=2.2; ctx2d.strokeStyle='#79a7ff'; ctx2d.beginPath();
+    for(let x=0;x<=w;x++){ const y=mid+Math.sin(k*x+phase)*amp; (x===0)?ctx2d.moveTo(x,y):ctx2d.lineTo(x,y); }
+    ctx2d.stroke();
+
+    ctx2d.fillStyle='#9fb4ff'; ctx2d.font='12px system-ui';
+    ctx2d.fillText(`${formatHz(f)}`, 8, 16);
+  }
+
+  function updateBadges(){
+    const f=state.freq, h=(f>=HUMAN_MIN&&f<=HUMAN_MAX), d=(f>=DOG_MIN&&f<=DOG_MAX);
+    setBadge(el.badgeHuman,h); setBadge(el.badgeDog,d);
+    if(d){ el.eye.classList.remove('sleep'); el.tail.classList.add('wag'); el.earL.classList.add('wag'); el.earR.classList.add('wag'); el.zz.classList.remove('show'); el.dogWin.classList.add('alert'); showBubble(); }
+    else { el.eye.classList.add('sleep'); el.tail.classList.remove('wag'); el.earL.classList.remove('wag'); el.earR.classList.remove('wag'); el.zz.classList.add('show'); el.dogWin.classList.remove('alert'); }
+  }
+  function setBadge(node,on){ node.classList.toggle('off',!on); node.querySelector('b').textContent=on?'听得到':'听不到'; }
+  let bubbleTimer=null; function showBubble(){ clearTimeout(bubbleTimer); el.bubble.classList.add('show'); bubbleTimer=setTimeout(()=> el.bubble.classList.remove('show'),1100); }
+
+  function zoneOf(f){ if(f<20) return 'infrasound'; if(f<=20000) return 'audible'; if(f<=50000) return 'ultraDog'; return 'silenceAll'; }
+  function hint(msg){ if(state.mode==='free') return; el.hintBar.textContent=msg; el.hintBar.classList.remove('show'); void el.hintBar.offsetWidth; el.hintBar.classList.add('show'); }
+  function maybeHint(){
+    const z=zoneOf(state.freq); if(z===state.lastZone) return; state.lastZone=z;
+    if(z==='infrasound') hint('当前是次声区：人类和小狗都听不到');
+    else if(z==='audible') hint('当前是可听声区：人类和小狗都能听到');
+    else if(z==='ultraDog') hint('当前是超声区：只有小狗能听到');
+    else hint('频率过高：多数设备难以发出稳定超声');
+  }
+
+  /* ✅ 自动判定修复：free 模式禁用，其它模式允许 */
+  function tryAutoJudge(){
+    if(state.mode==='free' || !state.playing) return;
+    const st=STEPS[state.stepIndex], f=state.freq;
+    const pass = (f>=st.range[0] && f<=st.range[1]) &&
+                 ((f>=HUMAN_MIN&&f<=HUMAN_MAX)===st.needHuman) &&
+                 ((f>=DOG_MIN&&f<=DOG_MAX)===st.needDog);
+    clearTimeout(state.holdTimer);
+    if(pass){ state.holdTimer=setTimeout(()=>{ const f2=state.freq;
+      if((f2>=st.range[0]&&f2<=st.range[1])&&(((f2>=HUMAN_MIN&&f2<=HUMAN_MAX)===st.needHuman))&&(((f2>=DOG_MIN&&f2<=DOG_MAX)===st.needDog))) markStepDone();
+    },400); }
+  }
+  function updateTaskUI(){
+    const i=state.stepIndex, st=STEPS[i];
+    el.taskStep.textContent=st.name;
+    el.taskText.innerHTML=st.text+'<br><span class="task-hint">提示：很多设备在 18 kHz 以上发声能力较弱，即使正在播放你可能也听不到。</span>';
+    [el.dot1,el.dot2,el.dot3].forEach((d,idx)=>{ d.className='dot'+(idx<i?' done':(idx===i?' active':'')); });
+  }
+  function markStepDone(){
+    [el.dot1,el.dot2,el.dot3][state.stepIndex].className='dot done';
+    hint(`${STEPS[state.stepIndex].name} 完成 ✅`);
+    if(state.stepIndex<2){ state.stepIndex++; updateTaskUI(); } else { showDone(); }
+  }
+
+  function setFreeMode(on){
+    state.mode = on ? 'free' : 'step';
+    el.freeBtn.textContent = on ? '退出自由模式' : '自由模式';
+    el.autoBtn.disabled = on;
+    el.stepBar.classList.toggle('disabled', on);
+    hint(on ? '已进入自由模式：不再进行步骤判定' : '已退出自由模式：恢复步骤判定');
+  }
+  function resetAll(){
+    setFreeMode(false); state.stepIndex=0; stopTone(); setFreq(0); updateTaskUI();
+    hint('已重置为步骤模式');
+  }
+  async function autoDemo(){
+    if(state.mode==='auto') return;
+    setFreeMode(false); state.mode='auto';
+    state.stepIndex=0; stopTone(); setFreq(0); updateTaskUI();
+    for(const f of [10,1000,30000]){
+      setFreq(f); await sleep(300); startTone(); await sleep(950);
+      const before=state.stepIndex; tryAutoJudge(); await sleep(500);
+      if(state.stepIndex===before){ hint('自动演示未通过，已停止。请手动微调试试'); state.mode='step'; stopTone(); return; }
+      stopTone(); await sleep(250);
+    }
+    showDone(); state.mode='step';
+  }
+
+  function showDone(){ el.doneMask.style.display='flex'; }
+  doneMask.addEventListener('click',e=>{ if(e.target===doneMask) doneMask.style.display='none'; });
+  doneOk.addEventListener('click',()=> doneMask.style.display='none');
+  function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+  function formatHz(f){ if(f<1000) return `${f.toFixed(1)} Hz`; if(f<10000) return `${(f/1000).toFixed(2)} kHz`; return `${(f/1000).toFixed(1)} kHz`; }
+
+  function setFreq(f,{fromSlider=false}={}){
+    f=Math.max(0,Math.min(MAX_FREQ,f)); state.freq=f;
+    freqRead.querySelector('b').textContent=`频率：${formatHz(f)}`;
+    if(!fromSlider) slider.value=Math.round(mapFreqToSlider(f));
+    if(state.ctx&&state.osc){ try{state.osc.frequency.setValueAtTime(f,state.ctx.currentTime);}catch(e){} }
+    if(!state.playing) drawWave(0);
+    updateBadges(); tryAutoJudge(); maybeHint();
+  }
+
+  slider.addEventListener('input',()=> setFreq(mapSliderToFreq(slider.value),{fromSlider:true}));
+  play.addEventListener('click',()=>{ (!state.playing)?startTone():stopTone(); tryAutoJudge(); });
+  vol.addEventListener('input', setVolume);
+  resetBtn.addEventListener('click', resetAll);
+  autoDemoBtn.addEventListener('click', autoDemo);
+  freeBtn.addEventListener('click', ()=> setFreeMode(state.mode!=='free') );
+  document.addEventListener('visibilitychange', ()=>{ if(document.hidden) stopTone(); });
+
+  resizeCanvas(); setFreq(0); updateTaskUI();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>地球为什么是圆的？—交互版（空间感增强）</title>
+<style>
+  :root{
+    --stage-offset: 132px;        /* 将由脚本精确计算覆盖 */
+    --toolbar-bottom-gap: 12px;
+    --stage-maxw: min(1200px, 96vw);
+    --bg-deep: #0b1220;
+    --text: #e6f1ff;
+  }
+  html,body{margin:0;height:100%;background:var(--bg-deep);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  button{font:inherit}
+  input[type="range"]{-webkit-appearance:none;height:6px;background:rgba(94,234,212,0.2);border-radius:3px;width:100%}
+  input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:#5eead4;border-radius:50%;cursor:pointer;transition:all .2s}
+  input[type="range"]::-webkit-slider-thumb:hover{transform:scale(1.2);box-shadow:0 0 10px rgba(94,234,212,.8)}
+
+  /* 顶部彩色条 */
+  #xn-spectrum{
+    position:fixed; left:50%; top:8px; transform:translateX(-50%);
+    width:min(900px,94vw); height:40px; border-radius:10px; overflow:hidden; z-index:30;
+    box-shadow:0 0 15px rgba(255,255,255,.15); pointer-events:none; background: #000;
+  }
+  #xn-spectrum::before{
+    content:""; position:absolute; inset:0; border-radius:inherit;
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡 */
+  .xn-task{
+    position:fixed; left:50%; top:56px; transform:translateX(-50%);
+    width:min(900px,94vw);
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; z-index:30;
+    pointer-events:none;
+  }
+  .xn-task *{ pointer-events:auto;}
+  .xn-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:700; white-space:nowrap;}
+  .xn-text{ line-height:1.55; font-size:14px}
+  .xn-hint{ color:#ffd54f; font-size:12px; opacity:.95;}
+  .xn-dots{ display:flex; gap:6px; }
+  .xn-dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .xn-dot.active{ background:#ffb74d } .xn-dot.done{ background:#3ddc97; outline-color:rgba(61,220,151,0.5); }
+
+  /* 底部三按钮 */
+  .xn-toolbar{
+    position:fixed; left:50%; bottom:var(--toolbar-bottom-gap); transform:translateX(-50%);
+    width:min(900px,94vw); display:flex; gap:10px; flex-wrap:wrap; z-index:30; pointer-events:none;
+  }
+  .xn-toolbar button{
+    padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer;
+    transition:background .25s, transform .05s, opacity .2s; pointer-events:auto;
+  }
+  .xn-toolbar button:hover{ background:#5a5a5a } .xn-toolbar button:active{ transform:scale(.98)} .xn-toolbar button:disabled{opacity:.5; cursor:not-allowed;}
+
+  /* 提示/完成 */
+  .xn-toast{ position:fixed; left:50%; bottom:74px; transform:translateX(-50%) translateY(16px); background:rgba(0,0,0,.8); color:#fff; padding:10px 14px; border-radius:10px;
+    box-shadow:0 6px 18px rgba(0,0,0,.35); font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:40;}
+  .xn-toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .xn-check{ position:fixed; left:50%; top:22%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%;
+    background:rgba(61,220,151,.15); border:3px solid #3ddc97; display:none; align-items:center; justify-content:center; z-index:40; }
+  .xn-check.active{ display:flex; }
+  .xn-check div{ width:60px; height:30px; border-left:8px solid #3ddc97; border-bottom:8px solid #3ddc97; transform:rotate(-45deg) translateY(-6px); }
+  .xn-modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:50; }
+  .xn-modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; }
+  .xn-modal h3{ margin:8px 0 6px; font-size:20px; }
+  .xn-modal p{ color:#cfd8dc; margin-top:0; font-size:14px}
+  .xn-modal .ok{ margin-top:12px; background:#3ddc97; color:#081a12; font-weight:700; border:none; border-radius:10px; padding:10px 14px; cursor:pointer }
+
+  /* 动画舞台（位于步骤条下方） */
+  .stage-wrap{
+    margin: 0 auto; width: var(--stage-maxw);
+    padding-top: calc(var(--stage-offset) + 8px); /* 让舞台整体下移到步骤卡下方 */
+    padding-bottom: 96px; /* 给底部按钮留空 */
+  }
+  .stage{
+    position: relative; width: 100%; aspect-ratio: 16/9;
+    border-radius: 12px; overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
+    background: radial-gradient(1200px 800px at 50% 50%, #061528 0%, #071321 60%, #050d18 100%);
+  }
+
+  /* 三层背景星空画布（视差） */
+  .bg-layer{ position:absolute; inset:0; pointer-events:none; }
+
+  #simulationCanvas{ position:relative; display:block; width:100%; height:100%; cursor:crosshair }
+
+  /* 舞台内控制面板（不遮挡全局点击） */
+  .orig-panel{
+    position:absolute; left:14px; top:14px; z-index:5;
+    max-width:340px; padding:12px; border-radius:12px;
+    background:rgba(15,23,42,.6); border:1px solid rgba(100,116,139,.6); backdrop-filter: blur(6px);
+  }
+  .orig-panel h1{font-size:18px;margin:0 0 8px 0}
+  .row{margin:8px 0}
+  .row label{display:block;font-size:12px;color:#cbd5e1;margin-bottom:6px}
+  .muted{font-size:11px;color:#94a3b8;margin-top:4px}
+  #sim-button{margin-top:6px;height:36px;width:100%;font-weight:700;border:none;border-radius:10px;cursor:pointer;
+    color:#0f172a;background:linear-gradient(135deg,#5eead4 0%,#2dd4bf 100%); box-shadow:0 4px 15px rgba(45,212,191,.4) }
+  #sim-button:active{transform:translateY(1px)}
+  .explain{margin-top:10px;padding:10px;border-radius:10px;background:rgba(15,23,42,.6);border:1px solid rgba(100,116,139,.6)}
+  .explain h2{margin:0 0 6px 0;color:#5eead4;font-size:15px}
+  .explain p{margin:0;font-size:13px;color:#d1d5db;line-height:1.55}
+
+  @media (max-width: 640px){
+    .stage{ aspect-ratio: 3/4; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- 顶部彩条 + 步骤卡 -->
+  <div id="xn-spectrum" aria-hidden="true"></div>
+  <div class="xn-task" id="xn-task">
+    <div class="xn-step" id="xn-step">步骤 1 / 3</div>
+    <div class="xn-text">
+      <div id="xn-text">把<strong>物质量 ≥ 60</strong>、<strong>重力 ≥ 45</strong>（更易形成球形）。</div>
+      <div class="xn-hint" id="xn-hint">提示：先把两个滑块拖到推荐区间。</div>
+    </div>
+    <div class="xn-dots">
+      <span class="xn-dot active" id="xn-d1"></span>
+      <span class="xn-dot" id="xn-d2"></span>
+      <span class="xn-dot" id="xn-d3"></span>
+    </div>
+  </div>
+
+  <!-- 动画舞台：在步骤条下方 -->
+  <div class="stage-wrap">
+    <div class="stage" id="stage">
+      <!-- 背景星空三层（慢/中/快），在主画布之下 -->
+      <canvas id="bgSlow"   class="bg-layer"></canvas>
+      <canvas id="bgMedium" class="bg-layer"></canvas>
+      <canvas id="bgFast"   class="bg-layer"></canvas>
+
+      <!-- 主模拟画布 -->
+      <canvas id="simulationCanvas"></canvas>
+
+      <!-- 原控制面板（保留） -->
+      <div class="orig-panel">
+        <h1>地球为什么是圆的？</h1>
+        <div class="row">
+          <label>物质量</label>
+          <input id="matter-slider" type="range" min="10" max="100" value="50">
+          <div id="matter-value" class="muted">50（中等）</div>
+        </div>
+        <div class="row">
+          <label>重力强度</label>
+          <input id="gravity-slider" type="range" min="10" max="80" value="30">
+          <div id="gravity-value" class="muted">30（中等）</div>
+        </div>
+        <button id="sim-button">开始模拟</button>
+
+        <div class="explain">
+          <h2>原理提要</h2>
+          <p>万有引力把物质向中心拉拢；当尺度足够大、物质能像“流体”一样缓慢变形时，最终趋向各向同性的形状——球体（能量最低）。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部三按钮 -->
+  <div class="xn-toolbar">
+    <button id="xn-reset">步骤重置</button>
+    <button id="xn-auto">自动演示</button>
+    <button id="xn-free">自由模式</button>
+  </div>
+
+  <!-- 提示/对勾/完成弹窗 -->
+  <div class="xn-toast" id="xn-toast">再试一试：请按步骤完成当前指令</div>
+  <div class="xn-check" id="xn-check"><div></div></div>
+  <div class="xn-modal-mask" id="xn-done">
+    <div class="xn-modal">
+      <h3>完成，你真棒！🎉</h3>
+      <p>你已按顺序体验：设置参数 → 开始吸积 → 形成近似球体。</p>
+      <button class="ok" id="xn-ok">好的</button>
+    </div>
+  </div>
+
+  <!-- ===== 原动画脚本（适配“舞台尺寸”，粒子更多、更稳、更有空间感） ===== -->
+  <script>
+    // 舞台与画布
+    const stage = document.getElementById('stage');
+    const canvas = document.getElementById('simulationCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 背景星空三层
+    const bgSlow   = document.getElementById('bgSlow');
+    const bgMedium = document.getElementById('bgMedium');
+    const bgFast   = document.getElementById('bgFast');
+    const bgCtxS = bgSlow.getContext('2d');
+    const bgCtxM = bgMedium.getContext('2d');
+    const bgCtxF = bgFast.getContext('2d');
+
+    function fitAllToStage() {
+      const rect = stage.getBoundingClientRect();
+      for (const c of [canvas, bgSlow, bgMedium, bgFast]) {
+        c.width  = Math.max(1, rect.width);
+        c.height = Math.max(1, rect.height);
+      }
+    }
+    addEventListener('resize', fitAllToStage);
+    new ResizeObserver(fitAllToStage).observe(stage);
+    fitAllToStage();
+
+    // ===== 背景星空（视差） =====
+    function makeStars(count, w, h, sizeMin, sizeMax, alphaMin, alphaMax){
+      const arr=[];
+      for(let i=0;i<count;i++){
+        arr.push({
+          x: Math.random()*w,
+          y: Math.random()*h,
+          r: sizeMin + Math.random()*(sizeMax-sizeMin),
+          a: alphaMin + Math.random()*(alphaMax-alphaMin)
+        });
+      }
+      return arr;
+    }
+    let starsS=[], starsM=[], starsF=[];
+    function initStarfields(){
+      starsS = makeStars(180, bgSlow.width,  bgSlow.height, 0.5, 1.2, 0.15, 0.35);
+      starsM = makeStars(140, bgMedium.width, bgMedium.height, 0.6, 1.6, 0.25, 0.45);
+      starsF = makeStars(100, bgFast.width,  bgFast.height, 0.8, 2.0, 0.35, 0.65);
+    }
+    initStarfields();
+
+    function drawStars(ctx, stars, speedY){
+      const {width:w, height:h} = ctx.canvas;
+      ctx.clearRect(0,0,w,h);
+      ctx.save();
+      for(const s of stars){
+        ctx.globalAlpha = s.a;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.fillStyle = '#cde7ff';
+        ctx.fill();
+        s.y += speedY;
+        if (s.y - s.r > h){ s.y = -s.r; s.x = Math.random()*w; }
+      }
+      ctx.restore();
+    }
+
+    // 独立 RAF，持续运行，让“太空感”一直存在（不受主模拟开始/停止影响）
+    (function starLoop(){
+      drawStars(bgCtxS, starsS, 0.10); // 慢层
+      drawStars(bgCtxM, starsM, 0.25); // 中层
+      drawStars(bgCtxF, starsF, 0.50); // 快层
+      requestAnimationFrame(starLoop);
+    })();
+
+    // ====== 原模拟（更像原文件：粒子更多、运动更平缓） ======
+    class Particle{
+      constructor(x,y,mass){
+        this.x=x; this.y=y; this.mass=mass;
+        this.radius = Math.sqrt(mass)*1.0;
+        // 角速度与半径相关，整体比之前更慢
+        this.tangentialSpeed = 18;      // 基础值，会按距离缩放
+        this.rotationAngle = Math.random()*Math.PI*2;
+        this.color = 'rgba(148, 247, 231, 0.75)';
+        this.isAbsorbed=false;
+        this.vx=0; this.vy=0;
+        this.radialSpeed=0;
+      }
+      update(gravity){
+        if (this.isAbsorbed) return;
+        const dx = canvas.width/2 - this.x;
+        const dy = canvas.height/2 - this.y;
+        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+        const angle = Math.atan2(dy, dx);
+
+        // 更平缓的向心加速（保留“原味”）
+        this.radialSpeed += gravity * 0.00035;
+
+        // 角向运动速度随距离衰减（更慢、更稳定）
+        const tanBase = 22;           // 调整空间感的关键系数
+        this.tangentialSpeed = tanBase * dist / 10000;
+
+        if (dist < 10){ this.isAbsorbed = true; return true; }
+
+        const tangentAngle = angle + Math.PI/2;
+        this.vx = Math.cos(tangentAngle)*this.tangentialSpeed + Math.cos(angle)*this.radialSpeed;
+        this.vy = Math.sin(tangentAngle)*this.tangentialSpeed + Math.sin(angle)*this.radialSpeed;
+
+        this.x += this.vx; this.y += this.vy;
+        this.rotationAngle += this.tangentialSpeed / Math.max(this.radius,1);
+        return false;
+      }
+      draw(ctx){
+        ctx.save();
+        ctx.translate(this.x,this.y);
+        ctx.rotate(this.rotationAngle);
+        ctx.fillStyle=this.color;
+        ctx.shadowBlur=this.radius*1.6; ctx.shadowColor=this.color;
+        ctx.beginPath(); ctx.ellipse(0,0,this.radius*1.05,this.radius*0.78,0,0,Math.PI*2); ctx.fill();
+        ctx.shadowBlur=0;
+        ctx.restore();
+      }
+    }
+
+    // 全局引用（供交互模板访问）
+    window.particles = [];
+    window.animationId = null;
+    window.isSimulating = false;
+    window.simulationTime = 0;
+    window.planetSize = 0;
+    window.planetRotation = 0;
+    window.absorbedParticles = 0;
+
+    // 控件
+    window.matterSlider = document.getElementById('matter-slider');
+    window.gravitySlider = document.getElementById('gravity-slider');
+    const matterValue = document.getElementById('matter-value');
+    const gravityValue = document.getElementById('gravity-value');
+    window.simButton = document.getElementById('sim-button');
+
+    function createDiskParticles(count){
+      const centerX = canvas.width/2, centerY = canvas.height/2, diskRadius = Math.min(canvas.width, canvas.height)*0.38;
+      const arr=[];
+      for(let i=0;i<count;i++){
+        const angle = Math.random()*Math.PI*2;
+        const distance = (Math.random()*0.75+0.25)*diskRadius;
+        const flatten = Math.random()*0.18+0.88;        // 轻微“盘状”
+        const x = centerX + Math.cos(angle)*distance;
+        const y = centerY + Math.sin(angle)*distance*flatten;
+        const mass = Math.random()*4 + 0.8;             // 小粒子更多
+        arr.push(new Particle(x,y,mass));
+      }
+      return arr;
+    }
+
+    function drawPlanet(){
+      const cx = canvas.width/2, cy = canvas.height/2;
+      const r = window.planetSize;
+      if (r<=0) return;
+      const g = ctx.createRadialGradient(cx,cy,r*0.2, cx,cy,r);
+      g.addColorStop(0,'rgba(94,234,212,0.9)');
+      g.addColorStop(1,'rgba(45,212,191,0.15)');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle='rgba(148,247,231,0.35)'; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.ellipse(cx,cy,r*0.96,r*0.96*0.25, window.planetRotation, 0, Math.PI*2); ctx.stroke();
+    }
+
+    // —— 关键：更“原味”的参数：更多粒子、更慢运动 —— //
+    const PARTICLE_COUNT_FACTOR = 15;  // 原来是 8；现在更多。物质量=100 => 1500 个（仍可流畅）
+    const PLANET_GROWTH = 0.10;        // 行星半径增长稍慢，更自然
+
+    window.initSimulation = function initSimulation(){
+      const baseCount = Math.round((+window.matterSlider.value) * PARTICLE_COUNT_FACTOR);
+      window.particles = createDiskParticles(baseCount);
+      window.absorbedParticles=0; window.simulationTime=0; window.planetSize=0;
+    };
+
+    window.runSimulation = function runSimulation(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      const gravity = +window.gravitySlider.value;
+      window.simulationTime += 1/60;
+
+      for (const p of window.particles){
+        const absorbed = p.update(gravity);
+        if (absorbed) window.absorbedParticles++;
+        p.draw(ctx);
+      }
+      window.planetSize = Math.min(120, window.absorbedParticles * PLANET_GROWTH);
+      window.planetRotation += 0.008 + window.absorbedParticles/Math.max(window.particles.length,1) * 0.008;
+      drawPlanet();
+
+      if (window.absorbedParticles >= window.particles.length && window.simulationTime > 9){
+        cancelAnimationFrame(window.animationId);
+        window.isSimulating=false;
+        window.simButton.textContent='开始模拟';
+        return;
+      }
+      window.animationId = requestAnimationFrame(window.runSimulation);
+    };
+
+    function resetSimulationOnce(){
+      cancelAnimationFrame(window.animationId);
+      window.isSimulating=false; window.simButton.textContent='开始模拟';
+      window.initSimulation(); window.runSimulation(); cancelAnimationFrame(window.animationId); // 仅绘制一帧静态
+    }
+
+    // 控件联动（原逻辑）
+    window.matterSlider.addEventListener('input', ()=>{ matterValue.textContent = `${window.matterSlider.value}（${+window.matterSlider.value>=70?'高':'中等'}）`; });
+    window.gravitySlider.addEventListener('input', ()=>{ gravityValue.textContent = `${window.gravitySlider.value}（${+window.gravitySlider.value>=50?'强':'中等'}）`; });
+    window.simButton.addEventListener('click', ()=>{
+      if (window.isSimulating){ cancelAnimationFrame(window.animationId); window.simButton.textContent='开始模拟'; window.isSimulating=false; }
+      else { window.initSimulation(); window.simButton.textContent='停止模拟'; window.isSimulating=true; window.runSimulation(); }
+    });
+
+    // 初始静态一帧
+    window.initSimulation(); window.runSimulation(); cancelAnimationFrame(window.animationId);
+    window.simButton.textContent='开始模拟';
+  </script>
+
+  <!-- ===== 交互模板兜底（防“白屏”） ===== -->
+  <script>
+    (function(){
+      if (!('particles' in window)) window.particles = [];
+      if (!('absorbedParticles' in window)) window.absorbedParticles = 0;
+      if (!('isSimulating' in window)) window.isSimulating = false;
+      if (!('animationId' in window)) window.animationId = null;
+    })();
+  </script>
+
+  <!-- ===== 交互模板脚本（严格守卫 / 自动演示 / 第三步弹窗修复 + 就绪检测） ===== -->
+  <script>
+  (function(){
+    // 计算步骤卡总高度，确定舞台下移距离
+    function updateStageOffset(){
+      const task = document.getElementById('xn-task');
+      const rect = task ? task.getBoundingClientRect() : {top:0,height:0};
+      const offset = Math.max(80, rect.top + rect.height + 8);
+      document.documentElement.style.setProperty('--stage-offset', offset + 'px');
+    }
+    addEventListener('resize', updateStageOffset);
+    addEventListener('load', updateStageOffset);
+    setTimeout(updateStageOffset, 0);
+
+    // 等待原动画就绪
+    function ready(){
+      return typeof window.initSimulation === 'function' &&
+             typeof window.runSimulation  === 'function'  &&
+             typeof window.matterSlider   !== 'undefined' &&
+             typeof window.gravitySlider  !== 'undefined' &&
+             typeof window.simButton      !== 'undefined';
+    }
+    (function wait(){
+      if (ready()) startTemplate();
+      else requestAnimationFrame(wait);
+    })();
+
+    function startTemplate(){
+      // 交互元素
+      const stepEl = document.getElementById('xn-step');
+      const textEl = document.getElementById('xn-text');
+      const hintEl = document.getElementById('xn-hint');
+      const dots   = [document.getElementById('xn-d1'), document.getElementById('xn-d2'), document.getElementById('xn-d3')];
+      const btnReset = document.getElementById('xn-reset');
+      const btnAuto  = document.getElementById('xn-auto');
+      const btnFree  = document.getElementById('xn-free');
+      const toast    = document.getElementById('xn-toast');
+      const check    = document.getElementById('xn-check');
+      const doneMask = document.getElementById('xn-done');
+      const okBtn    = document.getElementById('xn-ok');
+
+      let stepIdx = 0, freeMode = false, autoPlaying = false;
+
+      // 判定阈值（可调整）
+      const NEED_MAT = 60, NEED_G = 45;
+      const PASS2_RATIO = 0.60;
+      const PASS3_RATIO = 0.90;
+
+      const showToast = (msg)=>{ toast.textContent = msg || '再试一试'; toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>toast.classList.remove('show'), 1200); };
+      const showCheck = ()=>{ check.classList.add('active'); clearTimeout(showCheck.t); showCheck.t=setTimeout(()=>check.classList.remove('active'), 520); };
+      const showDone  = ()=> doneMask.style.display='flex';
+      okBtn.onclick = ()=> doneMask.style.display='none';
+
+      function absorbedRatio(){
+        const total = (window.particles && window.particles.length) ? window.particles.length : 1;
+        const ok = (typeof window.absorbedParticles === 'number') ? window.absorbedParticles : 0;
+        return ok / total;
+      }
+
+      // —— 统一进度监听器（修复第三步漏判） —— //
+      let monitorId = null;
+      function clearMonitor(){ if (monitorId){ clearInterval(monitorId); monitorId = null; } }
+      function startMonitorFor(step){
+        clearMonitor();
+        if (freeMode || autoPlaying) return;
+        if (step === 1){
+          monitorId = setInterval(()=>{
+            if (absorbedRatio() >= PASS2_RATIO){
+              clearMonitor();
+              showCheck();
+              setTimeout(()=>{ setUI(2); guardControls(); startMonitorFor(2); }, 520);
+            }
+          }, 200);
+        } else if (step === 2){
+          if (absorbedRatio() >= PASS3_RATIO){ showCheck(); return setTimeout(showDone, 350); }
+          monitorId = setInterval(()=>{
+            if (absorbedRatio() >= PASS3_RATIO){
+              clearMonitor();
+              showCheck();
+              setTimeout(showDone, 350);
+            }
+          }, 250);
+        }
+      }
+
+      function setUI(i){
+        stepIdx = i;
+        const texts = [
+          {t:'把<strong>物质量 ≥ 60</strong>、<strong>重力 ≥ 45</strong>（更易形成球形）。', h:'提示：先把两个滑块拖到推荐区间。'},
+          {t:'点击<strong>开始模拟</strong>，观察粒子被吸收向中心汇聚。', h:'提示：这一步会监测“被吸收粒子占比”。'},
+          {t:'继续观察，直到形成<strong>近似球体</strong>（吸收占比≥90%）。', h:'达到标准会自动通过并弹窗。'}
+        ];
+        dots.forEach((d,k)=>{ d.className='xn-dot' + (k<i?' done':'' ) + (k===i?' active':''); });
+        stepEl.textContent = `步骤 ${i+1} / 3`;
+        textEl.innerHTML = texts[i].t;
+        hintEl.textContent = texts[i].h;
+
+        guardControls();
+        // 若动画在跑，切到第2/3步立即开始监听
+        if (!freeMode && !autoPlaying && window.isSimulating){
+          if (i === 1) startMonitorFor(1);
+          if (i === 2) startMonitorFor(2);
+        } else if (i === 0){
+          clearMonitor();
+        }
+      }
+
+      function guardControls(){
+        if (freeMode || autoPlaying){
+          window.matterSlider.disabled = false; window.gravitySlider.disabled = false; window.simButton.disabled = false; return;
+        }
+        if (stepIdx === 0){ window.matterSlider.disabled=false; window.gravitySlider.disabled=false; window.simButton.disabled=true; }
+        else if (stepIdx === 1){ window.matterSlider.disabled=true; window.gravitySlider.disabled=true; window.simButton.disabled=false; }
+        else { window.matterSlider.disabled=true; window.gravitySlider.disabled=true; window.simButton.disabled=false; }
+      }
+
+      // 禁用阶段友好提示（不改动画状态）
+      document.addEventListener('click', (e)=>{
+        const t = e.target;
+        if (!freeMode && !autoPlaying){
+          if ((t === window.matterSlider || t === window.gravitySlider) && t.disabled){ e.preventDefault(); showToast('当前步骤不需要调滑块'); return; }
+          if (t === window.simButton && t.disabled){ e.preventDefault(); showToast('先完成本步骤的参数设置'); return; }
+        }
+      }, true);
+
+      // 第一步通过
+      function tryPassStep0(){
+        if (freeMode || autoPlaying) return;
+        if (+window.matterSlider.value >= NEED_MAT && +window.gravitySlider.value >= NEED_G){
+          showCheck(); setTimeout(()=>{ setUI(1); }, 520);
+        }
+      }
+      window.matterSlider.addEventListener('input', tryPassStep0);
+      window.gravitySlider.addEventListener('input', tryPassStep0);
+
+      // 点击“开始模拟”：交给统一监听器推进
+      window.simButton.addEventListener('click', ()=>{
+        if (freeMode || autoPlaying) return;
+        if (stepIdx === 0){ showToast('请先把滑块调到推荐区间'); guardControls(); return; }
+        if (stepIdx === 1) startMonitorFor(1);
+        if (stepIdx === 2) startMonitorFor(2);
+      });
+
+      // 三按钮
+      function stepReset(){
+        autoPlaying = false;
+        clearMonitor();
+        setUI(0);
+        // 复位原模拟
+        if (window.animationId) cancelAnimationFrame(window.animationId);
+        window.isSimulating=false; window.simButton.textContent='开始模拟';
+        if (typeof window.initSimulation==='function' && typeof window.runSimulation==='function'){
+          window.initSimulation(); window.runSimulation(); if (window.animationId) cancelAnimationFrame(window.animationId);
+        }
+      }
+      btnReset.onclick = ()=>{ if (!autoPlaying){ stepReset(); } };
+
+      function setFree(on){
+        freeMode = !!on;
+        const card = document.getElementById('xn-task');
+        card.style.opacity = on? .25 : 1;
+        card.style.filter  = on? 'grayscale(.6)' : 'none';
+        btnFree.textContent = on? '退出自由模式' : '自由模式';
+        btnAuto.disabled = on;
+        if (on) clearMonitor();
+        guardControls();
+      }
+      btnFree.onclick = ()=> setFree(!freeMode);
+
+      // 自动演示：严格按同一阈值推进
+      async function autoDemo(){
+        if (freeMode || autoPlaying) return;
+        autoPlaying = true; btnAuto.disabled=true;
+        clearMonitor();
+        setUI(0); guardControls();
+
+        function tweenRange(el, target, dur=500){
+          return new Promise(res=>{
+            const v0 = +el.value, v1 = target, t0 = performance.now();
+            function tick(now){
+              const t = Math.min(1,(now-t0)/dur);
+              el.value = (v0 + (v1-v0)*(1 - Math.pow(1-t,3))).toFixed(0);
+              el.dispatchEvent(new Event('input', {bubbles:true}));
+              if (t<1) requestAnimationFrame(tick); else res();
+            }
+            requestAnimationFrame(tick);
+          });
+        }
+        await tweenRange(window.matterSlider, Math.max(+window.matterSlider.value, NEED_MAT));
+        await tweenRange(window.gravitySlider, Math.max(+window.gravitySlider.value, NEED_G));
+        showCheck(); await new Promise(r=>setTimeout(r,520));
+        setUI(1); guardControls();
+
+        window.simButton.disabled=false; window.simButton.click();
+        await new Promise(r=>{ const t = setInterval(()=>{ if (absorbedRatio() >= PASS2_RATIO){ clearInterval(t); r(); } }, 220); });
+        showCheck(); await new Promise(r=>setTimeout(r,520));
+        setUI(2); guardControls();
+
+        await new Promise(r=>{ const t = setInterval(()=>{ if (absorbedRatio() >= PASS3_RATIO){ clearInterval(t); r(); } }, 250); });
+        showCheck(); await new Promise(r=>setTimeout(r,350));
+        showDone();
+
+        autoPlaying = false; btnAuto.disabled=false;
+      }
+      btnAuto.onclick = autoDemo;
+
+      // 启动
+      setUI(0); guardControls();
+    }
+  })();
+  </script>
+
+</body>
+</html>

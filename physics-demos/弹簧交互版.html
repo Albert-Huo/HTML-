@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1" />
+<title>胡克定律：弹簧、原子与 F = k·Δx（严格步骤判定·帽扣对齐）</title>
+<style>
+  :root{ --card-bg: rgba(255,255,255,0.08); --accent:#3ddc97; --warn:#ffb74d; --ink:#e9f2ff; }
+  body{ background:#1a1a1a; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center; }
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡 */
+  .task-card{ width:100%; max-width:980px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px); display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; } .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); } .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5); }
+  /* 舞台 */
+  #stage{ width:100%; max-width:980px; height:62vh; max-height:600px; min-height:460px; margin-top:10px; border-radius:12px; background:linear-gradient(180deg,#0f172a 0%, #0b1222 100%); box-shadow:0 8px 24px rgba(0,0,0,.35); position:relative; overflow:hidden; }
+  .left,.right{ position:absolute; top:12px; bottom:92px; }
+  .left{ left:12px; width:56%; border-right:1px solid rgba(255,255,255,0.08); padding-right:12px; }
+  .right{ right:12px; width:40%; display:flex; flex-direction:column; gap:10px; }
+  /* 宏观区 */
+  #macroWrap{ width:100%; height:66%; background:linear-gradient(180deg,rgba(255,255,255,0.03),transparent 40%); border-radius:10px; position:relative; }
+  #springSvg{ position:absolute; inset:0; }
+  .anchor{ position:absolute; left:10px; top:50%; transform:translateY(-50%); width:18px; height:180px; background:linear-gradient(180deg,#9ea7b7,#c9d0da); border-radius:4px; box-shadow:inset 0 0 10px rgba(0,0,0,.35); }
+  .block{ position:absolute; top:50%; transform:translateY(-50%); width:100px; height:78px; background:linear-gradient(180deg,#c8d6e5,#90a4ae); border:1px solid rgba(255,255,255,.25); border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.35); display:grid; place-items:center; font-weight:700; color:#0f172a;}
+  .block::before{ content:""; position:absolute; left:0; top:50%; transform:translate(-50%,-50%); width:18px; height:18px; border-radius:50%; background:radial-gradient(circle at 40% 40%, #e7eef6, #b9c5d3 60%, #8ea0b3); box-shadow:inset 0 0 4px rgba(0,0,0,.35), 0 0 10px rgba(255,255,255,.15); border:2px solid rgba(255,255,255,.5); }
+  .forceTag{ position:absolute; top:18px; left:12px; padding:4px 8px; border-radius:999px; font-weight:700; background:rgba(61,220,151,.15); border:1px solid rgba(61,220,151,.5); color:#9ef0cc; }
+  .bubble{ position:absolute; left:50%; top:14%; transform:translate(-50%,-50%); padding:6px 10px; border-radius:999px; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.18); font-size:12px; color:#d9f3ff; opacity:0; pointer-events:none;}
+  .bubble.show{ animation:bub .9s ease-out forwards; } @keyframes bub{0%{opacity:0; transform:translate(-50%,-60%)}30%{opacity:1; transform:translate(-50%,-50%)}100%{opacity:0; transform:translate(-50%,-40%)}}
+  /* 微观与图 */
+  #microWrap{ flex:1; background:rgba(255,255,255,0.03); border-radius:10px; position:relative; overflow:hidden; transition:opacity .25s, transform .25s; }
+  .atom{ position:absolute; top:50%; width:30px; height:30px; border-radius:50%; transform:translateY(-50%); box-shadow:0 0 10px rgba(255,255,255,.25), inset 0 0 10px rgba(255,255,255,.25); }
+  .atom.a{ left:16px; background:radial-gradient(circle at 30% 30%, #fff, #8ec5ff);} .atom.b{ right:16px; background:radial-gradient(circle at 30% 30%, #fff, #ffd18e);}
+  #bond{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); height:8px; border-radius:6px; background:linear-gradient(90deg,#74b9ff,#ffeaa7); filter:brightness(1.1); }
+  #rLabel{ position:absolute; bottom:8px; left:50%; transform:translateX(-50%); font-size:12px; color:#cfe9ff; opacity:.95; }
+  #chart{ flex:1; background:rgba(255,255,255,0.03); border-radius:10px; position:relative; }
+  #chart canvas{ width:100%; height:100%; display:block; }
+  .legend{ position:absolute; right:8px; top:8px; font-size:12px; color:#cfe9ff; opacity:.9; }
+  /* 底部控制面板 */
+  .panel{ position:absolute; left:12px; right:12px; bottom:12px; z-index:10; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:12px; backdrop-filter:blur(8px); display:grid; grid-template-columns:1fr auto; gap:8px 12px; }
+  .ctrl{ grid-column:1 / -1; display:grid; grid-template-columns:110px 1fr 90px; gap:10px; align-items:center; }
+  .ctrl label{ font-size:14px; opacity:.95; white-space:nowrap;} .val{ text-align:right; font-variant-numeric:tabular-nums; font-weight:800; }
+  input[type="range"]{ -webkit-appearance:none; appearance:none; width:100%; height:18px; background:transparent; }
+  input[type="range"]::-webkit-slider-runnable-track{ height:8px; background:linear-gradient(90deg,#2a3545,#3a4a62); border-radius:999px; box-shadow:inset 0 0 4px rgba(0,0,0,.5); }
+  input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; margin-top:-6px; width:26px; height:26px; border-radius:50%; background:#e6f7ff; border:3px solid #6ab6ff; box-shadow:0 0 12px rgba(106,182,255,.6); }
+  .viewbtn,.plotbtn{ padding:10px 14px; background:#374151; border:none; border-radius:10px; color:#fff; cursor:pointer; transition:transform .05s, background .25s; }
+  .viewbtn:hover,.plotbtn:hover{ background:#4b5563;} .viewbtn:active,.plotbtn:active{ transform:scale(.98);} .viewbtn.active{ background:#1f2937; outline:2px solid rgba(255,255,255,.22); }
+  .hintArrow{ display:none; position:absolute; bottom:74px; left:22px; color:#ffd54f; font-size:13px; } .hintArrow.show{ display:block; animation:updown 1s ease-in-out infinite; }
+  @keyframes updown{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  /* 三按钮 & 弹窗 */
+  .toolbar{ width:100%; max-width:980px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  .toolbar button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s, transform .05s, opacity .2s;}
+  .toolbar button:hover{ background:#5a5a5a;} .toolbar button:active{ transform:scale(.98);} .toolbar button:disabled{ opacity:.5; cursor:not-allowed;}
+  .checkmark{ position:absolute; z-index:50; left:50%; top:16%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15); border:3px solid var(--accent); display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);} .checkmark.active{ display:flex; }
+  .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,.8); color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.35); font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; } .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5);} .modal h3{ margin:8px 0 6px; font-size:20px; } .modal p{ color:#cfd8dc; margin-top:0; } .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; border:none; border-radius:10px; padding:10px 14px; }
+  .explain{ width:100%; max-width:980px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink); } .explain h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; }
+  @media (max-width:700px){ .left{ left:12px; right:12px; width:auto; position:absolute; top:12px; bottom:52%; border-right:none; padding-right:0; } .right{ left:12px; right:12px; width:auto; position:absolute; top:50%; bottom:92px; } }
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+  <div class="task-card">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">把<strong>形变量 Δx</strong>拖到中等（约 35%～45%），观察弹簧变长。</div>
+      <div class="task-hint" id="taskHint">提示：先只调 Δx；完成后再看原子视角。</div>
+    </div>
+    <div class="progress-dots"><span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span></div>
+  </div>
+
+  <div id="stage">
+    <div class="left">
+      <div id="macroWrap">
+        <div class="anchor"></div>
+        <svg id="springSvg" viewBox="0 0 800 360" preserveAspectRatio="none">
+          <path id="spring" d="" fill="none" stroke="#cfe9ff" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+        </svg>
+        <div class="block" id="block">质量块</div>
+        <div class="forceTag" id="forceTag">F = 0.00（示意）</div>
+        <div class="bubble" id="bubble">Δx ↑ → r ↑ → F ↑</div>
+        <div class="checkmark" id="checkmark"><div></div></div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div id="microWrap" aria-hidden="true" style="opacity:.25; transform:scale(.98);">
+        <div id="bond"></div>
+        <div class="atom a"></div><div class="atom b"></div>
+        <div id="rLabel">原子间距 r ≈ —</div>
+      </div>
+      <div id="chart"><canvas id="chartCanvas"></canvas><div class="legend">F–Δx（k 越大直线越陡）</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="ctrl" id="ctrlDx"><label>形变量 Δx</label><input id="dxRange" type="range" min="0" max="100" step="1" value="20" /><div class="val"><span id="dxVal">20</span>%</div></div>
+      <div class="ctrl" id="ctrlK"><label>弹性系数 k</label><input id="kRange" type="range" min="50" max="300" step="10" value="120" /><div class="val"><span id="kVal">120</span></div></div>
+      <div class="hintArrow" id="hintArrow">← 先把 Δx 调到 35%～45%</div>
+      <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end;">
+        <button id="viewBtn" class="viewbtn" aria-pressed="false">🔬 原子视角</button>
+        <button id="plotBtn" class="plotbtn">🧮 绘图一次</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar"><button id="resetBtn">步骤重置</button><button id="autoDemoBtn">自动演示</button><button id="freeBtn">自由模式</button></div>
+
+  <div class="toast" id="toast">再试一试：请按本步骤的提示操作</div>
+  <div class="modal-mask" id="doneMask"><div class="modal"><h3>完成，你真棒！🎉</h3><p>你已完成：观察 Δx → 打开原子视角并调整 → 绘制 F–Δx。<br><b>结论：</b>在弹性限度内，F = k·Δx。</p><button class="ok" id="okBtn">好的</button></div></div>
+
+  <div class="explain"><h2>学习要点</h2><ul><li><b>宏观：</b>Δx 变大，弹簧更长，F（示意）变大。</li><li><b>微观：</b>原子像“用弹簧连接的小球”，被拉远，回复力变大。</li><li><b>图像：</b>F–Δx 直线的“斜率”就是 k；k 越大越陡。</li></ul></div>
+
+<script>
+/* === DOM & 状态 === */
+const dpr=Math.max(1,window.devicePixelRatio||1);
+const springPath=$('#spring'), block=$('#block'), forceTag=$('#forceTag'), bubble=$('#bubble');
+const dxRange=$('#dxRange'), kRange=$('#kRange'), dxVal=$('#dxVal'), kVal=$('#kVal');
+const viewBtn=$('#viewBtn'), plotBtn=$('#plotBtn');
+const microWrap=$('#microWrap'), atomA=qs(microWrap,'.atom.a'), atomB=qs(microWrap,'.atom.b'), bond=$('#bond'), rLabel=$('#rLabel');
+const chartCv=$('#chartCanvas'), toast=$('#toast'), doneMask=$('#doneMask'), okBtn=$('#okBtn');
+const taskStepEl=$('#taskStep'), taskTextEl=$('#taskText'), taskHintEl=$('#taskHint');
+const dots=[$('#dot1'),$('#dot2'),$('#dot3')];
+const resetBtn=$('#resetBtn'), autoDemoBtn=$('#autoDemoBtn'), freeBtn=$('#freeBtn'), hintArrow=$('#hintArrow'), macroWrap=$('#macroWrap');
+
+let freeMode=false, autoPlaying=false, completed=false, currentTask=0, stepLocked=false;
+let prevDX=+dxRange.value, prevK=+kRange.value, viewOn=false, openedDx=null, chartCtx=null, lastPlotted=false;
+
+/* === 工具 === */
+function $(id){return document.getElementById(id.slice(1));}
+function qs(root,sel){return (root||document).querySelector(sel);}
+function showToast(msg){ toast.textContent=msg||'再试一试：请按本步骤操作'; toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>toast.classList.remove('show'),1400); }
+function checkMark(){ const ck=qs(document,'.checkmark'); ck.classList.add('active'); setTimeout(()=>ck.classList.remove('active'),520); }
+function showDone(){ doneMask.style.display='flex'; } okBtn.onclick=()=> doneMask.style.display='none';
+function setStepUI(i){ dots.forEach((d,k)=> d.className='dot'+(k<i?' done':k===i?' active':'')); taskStepEl.textContent=`步骤 ${i+1} / 3`; }
+function passStep(){ if(stepLocked) return; stepLocked=true; checkMark(); setTimeout(()=>{ dots[currentTask].classList.remove('active'); dots[currentTask].classList.add('done'); currentTask++; if(currentTask>=3){ completed=true; setTimeout(showDone,320);} else { dots[currentTask].classList.add('active'); updateHints(); } stepLocked=false; },520); }
+function updateHints(){
+  if(currentTask===0){ taskTextEl.innerHTML='把<strong>形变量 Δx</strong>拖到中等（约 35%～45%），观察弹簧变长。'; taskHintEl.textContent='提示：先只调 Δx；完成后再看原子视角。'; }
+  if(currentTask===1){ taskTextEl.innerHTML='点击<strong>🔬 原子视角</strong>，然后把 Δx <b>相对打开瞬间</b>再改动 ≥ 5%，观察 r 变化。'; taskHintEl.textContent='仅点击不通过；必须再滑动 Δx（≥5%）。'; }
+  if(currentTask===2){ taskTextEl.innerHTML='把<strong>k 调大</strong>（≥ 230），然后点击<strong>🧮 绘图一次</strong>。'; taskHintEl.textContent='仅调 k 不通过，必须点击“绘图一次”。'; }
+  setStepUI(currentTask);
+}
+
+/* === 绘制弹簧（帽扣+挂环对齐） === */
+function drawSpring(dxPercent){
+  const svgH=360, y=svgH/2, leftPad=42, baseLen=350, addLen=dxPercent/100*280, totalLen=baseLen+addLen;
+  const turns=12, amp=26, pitch=totalLen/turns;
+  let d=`M ${leftPad} ${y} L ${leftPad+40} ${y}`, x=leftPad+40;
+  for(let i=0;i<turns;i++){ const mid1=x+pitch*0.33, mid2=x+pitch*0.66; d+=` Q ${mid1} ${y-amp} ${x+pitch/2} ${y}`; d+=` Q ${mid2} ${y+amp} ${x+pitch} ${y}`; x+=pitch; }
+  const blockX=leftPad+40+totalLen+10; d+=` L ${blockX} ${y} L ${blockX+6} ${y}`; springPath.setAttribute('d',d);
+  const scaleX = macroWrap.clientWidth/800;
+  block.style.left = (blockX*scaleX)+'px';
+  forceTag.style.left = Math.max(12, Math.min((blockX*scaleX)-120, macroWrap.clientWidth-140)) + 'px';
+}
+
+/* === 微观 === */
+function updateMicro(dx){
+  const W=microWrap.clientWidth, H=microWrap.clientHeight, cy=H/2, r0=Math.min(W,H)*0.55, dr=dx/100*(W*0.24);
+  const r=Math.max(50, Math.min(W-50, r0+dr)), aX=(W-r)/2+16, bX=(W+r)/2-16;
+  atomA.style.left=aX+'px'; atomB.style.left=(bX-30)+'px'; atomA.style.top=cy+'px'; atomB.style.top=cy+'px';
+  const bl=Math.max(12,r-60); bond.style.width=bl+'px'; bond.style.left=(W/2)+'px'; bond.style.top=cy+'px';
+  rLabel.textContent=`原子间距 r ≈ ${(r/10).toFixed(1)}（示意）`;
+}
+
+/* === 图表 === */
+function resizeChart(){ chartCv.width=chartCv.clientWidth*dpr; chartCv.height=chartCv.clientHeight*dpr; chartCtx=chartCv.getContext('2d'); drawAxes(); }
+function drawAxes(){ const c=chartCtx,W=chartCv.width,H=chartCv.height; c.clearRect(0,0,W,H); c.save(); c.strokeStyle='rgba(255,255,255,0.25)'; c.lineWidth=1*dpr; c.beginPath(); c.moveTo(40*dpr,H-40*dpr); c.lineTo(W-20*dpr,H-40*dpr); c.moveTo(40*dpr,H-40*dpr); c.lineTo(40*dpr,20*dpr); c.stroke(); c.fillStyle='rgba(255,255,255,0.7)'; c.font=`${12*dpr}px system-ui`; c.fillText('Δx',W-30*dpr,H-18*dpr); c.fillText('F',22*dpr,26*dpr); c.restore(); }
+function plotLine(k){ const c=chartCtx,W=chartCv.width,H=chartCv.height,ox=40*dpr,oy=H-40*dpr,maxX=(W-60*dpr),Fscale=0.42; c.save(); c.strokeStyle='rgba(61,220,151,.95)'; c.lineWidth=2.2*dpr; c.beginPath(); c.moveTo(ox,oy); c.lineTo(ox+maxX, oy - maxX*(k*Fscale)/300); c.stroke(); c.restore(); lastPlotted=true; }
+
+/* === 联动 === */
+function updateAll(showB=true){ const dx=+dxRange.value, k=+kRange.value; dxVal.textContent=dx; kVal.textContent=k; drawSpring(dx); updateMicro(dx); forceTag.textContent=`F = ${(k*(dx/100)).toFixed(2)}（示意）`; if(showB){ bubble.classList.remove('show'); void bubble.offsetWidth; bubble.classList.add('show'); } }
+
+/* === 守卫（动作级） === */
+function inStepMode(){ return !freeMode && !completed && !autoPlaying; }
+function guard(kind, run){
+  if(!inStepMode()) return run();
+  if(currentTask===0 && kind==='dx') return run();
+  if(currentTask===1 && (kind==='view' || kind==='dx')) return run();
+  if(currentTask===2 && (kind==='k' || kind==='plot')) return run();
+  showToast(taskHintEl.textContent);
+}
+
+/* === 事件：严格按步骤推进 === */
+dxRange.addEventListener('input', ()=>{
+  guard('dx', ()=>{
+    prevDX=+dxRange.value; updateAll(); hintArrow.classList.remove('show');
+    // Step 1 通过判定：仅在 step==0 且范围命中时通过
+    if(currentTask===0){
+      if(prevDX>=35 && prevDX<=45) passStep(), updateHints();
+    }
+    // Step 2 通过判定：已打开原子视角 + Δx 相对打开瞬间改动 ≥5%
+    if(currentTask===1 && viewOn && openedDx!==null){
+      if(Math.abs(prevDX - openedDx) >= 5){ passStep(); updateHints(); }
+    }
+  });
+});
+kRange.addEventListener('input', ()=>{ guard('k', ()=>{ prevK=+kRange.value; updateAll(false); }); });
+viewBtn.addEventListener('click', ()=>{
+  guard('view', ()=>{
+    viewOn=!viewOn;
+    viewBtn.classList.toggle('active',viewOn);
+    viewBtn.setAttribute('aria-pressed',viewOn?'true':'false');
+    microWrap.setAttribute('aria-hidden', viewOn?'false':'true');
+    microWrap.style.opacity=viewOn?'1':'0.25';
+    microWrap.style.transform=viewOn?'scale(1)':'scale(.98)';
+    // 打开视角时记录阈值基准；仅点击不通过
+    openedDx = viewOn ? +dxRange.value : null;
+  });
+});
+plotBtn.addEventListener('click', ()=>{
+  guard('plot', ()=>{
+    drawAxes(); plotLine(+kRange.value);
+    // Step 3 通过判定：仅在 step==2 且 k ≥ 230 时通过
+    if(currentTask===2 && +kRange.value>=230){ passStep(); updateHints(); }
+  });
+});
+
+/* === 三按钮 & 自动演示（也遵守同一判定） === */
+function setFreeMode(on){ freeMode=on; freeBtn.textContent=on?'退出自由模式':'自由模式'; autoDemoBtn.disabled=on; const card=qs(document,'.task-card'); card.style.opacity=on?.25:1; card.style.filter=on?'grayscale(.6)':'none'; }
+resetBtn.onclick=()=>{ if(!autoPlaying) resetAll(); };
+autoDemoBtn.onclick=()=>{ if(!autoPlaying && !freeMode) autoDemo(); };
+freeBtn.onclick=()=> setFreeMode(!freeMode);
+
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+async function autoDemo(){
+  autoPlaying=true; resetAll(true);
+  // step1
+  await tween(dxRange,+dxRange.value,40,600); if(currentTask===0 && +dxRange.value>=35 && +dxRange.value<=45){ passStep(); updateHints(); }
+  await sleep(360);
+  // step2
+  viewBtn.click(); await sleep(260);
+  await tween(dxRange,+dxRange.value,65,500); if(currentTask===1 && viewOn && Math.abs(+dxRange.value-openedDx)>=5){ passStep(); updateHints(); }
+  await sleep(320);
+  // step3
+  await tween(kRange,+kRange.value,250,600); drawAxes(); plotLine(+kRange.value); if(currentTask===2 && +kRange.value>=230){ passStep(); updateHints(); }
+  autoPlaying=false;
+}
+function tween(el,from,to,dur=600){ return new Promise(res=>{ const st=performance.now(); function tick(now){ const t=Math.min(1,(now-st)/dur), e=1-Math.pow(1-t,3), v=Math.round(from+(to-from)*e); el.value=v; if(el===dxRange) prevDX=v; else prevK=v; updateAll(false); if(t<1) requestAnimationFrame(tick); else res(); } requestAnimationFrame(tick); }); }
+
+/* === 重置 & 初始化 === */
+function resetAll(silent){
+  completed=false; currentTask=0; stepLocked=false; lastPlotted=false; viewOn=false; openedDx=null;
+  viewBtn.classList.remove('active'); viewBtn.setAttribute('aria-pressed','false');
+  microWrap.style.opacity='.25'; microWrap.style.transform='scale(.98)'; microWrap.setAttribute('aria-hidden','true');
+  dxRange.value=20; kRange.value=120; prevDX=20; prevK=120;
+  dots.forEach((d,i)=> d.className='dot'+(i===0?' active':''));
+  updateHints(); resizeChart(); drawAxes(); updateAll(false);
+  if(!silent) showToast('已重置步骤与参数'); hintArrow.classList.add('show');
+}
+function init(){ resizeChart(); drawAxes(); updateAll(false); updateHints(); hintArrow.classList.add('show'); }
+window.addEventListener('resize', ()=>{ resizeChart(); updateAll(false); });
+init();
+</script>
+</body>
+</html>

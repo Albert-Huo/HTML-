@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum=1" />
+  <title>跳入地球隧道 · 速度变化互动演示</title>
+  <style>
+    :root{
+      --card-bg: rgba(255,255,255,0.08);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --error:#ff6b6b;
+    }
+    body{
+      background:#05070b;
+      color:#fff;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      margin:0;
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+
+    /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+
+    /* 步骤卡片 */
+    .task-card{
+      width:100%;
+      max-width:900px;
+      background:var(--card-bg);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition:opacity .2s, filter .2s;
+    }
+    .task-step{
+      background:rgba(255,255,255,0.15);
+      border-radius:8px;
+      padding:6px 10px;
+      font-weight:600;
+      white-space:nowrap;
+    }
+    .task-text{ line-height:1.55; }
+    .task-hint{
+      color:#ffd54f;
+      font-size:12px;
+      opacity:.9;
+    }
+    .progress-dots{
+      display:flex;
+      gap:6px;
+      align-items:center;
+    }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:rgba(255,255,255,0.25);
+    }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--accent); }
+
+    /* 舞台区域 */
+    #stageWrap{
+      width:100%;
+      max-width:900px;
+      height:60vh;
+      max-height:520px;
+      margin-top:10px;
+    }
+    #stage{
+      width:100%;
+      height:100%;
+      position:relative;
+      overflow:hidden;
+      border-radius:12px;
+      background:radial-gradient(circle at 50% 15%, #1b2b4a 0%, #05070b 60%, #000 100%);
+      box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      touch-action:none;
+    }
+    canvas#scene{
+      width:100%;
+      height:100%;
+      display:block;
+    }
+
+    /* 左下角控制条 */
+    .ctrlbar{
+      position:absolute;
+      left:10px;
+      bottom:10px;
+      z-index:10;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      background:rgba(0,0,0,0.6);
+      border-radius:10px;
+      padding:8px;
+      border:1px solid rgba(255,255,255,0.15);
+      backdrop-filter:blur(6px);
+      max-width:80%;
+    }
+    .ctrlbar button{
+      padding:8px 10px;
+      font-size:14px;
+      background:#444;
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      transition:background .25s, transform .05s, opacity .2s;
+    }
+    .ctrlbar button:hover{ background:#5a5a5a; }
+    .ctrlbar button:active{ transform:scale(.97); }
+    .ctrlbar button:disabled{ opacity:.5; cursor:not-allowed; }
+
+    /* 左上角：起跳高度滑块面板 */
+    .panel-height{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:10;
+      background:rgba(0,0,0,0.65);
+      border-radius:10px;
+      padding:8px 10px;
+      border:1px solid rgba(255,255,255,0.16);
+      font-size:12px;
+      max-width:220px;
+    }
+    .panel-height label{
+      display:block;
+      margin-bottom:4px;
+      color:#e0f2ff;
+    }
+    .panel-height input[type=range]{
+      width:100%;
+    }
+    .panel-height .val{
+      font-size:12px;
+      color:#ffd54f;
+      margin-top:2px;
+    }
+
+    /* 右侧：速度指示条 */
+    .speed-meter{
+      position:absolute;
+      right:10px;
+      top:50%;
+      transform:translateY(-50%);
+      z-index:10;
+      width:18px;
+      height:120px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,0.4);
+      background:rgba(0,0,0,0.55);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      padding:4px 0;
+      box-sizing:border-box;
+    }
+    .speed-bar{
+      flex:1;
+      width:8px;
+      border-radius:8px;
+      background:linear-gradient(to top,#ff6b6b,#ffd54f,#3ddc97);
+      transform-origin:bottom;
+      transform:scaleY(0);
+    }
+    .speed-label{
+      font-size:11px;
+      margin-top:3px;
+      color:#e0f2ff;
+    }
+
+    /* 三按钮容器（画面下方） */
+    .toolbar{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      width:100%;
+      max-width:900px;
+      margin-top:10px;
+      justify-content:flex-start;
+    }
+    .toolbar button{
+      padding:10px 16px;
+      background:#444;
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      transition:background .25s, transform .05s, opacity .2s;
+    }
+    .toolbar button:hover{ background:#5a5a5a; }
+    .toolbar button:active{ transform:scale(.98); }
+    .toolbar button:disabled{ opacity:.5; cursor:not-allowed; }
+
+    /* 对勾 / Toast / 完成弹窗 */
+    .checkmark{
+      position:absolute;
+      z-index:50;
+      left:50%;
+      top:22%;
+      transform:translate(-50%,-50%) scale(0.6);
+      width:120px;
+      height:120px;
+      border-radius:50%;
+      background:rgba(61,220,151,0.15);
+      border:3px solid var(--accent);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);
+    }
+    .checkmark.active{ display:flex; }
+    .checkmark>div{
+      width:60px;
+      height:30px;
+      border-left:8px solid var(--accent);
+      border-bottom:8px solid var(--accent);
+      transform:rotate(-45deg) translateY(-6px);
+      filter:drop-shadow(0 0 6px rgba(61,220,151,.6));
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:24px;
+      transform:translateX(-50%) translateY(20px);
+      background:rgba(0,0,0,0.8);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:10px;
+      box-shadow:0 6px 18px rgba(0,0,0,.35);
+      font-size:14px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .25s, transform .25s;
+      z-index:200;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+
+    .modal-mask{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.55);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:300;
+    }
+    .modal{
+      width:min(90vw,360px);
+      background:#111827;
+      color:#fff;
+      border-radius:14px;
+      padding:18px 16px;
+      border:1px solid rgba(255,255,255,0.15);
+      text-align:center;
+      box-shadow:0 10px 30px rgba(0,0,0,.6);
+    }
+    .modal h3{
+      margin:8px 0 6px;
+      font-size:20px;
+    }
+    .modal p{
+      color:#cfd8dc;
+      margin-top:0;
+    }
+    .modal .ok{
+      margin-top:12px;
+      padding:10px 14px;
+      border:none;
+      border-radius:10px;
+      background:var(--accent);
+      color:#081a12;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    /* 说明文字（简化版，强调速度变化） */
+    .explanation{
+      width:100%;
+      max-width:900px;
+      margin:14px 0 20px;
+      line-height:1.7;
+      font-size:.95em;
+      color:#e9f2ff;
+    }
+    .explanation h2{
+      margin:.2em 0 .4em;
+      color:#9bd3ff;
+      font-size:1.05em;
+    }
+
+    @media (max-width:600px){
+      .explanation{ font-size:.9em; }
+      .ctrlbar{ max-width:100%; }
+      .panel-height{ max-width:180px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 顶部彩条 -->
+  <div id="spectrum"></div>
+
+  <!-- 步骤卡 -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">
+        用左上角<strong>滑块</strong>调节起跳高度：小人从北极洞口上方多高的位置跳下。
+      </div>
+      <div class="task-hint" id="taskHint">
+        提示：高度越高，小人穿过地心时的<strong>最高速度</strong>越大。
+      </div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <!-- 舞台 -->
+  <div id="stageWrap">
+    <div id="stage">
+      <canvas id="scene"></canvas>
+
+      <!-- 左上：起跳高度面板 -->
+      <div class="panel-height">
+        <label for="heightSlider">起跳高度（相对地球半径）</label>
+        <input id="heightSlider" type="range" min="0" max="100" value="0" />
+        <div class="val">
+          距洞口高度：<span id="heightLabel">0.00R</span>
+        </div>
+      </div>
+
+      <!-- 右侧：速度条 -->
+      <div class="speed-meter">
+        <div class="speed-bar" id="speedBar"></div>
+        <div class="speed-label">速度</div>
+      </div>
+
+      <!-- 左下：画面内控制 -->
+      <div class="ctrlbar">
+        <button id="jumpBtn">跳入隧道</button>
+        <button id="pauseBtn">暂停</button>
+        <button id="slowBtn">慢动作</button>
+      </div>
+
+      <!-- 对勾 -->
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <!-- 三按钮 -->
+  <div class="toolbar">
+    <button id="stepResetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <!-- Toast & 完成弹窗 -->
+  <div class="toast" id="toast">再试一试：请按当前步骤提示来操作</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你已经完成了三个挑战：设置起跳高度 → 跳入地球隧道 → 在慢动作中看清速度变化。</p>
+      <button class="ok" id="okBtn">好的</button>
+    </div>
+  </div>
+
+  <!-- 说明部分（简化版，强调速度变化） -->
+  <div class="explanation">
+    <h2>沿地球隧道下落时，速度如何变化？</h2>
+    <ul>
+      <li>小人从北极洞口跳下：靠近地心时，重力拉得时间更久，速度逐渐变大；离开地心向南极方向运动时，又会被“拉回来”，速度逐渐变小。</li>
+      <li>因此：<strong>在中间附近速度最快，在两端（靠近洞口）速度最慢</strong>；调整起跳高度，会改变穿过地心时的<strong>最高速度</strong>（右侧速度条更长）。</li>
+    </ul>
+  </div>
+
+<script>
+/* =========== 画面与物理动画部分 =========== */
+const canvas = document.getElementById('scene');
+const ctx = canvas.getContext('2d');
+let W = 0, H = 0;
+
+function resizeCanvas(){
+  const stage = document.getElementById('stage');
+  W = canvas.width  = stage.clientWidth;
+  H = canvas.height = stage.clientHeight;
+}
+
+const stars = [];
+function initStars(){
+  stars.length = 0;
+  for(let i=0;i<120;i++){
+    stars.push({
+      x: Math.random()*W,
+      y: Math.random()*H,
+      r: Math.random()*1.6 + 0.2,
+      tw: Math.random()*Math.PI*2
+    });
+  }
+}
+
+function earthRadius(){ return Math.min(W,H)*0.30; }
+function center(){ return {x:W/2, y:H/2+10}; }
+
+/* SHM 参数 */
+let period = 10;         // 基本周期
+let slowFactor = 1;
+let running = false;
+let startTime = null;
+let lastLogicalT = 0;
+
+/* 起跳高度（0~1，对应洞口上方 0~0.6R） */
+const heightSlider = document.getElementById('heightSlider');
+const heightLabel  = document.getElementById('heightLabel');
+let heightRatio = 0;  // 0~1
+
+function amplitude(){
+  const R = earthRadius();
+  return R * (1 + 0.6*heightRatio); // 振幅 = 地球半径 + 上方高度
+}
+
+/* 速度指示条 */
+const speedBar = document.getElementById('speedBar');
+function updateSpeedMeter(norm){
+  const clamped = Math.max(0, Math.min(1, norm));
+  speedBar.style.transform = `scaleY(${clamped})`;
+}
+
+/* 控件引用 */
+const jumpBtn  = document.getElementById('jumpBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const slowBtn  = document.getElementById('slowBtn');
+
+function drawStars(t){
+  ctx.save();
+  ctx.fillStyle = '#02030a';
+  ctx.fillRect(0,0,W,H);
+  stars.forEach(s=>{
+    const a = 0.5 + 0.5*Math.sin(t*0.8 + s.tw);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${0.2+0.8*a})`;
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+/* 地球+隧道 */
+function drawEarthAndTunnel(){
+  const R = earthRadius();
+  const c = center();
+
+  /* 地球（半透明） */
+  ctx.save();
+  ctx.globalAlpha = 0.7;
+
+  const oceanGrad = ctx.createRadialGradient(
+    c.x - R*0.25, c.y - R*0.35, R*0.15,
+    c.x, c.y, R
+  );
+  oceanGrad.addColorStop(0,'#5ad0ff');
+  oceanGrad.addColorStop(0.45,'#2477c3');
+  oceanGrad.addColorStop(1,'#041020');
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, R, 0, Math.PI*2);
+  ctx.fillStyle = oceanGrad;
+  ctx.fill();
+
+  // 外边缘白线
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.stroke();
+
+  const shadeGrad = ctx.createRadialGradient(
+    c.x + R*0.8, c.y - R*0.2, R*0.1,
+    c.x, c.y, R*1.1
+  );
+  shadeGrad.addColorStop(0,'rgba(0,0,0,0)');
+  shadeGrad.addColorStop(1,'rgba(0,0,0,0.55)');
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, R, 0, Math.PI*2);
+  ctx.fillStyle = shadeGrad;
+  ctx.fill();
+
+  // 大陆块
+  ctx.save();
+  ctx.fillStyle = 'rgba(80,190,90,0.95)';
+  ctx.beginPath();
+  ctx.moveTo(c.x - R*0.25, c.y - R*0.12);
+  ctx.bezierCurveTo(
+    c.x - R*0.48, c.y - R*0.30,
+    c.x - R*0.40, c.y + R*0.02,
+    c.x - R*0.18, c.y + R*0.08
+  );
+  ctx.bezierCurveTo(
+    c.x - R*0.02, c.y,
+    c.x - R*0.10, c.y - R*0.20,
+    c.x - R*0.25, c.y - R*0.12
+  );
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(c.x + R*0.05, c.y + R*0.10);
+  ctx.bezierCurveTo(
+    c.x + R*0.24, c.y + R*0.08,
+    c.x + R*0.22, c.y - R*0.08,
+    c.x + R*0.04, c.y - R*0.12
+  );
+  ctx.bezierCurveTo(
+    c.x - R*0.01, c.y - R*0.02,
+    c.x + R*0.00, c.y + R*0.06,
+    c.x + R*0.05, c.y + R*0.10
+  );
+  ctx.fill();
+  ctx.restore();
+
+  // 云带
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth = 3;
+  for(let i=-1;i<=1;i++){
+    const yy = c.y + i*R*0.18;
+    ctx.beginPath();
+    ctx.ellipse(c.x, yy, R*0.75, R*0.22, 0, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  ctx.restore(); // 恢复 alpha
+
+  /* 隧道 */
+  ctx.save();
+  const holeRx = R*0.18;
+  const holeRy = R*0.09;
+
+  // 北极洞口
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y-R+4, holeRx, holeRy, 0, 0, Math.PI*2);
+  const holeGradTop = ctx.createRadialGradient(
+    c.x, c.y-R+2, holeRx*0.1,
+    c.x, c.y-R+2, holeRx
+  );
+  holeGradTop.addColorStop(0,'rgba(250,250,255,1)');
+  holeGradTop.addColorStop(1,'rgba(200,210,240,0.85)');
+  ctx.fillStyle = holeGradTop;
+  ctx.fill();
+
+  // 南极洞口
+  ctx.beginPath();
+  ctx.ellipse(c.x, c.y+R-4, holeRx, holeRy, 0, 0, Math.PI*2);
+  const holeGradBottom = ctx.createRadialGradient(
+    c.x, c.y+R-2, holeRx*0.1,
+    c.x, c.y+R-2, holeRx
+  );
+  holeGradBottom.addColorStop(0,'rgba(250,250,255,1)');
+  holeGradBottom.addColorStop(1,'rgba(200,210,240,0.85)');
+  ctx.fillStyle = holeGradBottom;
+  ctx.fill();
+
+  // 竖井内部光晕
+  const shaftGrad = ctx.createLinearGradient(c.x, c.y-R, c.x, c.y+R);
+  shaftGrad.addColorStop(0,'rgba(230,240,255,0.95)');
+  shaftGrad.addColorStop(0.5,'rgba(190,210,255,0.3)');
+  shaftGrad.addColorStop(1,'rgba(230,240,255,0.95)');
+
+  const shaftHalfWidth = R*0.08;
+  const left   = c.x - shaftHalfWidth;
+  const right  = c.x + shaftHalfWidth;
+  const top    = c.y - R + holeRy;
+  const bottom = c.y + R - holeRy;
+  const r = shaftHalfWidth;
+
+  ctx.beginPath();
+  ctx.moveTo(left, top + r);
+  ctx.quadraticCurveTo(left, top, left + r, top);
+  ctx.lineTo(right - r, top);
+  ctx.quadraticCurveTo(right, top, right, top + r);
+  ctx.lineTo(right, bottom - r);
+  ctx.quadraticCurveTo(right, bottom, right - r, bottom);
+  ctx.lineTo(left + r, bottom);
+  ctx.quadraticCurveTo(left, bottom, left, bottom - r);
+  ctx.closePath();
+  ctx.fillStyle = shaftGrad;
+  ctx.fill();
+
+  // 竖井边缘线
+  ctx.strokeStyle = 'rgba(150,170,230,0.95)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(left, top + r);
+  ctx.lineTo(left, bottom - r);
+  ctx.moveTo(right, top + r);
+  ctx.lineTo(right, bottom - r);
+  ctx.stroke();
+
+  // 井内刻度圈
+  ctx.strokeStyle = 'rgba(130,160,225,0.8)';
+  ctx.lineWidth = 1;
+  const ringCount = 5;
+  for(let i=1;i<ringCount;i++){
+    const yy = top + (bottom - top)*i/ringCount;
+    ctx.beginPath();
+    ctx.ellipse(c.x, yy, shaftHalfWidth*0.75, holeRy*0.55, 0, 0, Math.PI*2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+
+  // 极地文字提示
+  ctx.fillStyle='rgba(255,255,255,0.9)';
+  ctx.font='12px system-ui, -apple-system';
+  ctx.textAlign='center';
+  ctx.fillText('北极入口', c.x, c.y-R-10);
+  ctx.fillText('南极出口', c.x, c.y+R+18);
+}
+
+/* 小人（🧑‍🚀） */
+function drawTraveler(yOffset, t){
+  const c = center();
+  const R = earthRadius();
+  const x = c.x;
+  const y = c.y + yOffset;
+
+  // 阴影
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(x, y+R*0.02, R*0.07, R*0.025, 0, 0, Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,0.28)';
+  ctx.fill();
+  ctx.restore();
+
+  // 小人
+  ctx.save();
+  const swing = Math.sin(t*2) * R*0.015;
+  ctx.font = `${R*0.14}px system-ui, emoji`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🧑‍🚀', x + swing, y);
+  ctx.restore();
+}
+
+/* 动画主循环 */
+let rafId = null;
+function drawFrame(timestamp){
+  const A = amplitude();
+  const R = earthRadius();
+
+  if(!running){
+    // 静止画面：t = lastLogicalT
+    const t = lastLogicalT;
+    const omega = 2*Math.PI / period;
+    const offset = -A * Math.cos(omega * t);
+    const v = A * omega * Math.sin(omega * t);
+    const vRef = omega * (earthRadius() * 1.6);
+    const norm = Math.min(Math.abs(v)/vRef, 1);
+
+    drawStars(t);
+    drawEarthAndTunnel();
+    drawTraveler(offset, t);
+    updateSpeedMeter(norm);
+    return;
+  }
+
+  if(!startTime) startTime = timestamp;
+  const delta = (timestamp - startTime)/1000;
+  const t = lastLogicalT + delta * (1/slowFactor);
+  const omega = 2*Math.PI / period;
+  const offset = -A * Math.cos(omega * t);
+  const v = A * omega * Math.sin(omega * t);
+  const vRef = omega * (earthRadius() * 1.6);
+  const norm = Math.min(Math.abs(v)/vRef, 1);
+
+  drawStars(t);
+  drawEarthAndTunnel();
+  drawTraveler(offset, t);
+  updateSpeedMeter(norm);
+
+  rafId = requestAnimationFrame(drawFrame);
+}
+
+/* 控制函数 */
+function startMotion(){
+  if(running) return;
+  running = true;
+  startTime = null;
+  rafId = requestAnimationFrame(drawFrame);
+}
+function stopMotion(){
+  running = false;
+  lastLogicalT = 0;
+  cancelAnimationFrame(rafId);
+  drawFrame(performance.now()); // 用当前设定重新绘制一帧静止画面
+}
+function pauseMotion(){
+  if(!running) return;
+  running = false;
+  if(startTime !== null){
+    const now = performance.now();
+    const delta = (now - startTime)/1000;
+    lastLogicalT += delta * (1/slowFactor);
+  }
+  cancelAnimationFrame(rafId);
+  drawFrame(performance.now());
+}
+function resumeMotion(){
+  if(running) return;
+  running = true;
+  startTime = null;
+  rafId = requestAnimationFrame(drawFrame);
+}
+
+/* =========== 步骤 / 模板逻辑 =========== */
+const taskCard   = document.getElementById('taskCard');
+const taskStepEl = document.getElementById('taskStep');
+const taskTextEl = document.getElementById('taskText');
+const taskHintEl = document.getElementById('taskHint');
+const dots = [
+  document.getElementById('dot1'),
+  document.getElementById('dot2'),
+  document.getElementById('dot3')
+];
+
+const stepResetBtn = document.getElementById('stepResetBtn');
+const autoDemoBtn  = document.getElementById('autoDemoBtn');
+const freeBtn      = document.getElementById('freeBtn');
+const checkmark    = document.getElementById('checkmark');
+const toast        = document.getElementById('toast');
+const doneMask     = document.getElementById('doneMask');
+const okBtn        = document.getElementById('okBtn');
+
+let freeMode   = false;
+let autoPlaying = false;
+let completed   = false;
+let successCooldown = false;
+let currentTask = 0;
+let isSlow = false;
+
+/* 三步骤：高度 → 跳入 → 慢动作看速度变化 */
+const tasks = [
+  {
+    id:'set_height',
+    text:'用左上角<strong>滑块</strong>调节起跳高度：小人从北极洞口上方多高的位置跳下。',
+    hint:'先拖动滑块，使“距洞口高度”不为 0。',
+    expected:'adjust',
+    failHint:'请先用滑块设置一个起跳高度（不是 0）。'
+  },
+  {
+    id:'jump_into',
+    text:'点击<strong>“跳入隧道”</strong>，让小人从刚才设定的高度掉入地球隧道。',
+    hint:'本步只需要点一次“跳入隧道”，就算完成。',
+    expected:'jump',
+    failHint:'请先点击左下角的“跳入隧道”。'
+  },
+  {
+    id:'observe_speed',
+    text:'点击<strong>“慢动作”</strong>，观察：在中间附近速度最快，两端（靠近洞口）速度几乎为 0。',
+    hint:'注意右侧速度条：到地心时最亮、最长；到两端时几乎为 0。',
+    expected:'slow',
+    failHint:'本步需要点击“慢动作”，再观察速度变化。'
+  }
+];
+
+function setStepUI(idx){
+  idx = Math.max(0, Math.min(idx, tasks.length-1));
+  currentTask = idx;
+
+  dots.forEach((d,i)=>{
+    d.className = 'dot' + (i<idx ? ' done' : (i===idx ? ' active':''));
+  });
+
+  taskStepEl.textContent = `步骤 ${idx+1} / ${tasks.length}`;
+  taskTextEl.innerHTML   = tasks[idx].text;
+  taskHintEl.textContent = tasks[idx].hint;
+}
+
+/* UI 工具 */
+function showToast(msg){
+  toast.textContent = msg || '再试一试';
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=> toast.classList.remove('show'), 1400);
+}
+function showCheck(){
+  checkmark.classList.add('active');
+  clearTimeout(showCheck._t);
+  showCheck._t = setTimeout(()=> checkmark.classList.remove('active'), 520);
+}
+function showDone(){
+  doneMask.style.display='flex';
+}
+okBtn.addEventListener('click', ()=> doneMask.style.display='none');
+
+function lockSuccess(){
+  successCooldown = true;
+  setTimeout(()=> successCooldown=false, 450);
+}
+
+function setFreeMode(on){
+  freeMode = on;
+  if(on){
+    taskCard.style.opacity = .25;
+    taskCard.style.filter  = 'grayscale(.6)';
+    freeBtn.textContent = '退出自由模式';
+    autoDemoBtn.disabled = true;
+    toast.classList.remove('show');
+    doneMask.style.display='none';
+  }else{
+    taskCard.style.opacity = 1;
+    taskCard.style.filter  = 'none';
+    freeBtn.textContent = '自由模式';
+    autoDemoBtn.disabled = false;
+  }
+}
+freeBtn.addEventListener('click', ()=> setFreeMode(!freeMode));
+
+function inStepMode(){
+  return !freeMode && !autoPlaying && !completed;
+}
+
+function tryPass(action, opt={}) {
+  if(successCooldown || completed) return;
+  const t = tasks[currentTask];
+  if(!t) return;
+
+  const correct = (action === t.expected);
+
+  if(correct){
+    showCheck();
+    lockSuccess();
+    setTimeout(()=>{
+      dots[currentTask].classList.remove('active');
+      dots[currentTask].classList.add('done');
+      currentTask++;
+      if(currentTask >= tasks.length){
+        completed = true;
+        showDone();
+      }else{
+        setStepUI(currentTask);
+      }
+    },520);
+  }else{
+    if(!autoPlaying && !opt.silent){
+      showToast(t.failHint || '再试一试：按提示完成本步骤');
+    }
+  }
+}
+
+/* 滑块：设置高度 + 步骤 1 判定 */
+function updateHeightDisplay(){
+  heightRatio = Number(heightSlider.value)/100;
+  const h = 0.6*heightRatio;
+  heightLabel.textContent = h.toFixed(2) + 'R';
+  // 高度变化后，静止画面也应该更新
+  stopMotion();
+}
+heightSlider.addEventListener('input', ()=>{
+  updateHeightDisplay();
+  if(inStepMode() && currentTask===0){
+    if(heightRatio > 0){
+      tryPass('adjust');
+    }
+  }
+});
+
+/* 画面内按钮逻辑 */
+jumpBtn.addEventListener('click', ()=>{
+  if(inStepMode()){
+    if(tasks[currentTask].expected === 'jump'){
+      if(heightRatio <= 0){
+        showToast('先调高一些起跳高度，再跳入隧道。');
+        return;
+      }
+      slowFactor = 1;
+      isSlow = false;
+      slowBtn.textContent = '慢动作';
+      period = 10;
+      lastLogicalT = 0;
+      startMotion();
+      tryPass('jump');
+    }else{
+      showToast(tasks[currentTask].failHint || tasks[currentTask].hint);
+    }
+  }else{
+    lastLogicalT = 0;
+    period = 10;
+    startMotion();
+  }
+});
+
+pauseBtn.addEventListener('click', ()=>{
+  if(!running){
+    resumeMotion();
+    pauseBtn.textContent = '暂停';
+  }else{
+    pauseMotion();
+    pauseBtn.textContent = '继续';
+  }
+});
+
+/* 慢动作 ↔ 退出慢动作（重点在第 3 步） */
+slowBtn.addEventListener('click', ()=>{
+  if(inStepMode()){
+    if(tasks[currentTask].expected === 'slow'){
+      if(!isSlow){
+        slowFactor = 3;
+        isSlow = true;
+        slowBtn.textContent = '退出慢动作';
+        if(!running){
+          resumeMotion();
+        }
+        tryPass('slow');
+      }else{
+        slowFactor = 1;
+        isSlow = false;
+        slowBtn.textContent = '慢动作';
+      }
+    }else{
+      showToast(tasks[currentTask].failHint || tasks[currentTask].hint);
+    }
+  }else{
+    if(!isSlow){
+      slowFactor = 3;
+      isSlow = true;
+      slowBtn.textContent = '退出慢动作';
+    }else{
+      slowFactor = 1;
+      isSlow = false;
+      slowBtn.textContent = '慢动作';
+    }
+  }
+});
+
+/* 重置 & 自动演示 */
+function resetSteps(){
+  completed = false;
+  successCooldown = false;
+  autoPlaying = false;
+  isSlow = false;
+  slowFactor = 1;
+  slowBtn.textContent = '慢动作';
+  dots.forEach((d,i)=> d.className = 'dot' + (i===0?' active':''));
+  setStepUI(0);
+  stopMotion();
+  pauseBtn.textContent = '暂停';
+}
+
+stepResetBtn.addEventListener('click', ()=>{
+  if(autoPlaying) return;
+  resetSteps();
+  // 滑块回到 0
+  heightSlider.value = 0;
+  updateHeightDisplay();
+});
+
+function wait(ms){ return new Promise(r=> setTimeout(r, ms)); }
+
+async function autoDemo(){
+  if(freeMode || autoPlaying) return;
+  autoPlaying = true;
+
+  setFreeMode(false);
+  resetSteps();
+
+  // Step 1：自动调高起跳高度
+  setStepUI(0);
+  heightSlider.value = 60;
+  updateHeightDisplay();
+  tryPass('adjust', {silent:true});
+  await wait(800);
+
+  // Step 2：自动跳入隧道
+  setStepUI(1);
+  slowFactor = 1;
+  isSlow = false;
+  slowBtn.textContent = '慢动作';
+  period = 10;
+  lastLogicalT = 0;
+  startMotion();
+  tryPass('jump', {silent:true});
+  await wait(2000);
+
+  // Step 3：开启慢动作，观察速度变化
+  setStepUI(2);
+  slowFactor = 3;
+  isSlow = true;
+  slowBtn.textContent = '退出慢动作';
+  tryPass('slow', {silent:true});
+  await wait(2000);
+
+  autoPlaying = false;
+}
+autoDemoBtn.addEventListener('click', ()=>{ if(!autoPlaying) autoDemo(); });
+
+/* 初始化：一开始就有静止画面 */
+window.addEventListener('load', ()=>{
+  resizeCanvas();
+  initStars();
+  setStepUI(0);
+  updateHeightDisplay();
+  stopMotion();  // 显示地球 + 隧道 + 北极上方静止小人
+});
+window.addEventListener('resize', ()=>{
+  resizeCanvas();
+  initStars();
+  stopMotion();
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>抛物线运动交互闯关</title>
+  <style>
+    :root{
+      --card-bg: rgba(255,255,255,0.08);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --error:#ff6b6b;
+      --ink:#e9f2ff;
+    }
+    body {
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      margin: 0;
+      padding: 10px;
+    }
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+    /* === 任务卡片 (UI复用) === */
+    .task-card{
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      backdrop-filter: blur(6px);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      transition: opacity .3s, filter .3s;
+    }
+    .task-step{
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .task-text{ line-height: 1.5; }
+    .task-hint{ color: #ffd54f; font-size: 12px; opacity: .9; }
+    .progress-dots{ display: flex; gap:6px; align-items:center; }
+    .dot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,0.25); outline: 2px solid rgba(255,255,255,0.15); }
+    .dot.active{ background: var(--warn);}
+    .dot.done{ background: var(--accent); outline-color: rgba(61,220,151,0.5); }
+
+    /* === 游戏画布 === */
+    #canvasWrap {
+      width: 100%;
+      max-width: 900px;
+      height: 60vh;
+      max-height: 520px;
+      margin-top: 10px;
+      position: relative;
+    }
+    #canvas {
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle at 50% 10%, #1a2a3a 0%, #000 100%);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      touch-action: none;
+    }
+
+    /* 游戏元素：大炮 */
+    .cannon-base {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      width: 40px;
+      height: 40px;
+      background: #555;
+      border-radius: 50%;
+      z-index: 5;
+      border: 2px solid #777;
+    }
+    .cannon-barrel {
+      position: absolute;
+      bottom: 40px;
+      left: 40px;
+      width: 60px;
+      height: 14px;
+      background: linear-gradient(90deg, #444, #222);
+      transform-origin: 0% 50%;
+      border-radius: 4px;
+      z-index: 4;
+      transition: transform 0.1s linear;
+    }
+    /* 炮弹 */
+    .ball {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #fff;
+      pointer-events: none;
+      display: none;
+      z-index: 3;
+    }
+    /* 轨迹点 */
+    .trail-dot {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: rgba(255,255,255,0.4);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    /* 目标靶子 */
+    .target {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background: radial-gradient(circle, #f00 40%, #fff 40%, #fff 60%, #f00 60%);
+      border-radius: 50%;
+      border: 2px solid #fff;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 15px rgba(255,0,0,0.4);
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .target.hit {
+      transform: translate(-50%, -50%) scale(1.4);
+      opacity: 0;
+    }
+    /* 障碍墙 */
+    .wall {
+      position: absolute;
+      bottom: 0;
+      background: repeating-linear-gradient(45deg, #444, #444 10px, #333 10px, #333 20px);
+      border-top: 3px solid #666;
+      width: 20px;
+      height: 0; /* 动态高度 */
+      transition: height 0.5s ease;
+    }
+
+    /* 内部控制面板 */
+    .controls-overlay {
+      position: absolute;
+      bottom: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 15, 15, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      padding: 10px 16px;
+      border-radius: 12px;
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      z-index: 20;
+      width: max-content;
+      max-width: 90%;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #ccc;
+    }
+    .control-group label { font-weight: bold; color: var(--accent); }
+    input[type=range] {
+      width: 100px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .fire-btn {
+      background: #e53935;
+      color: white;
+      border: none;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4);
+      transition: transform 0.1s;
+      flex-shrink: 0;
+    }
+    .fire-btn:active { transform: scale(0.92); }
+    .fire-btn:disabled { background: #555; color: #888; cursor: not-allowed; box-shadow: none; }
+
+    /* === 底部工具栏 (UI复用) === */
+    .toolbar{
+      display: flex;
+      gap:10px;
+      flex-wrap:wrap;
+      width: 100%; 
+      max-width:900px; 
+      margin-top: 12px; 
+      justify-content: flex-start;
+    }
+    button.tool-btn {
+      padding: 10px 16px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.25s, transform .05s, opacity .2s;
+    }
+    button.tool-btn:hover { background: #5a5a5a; }
+    button.tool-btn:active { transform: scale(.98); }
+    button.tool-btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+    /* === 成功/提示UI (UI复用) === */
+    .checkmark{ position:absolute; z-index: 50; left: 50%; top: 30%; transform: translate(-50%,-50%) scale(0.6);
+      width:120px; height:120px; border-radius:50%; background: rgba(61,220,151,0.15);
+      border: 3px solid var(--accent); display: none; align-items:center; justify-content:center;
+      animation: pop .55s ease-out; }
+    .checkmark.active{ display:flex; }
+    .checkmark > div{ width: 60px; height: 30px; border-left: 8px solid var(--accent);
+      border-bottom: 8px solid var(--accent); transform: rotate(-45deg) translateY(-6px); }
+    @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2} 60%{transform:translate(-50%,-50%) scale(1.08);opacity:1} 100%{transform:translate(-50%,-50%) scale(1)} }
+
+    .toast{ position: fixed; left:50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.8); color: #fff; padding: 10px 14px; border-radius: 10px;
+      font-size: 14px; opacity: 0; pointer-events:none; transition: opacity .25s, transform .25s;
+      z-index: 200; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+    .modal-mask{ position: fixed; inset:0; background: rgba(0,0,0,0.5); display:none;
+      align-items:center; justify-content:center; z-index: 300; }
+    .modal{ width:min(90vw, 360px); background:#111; color:#fff; border: 1px solid rgba(255,255,255,0.15);
+      border-radius:14px; padding:18px 16px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+    .modal h3{ margin: 8px 0 6px; font-size: 20px; }
+    .modal p{ color: #cfd8dc; margin-top: 0; }
+    .modal .ok{ margin-top: 12px; background: var(--accent); color:#081a12; font-weight:700; border:none; padding:10px 24px; border-radius:8px; cursor:pointer;}
+
+    /* === 文字说明区 (UI复用) === */
+    .explanation {
+      width: 100%;
+      max-width: 900px;
+      margin: 14px 0 20px;
+      line-height: 1.65;
+      font-size: 0.95em;
+      color: var(--ink);
+    }
+    .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size: 1.15em; }
+    .explanation ul{ padding-left: 20px; }
+
+    /* 爆炸特效 */
+    .explosion {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      pointer-events: none;
+      background: radial-gradient(circle, #fff 0%, #ffeb3b 30%, #ff5722 70%, transparent 100%);
+      transform: translate(-50%, -50%) scale(0);
+      opacity: 0;
+    }
+    .explosion.bang { animation: explode 0.4s ease-out; }
+    @keyframes explode {
+      0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+      50% { opacity: 0.8; }
+      100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+    }
+
+    @media (max-width: 600px) {
+      .controls-overlay { width: 90%; gap: 10px; padding: 8px 12px; bottom: 8px; }
+      input[type=range] { width: 70px; }
+      .fire-btn { width: 48px; height: 48px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">调整角度和力度，击中地面的<strong>低位靶心</strong>。</div>
+      <div class="task-hint" id="taskHint">提示：角度放低，力度适中。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="canvas">
+      <div class="cannon-base"></div>
+      <div class="cannon-barrel" id="barrel"></div>
+      <div class="ball" id="ball"></div>
+      <div class="wall" id="wall"></div>
+      <div class="target" id="target"></div>
+      <div class="explosion" id="explosion"></div>
+      
+      <div class="controls-overlay">
+        <div class="control-group">
+          <label>发射角度 <span id="valAngle">45°</span></label>
+          <input type="range" id="inputAngle" min="0" max="90" value="45">
+        </div>
+        <div class="control-group">
+          <label>发射力度 <span id="valPower">50</span></label>
+          <input type="range" id="inputPower" min="10" max="100" value="50">
+        </div>
+        <button class="fire-btn" id="btnFire">发射</button>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="resetBtn">步骤重置</button>
+    <button class="tool-btn" id="autoDemoBtn">自动演示</button>
+    <button class="tool-btn" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">未击中，调整参数再试一次！</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3 id="doneTitle">神炮手挑战成功！🎉</h3>
+      <p>你已经掌握了角度与力度的奥秘，成功越过了障碍！</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>物理原理：抛物线运动</h2>
+    <ul>
+      <li><strong>初速度与角度</strong>：炮弹的飞行轨迹由发射时的速度（力度）和仰角决定。</li>
+      <li><strong>重力作用</strong>：炮弹在水平方向做匀速直线运动，在垂直方向受重力影响做匀减速（上升）和匀加速（下降）运动，形成优美的抛物线。</li>
+      <li><strong>实际应用</strong>：这一原理广泛应用于工程学、航天发射以及各类球类运动中。</li>
+    </ul>
+  </div>
+
+  <script>
+    /* ====== 全局变量与状态 ====== */
+    const UI = {
+      card: document.getElementById('taskCard'),
+      step: document.getElementById('taskStep'),
+      text: document.getElementById('taskText'),
+      hint: document.getElementById('taskHint'),
+      dots: [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')],
+      
+      barrel: document.getElementById('barrel'),
+      ball: document.getElementById('ball'),
+      target: document.getElementById('target'),
+      wall: document.getElementById('wall'),
+      explosion: document.getElementById('explosion'),
+      canvas: document.getElementById('canvas'),
+      
+      inpAngle: document.getElementById('inputAngle'),
+      inpPower: document.getElementById('inputPower'),
+      valAngle: document.getElementById('valAngle'),
+      valPower: document.getElementById('valPower'),
+      
+      btnFire: document.getElementById('btnFire'),
+      btnReset: document.getElementById('resetBtn'),
+      btnAuto: document.getElementById('autoDemoBtn'),
+      btnFree: document.getElementById('freeBtn'),
+      
+      checkmark: document.getElementById('checkmark'),
+      toast: document.getElementById('toast'),
+      modal: document.getElementById('doneMask'),
+      okBtn: document.getElementById('okBtn')
+    };
+
+    let state = {
+      currentTask: 0,
+      freeMode: false,
+      isFiring: false,
+      autoPlaying: false,
+      completed: false
+    };
+
+    const PHYSICS = { g: 0.5, dt: 0.8 }; // 简化的重力与时间步长
+    let animFrame;
+
+    /* ====== 关卡定义 ====== */
+    // 坐标系：基于Canvas百分比或像素，这里逻辑内部处理为相对值
+    const LEVELS = [
+      {
+        text: "调整参数，击中地面的<strong>低位靶心</strong>。",
+        hint: "提示：不需要抬太高，力度适中即可。",
+        target: { x: 70, y: 10 }, // x%, y% (from bottom)
+        wall: { h: 0 } // 高度0表示无墙
+      },
+      {
+        text: "目标升高了！增加<strong>发射角度</strong>来击中它。",
+        hint: "提示：将炮口抬高，让炮弹飞得更高。",
+        target: { x: 60, y: 60 },
+        wall: { h: 0 }
+      },
+      {
+        text: "出现障碍墙！让炮弹<strong>跨越障碍</strong>击中后方目标。",
+        hint: "提示：需要高抛物线（高角度+大力度）越过墙壁。",
+        target: { x: 85, y: 10 },
+        wall: { x: 50, h: 40 } // x位置%, 高度%
+      }
+    ];
+
+    /* ====== 初始化 ====== */
+    function init() {
+      updateLevelUI(0);
+      resetScene();
+      
+      // 绑定滑块事件
+      UI.inpAngle.addEventListener('input', updateBarrel);
+      UI.inpPower.addEventListener('input', updateBarrel);
+      
+      // 绑定按钮
+      UI.btnFire.addEventListener('click', () => fireCannon());
+      UI.btnReset.addEventListener('click', () => resetFlow(true));
+      UI.btnAuto.addEventListener('click', autoDemo);
+      UI.btnFree.addEventListener('click', toggleFreeMode);
+      UI.okBtn.addEventListener('click', () => UI.modal.style.display = 'none');
+      
+      updateBarrel(); // 初始绘制
+    }
+
+    /* ====== 视觉与物理更新 ====== */
+    function updateBarrel() {
+      const ang = UI.inpAngle.value;
+      const pwr = UI.inpPower.value;
+      
+      UI.valAngle.textContent = ang + '°';
+      UI.valPower.textContent = pwr;
+      
+      // 更新炮管旋转 (注意CSS transform原点)
+      UI.barrel.style.transform = `rotate(-${ang}deg)`;
+    }
+
+    function resetScene() {
+      // 移除旧轨迹
+      document.querySelectorAll('.trail-dot').forEach(el => el.remove());
+      UI.ball.style.display = 'none';
+      UI.target.classList.remove('hit');
+      UI.target.style.opacity = 1;
+      
+      if(state.freeMode) {
+        // 自由模式随机生成环境
+        // 简单处理：仅保留墙壁随机
+        return;
+      }
+
+      // 设置当前关卡的元素位置
+      const level = LEVELS[state.currentTask];
+      
+      // 设置目标位置
+      UI.target.style.left = level.target.x + '%';
+      UI.target.style.bottom = level.target.y + '%';
+      
+      // 设置墙壁
+      if(level.wall.h > 0) {
+        UI.wall.style.display = 'block';
+        UI.wall.style.left = level.wall.x + '%';
+        UI.wall.style.height = level.wall.h + '%';
+      } else {
+        UI.wall.style.height = '0';
+      }
+    }
+
+    /* ====== 物理发射逻辑 ====== */
+    async function fireCannon(overrideParams = null) {
+      if(state.isFiring) return;
+      state.isFiring = true;
+      UI.btnFire.disabled = true;
+      
+      // 清除旧轨迹
+      document.querySelectorAll('.trail-dot').forEach(el => el.remove());
+
+      // 获取参数
+      let angle = parseInt(UI.inpAngle.value);
+      let power = parseInt(UI.inpPower.value);
+
+      if (overrideParams) {
+        angle = overrideParams.angle;
+        power = overrideParams.power;
+        // 自动演示时视觉上也更新一下
+        UI.inpAngle.value = angle;
+        UI.inpPower.value = power;
+        updateBarrel();
+      }
+
+      // 物理初始化
+      const rad = angle * Math.PI / 180;
+      const v0 = power * 0.35; // 缩放系数适配屏幕
+      let vx = v0 * Math.cos(rad);
+      let vy = v0 * Math.sin(rad);
+      
+      // 起始位置 (炮口大致位置)
+      // 简单的定点：Left 40px + barrel length approx, Bottom 40px...
+      // 为简化计算，我们假设炮弹从炮管根部稍远一点发出
+      let posX = 40 + Math.cos(rad) * 40;
+      let posY = 40 + Math.sin(rad) * 40; // pixels from bottom-left corner reference inside canvas
+
+      UI.ball.style.display = 'block';
+      UI.ball.style.left = posX + 'px';
+      UI.ball.style.bottom = posY + 'px';
+
+      let stepCount = 0;
+
+      // 动画循环
+      function loop() {
+        if(!state.isFiring) return; // 强制中断
+
+        // 物理步进
+        vy -= PHYSICS.g;
+        posX += vx * PHYSICS.dt;
+        posY += vy * PHYSICS.dt;
+        
+        // 更新视图
+        UI.ball.style.left = posX + 'px';
+        UI.ball.style.bottom = posY + 'px';
+
+        // 绘制轨迹 (每隔几帧画一个点)
+        stepCount++;
+        if(stepCount % 4 === 0) {
+          createTrailDot(posX, posY);
+        }
+
+        // 碰撞检测
+        const hit = checkCollision(posX, posY);
+        
+        if (hit === 'target') {
+          handleSuccess(posX, posY);
+        } else if (hit === 'wall' || hit === 'ground' || hit === 'oob') {
+          handleFail(hit);
+        } else {
+          animFrame = requestAnimationFrame(loop);
+        }
+      }
+      animFrame = requestAnimationFrame(loop);
+    }
+
+    function createTrailDot(x, y) {
+      const dot = document.createElement('div');
+      dot.className = 'trail-dot';
+      dot.style.left = x + 'px';
+      dot.style.bottom = y + 'px';
+      UI.canvas.appendChild(dot);
+    }
+
+    /* ====== 碰撞检测系统 ====== */
+    function checkCollision(x, y) {
+      const cw = UI.canvas.clientWidth;
+      const ch = UI.canvas.clientHeight;
+
+      // 1. 越界 (Out of bounds)
+      if (x > cw || x < 0) return 'oob';
+      if (y < 0) return 'ground'; // 落地
+
+      // 获取目标和墙的矩形
+      // 注意：我们在JS里的x,y是基于左下角，而getBoundingClientRect是基于视口左上角
+      // 简单的做法是：比较DOM元素的相对位置
+      
+      // 将物理坐标转换为DOM style坐标以便比较
+      // 目标检测 (简单的距离检测)
+      const targetRect = getRect(UI.target);
+      const ballRect = { // 模拟小球矩形
+         left: x, bottom: y, width: 12, height: 12
+      };
+      
+      // 计算目标中心点 (canvas坐标系)
+      const tX = UI.target.offsetLeft; 
+      // bottom style is %, convert to px relative to canvas height
+      const tBottomPerc = parseFloat(UI.target.style.bottom) || 0;
+      const tY = (tBottomPerc / 100) * ch + 20; // +20是半径修正
+
+      const dist = Math.hypot(x - tX, y - tY);
+      if (dist < 30) return 'target'; // 命中半径
+
+      // 墙壁检测
+      if (UI.wall.clientHeight > 0) {
+        const wLeft = UI.wall.offsetLeft;
+        const wWidth = UI.wall.offsetWidth;
+        const wHeight = UI.wall.offsetHeight;
+        
+        // 如果球在墙的X范围内，且高度小于墙高
+        if (x > wLeft && x < wLeft + wWidth && y < wHeight) {
+          return 'wall';
+        }
+      }
+      
+      return null;
+    }
+    
+    // 辅助：获取元素相对于父容器的位置
+    function getRect(el) {
+      return {
+        x: el.offsetLeft,
+        y: UI.canvas.clientHeight - (el.offsetTop + el.offsetHeight) // 粗略转换
+      };
+    }
+
+    /* ====== 游戏流程控制 ====== */
+    function handleSuccess(x, y) {
+      state.isFiring = false;
+      UI.btnFire.disabled = false;
+      
+      // 特效
+      UI.explosion.style.left = x + 'px';
+      UI.explosion.style.bottom = y + 'px';
+      UI.explosion.classList.add('bang');
+      setTimeout(() => UI.explosion.classList.remove('bang'), 500);
+      
+      UI.target.classList.add('hit');
+      
+      if (state.freeMode) {
+        showToast("命中目标！漂亮！");
+        return;
+      }
+
+      // 闯关逻辑
+      showCheck();
+      setTimeout(() => {
+        nextTask();
+      }, 1000);
+    }
+
+    function handleFail(reason) {
+      state.isFiring = false;
+      UI.btnFire.disabled = false;
+      
+      let msg = "未击中...";
+      if(reason === 'wall') msg = "撞到墙了！提高角度试试。";
+      if(reason === 'ground') msg = "落地太早，增加力度！";
+      if(reason === 'oob') msg = "飞出界了，减小力度！";
+      
+      // 只有非自动演示、非成功状态下才提示
+      if (!state.autoPlaying && !state.completed) {
+        showToast(msg);
+      }
+    }
+
+    function nextTask() {
+      UI.dots[state.currentTask].classList.remove('active');
+      UI.dots[state.currentTask].classList.add('done');
+      
+      state.currentTask++;
+      
+      if (state.currentTask >= LEVELS.length) {
+        state.completed = true;
+        UI.modal.style.display = 'flex';
+        return;
+      }
+      
+      UI.dots[state.currentTask].classList.add('active');
+      updateLevelUI(state.currentTask);
+      resetScene();
+    }
+
+    function updateLevelUI(idx) {
+      const lvl = LEVELS[idx];
+      UI.step.textContent = `步骤 ${idx+1} / ${LEVELS.length}`;
+      UI.text.innerHTML = lvl.text;
+      UI.hint.textContent = lvl.hint;
+    }
+
+    function showCheck(){
+      UI.checkmark.classList.add('active');
+      setTimeout(()=> UI.checkmark.classList.remove('active'), 500);
+    }
+    function showToast(text){
+      UI.toast.textContent = text;
+      UI.toast.classList.add('show');
+      setTimeout(()=> UI.toast.classList.remove('show'), 1500);
+    }
+
+    /* ====== 自由模式 ====== */
+    function toggleFreeMode() {
+      state.freeMode = !state.freeMode;
+      const btn = UI.btnFree;
+      
+      if(state.freeMode) {
+        btn.textContent = "退出自由模式";
+        UI.card.style.opacity = 0.3;
+        UI.card.style.filter = 'grayscale(1)';
+        UI.btnAuto.disabled = true;
+        // 自由模式下，隐藏墙壁或随机化
+        UI.wall.style.display = 'none'; 
+        showToast("自由射击模式：尽情尝试吧！");
+      } else {
+        btn.textContent = "自由模式";
+        UI.card.style.opacity = 1;
+        UI.card.style.filter = 'none';
+        UI.btnAuto.disabled = false;
+        resetFlow();
+      }
+    }
+
+    function resetFlow(showTip = false) {
+      state.currentTask = 0;
+      state.completed = false;
+      state.isFiring = false;
+      cancelAnimationFrame(animFrame);
+      UI.btnFire.disabled = false;
+      
+      UI.dots.forEach(d => { d.className = 'dot'; });
+      UI.dots[0].classList.add('active');
+      
+      updateLevelUI(0);
+      resetScene();
+      
+      // 重置滑块默认值
+      UI.inpAngle.value = 45;
+      UI.inpPower.value = 50;
+      updateBarrel();
+
+      if(showTip) showToast("已重置到第一关");
+    }
+
+    /* ====== 自动演示 ====== */
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+    
+    async function autoDemo() {
+      if(state.autoPlaying || state.freeMode) return;
+      state.autoPlaying = true;
+      UI.btnFree.disabled = true;
+      UI.btnReset.disabled = true;
+      UI.btnAuto.disabled = true;
+      
+      resetFlow(false);
+      await sleep(800);
+
+      // Level 1: 低角度平射
+      // 解：Distance approx 70%, height low. 
+      // 模拟操作 UI
+      await fireCannon({ angle: 25, power: 55 });
+      await waitForNextLevel(1);
+
+      // Level 2: 高空目标
+      // 解：Distance 60%, height 60%. Needs high angle.
+      await sleep(1000); // wait for reset scene anim
+      await fireCannon({ angle: 70, power: 85 });
+      await waitForNextLevel(2);
+
+      // Level 3: 越墙
+      // 解：Wall at 50%, Target at 85%. 
+      await sleep(1000);
+      await fireCannon({ angle: 60, power: 90 });
+      await waitForCompletion();
+      
+      state.autoPlaying = false;
+      UI.btnFree.disabled = false;
+      UI.btnReset.disabled = false;
+      UI.btnAuto.disabled = false;
+    }
+
+    function waitForNextLevel(targetIdx) {
+      return new Promise(resolve => {
+        const check = setInterval(() => {
+          if (state.currentTask === targetIdx) {
+            clearInterval(check);
+            resolve();
+          }
+        }, 100);
+      });
+    }
+    
+    function waitForCompletion() {
+      return new Promise(resolve => {
+        const check = setInterval(() => {
+          if (state.completed) {
+            clearInterval(check);
+            resolve();
+          }
+        }, 100);
+      });
+    }
+
+    // Start
+    init();
+
+  </script>
+</body>
+</html>

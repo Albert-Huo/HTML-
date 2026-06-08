@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<title>货船神秘失踪</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel: rgba(255,255,255,.08); --line: rgba(255,255,255,.14); --ink:#EAF2FF;
+    --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b;
+    --hud-bg:rgba(12,17,27,.65); --btn-bg:#2a3243;
+    --radius:14px; --shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}
+  }
+  body{margin:0;background:var(--bg);color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;padding:10px;}
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡 */
+  .task-card{width:100%;max-width:980px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;backdrop-filter:blur(6px);display:grid;grid-template-columns:auto 1fr auto;align-items:flex-start;gap:10px;transition:opacity .2s,filter .2s;}
+  .task-step{background:rgba(255,255,255,.16);border-radius:10px;padding:6px 10px;font-weight:700;letter-spacing:.2px;}
+  .task-text{line-height:1.55;}
+  .story-snippet{font-size:.96em;color:var(--ink);margin:.35em 0 .25em;}
+  .task-hint{color:#ffd54f;font-size:12px;opacity:.9;}
+  .progress-dots{display:flex;gap:6px;align-items:center;margin-top:2px;}
+  .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25)}
+  .dot.active{background:var(--warn)} .dot.done{background:var(--accent)}
+
+  /* 选择区 */
+  .choice-bar{width:100%;max-width:980px;margin:8px 0 4px;display:flex;gap:8px;flex-wrap:wrap}
+  .choice{flex:1 1 220px;text-align:left;padding:10px 12px;border-radius:12px;background:#172033;border:1px solid #ffffff1f;color:#e6f2ff;line-height:1.45;box-shadow:inset 0 1px 0 rgba(255,255,255,.06);transition:.2s ease;}
+  .choice:hover{filter:brightness(1.08)}
+  .choice.ok{outline:3px solid var(--accent);background:#0f2a22}
+  .choice.bad{outline:3px solid var(--error);background:#2a1010}
+  .tip{font-size:12px;color:#a0aec0;margin-bottom:8px}
+
+  /* 舞台与层级 */
+  #stageWrap{width:100%;max-width:980px;height:60vh;max-height:560px;margin-top:8px}
+  #stage{position:relative;width:100%;height:100%;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);background:radial-gradient(circle at 72% 18%,#0b1b3a 0%,#071427 40%,#050c18 72%,#040910 100%)}
+  .z-bg{z-index:1} .z-sea{z-index:2} .z-shore{z-index:3} .z-ship{z-index:6} .z-wake{z-index:5} .z-fx{z-index:7}
+
+  .sun{position:absolute;left:14%;top:18%;width:60px;height:60px;border-radius:50%;background:radial-gradient(#ffd777,#ff9a00);box-shadow:0 0 80px #ffac33;opacity:.9}
+  .mounts{position:absolute;left:0;right:0;top:36%;height:18%;background:
+    radial-gradient(ellipse at 20% 120%,#0b2a36 0%,transparent 60%),
+    radial-gradient(ellipse at 60% 120%,#0e3243 0%,transparent 60%),
+    radial-gradient(ellipse at 90% 120%,#0b2a36 0%,transparent 60%);opacity:.85}
+
+  /* 海面 */
+  .sea{position:absolute;left:0;right:0;bottom:0;height:48%;background:linear-gradient(#06314f,#06233a 60%,#041b2c);overflow:hidden;transition:height .8s ease}
+  .wave{position:absolute;left:-50%;width:200%;height:40%;background:radial-gradient(ellipse at 50% 40%,rgba(200,240,255,.18),transparent 60%);opacity:.55;animation:drift 8s linear infinite}
+  .wave:nth-child(2){top:10%;animation-duration:10s;opacity:.35}
+  .wave:nth-child(3){top:22%;animation-duration:12s;opacity:.25}
+  @keyframes drift{from{transform:translateX(0)}to{transform:translateX(-25%)}}
+
+  /* 岸滩 */
+  .shore{position:absolute;left:-5%;right:-5%;bottom:-30%;height:56%;transform:rotate(-3deg);opacity:0;pointer-events:none;background:
+    radial-gradient(ellipse at 30% 20%,#c1a472 0%,#a88a5c 40%,transparent 65%),
+    radial-gradient(ellipse at 60% 35%,#b59869 0%,#8f784f 50%,transparent 70%),
+    radial-gradient(ellipse at 80% 70%,#9a8155 0%,transparent 55%);transition:opacity .8s ease}
+
+  /* 航行船（SVG） */
+  .ship{position:absolute;left:56%;bottom:40%;width:min(300px,36vw);height:auto;transform-origin:50% 60%;animation:bob 2.8s ease-in-out infinite alternate, sway 6s ease-in-out infinite;transition:transform .8s ease,bottom .8s ease,left .8s ease,opacity .3s;filter:drop-shadow(0 6px 16px rgba(0,0,0,.55))}
+  @keyframes bob{from{transform:translateY(2px)}to{transform:translateY(-6px)}}
+  @keyframes sway{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-2deg)}}
+
+  .wake{position:absolute;left:52%;bottom:39%;width:190px;height:22px;border-radius:50%;background:radial-gradient(ellipse at 20% 50%,rgba(200,240,255,.55),transparent 70%);filter:blur(.6px);opacity:.5;animation:wake 2.8s ease-in-out infinite alternate;transition:opacity .3s}
+  @keyframes wake{from{transform:translateX(0)}to{transform:translateX(-10px)}}
+
+  /* 船艏泡沫（轻量） */
+  .foam{position:absolute;bottom:39%;left:53%;pointer-events:none}
+  .bubble{position:absolute;width:6px;height:6px;border-radius:50%;background:rgba(230,245,255,.85);filter:blur(.2px);animation:b 1.4s ease-out forwards}
+  @keyframes b{from{transform:translate(0,0) scale(.9);opacity:.9}to{transform:translate(-40px,-18px) scale(1.1);opacity:0}}
+
+  /* 搁浅痕迹 */
+  .scar{position:absolute;width:140px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);left:61%;bottom:35%;transform:rotate(12deg);opacity:0;transition:opacity .6s ease}
+  .scar::after{content:"";position:absolute;width:100px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent);left:20px;top:8px;transform:rotate(-10deg)}
+
+  /* 风暴/涟漪（仅作视觉效果，无开关） */
+  .storm{position:absolute;right:14%;top:12%;width:130px;height:82px;border-radius:40px;background:linear-gradient(#334455,#202b36);box-shadow:0 12px 28px rgba(0,0,0,.45), inset 0 0 30px rgba(0,0,0,.5)}
+  .ripples{position:absolute;right:18%;top:20%;width:0;height:0;pointer-events:none}
+  .ripple{position:absolute;left:0;top:0;width:14px;height:14px;border:2px solid rgba(135,206,250,.75);border-radius:50%;transform:translate(-50%,-50%) scale(1);animation:ripple 2.2s ease-out forwards;box-shadow:0 0 10px rgba(120,200,255,.35)}
+  @keyframes ripple{from{opacity:.75;transform:translate(-50%,-50%) scale(1)}to{opacity:0;transform:translate(-50%,-50%) scale(18)}}
+
+  /* 蝙蝠（正向飞） */
+  .bat{position:absolute;font-size:28px;opacity:.9;filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));animation:fly 9s linear infinite}
+  .bat.b2{animation-duration:11s;top:22%}
+  .bat.b3{animation-duration:13s;top:28%}
+  @keyframes fly{from{left:-8%}to{left:108%}}
+  .batIcon{display:inline-block;transform:scaleX(-1)}
+
+  /* 画面内 HUD（两按钮常显） */
+  .hud{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:center;z-index:50}
+  .toolbar{display:flex;gap:10px;padding:8px;border-radius:16px;background:var(--hud-bg);border:1px solid var(--line);backdrop-filter:blur(8px);box-shadow:0 6px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06)}
+  .toolbar button{padding:10px 14px;background:var(--btn-bg);color:#fff;border:none;border-radius:12px;cursor:pointer;font-weight:700;letter-spacing:.1px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08);transition:filter .15s, transform .06s, opacity .25s}
+  .toolbar button:hover{filter:brightness(1.08)}
+  .toolbar button:active{transform:scale(.98)}
+  .toolbar button:disabled{opacity:.55;cursor:not-allowed}
+
+  /* 对勾/Toast/完成弹窗 */
+  .checkmark{position:absolute;z-index:60;left:50%;top:20%;transform:translate(-50%) scale(.6);width:120px;height:120px;border-radius:50%;background:rgba(61,220,151,.15);border:3px solid var(--accent);display:none;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25)}
+  .checkmark.active{display:flex}
+  .checkmark>div{width:60px;height:30px;border-left:8px solid var(--accent);border-bottom:8px solid var(--accent);transform:rotate(-45deg) translateY(-6px)}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,.8);color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:200}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:300}
+  .modal{width:min(90vw,360px);background:#111;color:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px 16px;text-align:center}
+  .modal h3{margin:8px 0 6px;font-size:20px}
+  .modal p{color:#cfd8dc;margin-top:0}
+  .modal .ok{margin-top:12px;background:var(--accent);color:#081a12;font-weight:700;border:none;border-radius:10px;padding:10px 14px}
+
+  /* 原理说明 */
+  .explain{width:100%;max-width:980px;margin:10px 0 14px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);color:var(--ink);line-height:1.65}
+  .explain h3{margin:.2em 0 .3em;color:#9bd3ff;font-size:1.04em}
+  .explain ul{margin:.2em 0 .2em 1.1em}
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <!-- 步骤卡 -->
+  <div class="task-card" id="taskCard" aria-live="polite">
+    <div class="task-step" id="taskStep">步骤 1 / 5</div>
+    <div class="task-text">
+      <div class="story-snippet" id="storyText">（加载中…）</div>
+      <div id="taskText">请从选项中选择此刻最关键的<strong>环境线索</strong>。</div>
+      <div class="task-hint" id="taskHint">提示：注意风暴与海面状态。</div>
+    </div>
+    <div class="progress-dots" aria-hidden="true">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span><span class="dot" id="dot4"></span><span class="dot" id="dot5"></span>
+    </div>
+  </div>
+
+  <!-- 选择区 -->
+  <div class="choice-bar" id="choiceBar"></div>
+  <div class="tip">读完上面的故事片段，再作答。键盘：←/→ 选项，Enter 确认；R 重置，A 自动。</div>
+
+  <!-- 舞台 -->
+  <div id="stageWrap">
+    <div id="stage" aria-label="海上风暴与货船">
+      <div class="sun z-bg"></div>
+      <div class="mounts z-bg"></div>
+
+      <!-- 航行船（唯一） -->
+      <svg class="ship z-ship" id="ship" viewBox="0 0 260 140" role="img" aria-label="货船">
+        <defs><linearGradient id="hullGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#a64533"/><stop offset="100%" stop-color="#7e3122"/></linearGradient></defs>
+        <path d="M20,100 C35,98 60,92 90,90 L220,88 L190,118 L50,118 Z" fill="url(#hullGrad)"/>
+        <line x1="55" y1="115" x2="188" y2="115" stroke="#f6d365" stroke-width="1.2"/>
+        <rect x="60" y="68" width="120" height="18" rx="3" fill="#eae2d2"/>
+        <rect x="85" y="48" width="58" height="18" rx="3" fill="#c6d4e7"/>
+        <circle cx="102" cy="56.5" r="3.2" fill="#6ec1ff"/><circle cx="117" cy="56.5" r="3.2" fill="#6ec1ff"/>
+        <rect x="64" y="64" width="24" height="10" rx="1" fill="#4f9fd9"/><rect x="92" y="64" width="24" height="10" rx="1" fill="#7ac26c"/><rect x="120" y="64" width="24" height="10" rx="1" fill="#e68a6d"/>
+        <rect x="148" y="44" width="12" height="18" rx="2" fill="#4b5563"/>
+        <circle cx="154" cy="38" r="7" fill="#cfd6df" style="opacity:.85;">
+          <animate attributeName="r" values="7;8.4" dur="2.2s" repeatCount="indefinite"/>
+          <animate attributeName="opacity" values=".85;.1" dur="2.2s" repeatCount="indefinite"/>
+          <animateTransform attributeName="transform" type="translate" values="0 0;0 -10" dur="2.2s" repeatCount="indefinite"/>
+        </circle>
+        <rect x="175" y="50" width="4" height="26" fill="#cdd6e3"/>
+        <path d="M179,52 L212,58 L179,64 Z" fill="#ff4d4d"/>
+      </svg>
+      <div class="wake z-wake" id="wake"></div>
+      <div class="foam z-wake" id="foam"></div>
+
+      <!-- 海/岸 -->
+      <div class="sea z-sea" id="sea"><div class="wave"></div><div class="wave"></div><div class="wave"></div></div>
+      <div class="shore z-shore" id="shore"></div>
+
+      <!-- 风暴/涟漪/蝙蝠 -->
+      <div class="storm z-fx" id="storm"></div>
+      <div class="ripples z-fx" id="ripples"></div>
+      <div class="bat b1 z-fx" style="top:18%"><span class="batIcon">🦇</span></div>
+      <div class="bat b2 z-fx"><span class="batIcon">🦇</span></div>
+      <div class="bat b3 z-fx"><span class="batIcon">🦇</span></div>
+
+      <!-- 拖痕+对勾 -->
+      <div class="scar z-ship" id="scar"></div>
+      <div class="checkmark" id="check"><div></div></div>
+
+      <!-- 画面内 HUD 两按钮 -->
+      <div class="hud">
+        <div class="toolbar">
+          <button id="resetBtn" title="R">步骤重置</button>
+          <button id="autoDemoBtn" title="A">自动演示</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 原理说明 -->
+  <div class="explain">
+    <h3>原理要点：次声波如何“看不见却能伤人”？</h3>
+    <ul>
+      <li><b>次声波</b>：频率低于约 20 Hz，人耳难以听见，但<b>能量可远距传播</b>（波长长、衰减慢）。</li>
+      <li><b>能量传递</b>：风暴与海面摩擦/振动产生低频能量，能传到很远位置的船体与人体。</li>
+      <li><b>共振</b>：当频率接近某些<b>器官固有频率</b>时，振幅放大，引发眩晕、胸闷、恐慌、定向障碍等，严重时可造成组织损伤。</li>
+    </ul>
+  </div>
+
+  <!-- 弹窗与 Toast -->
+  <div class="toast" id="toast">再试一试：请根据故事与提示选择</div>
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你已边读故事边完成推理，并复现了“搁浅”画面。</p>
+      <button class="ok" id="okBtn">好的</button>
+    </div>
+  </div>
+
+<script>
+/* ===== 工具 ===== */
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ===== DOM ===== */
+const storyText=$('#storyText'),taskText=$('#taskText'),taskHint=$('#taskHint'),taskStep=$('#taskStep');
+const dots=[$('#dot1'),$('#dot2'),$('#dot3'),$('#dot4'),$('#dot5')];
+const choiceBar=$('#choiceBar'),toast=$('#toast'),doneMask=$('#doneMask'),okBtn=$('#okBtn');
+const resetBtn=$('#resetBtn'),autoBtn=$('#autoDemoBtn');
+const check=$('#check'),taskCard=$('#taskCard');
+
+const seaEl=$('#sea'),shipEl=$('#ship'),foamEl=$('#foam'),wakeEl=$('#wake'),
+      shoreEl=$('#shore'),scarEl=$('#scar'),
+      stormEl=$('#storm'),ripples=$('#ripples');
+
+let autoPlaying=false,completed=false,currentStep=0,rippleTimer=null,agroundSvg=null,focusIndex=0;
+
+/* ===== 故事章节 ===== */
+const CHAPTERS=[
+  {story:'【开端】1890 年，“马尔波罗”号满载离港，航向正常。夜色渐深，远海生成气旋，风暴向航线逼近。',
+   q:'此刻最关键的环境线索是什么？',hint:'看风暴和海面状态。',
+   choices:[{k:'a',label:'今晚风平浪静，无风无浪',ok:false},{k:'b',label:'风暴正在靠近，海况恶化',ok:true},{k:'c',label:'雾较大，但与风暴无关',ok:false}],onPass:()=>{}},
+  {story:'【异状】甲板值守报告：船员出现不适，但未听到明显噪声。雷达记录风暴增强。',
+   q:'基于故事，此处更可能的“声音”特征是？',hint:'注意“不可见、低频、远距离传播”。',
+   choices:[{k:'a',label:'刺耳的高频噪声，人人都能听到',ok:false},{k:'b',label:'不可见但能远传的低频（次声）波',ok:true},{k:'c',label:'完全没有声音，不相关',ok:false}],onPass:()=>{pulseRipples(3,220)}},
+  {story:'【求救】1948 年“麦塔奇”号的电文：“所有军官、船长……都死了，我也要……”随后通讯中断。',
+   q:'结合电文与症状，更可能的机制是？',hint:'排除直接外伤与中毒的前提下。',
+   choices:[{k:'a',label:'风暴雷击直接击毙船员',ok:false},{k:'b',label:'甲板泄漏毒气造成中毒',ok:false},{k:'c',label:'次声波在特定频率下引发内脏强烈振动/共振',ok:true}],onPass:()=>{pulseRipples(4,180)}},
+  {story:'【调查】科学家未发现外伤或中毒迹象，推断：风暴 → 次声波 → 对人体产生生理/心理影响。',
+   q:'下列哪项更符合“次声影响”的表现？',hint:'想想眩晕、定向障碍与操作表现。',
+   choices:[{k:'a',label:'更兴奋、更清醒、判断更准',ok:false},{k:'b',label:'眩晕、胸闷、恐慌、定向障碍，判断与操作混乱',ok:true},{k:'c',label:'仅让设备变慢，与人无关',ok:false}],onPass:()=>{}},
+  {story:'【结尾】在复杂夜航中，风暴引发的次声波可能使船员判断失常、操作失误或直接失去意识，船体并非破坏性损伤，而是误入浅滩——最终搁浅。',
+   q:'基于上述链条，最可能的结局是：',hint:'联系“船体完好+岗位遗留”的描述。',
+   choices:[{k:'a',label:'船体爆炸解体',ok:false},{k:'b',label:'无事发生，安全抵港',ok:false},{k:'c',label:'靠近岸滩后搁浅',ok:true}],onPass:()=>{showAgroundScene()}}
+];
+
+/* ===== 涟漪可视化（无开关，按步/自动触发） ===== */
+function startRipples(interval=700){stopRipples();rippleTimer=setInterval(()=>emitRipple(),interval);}
+function stopRipples(){if(rippleTimer){clearInterval(rippleTimer);rippleTimer=null;}}
+function emitRipple(){const d=document.createElement('div');d.className='ripple';ripples.appendChild(d);setTimeout(()=>d.remove(),2200);}
+async function pulseRipples(n=3,gap=220){for(let i=0;i<n;i++){emitRipple();await sleep(gap);}}
+
+/* ===== 船艏小泡沫 ===== */
+function puffFoam(count=3){
+  for(let i=0;i<count;i++){
+    const b=document.createElement('div'); b.className='bubble';
+    b.style.left=(10+Math.random()*14)+'px'; b.style.bottom=(0+Math.random()*6)+'px';
+    foamEl.appendChild(b); setTimeout(()=>b.remove(),1400);
+  }
+}
+setInterval(()=>puffFoam(2),1200);
+
+/* ===== 搁浅复现 ===== */
+function createAgroundSVG(){
+  const ns='http://www.w3.org/2000/svg';
+  const s=document.createElementNS(ns,'svg');
+  s.setAttribute('viewBox','0 0 260 140'); s.style.position='absolute';
+  s.style.width='min(300px,36vw)'; s.style.left='61%'; s.style.bottom='38%'; s.style.transform='rotate(-15deg)';
+  s.style.filter='drop-shadow(0 6px 16px rgba(0,0,0,.55))';
+  const hull=document.createElementNS(ns,'path'); hull.setAttribute('d','M20,100 C35,98 60,92 90,90 L220,88 L190,118 L50,118 Z'); hull.setAttribute('fill','#7e3122');
+  const deck=document.createElementNS(ns,'rect'); deck.setAttribute('x','60'); deck.setAttribute('y','68'); deck.setAttribute('width','120'); deck.setAttribute('height','18'); deck.setAttribute('rx','3'); deck.setAttribute('fill','#eae2d2');
+  const cabin=document.createElementNS(ns,'rect'); cabin.setAttribute('x','85'); cabin.setAttribute('y','48'); cabin.setAttribute('width','58'); cabin.setAttribute('height','18'); cabin.setAttribute('rx','3'); cabin.setAttribute('fill','#c6d4e7');
+  const w1=document.createElementNS(ns,'circle'); w1.setAttribute('cx','102'); w1.setAttribute('cy','56.5'); w1.setAttribute('r','3.2'); w1.setAttribute('fill','#6ec1ff');
+  const w2=document.createElementNS(ns,'circle'); w2.setAttribute('cx','117'); w2.setAttribute('cy','56.5'); w2.setAttribute('r','3.2'); w2.setAttribute('fill','#6ec1ff');
+  const c1=document.createElementNS(ns,'rect'); c1.setAttribute('x','64'); c1.setAttribute('y','64'); c1.setAttribute('width','24'); c1.setAttribute('height','10'); c1.setAttribute('rx','1'); c1.setAttribute('fill','#4f9fd9');
+  const c2=document.createElementNS(ns,'rect'); c2.setAttribute('x','92'); c2.setAttribute('y','64'); c2.setAttribute('width','24'); c2.setAttribute('height','10'); c2.setAttribute('rx','1'); c2.setAttribute('fill','#7ac26c');
+  const c3=document.createElementNS(ns,'rect'); c3.setAttribute('x','120'); c3.setAttribute('y','64'); c3.setAttribute('width','24'); c3.setAttribute('height','10'); c3.setAttribute('rx','1'); c3.setAttribute('fill','#e68a6d');
+  const mast=document.createElementNS(ns,'rect'); mast.setAttribute('x','175'); mast.setAttribute('y','50'); mast.setAttribute('width','4'); mast.setAttribute('height','26'); mast.setAttribute('fill','#cdd6e3');
+  const flag=document.createElementNS(ns,'path'); flag.setAttribute('d','M179,52 L212,58 L179,64 Z'); flag.setAttribute('fill','#ff4d4d');
+  s.append(hull,deck,cabin,w1,w2,c1,c2,c3,mast,flag);
+  return s;
+}
+function showAgroundScene(){
+  seaEl.style.height='42%'; shoreEl.style.opacity=1; scarEl.style.opacity=1;
+  shipEl.style.opacity=0; shipEl.style.pointerEvents='none'; shipEl.style.animation='none';
+  wakeEl.style.opacity=0;
+  if(!agroundSvg){ agroundSvg=createAgroundSVG(); $('#stage').appendChild(agroundSvg); }
+}
+
+/* ===== 步骤与作答 ===== */
+function setStepUI(i){
+  currentStep=i; dots.forEach((d,idx)=>d.className='dot'+(idx<i?' done':'')+(idx===i?' active':'')); 
+  storyText.textContent=CHAPTERS[i].story; taskStep.textContent=`步骤 ${i+1} / ${CHAPTERS.length}`;
+  taskText.textContent=CHAPTERS[i].q; taskHint.textContent='提示：'+CHAPTERS[i].hint; renderChoices(CHAPTERS[i].choices);
+}
+function renderChoices(items){
+  choiceBar.innerHTML=''; focusIndex=0;
+  items.forEach((it,idx)=>{ const b=document.createElement('button'); b.className='choice'; b.dataset.k=it.k; b.setAttribute('data-idx',idx); b.innerHTML=it.label; b.onclick=()=>onChoose(it,b); choiceBar.appendChild(b); });
+  focusChoice(0);
+}
+function focusChoice(idx){ const list=$$('#choiceBar .choice'); if(!list.length) return; idx=(idx+list.length)%list.length; focusIndex=idx; list[idx].focus({preventScroll:true}); }
+function onChoose(it,btn){
+  if(autoPlaying||completed) return;
+  $$('#choiceBar .choice').forEach(b=>b.classList.remove('ok','bad'));
+  if(it.ok){ btn.classList.add('ok'); showCheck(); CHAPTERS[currentStep].onPass&&CHAPTERS[currentStep].onPass(); setTimeout(nextStep,520); }
+  else { btn.classList.add('bad'); showToast('再读一遍故事片段，抓住关键信息~'); }
+}
+function nextStep(){
+  dots[currentStep].classList.remove('active'); dots[currentStep].classList.add('done'); currentStep++;
+  if(currentStep>=CHAPTERS.length){ completed=true; setTimeout(()=>doneMask.style.display='flex',320); }
+  else { dots[currentStep].classList.add('active'); setStepUI(currentStep); }
+}
+function showCheck(){ $('#check').classList.add('active'); setTimeout(()=>$('#check').classList.remove('active'),500); }
+function showToast(t){ toast.textContent=t||'再试一试'; toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>toast.classList.remove('show'),1200); }
+$('#okBtn').onclick=()=>doneMask.style.display='none';
+
+/* ===== 两按钮：重置 / 自动 ===== */
+function resetFlow(){
+  completed=false; autoPlaying=false;
+  if(agroundSvg && agroundSvg.parentNode) agroundSvg.parentNode.removeChild(agroundSvg);
+  agroundSvg=null; shipEl.style.opacity=1; shipEl.style.pointerEvents='auto'; shipEl.style.animation='';
+  wakeEl.style.opacity=.5; seaEl.style.height='48%'; shoreEl.style.opacity=0; scarEl.style.opacity=0;
+  setStepUI(0);
+}
+resetBtn.onclick=()=>{ if(!autoPlaying) resetFlow(); };
+
+async function autoDemo(){
+  if(autoPlaying) return; autoPlaying=true; resetFlow(); await sleep(350);
+  clickChoice('b'); await sleep(700); clickChoice('b'); await sleep(900);
+  clickChoice('c'); await sleep(900); clickChoice('b'); await sleep(700);
+  clickChoice('c'); await sleep(800); autoPlaying=false;
+}
+autoBtn.onclick=autoDemo;
+
+function clickChoice(k){ const btn=$$('#choiceBar .choice').find(b=>b.dataset.k===k); btn && btn.click(); }
+
+/* ===== 键盘可达性：←/→、Enter、R、A ===== */
+window.addEventListener('keydown',e=>{
+  const list=$$('#choiceBar .choice'); if(!list.length) return;
+  if(e.key==='ArrowRight'){ focusChoice(focusIndex+1); e.preventDefault(); }
+  if(e.key==='ArrowLeft'){ focusChoice(focusIndex-1); e.preventDefault(); }
+  if(e.key==='Enter'){ list[focusIndex].click(); }
+  if(e.key.toLowerCase()==='r'){ resetBtn.click(); }
+  if(e.key.toLowerCase()==='a'){ autoBtn.click(); }
+});
+
+/* ===== 启动：步骤1 + 基础涟漪（弱） ===== */
+function init(){ setStepUI(0); startRipples(900); }
+init();
+</script>
+</body>
+</html>

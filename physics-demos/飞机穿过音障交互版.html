@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>飞机穿过音障</title>
+<style>
+/* —— 页面与容器 —— */
+body{
+  margin:0; overflow-x:hidden;
+  background: linear-gradient(#87CEEB, #E0F6FF);
+  font-family: Arial, sans-serif;
+  touch-action: manipulation;
+  display:flex; flex-direction:column; align-items:center;
+}
+.wrapper{ width:min(980px,96vw); }
+
+/* —— 舞台 —— */
+#stage{
+  position:relative;
+  width: 100%;
+  height: 70vh;
+  min-height:480px;
+  background: linear-gradient(#aee1f9,#dff5ff);
+  border: 4px solid #ccc;
+  border-radius:14px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.25);
+  overflow:hidden;
+  margin-top:10px;
+}
+#sky{ width:100%; height:100%; position:relative; overflow:hidden; }
+
+/* —— 原动画元素 —— */
+.cloud{ position:absolute; background:white; border-radius:50%; opacity:0.8; filter:blur(5px); transform-origin:center; transition:opacity 1s; }
+#plane-container{ position:absolute; left:22%; top:50%; transform:translateY(-50%); z-index:20; transition:left 0.3s ease-out; }
+#plane{ width:170px; height:90px; filter:drop-shadow(2px 2px 4px rgba(0,0,0,0.35)); transform-origin:center; transition:transform 0.5s cubic-bezier(0.25,0.1,0.25,1);}
+#sonicBoom{ position:absolute; width:220px; height:220px; opacity:0; z-index:15; pointer-events:none;
+  background:radial-gradient(ellipse at right,rgba(255,255,255,0.92) 0%,rgba(180,220,255,0.7) 40%,transparent 70%);
+  clip-path:polygon(100% 50%,0% 0%,0% 100%); transform:translate(-50%,-50%); transition:all 0.6s cubic-bezier(0.5,0,0.5,1);
+}
+#shockwave{ position:absolute;width:0;height:0;border-radius:50%;opacity:0;z-index:10;
+  background:radial-gradient(circle,rgba(255,255,255,0.85) 0%,rgba(200,230,255,0.6) 50%,rgba(180,220,255,0) 70%);
+  transform:translate(-50%,-50%); transition:all 0.5s;
+}
+
+/* —— 控制器（右上角） —— */
+#controls{
+  position:absolute; top:20px; right:16px;
+  background:rgba(255,255,255,0.94);
+  padding:14px 12px; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.18);
+  z-index:100; display:flex; flex-direction:column; align-items:center; gap:10px; width:128px;
+  user-select:none;
+}
+#controls h3{ margin:0 0 6px 0; font-size:14px; text-align:center; line-height:1.2; }
+.control-row{ display:flex; align-items:center; justify-content:center; gap:12px; }
+.scale-wrap{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+.speed-scale{ width:10px;height:200px;background:linear-gradient(to top,#F44336 0% 27%,#FF9800 27% 68%,#4CAF50 68% 100%);
+  border-radius:6px;position:relative;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.15);
+}
+.scale-mark{ position:absolute;left:12px;width:28px;font-size:11px;color:#333;transform:translateY(50%);}
+.mark-min{ bottom:0%; } .mark-mach{ bottom:calc((340 - 200)/(720 - 200)*100%); } .mark-max{ bottom:100%;transform:translateY(50%) translateY(-10px);left:6px;}
+
+input[type=range].vertical{ -webkit-appearance:slider-vertical; writing-mode:bt-lr; width:32px;height:220px;padding:0; }
+input[type=range].vertical::-webkit-slider-thumb{
+  -webkit-appearance:none;height:22px;width:22px;border-radius:50%;background:#1976d2;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.35);
+}
+input[type=range].vertical::-webkit-slider-runnable-track{ background:transparent;width:10px; }
+
+.num{ font-weight:bold;font-variant-numeric:tabular-nums; }
+.val-box{ font-size:12px;text-align:center;line-height:1.35; }
+.btn{ border:none;background:#1976d2;color:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;width:100%;user-select:none;}
+.btn:active{ transform:scale(0.98); }
+.state{ margin-top:6px;font-weight:600; }
+
+/* —— 彩条 & 步骤卡（文档流内，不遮挡） —— */
+.xn-topbar{width:100%; height:40px; border-radius:10px; overflow:hidden; pointer-events:none; box-shadow:0 0 15px rgba(255,255,255,0.15); background: #000; margin-bottom: 12px;}
+.xn-topbar::before{content:"";display:block;width:100%;height:100%;
+  background: linear-gradient(90deg, 
+    #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+    #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+  );
+  background-size: 200% 100%;
+  animation: flowRainbow 6s linear infinite}
+@keyframes flowRainbow { 
+  0% { background-position: 0% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.xn-stepcard{
+  width:100%;
+  display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center;
+  background:rgba(0,0,0,.45); backdrop-filter:blur(6px); color:#fff;
+  border:1px solid rgba(255,255,255,.15); border-radius:12px; padding:10px 12px;
+  margin-top:8px;
+}
+.xn-step{background:rgba(255,255,255,.15);padding:4px 8px;border-radius:8px;font-weight:700}
+.xn-dots{display:flex;gap:6px}
+.xn-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.28);outline:2px solid rgba(255,255,255,.15)}
+.xn-dot.active{background:#ffb74d}.xn-dot.done{background:#3ddc97;outline-color:rgba(61,220,151,.5)}
+.xn-hint{font-size:12px;color:#ffe082}
+.xn-stepcard.free{opacity:.25;filter:grayscale(.6)}
+
+/* —— 说明在舞台下方 —— */
+.explanation{
+  width:100%; margin:12px 0 18px; background:rgba(255,255,255,0.9);
+  padding:14px 18px; border-radius:10px; box-shadow:0 2px 10px rgba(0,0,0,0.1); line-height:1.6;
+}
+.explanation h2{margin-top:0;color:#0b4f78;font-size:1.15em;}
+
+/* —— 底部三按钮（紧挨舞台下方） —— */
+.xn-toolbar{width:100%; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start;
+  background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px; margin:10px 0;}
+.xn-toolbar button{padding:10px 16px;background:#444;color:#fff;border:none;border-radius:8px;cursor:pointer}
+.xn-toolbar button:disabled{opacity:.5;cursor:not-allowed}
+
+/* —— 小提示/对勾 —— */
+.xn-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,.8);color:#fff;padding:8px 12px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:1000}
+.xn-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.xn-check{position:fixed;left:50%;top:22%;transform:translate(-50%,-50%) scale(.7);width:110px;height:110px;border-radius:50%;display:none;justify-content:center;align-items:center;border:3px solid #3ddc97;background:rgba(61,220,151,.12);box-shadow:0 0 28px rgba(61,220,151,.45), inset 0 0 16px rgba(61,220,151,.25);z-index:1000}
+.xn-check.on{display:flex}.xn-check>div{width:54px;height:28px;border-left:7px solid #3ddc97;border-bottom:7px solid #3ddc97;transform:rotate(-45deg) translateY(-4px)}
+
+/* —— 完成 OK 框 —— */
+.xn-okmask{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:1100}
+.xn-okmask.show{display:flex;animation:okfade .2s ease-out}
+@keyframes okfade{from{opacity:0}to{opacity:1}}
+.xn-okbox{width:min(92vw,420px);background:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35);padding:18px 16px;text-align:center}
+.xn-oktitle{font-weight:800;font-size:22px;margin:6px 0 8px;color:#0b4f78}
+.xn-okdesc{font-size:14px;color:#546e7a;margin-bottom:14px}
+.xn-okbtns{display:flex;gap:10px;justify-content:center}
+.xn-okbtn{border:none;border-radius:10px;padding:10px 16px;cursor:pointer}
+.xn-okbtn.primary{background:#1976d2;color:#fff}
+.xn-okbtn.ghost{background:#eceff1;color:#37474f}
+
+@media (max-width:640px){ #stage{height:64vh;min-height:380px;} }
+</style>
+</head>
+
+<body>
+<div class="wrapper">
+  <!-- 彩条 -->
+  <div class="xn-topbar" aria-hidden="true"></div>
+
+  <!-- 步骤卡 -->
+  <div id="xnStepCard" class="xn-stepcard" role="region" aria-label="步骤">
+    <div id="xnStepBadge" class="xn-step">步骤 1 / 3</div>
+    <div>
+      <div id="xnStepText">点击右上角的<b>“飞行”</b>按钮，让飞机从静止开始以 <b>200 m/s（马赫≈0.59）</b>起飞。</div>
+      <div id="xnStepHint" class="xn-hint">第一步必须点击“飞行”才算完成，滑块与加减按钮此步仅做体验。</div>
+    </div>
+    <div class="xn-dots"><span id="xnDot1" class="xn-dot active"></span><span id="xnDot2" class="xn-dot"></span><span id="xnDot3" class="xn-dot"></span></div>
+  </div>
+
+  <!-- 舞台 -->
+  <div id="stage">
+    <div id="sky">
+      <div id="plane-container">
+        <svg id="plane" viewBox="0 0 500 260">
+          <defs>
+            <linearGradient id="fuselage" x1="0%" y1="50%" x2="100%">
+              <stop offset="0%" stop-color="#8e9eab"/><stop offset="50%" stop-color="#dbe2e8"/><stop offset="100%" stop-color="#7d8a94"/>
+            </linearGradient>
+          </defs>
+          <ellipse cx="230" cy="130" rx="180" ry="42" fill="url(#fuselage)" stroke="#37474f" stroke-width="3"/>
+          <path d="M380,130 L490,130 L380,115 L380,145 Z" fill="#b0bec5" stroke="#37474f" stroke-width="3"/>
+          <ellipse cx="300" cy="110" rx="36" ry="16" fill="#90caf9" stroke="#1565c0" stroke-width="3"/>
+          <path d="M180,140 L330,170 L250,210 L120,200 Z" fill="#9e9e9e" stroke="#263238" stroke-width="4"/>
+          <path d="M80,120 L150,135 L110,155 L50,145 Z" fill="#bdbdbd" stroke="#263238" stroke-width="4"/>
+          <path d="M70,95 L110,80 L120,130 L85,130 Z" fill="#9e9e9e" stroke="#263238" stroke-width="4"/>
+          <circle cx="360" cy="142" r="10" fill="#cfd8dc" stroke="#37474f" stroke-width="2"/>
+        </svg>
+      </div>
+      <div id="sonicBoom"></div>
+      <div id="shockwave"></div>
+    </div>
+
+    <div id="controls">
+      <h3>速度</h3>
+      <button class="btn" id="flyBtn">飞行</button>
+      <button class="btn" id="btnUp">+10</button>
+      <div class="control-row">
+        <div class="scale-wrap">
+          <div class="speed-scale">
+            <span class="scale-mark mark-min">200</span>
+            <span class="scale-mark mark-mach">340</span>
+            <span class="scale-mark mark-max">720</span>
+          </div>
+        </div>
+        <input id="speed" class="vertical" type="range" min="200" max="720" value="200" step="1">
+      </div>
+      <button class="btn" id="btnDown">-10</button>
+      <div class="val-box">
+        <div>当前 <span id="speedValue" class="num">200</span> m/s</div>
+        <div><span id="machNumber">马赫 0.59</span></div>
+        <div id="status" class="state">亚音速</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 三按钮（紧挨舞台下方） -->
+  <div class="xn-toolbar">
+    <button id="xnReset">步骤重置</button>
+    <button id="xnAuto">自动演示</button>
+    <button id="xnFree">自由模式</button>
+  </div>
+
+  <!-- 说明 -->
+  <div class="explanation">
+    <h2>音障突破演示说明</h2>
+    <ul>
+      <li>点击“飞行”从静止起飞（200 m/s）。</li>
+      <li>右侧竖条为速度控制器；上下按钮或滑块均可调整速度。</li>
+      <li>速度接近 1 马赫时出现音障，突破瞬间伴随环状冲击波；超音速出现马赫锥。</li>
+      <li>上方步骤引导可帮助你逐步理解亚音速、临近音速与超音速现象。</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 提示 & 对勾 -->
+<div id="xnToast" class="xn-toast">再试一试：请先按本步骤要求操作</div>
+<div id="xnCheck" class="xn-check"><div></div></div>
+
+<!-- 完成 OK 框 -->
+<div id="xnOkMask" class="xn-okmask" role="dialog" aria-modal="true" aria-labelledby="okTitle">
+  <div class="xn-okbox">
+    <div id="okTitle" class="xn-oktitle">OK！全部步骤完成</div>
+    <div class="xn-okdesc">你已经体验了亚音速、临近音速与超音速（含马赫锥/冲击波）。</div>
+    <div class="xn-okbtns">
+      <button id="okClose" class="xn-okbtn primary">好的</button>
+      <button id="okReset" class="xn-okbtn ghost">重新来一遍</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 原动画逻辑（含“飞行”按钮） ===== -->
+<script>
+const planeContainer=document.getElementById('plane-container');
+const plane=document.getElementById('plane');
+const sonicBoom=document.getElementById('sonicBoom');
+const shockwave=document.getElementById('shockwave');
+const speedControl=document.getElementById('speed');
+const speedValue=document.getElementById('speedValue');
+const machNumber=document.getElementById('machNumber');
+const statusDisplay=document.getElementById('status');
+const btnUp=document.getElementById('btnUp');
+const btnDown=document.getElementById('btnDown');
+const flyBtn=document.getElementById('flyBtn');
+
+const MIN_SPEED=200,MAX_SPEED=720,MACH_SPEED=340;
+
+let currentSpeed=200,targetSpeed=200,lastUpdateTime=Date.now(),cloudSpeedFactor=1,hasPassedSoundBarrier=false,isButtonCooldown=false;
+let flightStarted=false; // 是否按过“飞行”
+
+function createCloudSystem(){const cloudCount=32;const frag=document.createDocumentFragment();
+for(let i=0;i<cloudCount;i++){const c=document.createElement('div');c.className='cloud';
+const alt=Math.random();const size=60+alt*160;c.style.width=size+'px';c.style.height=size*0.62+'px';
+c.style.top=`${10+alt*70}vh`;c.style.left=`${Math.random()*120-20}vw`;
+c.style.opacity=0.3+alt*0.5;c.style.filter=`blur(${3+alt*3}px)`;c.baseSpeed=0.5+(1-alt)*1.6;frag.appendChild(c);}document.getElementById('sky').appendChild(frag);}
+createCloudSystem();
+
+function adjustSpeed(increment){ if(isButtonCooldown) return;
+  targetSpeed=Math.max(MIN_SPEED,Math.min(MAX_SPEED,(parseInt(speedControl.value)||currentSpeed)+increment));
+  speedControl.value=targetSpeed;
+  isButtonCooldown=true; setTimeout(()=>{isButtonCooldown=false;},200);
+}
+btnUp.addEventListener('click',()=>adjustSpeed(10));
+btnDown.addEventListener('click',()=>adjustSpeed(-10));
+speedControl.addEventListener('input',e=>{targetSpeed=parseInt(e.target.value);});
+
+function startFlight(){
+  flightStarted = true;
+  currentSpeed = 200; targetSpeed = 200;
+  speedControl.value = 200;
+  speedControl.dispatchEvent(new Event('input',{bubbles:true}));
+  flyBtn.disabled = true; flyBtn.textContent = '飞行中';
+}
+flyBtn.addEventListener('click', startFlight);
+
+function updateAll(){const now=Date.now();const dt=(now-lastUpdateTime)/1000;lastUpdateTime=now;
+const accel=(targetSpeed-currentSpeed)/(targetSpeed<currentSpeed?10:18);currentSpeed=Math.max(MIN_SPEED,Math.min(MAX_SPEED,currentSpeed+accel*dt*60));
+cloudSpeedFactor=Math.pow(currentSpeed/300,1.8);
+if(currentSpeed>=MACH_SPEED&&!hasPassedSoundBarrier){triggerShockwave();hasPassedSoundBarrier=true;}else if(currentSpeed<MACH_SPEED){hasPassedSoundBarrier=false;}
+updateVisuals();requestAnimationFrame(updateAll);}
+function triggerShockwave(){const leftPercent=parseFloat(planeContainer.style.left)||22;
+shockwave.style.left=`${leftPercent+15}%`;shockwave.style.top='50%';shockwave.style.width='0';shockwave.style.height='0';shockwave.style.opacity='0';shockwave.style.transition='none';
+setTimeout(()=>{shockwave.style.transition='all 1.1s cubic-bezier(0,0.5,0.5,1)';shockwave.style.width='620px';shockwave.style.height='620px';shockwave.style.opacity='0.9';},10);
+setTimeout(()=>{shockwave.style.opacity='0';},850);setTimeout(()=>{shockwave.style.transition='none';},1300);}
+function updateVisuals(){speedValue.textContent=Math.round(currentSpeed);const mach=(currentSpeed/MACH_SPEED).toFixed(2);machNumber.textContent=`马赫 ${mach}`;
+const speedRatio=(currentSpeed-300)/120;plane.style.transform=`rotateZ(${Math.max(-4,Math.min(4,speedRatio*2))}deg) scale(${1+speedRatio*0.05})`;
+const planeLeft=parseFloat(planeContainer.style.left)||22;const planeCenter=planeLeft+15;
+if(currentSpeed>=MACH_SPEED){const machVal=currentSpeed/MACH_SPEED;const machAngle=Math.asin(1/Math.max(1.001,machVal));const angleDeg=machAngle*180/Math.PI;const breakthrough=Math.min((currentSpeed-MACH_SPEED)/10,1);
+sonicBoom.style.opacity=0.92;sonicBoom.style.top='50%';
+if(breakthrough<0.5){sonicBoom.style.left=`calc(${planeCenter}% - 12px)`;sonicBoom.style.width='140px';sonicBoom.style.height='180px';sonicBoom.style.clipPath='polygon(100% 50%, 0% 0%, 0% 100%)';}
+else{const coneLen=200+(breakthrough-0.5)*0.5*120;const coneHalfWidth=coneLen*Math.tan(angleDeg*Math.PI/180);
+sonicBoom.style.left=`calc(${planeCenter}% - 12px)`;sonicBoom.style.width=`${coneLen}px`;sonicBoom.style.height=`${Math.max(160,coneHalfWidth*2)}px`;sonicBoom.style.clipPath='polygon(100% 50%, 0% 0%, 0% 100%)';}
+if(breakthrough<0.9){statusDisplay.textContent=breakthrough<0.5?`接近音障（${Math.round(breakthrough*100)}%）`:`突破中（${Math.round(breakthrough*100)}%）`;statusDisplay.style.color="#FF9800";}
+else{statusDisplay.textContent=`超音速 · 马赫 ${mach}`;statusDisplay.style.color="#E53935";}}
+else{sonicBoom.style.opacity=0;statusDisplay.textContent="亚音速";statusDisplay.style.color="#2E7D32";}
+const offset=(currentSpeed-300)/22;planeContainer.style.left=`${Math.max(10,Math.min(62,22+offset))}%`;}
+function animateClouds(){const clouds=document.querySelectorAll('.cloud');clouds.forEach(cloud=>{const left=parseFloat(cloud.style.left)||0;
+const speedResp=Math.pow(cloudSpeedFactor,1.5)*cloud.baseSpeed;const move=-0.05*speedResp;cloud.style.left=`${left+move}%`;if(left<-22){cloud.style.left='122%';cloud.style.top=`${10+Math.random()*70}vh`;}});requestAnimationFrame(animateClouds);}
+updateAll();animateClouds();
+</script>
+
+<!-- ===== 交互版模板逻辑（含完成 OK 框） ===== -->
+<script>
+(function(){
+  const speedEl = document.getElementById('speed');
+  const btnUp   = document.getElementById('btnUp');
+  const btnDown = document.getElementById('btnDown');
+  const flyBtn  = document.getElementById('flyBtn');
+  const okMask  = document.getElementById('xnOkMask');
+  const okClose = document.getElementById('okClose');
+  const okReset = document.getElementById('okReset');
+
+  function getMach(){
+    if (typeof window.currentSpeed === 'number' && typeof window.MACH_SPEED === 'number'){
+      return Math.round((window.currentSpeed / window.MACH_SPEED)*100)/100;
+    }
+    if (speedEl) return Math.round((Number(speedEl.value)/340)*100)/100;
+    return 0.88;
+  }
+  function setMach(m){
+    if (!speedEl) return;
+    const v = Math.max(Number(speedEl.min||200), Math.min(Number(speedEl.max||720), Math.round(m*window.MACH_SPEED)));
+    if (String(speedEl.value)!==String(v)){
+      speedEl.value = v;
+      speedEl.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+  }
+
+  const stepCard = document.getElementById('xnStepCard');
+  const stepBadge= document.getElementById('xnStepBadge');
+  const stepText = document.getElementById('xnStepText');
+  const stepHint = document.getElementById('xnStepHint');
+  const dots = [document.getElementById('xnDot1'), document.getElementById('xnDot2'), document.getElementById('xnDot3')];
+  const btnReset = document.getElementById('xnReset');
+  const btnAuto  = document.getElementById('xnAuto');
+  const btnFree  = document.getElementById('xnFree');
+  const toast = document.getElementById('xnToast');
+  const check = document.getElementById('xnCheck');
+
+  let freeMode=false, autoPlaying=false, cur=0, completed=false;
+  let flewThisRound = false; // 第一步是否已点“飞行”
+
+  const tasks = [
+    { text:'点击右上角<b>“飞行”</b>按钮，让飞机以 200 m/s 起飞。', hint:'只有点击“飞行”才算完成本步。',
+      pre: ()=> true, post: ()=> flewThisRound === true },
+    { text:'把 <b>马赫数 0.95–1.05</b>。', hint:'接近 1.0 即可通过；允许轻微波动。',
+      pre: ()=> inRange(getMach(),0.95,1.05), post: ()=> inRange(getMach(),0.95,1.05) },
+    { text:'把 <b>马赫数 ≥ 1.20</b>。', hint:'超音速出现马赫锥；突破瞬间可能看到环状冲击波。',
+      pre: ()=> getMach() >= 1.20, post: ()=> getMach() >= 1.20 }
+  ];
+
+  function inRange(x,a,b){ return x>=a && x<=b; }
+  function setStepUI(i){
+    stepBadge.textContent = `步骤 ${i+1} / ${tasks.length}`;
+    stepText.innerHTML = tasks[i].text;
+    stepHint.textContent = tasks[i].hint;
+    dots.forEach((d,k)=> d.className = 'xn-dot'+(k<i?' done' : k===i?' active':'')); 
+  }
+  function showToast(msg){ toast.textContent = msg || '再试一试'; toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>toast.classList.remove('show'),1000); }
+  function showCheck(){ check.classList.add('on'); setTimeout(()=>check.classList.remove('on'),460); }
+
+  function showOK(){
+    okMask.classList.add('show');
+    // 键盘可关闭
+    const esc = (e)=>{ if(e.key==='Escape'){ hideOK(); } };
+    document.addEventListener('keydown', esc, { once:true });
+  }
+  function hideOK(){ okMask.classList.remove('show'); }
+
+  function completeStep(){
+    showCheck(); dots[cur].classList.remove('active'); dots[cur].classList.add('done');
+    cur++;
+    if (cur>=tasks.length){
+      completed=true;
+      showOK(); // —— 完成三步后弹出 OK 框 ——
+    } else {
+      setStepUI(cur);
+    }
+  }
+
+  // 第一步：必须点击“飞行”
+  flyBtn.addEventListener('click', ()=>{
+    flewThisRound = true;
+    if (!freeMode && !completed && cur===0){ completeStep(); }
+  });
+
+  function tryComplete(){
+    if (freeMode || completed) return;
+    if (cur===0) return; // 第一步禁止被动通过
+    const t = tasks[cur];
+    if (t.pre() && t.post()) completeStep();
+  }
+
+  if (speedEl) speedEl.addEventListener('input', ()=> setTimeout(tryComplete, 0), {passive:true});
+  if (btnUp)   btnUp.addEventListener('click',  ()=> setTimeout(tryComplete, 0));
+  if (btnDown) btnDown.addEventListener('click', ()=> setTimeout(tryComplete, 0));
+  setInterval(()=>{ if(!freeMode && !autoPlaying) tryComplete(); }, 400);
+
+  function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+  async function waitFor(fn, timeout=2000, interval=60){
+    const t0 = performance.now(); while(performance.now()-t0 < timeout){ if (fn()) return true; await sleep(interval); } return false;
+  }
+  async function tweenMach(target, ms=700){
+    const m0 = getMach(); const t0 = performance.now();
+    return new Promise(res=>{
+      (function step(t){
+        if (!autoPlaying) return res();
+        const k = Math.min(1,(t-t0)/ms), e = 1-Math.pow(1-k,3);
+        const m = m0 + (target - m0)*e;
+        setMach(m);
+        if (k<1) requestAnimationFrame(step); else res();
+      })(performance.now());
+    });
+  }
+  // 自动演示：先“飞行”，再推进；完成后同样弹 OK 框
+  async function autoDemo(){
+    if (freeMode || autoPlaying) return; autoPlaying = true;
+    try{
+      resetSteps(false); // 会把按钮复原为“飞行”
+      document.getElementById('flyBtn').click();
+      await sleep(350);
+      setStepUI(1); await tweenMach(1.00,700); await waitFor(()=> tasks[1].post(), 1600); tryComplete();
+      await sleep(280);
+      setStepUI(2); await tweenMach(1.60,800); await waitFor(()=> tasks[2].post(), 1600); tryComplete();
+      // completeStep() 会在最后一步自动 showOK()
+    } finally { autoPlaying=false; }
+  }
+
+  // —— 重置：完全回到初始，并关闭 OK 框 —— //
+  function resetSteps(withFlash=true){
+    // 步骤状态
+    cur=0; completed=false; flewThisRound=false; setStepUI(0); if(withFlash) showCheck();
+    // 复原“飞行”按钮
+    flyBtn.disabled = false; flyBtn.textContent = '飞行';
+    // 初始速度
+    if (speedEl){
+      speedEl.value = 200;
+      speedEl.dispatchEvent(new Event('input',{bubbles:true}));
+    }
+    // 同步原动画全局
+    if (typeof window !== 'undefined'){
+      window.currentSpeed = 200;
+      window.targetSpeed  = 200;
+      window.flightStarted = false;
+    }
+    // 关闭 OK 框
+    hideOK();
+  }
+
+  document.getElementById('xnReset').addEventListener('click', ()=>{ if(!autoPlaying) resetSteps(); });
+  document.getElementById('xnAuto').addEventListener('click', ()=>{ if(freeMode){ showToast('自由模式下无法自动演示'); return;} autoDemo(); });
+  document.getElementById('xnFree').addEventListener('click', ()=>{
+    freeMode=!freeMode;
+    document.getElementById('xnFree').textContent = freeMode ? '退出自由模式' : '自由模式';
+    document.getElementById('xnAuto').disabled = freeMode;
+    document.getElementById('xnStepCard').classList.toggle('free', freeMode);
+  });
+
+  // OK 框按钮
+  okClose.addEventListener('click', hideOK);
+  okMask.addEventListener('click', (e)=>{ if(e.target===okMask) hideOK(); }); // 点击遮罩关闭
+  okReset.addEventListener('click', ()=>{ hideOK(); resetSteps(); });
+
+  setStepUI(0);
+})();
+</script>
+</body>
+</html>

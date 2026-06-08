@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1"/>
+<title>充满电磁波的世界</title>
+<style>
+  :root{
+    /* —— 统一交互模板色板 —— */
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --ink:#e9f2ff;
+
+    --panel-bg: rgba(15,16,20,0.55);
+    --panel-bd: rgba(255,255,255,0.12);
+  }
+  body{
+    background:#0e0f13; color:#fff; margin:0; padding:10px;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+    display:flex; flex-direction:column; align-items:center;
+  }
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡（模板同款字重/风格） */
+  .task-card{
+    width:100%; max-width:900px; background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s;
+  }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:700; letter-spacing:.2px; white-space:nowrap; }
+  .task-text{ line-height:1.55; }
+  .task-text b,strong{ font-weight:800; }
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 舞台 */
+  .stageWrap{ width:100%; max-width:900px; height:60vh; max-height:520px; margin-top:10px; }
+  #stage{
+    position:relative; width:100%; height:100%; border-radius:12px; overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+    background:#05070b;
+  }
+  canvas#scene{ width:100%; height:100%; display:block; }
+
+  /* 右上：波段按钮（模板式面板） */
+  .bandbar{
+    position:absolute; right:10px; top:10px; z-index:10; display:flex; flex-direction:column; gap:8px;
+    background:var(--panel-bg); border:1px solid var(--panel-bd); border-radius:12px; padding:8px; backdrop-filter:blur(6px);
+  }
+  .bandbar button{
+    padding:8px 10px; background:rgba(0,0,0,0.45); color:#fff; border:none; border-radius:8px; font-size:14px; cursor:pointer;
+    transition:background .2s, transform .05s;
+  }
+  .bandbar button:hover{ background:rgba(0,0,0,0.65); }
+  .bandbar button.active{ outline:2px solid rgba(255,255,255,0.28); background:rgba(255,255,255,0.1); }
+
+  /* 左上 HUD */
+  .hud{
+    position:absolute; left:10px; top:10px; z-index:9; background:var(--panel-bg);
+    border:1px solid var(--panel-bd); border-radius:10px; padding:8px 10px; font-size:13px; line-height:1.4; backdrop-filter:blur(6px);
+  }
+  .tag{ padding:2px 8px; border-radius:999px; margin-right:6px; font-weight:700; }
+  .tag.band{ background:rgba(100,181,246,0.2); border:1px solid rgba(100,181,246,0.5); }
+
+  /* 底部三按钮（模板同款） */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  .toolbar button{
+    padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px;
+    cursor:pointer; transition:background .25s, transform .05s, opacity .2s; user-select:none; font-weight:600;
+  }
+  .toolbar button:hover{ background:#5a5a5a;} .toolbar button:active{ transform:scale(.98);} .toolbar button:disabled{ opacity:.5; cursor:not-allowed;}
+
+  /* 对勾、Toast、完成弹窗（模板同款） */
+  .checkmark{
+    position:absolute; z-index:50; left:50%; top:20%; transform:translate(-50%,-50%) scale(.6);
+    width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center;
+    box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);
+  }
+  .checkmark.active{ display:flex; }
+  .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px);
+    background:rgba(0,0,0,0.8); color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.35);
+    font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200;}
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5);}
+  .modal h3{ margin:8px 0 6px; font-size:20px; font-weight:800;} .modal p{ color:#cfd8dc; margin-top:0;}
+  .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:800; border:none; border-radius:10px; padding:10px 14px; }
+
+  /* 说明区（模板风格） */
+  .explain{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink);}
+  .explain h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; font-weight:800;}
+  @media (max-width:600px){
+    .bandbar button{ font-size:13px; padding:7px 9px;}
+    .explain{ font-size:.9em;}
+  }
+</style>
+</head>
+<body>
+  <!-- 顶部彩条 -->
+  <div id="spectrum"></div>
+
+  <!-- 步骤卡 -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 5</div>
+    <div class="task-text">
+      <div id="taskText">点击<strong>可见光</strong>，看看人眼能看到的彩虹波段。</div>
+      <div class="task-hint" id="taskHint">提示：点右上角“可见光”。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span><span class="dot" id="dot4"></span><span class="dot" id="dot5"></span>
+    </div>
+  </div>
+
+  <!-- 舞台 -->
+  <div class="stageWrap">
+    <div id="stage">
+      <canvas id="scene"></canvas>
+
+      <!-- 左上 HUD -->
+      <div class="hud"><span class="tag band" id="bandTag">当前：—</span></div>
+
+      <!-- 右上：波段按钮 -->
+      <div class="bandbar" aria-label="波段切换">
+        <button id="btnVIS">🌈 可见光</button>
+        <button id="btnIR">🔥 红外线</button>
+        <button id="btnRF">📶 无线电波</button>
+        <button id="btnUV">💜 紫外线</button>
+        <button id="btnCR">✨ 宇宙射线</button>
+      </div>
+
+      <!-- 对勾 -->
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <!-- 三按钮 -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">再试一试：请按当前步骤提示进行</div>
+
+  <!-- 完成弹窗 -->
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你按顺序探索了：可见光 → 红外线 → 无线电波 → 紫外线 → 宇宙射线。</p>
+      <button class="ok" id="okBtn">好的</button>
+    </div>
+  </div>
+
+  <!-- 说明 -->
+  <div class="explain">
+    <h2>“看不见的波”速览</h2>
+    <ul>
+      <li><b>可见光</b>：人眼能见的彩虹波段（约 400–700nm）。</li>
+      <li><b>红外线</b>：更长波长，常用于热成像、遥控器。</li>
+      <li><b>无线电波</b>：波长很长，用于广播、Wi-Fi、通信。</li>
+      <li><b>紫外线</b>：更短、更“锐利”，可致荧光与晒黑。</li>
+      <li><b>宇宙射线</b>：来自宇宙的高能粒子，进入大气会产生簇射/亮轨迹。</li>
+    </ul>
+  </div>
+
+<script>
+/* ============ 画布与尺寸 ============ */
+const canvas = document.getElementById('scene'), ctx = canvas.getContext('2d');
+const stage = document.getElementById('stage');
+let W,H,DPR=Math.min(2, window.devicePixelRatio||1);
+function resize(){
+  W = Math.floor(stage.clientWidth*DPR);
+  H = Math.floor(stage.clientHeight*DPR);
+  canvas.width=W; canvas.height=H;
+  canvas.style.width=stage.clientWidth+'px';
+  canvas.style.height=stage.clientHeight+'px';
+}
+addEventListener('resize', resize, {passive:true}); resize();
+
+/* ============ 状态 ============ */
+const bandNames = { VIS:'可见光', IR:'红外线', RF:'无线电波', UV:'紫外线', CR:'宇宙射线' };
+let band = null;             // —— 初始为空白
+let bandTarget = null;
+let t0 = performance.now();
+let flashAlpha = 0;
+
+/* ============ 可见光（彩虹带 + 多层细波） ============ */
+function drawVisible(dt){
+  ctx.fillStyle='#0b1220'; ctx.fillRect(0,0,W,H);
+
+  const bandH = H*0.28;
+  const y0 = (H-bandH)/2, y1 = y0 + bandH;
+  const g = ctx.createLinearGradient(0,y0,0,y1);
+  g.addColorStop(0.00,'#ff3b30'); g.addColorStop(0.20,'#ffcc00');
+  g.addColorStop(0.40,'#34c759'); g.addColorStop(0.60,'#32ade6');
+  g.addColorStop(0.80,'#5856d6'); g.addColorStop(1.00,'#ff2d55');
+  ctx.fillStyle=g; ctx.globalAlpha=0.92; ctx.fillRect(0,y0,W,bandH); ctx.globalAlpha=1;
+
+  const wl = W*0.010, amp=H*0.018, speed=0.9;
+  ctx.lineWidth=Math.max(1,1.5*DPR);
+  for(let i=0;i<7;i++){
+    const yBase = y0 + bandH*(i+0.5)/7;
+    ctx.beginPath();
+    for(let x=0;x<=W;x+=2){
+      const y = yBase + Math.sin((x*2*Math.PI/wl)+performance.now()*0.0016*speed+i*0.5)*amp;
+      if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.stroke();
+  }
+}
+
+/* ============ 红外（热斑 + 手掌热像） ============ */
+const hotSpots = new Array(6).fill(0).map(()=>({
+  x: Math.random(), y: Math.random(), r: 0.1+Math.random()*0.18, phase: Math.random()*Math.PI*2
+}));
+function drawInfra(dt){
+  ctx.fillStyle='#140e0a'; ctx.fillRect(0,0,W,H);
+
+  // 背景热斑
+  ctx.globalCompositeOperation='lighter';
+  hotSpots.forEach(s=>{
+    s.phase += dt*1.6;
+    const cx = (0.15 + s.x*0.7)*W, cy=(0.20 + s.y*0.6)*H;
+    const r  = (s.r + Math.sin(s.phase)*0.02)*Math.min(W,H);
+    const g = ctx.createRadialGradient(cx,cy,0, cx,cy,r);
+    g.addColorStop(0,'rgba(255,120,64,0.85)');
+    g.addColorStop(0.45,'rgba(255,80,40,0.55)');
+    g.addColorStop(1,'rgba(255,40,20,0.05)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fill();
+  });
+
+  // 左侧“手掌热像”合成（5 指 + 掌心）
+  const hand = {
+    x: W*0.22, y: H*0.55, // 掌心
+    pulse: 0.5 + 0.5*Math.sin(performance.now()*0.003)
+  };
+  const palmR = Math.min(W,H)*0.13*(0.95+0.05*hand.pulse);
+  const hg = ctx.createRadialGradient(hand.x, hand.y, 0, hand.x, hand.y, palmR);
+  hg.addColorStop(0,'rgba(255,160,70,0.9)');
+  hg.addColorStop(0.6,'rgba(255,110,50,0.5)');
+  hg.addColorStop(1,'rgba(255,60,30,0.05)');
+  ctx.fillStyle=hg; ctx.beginPath(); ctx.arc(hand.x,hand.y,palmR,0,Math.PI*2); ctx.fill();
+
+  // 五个手指小热斑
+  const fingers = [
+    {dx:-0.06, dy:-0.14, r:0.055}, {dx:-0.015, dy:-0.18, r:0.05},
+    {dx:0.03, dy:-0.19, r:0.048}, {dx:0.075, dy:-0.17, r:0.045},
+    {dx:0.12, dy:-0.13, r:0.05} // 拇指
+  ];
+  fingers.forEach(f=>{
+    const fx = hand.x + f.dx*Math.min(W,H), fy = hand.y + f.dy*Math.min(W,H);
+    const fr = Math.min(W,H)*f.r*(0.96+0.06*hand.pulse);
+    const fg = ctx.createRadialGradient(fx,fy,0,fx,fy,fr);
+    fg.addColorStop(0,'rgba(255,150,70,0.9)');
+    fg.addColorStop(1,'rgba(255,70,35,0.05)');
+    ctx.fillStyle=fg; ctx.beginPath(); ctx.arc(fx,fy,fr,0,Math.PI*2); ctx.fill();
+  });
+
+  ctx.globalCompositeOperation='source-over';
+}
+
+/* ============ 无线电（粗长波 + 信号点 + Wi-Fi 同心弧） ============ */
+const rfDots = new Array(24).fill(0).map((_,i)=>({ u: Math.random(), lane: i%3 }));
+function drawRadio(dt){
+  ctx.fillStyle='#0a0f14'; ctx.fillRect(0,0,W,H);
+
+  const lanes=3, base = H*0.25, gap=H*0.16, wl=W*0.055, amp=H*0.09, speed=0.4;
+  ctx.lineWidth=Math.max(2,6*DPR); ctx.strokeStyle='#5ec8ff';
+  for(let i=0;i<lanes;i++){
+    const yBase = base + i*gap; ctx.beginPath();
+    for(let x=0;x<=W;x+=3){
+      const y = yBase + Math.sin((x*2*Math.PI/wl)+performance.now()*0.0012*speed + i)*amp;
+      (x===0?ctx.moveTo(x,y):ctx.lineTo(x,y));
+    }
+    ctx.globalAlpha=0.9; ctx.stroke(); ctx.globalAlpha=1;
+  }
+  // 沿波峰漂移的“信号点”
+  rfDots.forEach(d=>{
+    d.u = (d.u + dt*0.08) % 1; const x = d.u*W;
+    const yBase = base + d.lane*gap;
+    const y = yBase + Math.sin((x*2*Math.PI/wl)+performance.now()*0.0012*speed + d.lane)*amp;
+    ctx.fillStyle='rgba(94,200,255,0.9)'; ctx.beginPath(); ctx.arc(x,y,3.5*DPR,0,Math.PI*2); ctx.fill();
+  });
+
+  // 右上角 Wi-Fi 同心弧（中心在右上角内缩处）
+  const cx = W*0.82, cy = H*0.18, baseR = Math.min(W,H)*0.06, t = performance.now()*0.002;
+  ctx.lineWidth=Math.max(1.5,3*DPR); ctx.strokeStyle='rgba(94,200,255,0.65)';
+  for(let i=0;i<3;i++){
+    const r = baseR + i*baseR*0.38;
+    const a = 0.55 + 0.45*Math.sin(t + i);
+    ctx.globalAlpha = 0.45 + 0.5*a;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI*0.15, Math.PI*0.85);
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ============ 紫外（高频细波 + 荧光点 + 荧光字母闪亮） ============ */
+const uvStars = new Array(80).fill(0).map(()=>({ x:Math.random(), y:Math.random(), w:Math.random()*0.8 }));
+let uvTextTimer = 0, uvTextObj = null;
+const uvWords = ["UV", "DNA", "荧光", "紫外"];
+function drawUV(dt){
+  ctx.fillStyle='#120a14'; ctx.fillRect(0,0,W,H);
+
+  // 高频细波
+  const rows=8, wl=W*0.009, amp=H*0.03, speed=1.4;
+  ctx.lineWidth=Math.max(1,1.5*DPR);
+  for(let i=0;i<rows;i++){
+    const yBase = H*(0.18 + 0.08*i);
+    ctx.beginPath();
+    for(let x=0;x<=W;x+=2){
+      const y = yBase + Math.sin((x*2*Math.PI/wl)+performance.now()*0.0019*speed + i)*amp;
+      (x===0?ctx.moveTo(x,y):ctx.lineTo(x,y));
+    }
+    ctx.strokeStyle='rgba(179,136,255,0.85)'; ctx.stroke();
+  }
+
+  // 荧光微点
+  uvStars.forEach(s=>{
+    const x = s.x*W, y=s.y*H;
+    const a = 0.35 + 0.65*Math.abs(Math.sin(performance.now()*0.002 + s.w*6));
+    ctx.fillStyle=`rgba(190,160,255,${a})`;
+    ctx.fillRect(x,y,1.5*DPR,1.5*DPR);
+  });
+
+  // 随机荧光字母闪亮（1.2秒后换一个）
+  uvTextTimer -= dt;
+  if (uvTextTimer<=0){
+    const text = uvWords[(Math.random()*uvWords.length)|0];
+    const x = W*(0.35 + Math.random()*0.3), y = H*(0.35 + Math.random()*0.3);
+    uvTextObj = { text, x, y, life:1.2 };
+    uvTextTimer = 1.2;
+  }
+  if (uvTextObj){
+    uvTextObj.life -= dt;
+    const a = Math.max(0, Math.min(1, uvTextObj.life));
+    ctx.font = `${Math.floor(28*DPR)}px system-ui, Arial`;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle = `rgba(190,160,255,${0.85*a})`;
+    ctx.shadowColor = 'rgba(190,160,255,0.55)';
+    ctx.shadowBlur = 12*DPR;
+    ctx.fillText(uvTextObj.text, uvTextObj.x, uvTextObj.y);
+    ctx.shadowBlur = 0;
+  }
+}
+
+/* ============ 宇宙射线（粒子簇射 + 亮线轨迹） ============ */
+let crParts=[]; let crLines=[];
+function spawnShower(){
+  const x = Math.random()*W, y = -20;
+  const baseVy = (2.2 + Math.random()*1.4)*DPR;
+  const n = 14 + (Math.random()*18|0);
+  for(let i=0;i<n;i++){
+    const off = (Math.random()-0.5);
+    crParts.push({ x, y, vx: off*0.6*DPR, vy: baseVy + off*0.4*DPR, life: 140+Math.random()*60, alpha:1 });
+  }
+  flashAlpha = 0.25;
+}
+function spawnBrightLine(){
+  // 从顶部某处，斜向下划过一条亮线
+  const x0 = Math.random()*W, y0 = -10;
+  const ang = Math.PI*0.9 + (Math.random()*0.2 - 0.1); // 接近竖直
+  const len = Math.min(W,H)*0.6;
+  const vx = Math.cos(ang)*3.2*DPR, vy = Math.sin(ang)*3.2*DPR;
+  crLines.push({ x:x0, y:y0, vx, vy, life:80, w:2.2*DPR });
+}
+setInterval(()=>{ if (bandTarget==='CR' && crParts.length<260) spawnShower(); }, 420);
+setInterval(()=>{ if (bandTarget==='CR' && crLines.length<4 && Math.random()<0.6) spawnBrightLine(); }, 650);
+
+function drawCR(dt){
+  ctx.fillStyle='#080b10'; ctx.fillRect(0,0,W,H);
+  // 背景星点
+  ctx.globalAlpha=0.25;
+  for(let i=0;i<100;i++){ const x=(i*157%W), y=(i*263%H); ctx.fillStyle='#cfe9ff22'; ctx.fillRect(x,y,1,1); }
+  ctx.globalAlpha=1;
+
+  // 亮线轨迹
+  for(let i=crLines.length-1;i>=0;i--){
+    const L = crLines[i];
+    ctx.strokeStyle = 'rgba(180,220,255,0.9)';
+    ctx.lineWidth = L.w;
+    ctx.beginPath();
+    ctx.moveTo(L.x, L.y);
+    ctx.lineTo(L.x - L.vx*6, L.y - L.vy*6); // 留出短尾
+    ctx.stroke();
+    L.x += L.vx; L.y += L.vy; L.life -= 1; L.w = Math.max(0.5*DPR, L.w*0.98);
+    if (L.life<=0 || L.y>H+20) crLines.splice(i,1);
+  }
+
+  // 粒子簇射
+  for(let i=crParts.length-1;i>=0;i--){
+    const a=crParts[i];
+    a.x+=a.vx; a.y+=a.vy; a.life-=1; a.alpha=Math.max(0, a.life/160);
+    ctx.fillStyle=`rgba(155,211,255,${0.25+0.75*a.alpha})`;
+    ctx.beginPath(); ctx.arc(a.x,a.y,1.6*DPR,0,Math.PI*2); ctx.fill();
+    if (a.life<=0 || a.y>H+10) crParts.splice(i,1);
+  }
+}
+
+/* ============ 主循环（含空白初始态 & 切换闪光） ============ */
+function draw(){
+  const now=performance.now(); const dt=Math.min(32, now - t0)/1000; t0=now;
+
+  // 切换处理（此处直接赋值，差异已经足够明显）
+  if (band !== bandTarget) band = bandTarget;
+
+  if (band===null){
+    // 初始空白：柔和深色背景
+    ctx.fillStyle='#05070b'; ctx.fillRect(0,0,W,H);
+  } else if (band==='VIS') drawVisible(dt);
+  else if (band==='IR') drawInfra(dt);
+  else if (band==='RF') drawRadio(dt);
+  else if (band==='UV') drawUV(dt);
+  else drawCR(dt);
+
+  // 切换闪光
+  if (flashAlpha>0){
+    ctx.fillStyle=`rgba(255,255,255,${flashAlpha})`;
+    ctx.fillRect(0,0,W,H);
+    flashAlpha=Math.max(0, flashAlpha - dt*1.5);
+  }
+
+  requestAnimationFrame(draw);
+}
+draw();
+
+/* ============ 交互框架（模板同款） ============ */
+const taskStepEl=document.getElementById('taskStep');
+const taskTextEl=document.getElementById('taskText');
+const taskHintEl=document.getElementById('taskHint');
+const dots=[...document.querySelectorAll('.progress-dots .dot')];
+const checkmark=document.getElementById('checkmark');
+const toast=document.getElementById('toast');
+const doneMask=document.getElementById('doneMask'); const okBtn=document.getElementById('okBtn');
+const btnFree=document.getElementById('freeBtn'); const btnAuto=document.getElementById('autoDemoBtn'); const btnReset=document.getElementById('resetBtn');
+okBtn.onclick=()=> doneMask.style.display='none';
+
+const bandTag=document.getElementById('bandTag');
+const btnMap={ VIS:document.getElementById('btnVIS'), IR:document.getElementById('btnIR'),
+               RF:document.getElementById('btnRF'), UV:document.getElementById('btnUV'), CR:document.getElementById('btnCR') };
+
+function syncBandUI(){
+  bandTag.textContent='当前：' + (bandTarget ? (bandNames[bandTarget]||'—') : '—');
+  Object.entries(btnMap).forEach(([k,el])=> el.classList.toggle('active', k===bandTarget));
+}
+
+let freeMode=false, autoPlaying=false, completed=false, current=0;
+const tasks = [
+  { key:'VIS', text:'点击<strong>可见光</strong>，看看人眼能看到的彩虹波段。', hint:'点右上角“可见光”。' },
+  { key:'IR' , text:'切换到<strong>红外线</strong>，观察“热像手掌”和热斑鼓动。',   hint:'点“红外线”。' },
+  { key:'RF' , text:'切换到<strong>无线电波</strong>，留意粗长波、信号点和 Wi-Fi 同心弧。', hint:'点“无线电波”。' },
+  { key:'UV' , text:'切换到<strong>紫外线</strong>，高频细波 + 荧光点 + 荧光字母闪亮。',    hint:'点“紫外线”。' },
+  { key:'CR' , text:'切换到<strong>宇宙射线</strong>，触发粒子簇射与高能亮线轨迹。',         hint:'点“宇宙射线”。' }
+];
+function setStepUI(i){
+  dots.forEach((d,k)=> d.className='dot' + (k<i ? ' done' : k===i ? ' active' : ''));
+  taskStepEl.textContent=`步骤 ${i+1} / ${tasks.length}`;
+  taskTextEl.innerHTML=tasks[i].text;
+  taskHintEl.textContent=tasks[i].hint;
+}
+function showToast(msg){ toast.textContent=msg||'再试一试'; toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>toast.classList.remove('show'),1200); }
+function showCheck(){ checkmark.classList.add('active'); clearTimeout(showCheck.t); showCheck.t=setTimeout(()=>checkmark.classList.remove('active'),520); }
+
+function setFree(on){
+  freeMode=on;
+  const card=document.getElementById('taskCard');
+  card.style.opacity = on? .25:1; card.style.filter = on? 'grayscale(.6)':'none';
+  btnFree.textContent = on? '退出自由模式' : '自由模式';
+  btnAuto.disabled = on;
+}
+
+/* —— 严格步骤守卫：初始 bandTarget 为 null（空白），只有点对才切换 —— */
+function switchBand(key){
+  if (!freeMode && !autoPlaying){
+    const need = tasks[current].key;
+    if (key!==need){ showToast('请按步骤来：' + bandNames[need]); return; }
+  }
+  bandTarget=key; flashAlpha=0.35; syncBandUI();
+  showCheck();
+  dots[current].classList.remove('active'); dots[current].classList.add('done');
+  current++;
+  if (current>=tasks.length){ completed=true; setTimeout(()=> doneMask.style.display='flex', 350); }
+  else{ dots[current].classList.add('active'); setStepUI(current); }
+}
+
+/* —— 自动演示：严格复用相同步骤推进 —— */
+function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+async function autoDemo(){
+  if (freeMode || autoPlaying) return; autoPlaying=true;
+  resetFlow(); await wait(200);
+  for (let i=0;i<tasks.length;i++){
+    setStepUI(i);
+    bandTarget=tasks[i].key; flashAlpha=0.35; syncBandUI();
+    showCheck(); dots[i].classList.remove('active'); dots[i].classList.add('done');
+    await wait(750);
+  }
+  completed=true; doneMask.style.display='flex'; autoPlaying=false;
+}
+
+/* —— 重置：回到空白 —— */
+function resetFlow(){
+  completed=false; autoPlaying=false; current=0; flashAlpha=0;
+  // 清空各自特效缓存
+  crParts.length=0; crLines.length=0;
+  rfDots.forEach(d=> d.u=Math.random());
+  hotSpots.forEach(s=> s.phase=Math.random()*Math.PI*2);
+  uvTextTimer=0; uvTextObj=null;
+
+  // UI & 步骤
+  setStepUI(0);
+  dots.forEach((d,i)=> d.className='dot' + (i===0?' active':''));
+  bandTarget=null; band=null; // —— 初始空白
+  syncBandUI();
+}
+btnReset.onclick=()=>{ if(!autoPlaying) resetFlow(); };
+btnAuto.onclick = autoDemo;
+btnFree.onclick = ()=> setFree(!freeMode);
+
+/* —— 波段按钮绑定（自由/自动允许直接切换；步骤模式需匹配当前任务） —— */
+btnMap.VIS.onclick=()=> freeMode||autoPlaying ? (bandTarget='VIS', flashAlpha=0.35, syncBandUI()) : switchBand('VIS');
+btnMap.IR.onclick =()=> freeMode||autoPlaying ? (bandTarget='IR',  flashAlpha=0.35, syncBandUI()) : switchBand('IR');
+btnMap.RF.onclick =()=> freeMode||autoPlaying ? (bandTarget='RF',  flashAlpha=0.35, syncBandUI()) : switchBand('RF');
+btnMap.UV.onclick =()=> freeMode||autoPlaying ? (bandTarget='UV',  flashAlpha=0.35, syncBandUI()) : switchBand('UV');
+btnMap.CR.onclick =()=> freeMode||autoPlaying ? (bandTarget='CR',  flashAlpha=0.35, syncBandUI()) : switchBand('CR');
+
+/* —— 初始化：空白开场 —— */
+setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
+</script>
+</body>
+</html>

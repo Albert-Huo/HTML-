@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>李白「千里江陵一日还」</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .river {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(to bottom, #4a90e2, #357abd);
+            position: relative;
+            overflow: hidden;
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .boat {
+            width: 80px;
+            height: 30px;
+            background: #8B4513;
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            border-radius: 5px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+        }
+        
+        .sail {
+            width: 0;
+            height: 0;
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-bottom: 50px solid #ffffff;
+            position: absolute;
+            top: -50px;
+            left: 20px;
+            opacity: 0.9;
+        }
+        
+        .wave {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 20px;
+            background: linear-gradient(to bottom, transparent 0%, #fff 100%);
+            animation: wave 2s infinite linear;
+            opacity: 0.3;
+        }
+
+        @keyframes wave {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(100%); }
+        }
+
+        .controls {
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .digital-clock {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: inline-block;
+        }
+
+        .location {
+            position: absolute;
+            bottom: 10px;
+            font-weight: bold;
+            background: rgba(255,255,255,0.7);
+            padding: 5px 10px;
+            border-radius: 15px;
+        }
+        #baidi { left: 10px; }
+        #jiangling { right: 10px; }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        #resetBtn {
+            background: #f44336;
+        }
+        #resetBtn:hover {
+            background: #d32f2f;
+        }
+
+        .speed-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e7f3fe;
+            border-left: 4px solid #2196F3;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .time-display {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <h1>李白「千里江陵一日还」</h1>
+    
+    <div class="controls">
+        <div>
+            <label>水流速度 (m/s): 
+                <input type="range" id="currentSpeed" min="0" max="7" step="0.1" value="4.7">
+                <span id="speedValue">4.7</span>
+            </label>
+        </div>
+        <div>
+            <button id="startBtn">开始航行</button>
+            <button id="resetBtn">重置</button>
+            <span class="digital-clock" id="timer">00:00:00</span>
+        </div>
+        <div class="time-display">
+            <div>航行时间: <span id="travelTime">12.00小时</span></div>
+            <div>实际速度: <span id="actualSpeed">41.92 km/h</span></div>
+        </div>
+        <div class="speed-info">
+            <p>动画时间比例：1秒 = 1小时</p>
+        </div>
+    </div>
+    
+    <div class="river">
+        <div class="wave"></div>
+        <div class="boat" id="boat">
+            <div class="sail"></div>
+        </div>
+        <div class="location" id="baidi">白帝城</div>
+        <div class="location" id="jiangling">江陵</div>
+    </div>
+    
+    <div style="padding:20px; background: #f9f9f9; border-radius: 5px; margin-top: 20px;">
+        <h3>物理计算说明</h3>
+        <p><strong>计算时间（白帝城→江陵）</strong></p>
+        <p>白帝城到江陵距离：500km | 帆船静水速度：25km/h (≈6.94m/s)</p>
+        
+        <h4>计算公式：</h4>
+        <p>实际速度 = 25 + 水流速度×3.6</p>
+        <p>航行时间 = 500 / 实际速度</p>
+        
+        <h4>当水流速度为4.7m/s时：</h4>
+        <ul>
+            <li>实际速度：25 + (4.7×3.6) ≈ 41.92km/h</li>
+            <li>航行时间：500 / 41.92 ≈ 11.93小时</li>
+            <li>动画压缩为12秒（1秒=1小时）</li>
+        </ul>
+    </div>
+
+    <script>
+        const boat = document.getElementById('boat');
+        const speedControl = document.getElementById('currentSpeed');
+        const speedValue = document.getElementById('speedValue');
+        const timer = document.getElementById('timer');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const travelTimeDisplay = document.getElementById('travelTime');
+        const actualSpeedDisplay = document.getElementById('actualSpeed');
+        
+        let animationFrame;
+        let startTime;
+        let isAnimating = false;
+        let currentSpeed = 4.7;
+
+        // 计算航行数据
+        function calculateTravelData(speed) {
+            const waterSpeed = speed * 3.6; // m/s → km/h
+            const actualSpeed = 25 + waterSpeed;
+            const travelTime = 500 / actualSpeed;
+            
+            // 基准时间（4.7m/s时的航行时间≈11.93小时）
+            const baseTime = 500 / (25 + 4.7 * 3.6);
+            
+            // 动画时间（保持4.7m/s时为12秒）
+            const animTime = speed === 4.7 ? 12 : (travelTime / baseTime) * 12;
+            
+            return {
+                actualSpeed: actualSpeed,
+                travelTime: travelTime,
+                animTime: animTime
+            };
+        }
+
+        function updateDisplays() {
+            const data = calculateTravelData(currentSpeed);
+            travelTimeDisplay.textContent = data.travelTime.toFixed(2) + '小时';
+            actualSpeedDisplay.textContent = data.actualSpeed.toFixed(2) + ' km/h';
+            return data;
+        }
+
+        function updateAnimation() {
+            const data = calculateTravelData(currentSpeed);
+            const animTime = data.animTime;
+            
+            const elapsed = (Date.now() - startTime) / 1000;
+            const progress = Math.min(elapsed / animTime, 1);
+            
+            // 更新船的位置
+            boat.style.left = `${progress * 90 + 5}%`;
+            
+            // 更新计时器
+            const displayTime = Math.min(elapsed, animTime);
+            const hours = Math.floor(displayTime);
+            const minutes = Math.floor((displayTime % 1) * 60);
+            const seconds = Math.floor((displayTime * 60) % 60);
+            timer.textContent = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            if (progress >= 1) {
+                isAnimating = false;
+                startBtn.disabled = false;
+                return;
+            }
+            
+            animationFrame = requestAnimationFrame(updateAnimation);
+        }
+
+        function startAnimation() {
+            if (isAnimating) return;
+            isAnimating = true;
+            startTime = Date.now();
+            startBtn.disabled = true;
+            updateAnimation();
+        }
+
+        function resetAnimation() {
+            cancelAnimationFrame(animationFrame);
+            isAnimating = false;
+            boat.style.left = "10px";
+            timer.textContent = "00:00:00";
+            startBtn.disabled = false;
+            updateDisplays();
+        }
+
+        speedControl.addEventListener('input', (e) => {
+            currentSpeed = parseFloat(e.target.value);
+            speedValue.textContent = currentSpeed;
+            updateDisplays();
+            if (isAnimating) {
+                resetAnimation();
+                startAnimation();
+            }
+        });
+
+        startBtn.addEventListener('click', startAnimation);
+        resetBtn.addEventListener('click', resetAnimation);
+
+        // 初始化
+        updateDisplays();
+    </script>
+</body>
+</html>

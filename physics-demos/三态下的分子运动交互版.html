@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>三态下的分子运动 · 互动闯关</title>
+  <style>
+    :root{
+      --card-bg: rgba(255,255,255,0.08);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --error:#ff6b6b;
+      --ink:#e9f2ff;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      background:#1a1a1a; color:#fff;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      margin:0; padding:10px;
+      display:flex; flex-direction:column; align-items:center;
+    }
+
+    /* 顶部彩带 */
+    #spectrum{
+      position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+      box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000;
+      margin: 0 0 12px; flex-shrink: 0;
+    }
+    #spectrum::before{
+      content: ""; position: absolute; inset: 0; border-radius: inherit;
+      background: linear-gradient(90deg,
+        #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+        #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+      );
+      background-size: 200% 100%;
+      animation: flowRainbow 6s linear infinite;
+    }
+    @keyframes flowRainbow{
+      0%{ background-position: 0% 0; }
+      100%{ background-position: -100% 0; }
+    }
+
+    .task-card{
+      width:100%; max-width:900px;
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      backdrop-filter: blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition: opacity .2s, filter .2s;
+    }
+    .task-step{
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .task-text{ line-height:1.55; }
+    .task-hint{ color:#ffd54f; font-size:12px; opacity:.92; }
+
+    .progress-dots{ display:flex; gap:6px; align-items:center; }
+    .dot{
+      width:10px; height:10px; border-radius:50%;
+      background: rgba(255,255,255,0.25);
+      outline:2px solid rgba(255,255,255,0.15);
+    }
+    .dot.active{ background: var(--warn); }
+    .dot.done{ background: var(--accent); outline-color: rgba(61,220,151,0.55); }
+
+    /* 画面 */
+    #stageWrap{ width:100%; max-width:900px; height:60vh; max-height:520px; margin-top:10px; }
+    #stage{
+      width:100%; height:100%;
+      border-radius: 12px;
+      background:#000;
+      position:relative;
+      overflow:hidden;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 75% 25%, rgba(255,255,255,0.06), transparent 38%),
+        radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 42%);
+    }
+
+    /* 容器（分子活动区） */
+    #container{
+      position:absolute;
+      left: 10px; right: 10px;
+      top: 54px; bottom: 10px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: #f0f8ff;
+      overflow:hidden;
+      box-shadow: inset 0 0 26px rgba(0,0,0,0.45);
+    }
+
+    /* 右上角：状态控制面板 */
+    .panel{
+      position:absolute; right:10px; top:10px; z-index:10;
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+      padding:8px;
+      background: rgba(15,15,15,0.55);
+      border:1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      backdrop-filter: blur(6px);
+      max-width: min(72%, 520px);
+    }
+    .badge{
+      font-size:12px; line-height:1;
+      padding: 6px 8px; border-radius: 999px;
+      border:1px solid rgba(255,255,255,0.16);
+      background: rgba(255,255,255,0.08);
+      color:#d7e6ff;
+      white-space:nowrap;
+    }
+    .badge b{ color:#fff; }
+
+    .state-btn{
+      padding: 8px 10px;
+      border:none;
+      border-radius: 10px;
+      cursor:pointer;
+      color:#fff;
+      font-weight:800;
+      letter-spacing:.5px;
+      transition: transform .05s, opacity .2s, background .25s;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .state-btn:active{ transform: scale(.98); }
+    .state-btn:disabled{ opacity:.55; cursor:not-allowed; }
+
+    #solidBtn{ background: linear-gradient(135deg, #4169e1, #3a5fcd); }
+    #liquidBtn{ background: linear-gradient(135deg, #00aaff, #0095e0); }
+    #gasBtn{ background: linear-gradient(135deg, #ffcc80, #ffb74d); color:#2a1400; }
+
+    /* 分子 */
+    .molecule{
+      position:absolute;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #00aaff;
+      box-shadow: 0 0 6px rgba(0,0,0,0.45);
+      will-change: transform;
+    }
+
+    /* 三按钮：画面下方靠左 */
+    .toolbar{
+      display:flex; gap:10px; flex-wrap:wrap;
+      width: 100%; max-width:900px;
+      margin-top: 10px;
+      justify-content:flex-start;
+    }
+    button{
+      padding: 10px 16px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.25s, transform .05s, opacity .2s;
+      user-select:none;
+    }
+    button:hover{ background:#5a5a5a; }
+    button:active{ transform: scale(.98); }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .checkmark{
+      position:absolute; z-index:50;
+      left:50%; top:22%;
+      transform: translate(-50%,-50%) scale(0.6);
+      width:120px; height:120px;
+      border-radius:50%;
+      background: rgba(61,220,151,0.15);
+      border: 3px solid var(--accent);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      box-shadow: 0 0 40px rgba(61,220,151,.35), inset 0 0 20px rgba(61,220,151,.2);
+      animation: pop .55s ease-out;
+    }
+    .checkmark.active{ display:flex; }
+    .checkmark > div{
+      width: 60px; height: 30px;
+      border-left: 8px solid var(--accent);
+      border-bottom: 8px solid var(--accent);
+      transform: rotate(-45deg) translateY(-6px);
+    }
+    @keyframes pop{
+      0%{ transform:translate(-50%,-50%) scale(.45); opacity:.15; }
+      60%{ transform:translate(-50%,-50%) scale(1.08); opacity:1; }
+      100%{ transform:translate(-50%,-50%) scale(.6); opacity:1; }
+    }
+
+    .toast{
+      position: fixed; left:50%; bottom: 24px;
+      transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.82);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-size: 14px;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .25s, transform .25s;
+      z-index: 200;
+      box-shadow: 0 6px 18px rgba(0,0,0,.35);
+      max-width:min(92vw, 520px);
+      text-align:center;
+    }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+    .modal-mask{
+      position: fixed; inset:0;
+      background: rgba(0,0,0,0.5);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 300;
+    }
+    .modal{
+      width:min(90vw, 380px);
+      background:#111;
+      color:#fff;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius:14px;
+      padding:18px 16px;
+      text-align:center;
+      box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    }
+    .modal h3{ margin: 8px 0 6px; font-size: 20px; color:#a2e3a9; }
+    .modal p{ color: #cfd8dc; margin: 0; line-height:1.6; }
+    .modal .ok{
+      margin-top: 12px;
+      background: var(--accent);
+      color:#081a12;
+      font-weight:800;
+      padding: 10px 18px;
+      border-radius: 10px;
+    }
+
+    .explanation{
+      width: 100%;
+      max-width: 900px;
+      margin: 14px 0 20px;
+      line-height: 1.65;
+      font-size: 0.95em;
+      color: var(--ink);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .explanation h2{ margin:.2em 0 .5em; color:#9bd3ff; font-size: 1.15em; }
+    .explanation ul{ margin:.2em 0 .2em 1.1em; }
+    .explanation li{ margin:.35em 0; }
+
+    @media (max-width: 600px){
+      .panel{ max-width: 86%; gap:6px; }
+      .state-btn{ padding: 8px 9px; border-radius: 10px; font-weight:900; }
+      #container{ left:8px; right:8px; top: 92px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">点击<strong>固态</strong>：观察分子只能在“固定位置附近”轻微振动。</div>
+      <div class="task-hint" id="taskHint">提示：步骤模式下，点错按钮只提示，不会改变画面；点对才会切换。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="stageWrap">
+    <div id="stage" aria-label="三态分子运动演示画面">
+      <div class="panel" aria-label="状态控制面板">
+        <span class="badge">当前：<b id="stateLabel">液态</b></span>
+        <button id="solidBtn" class="state-btn">固态</button>
+        <button id="liquidBtn" class="state-btn">液态</button>
+        <button id="gasBtn" class="state-btn">气态</button>
+      </div>
+
+      <div id="container"></div>
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你已经按顺序体验了：固态（振动）→ 液态（受限流动）→ 气态（高速充满容器）。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>原理说明</h2>
+    <ul>
+      <li><b>固态</b>：分子被束缚在平衡位置附近，只能快速振动。</li>
+      <li><b>液态</b>：分子可在液体范围内自由移动，但不会充满整个容器。</li>
+      <li><b>气态</b>：分子几乎自由飞行，随机碰撞容器壁，充满整个空间。</li>
+    </ul>
+  </div>
+
+<script>
+/* =========================
+   仅修复一件事：
+   ✅ 气态 -> 液态：不再“硬夹紧”液体带导致瞬间跳位
+   做法：在过渡期按液态权重对“液体带约束”做软化（弹簧回拉），
+        只有完全进入液态后才使用反弹边界。
+   其余保持你确认“都很好”的版本。
+========================= */
+
+const container = document.getElementById('container');
+const stateLabel = document.getElementById('stateLabel');
+
+const btnSolid = document.getElementById('solidBtn');
+const btnLiquid = document.getElementById('liquidBtn');
+const btnGas = document.getElementById('gasBtn');
+
+const taskCard = document.getElementById('taskCard');
+const taskStepEl = document.getElementById('taskStep');
+const taskTextEl = document.getElementById('taskText');
+const taskHintEl = document.getElementById('taskHint');
+const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+
+const resetBtn = document.getElementById('resetBtn');
+const autoDemoBtn = document.getElementById('autoDemoBtn');
+const freeBtn = document.getElementById('freeBtn');
+
+const checkmark = document.getElementById('checkmark');
+const toast = document.getElementById('toast');
+const doneMask = document.getElementById('doneMask');
+const okBtn = document.getElementById('okBtn');
+
+const sleep = (ms)=> new Promise(r=>setTimeout(r, ms));
+const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
+const lerp = (a,b,t)=> a + (b-a)*t;
+const ease = (t)=> (t<0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2);
+
+function showToast(msg){
+  toast.textContent = msg || '提示';
+  toast.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=> toast.classList.remove('show'), 1300);
+}
+function showCheck(){
+  checkmark.classList.add('active');
+  clearTimeout(showCheck._t);
+  showCheck._t = setTimeout(()=> checkmark.classList.remove('active'), 520);
+}
+function showDone(){ doneMask.style.display = 'flex'; }
+okBtn.addEventListener('click', ()=> doneMask.style.display = 'none');
+
+/* ===== Step/Mode ===== */
+let freeMode = false;
+let autoPlaying = false;
+let completed = false;
+let currentStep = 0;
+let stepTouched = [false,false,false];
+
+const tasks = [
+  { state:'solid',  text:'点击<strong>固态</strong>：观察分子只能在“固定位置附近”轻微振动。', hint:'提示：固体分子被束缚在晶格位置附近，只能做小幅振动。' },
+  { state:'liquid', text:'点击<strong>液态</strong>：观察分子可在液体范围内自由移动。', hint:'提示：液体分子能相对滑动，但仍受分子间作用，活动范围有限。' },
+  { state:'gas',    text:'点击<strong>气态</strong>：观察分子高速随机运动，充满整个容器。', hint:'提示：气体分子几乎自由飞行，随机碰撞容器壁。' },
+];
+
+function setStepUI(i){
+  currentStep = clamp(i,0,tasks.length-1);
+  taskStepEl.textContent = `步骤 ${currentStep+1} / ${tasks.length}`;
+  taskTextEl.innerHTML = tasks[currentStep].text;
+  taskHintEl.textContent = tasks[currentStep].hint;
+  dots.forEach((d,idx)=>{
+    d.className = 'dot';
+    if(idx<currentStep) d.classList.add('done');
+    if(idx===currentStep) d.classList.add('active');
+  });
+}
+
+/* ===== Molecules ===== */
+let molecules = [];
+const MOLECULE_COUNT = 56;
+let COLUMNS = 6;
+const LIQUID_RANGE = 96;
+
+function clearMolecules(){
+  molecules.forEach(m=>m.el.remove());
+  molecules = [];
+}
+function createMolecules(){
+  clearMolecules();
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+  COLUMNS = (W < 420) ? 5 : 6;
+  const spacingX = W/(COLUMNS+1);
+
+  for(let i=0;i<MOLECULE_COUNT;i++){
+    const col = i % COLUMNS;
+    const row = Math.floor(i / COLUMNS);
+
+    const el = document.createElement('div');
+    el.className = 'molecule';
+    container.appendChild(el);
+
+    const baseX = (col+1)*spacingX;
+    const baseY = (H-110) + row*15;
+
+    molecules.push({
+      el,
+      x: baseX + (Math.random()-0.5)*18,
+      y: baseY + (Math.random()-0.5)*18,
+      vx: (Math.random()-0.5)*2,
+      vy: (Math.random()-0.5)*2,
+      baseX, baseY
+    });
+  }
+}
+
+/* ===== Visual ===== */
+function applyStateVisual(state){
+  if(state==='solid'){
+    stateLabel.textContent='固态';
+    container.style.backgroundColor='#e6f7ff';
+    container.style.boxShadow='inset 0 0 30px rgba(65,105,225,0.30)';
+  }else if(state==='liquid'){
+    stateLabel.textContent='液态';
+    container.style.backgroundColor='#f0f8ff';
+    container.style.boxShadow='inset 0 0 30px rgba(0,170,255,0.28)';
+  }else{
+    stateLabel.textContent='气态';
+    container.style.backgroundColor='#fff3e0';
+    container.style.boxShadow='inset 0 0 30px rgba(255,183,77,0.30)';
+  }
+}
+
+/* ===== State blending ===== */
+let stateA = 'liquid';
+let stateB = 'liquid';
+let blending = false;
+let blendStart = 0;
+let blendDur = 900;
+let blendT = 1;
+
+function refreshBasesFor(state){
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+  COLUMNS = (W < 420) ? 5 : 6;
+  const spacingX = W/(COLUMNS+1);
+
+  if(state==='solid'){
+    molecules.forEach((m,i)=>{
+      const col = i % COLUMNS;
+      const row = Math.floor(i / COLUMNS);
+      m.baseX = (col+1)*spacingX;
+      m.baseY = (H-110) + row*15;
+    });
+  }else if(state==='liquid'){
+    molecules.forEach((m,i)=>{
+      const col = i % COLUMNS;
+      m.baseX = (col+1)*spacingX;
+      m.baseY = (H-110); // 液体带中心参考
+    });
+  }
+}
+
+function startBlend(toState){
+  if(blending) stateA = stateB;
+  stateB = toState;
+  blending = true;
+  blendStart = performance.now();
+  blendT = 0;
+
+  applyStateVisual(toState);
+  refreshBasesFor(toState);
+}
+
+function blendColor(modeA, modeB, t){
+  const c = {
+    solid: [65,105,225,1],
+    liquid:[0,170,255,1],
+    gas:   [135,206,250,0.72]
+  };
+  const a = c[modeA] || c.liquid;
+  const b = c[modeB] || c.liquid;
+  const r = Math.round(lerp(a[0], b[0], t));
+  const g = Math.round(lerp(a[1], b[1], t));
+  const bl= Math.round(lerp(a[2], b[2], t));
+  const al= lerp(a[3], b[3], t);
+  return `rgba(${r},${g},${bl},${al})`;
+}
+
+/* ===== Physics per state ===== */
+function computeAccelFor(state, m, W, H, now){
+  if(state === 'solid'){
+    // 固态更高频率振动
+    const wiggleX = Math.sin(now/90 + m.baseX*0.03) * 18;
+    const wiggleY = Math.cos(now/120 + m.baseY*0.03) * 18;
+
+    const tx = m.baseX + wiggleX*0.06;
+    const ty = m.baseY + wiggleY*0.06;
+
+    const k = 0.022;
+    const ax = (tx - m.x) * k;
+    const ay = (ty - m.y) * k;
+
+    return { ax, ay, drag: 0.84, vmax: 1.8, mode: 'solid' };
+  }
+
+  if(state === 'liquid'){
+    // 液态自由移动：随机热运动（边界由主循环处理）
+    const ax = (Math.random()-0.5) * 0.40;
+    const ay = (Math.random()-0.5) * 0.40;
+    return { ax, ay, drag: 0.94, vmax: 3.4, mode: 'liquid' };
+  }
+
+  // gas
+  const ax = (Math.random()-0.5) * 0.70;
+  const ay = (Math.random()-0.5) * 0.70;
+  return { ax, ay, drag: 0.985, vmax: 5.8, mode: 'gas' };
+}
+
+/* ===== Main loop ===== */
+let last = performance.now();
+function step(){
+  const now = performance.now();
+  const dt = clamp((now - last)/16.6667, 0.5, 2.2);
+  last = now;
+
+  const W = container.clientWidth;
+  const H = container.clientHeight;
+
+  if(blending){
+    const raw = (now - blendStart)/blendDur;
+    blendT = ease(clamp(raw, 0, 1));
+    if(raw >= 1){
+      blending = false;
+      stateA = stateB;
+      blendT = 1;
+    }
+  }else{
+    blendT = 1;
+    stateB = stateA;
+  }
+
+  const t = blending ? blendT : 1;
+  const wA = blending ? (1 - t) : 0;
+  const wB = blending ? t : 1;
+
+  // ✅ 液态权重：用来“软化液体带约束”，避免气->液瞬间夹进范围
+  const liquidWeight =
+    (blending && stateA === 'liquid' ? wA : 0) +
+    (blending && stateB === 'liquid' ? wB : (!blending && stateB === 'liquid' ? 1 : 0));
+
+  const r = 7;
+
+  // 液体带上下边界
+  const liquidCenterY = (H-110);
+  const liquidMinY = liquidCenterY - LIQUID_RANGE/2 + r;
+  const liquidMaxY = liquidCenterY + LIQUID_RANGE/2 - r;
+
+  for(const m of molecules){
+    const A = blending ? computeAccelFor(stateA, m, W, H, now) : null;
+    const B = computeAccelFor(stateB, m, W, H, now);
+
+    const ax = blending ? (A.ax*wA + B.ax*wB) : B.ax;
+    const ay = blending ? (A.ay*wA + B.ay*wB) : B.ay;
+
+    const drag = blending ? (A.drag*wA + B.drag*wB) : B.drag;
+    const vmax = blending ? (A.vmax*wA + B.vmax*wB) : B.vmax;
+
+    m.vx = (m.vx + ax*dt) * drag;
+    m.vy = (m.vy + ay*dt) * drag;
+
+    m.vx = clamp(m.vx, -vmax, vmax);
+    m.vy = clamp(m.vy, -vmax, vmax);
+
+    m.x += m.vx * dt;
+    m.y += m.vy * dt;
+
+    /* ========= 边界处理 =========
+       1) 容器边界：始终反弹（防止跑出画面）
+       2) 液体带：仅当进入“纯液态”才硬反弹
+          在过渡期（liquidWeight 介于 0..1）用“软弹簧回拉”逐渐收拢
+    */
+    if(m.x < r){ m.x = r; m.vx *= -0.85; }
+    if(m.x > W-r){ m.x = W-r; m.vx *= -0.85; }
+    if(m.y < r){ m.y = r; m.vy *= -0.85; }
+    if(m.y > H-r){ m.y = H-r; m.vy *= -0.85; }
+
+    if(liquidWeight > 0){
+      // 软回拉：离带越远，回拉越强；权重越大，回拉越强
+      const kBand = 0.018 * liquidWeight;
+
+      if(m.y < liquidMinY){
+        const d = liquidMinY - m.y;
+        m.vy += d * kBand * dt;
+      }else if(m.y > liquidMaxY){
+        const d = m.y - liquidMaxY;
+        m.vy -= d * kBand * dt;
+      }
+
+      // 只有几乎完全液态，才用硬反弹，避免“突变夹紧”
+      if(liquidWeight > 0.985){
+        if(m.y < liquidMinY){ m.y = liquidMinY; m.vy *= -0.9; }
+        if(m.y > liquidMaxY){ m.y = liquidMaxY; m.vy *= -0.9; }
+      }
+    }
+
+    // 颜色平滑
+    if(blending){
+      m.el.style.background = blendColor(A.mode, B.mode, t);
+    }else{
+      m.el.style.background = (B.mode==='solid') ? '#4169e1' : (B.mode==='liquid') ? '#00aaff' : 'rgba(135,206,250,0.72)';
+    }
+
+    m.el.style.transform = `translate(${m.x - 7}px, ${m.y - 7}px)`;
+  }
+
+  requestAnimationFrame(step);
+}
+
+/* ===== State switch + step logic ===== */
+function setState(state, fromAuto=false){
+  startBlend(state);
+
+  if(!freeMode && !completed){
+    if(tasks[currentStep].state === state){
+      stepTouched[currentStep] = true;
+      showCheck();
+      setTimeout(()=> nextStep(fromAuto), 520);
+    }
+  }
+}
+
+function nextStep(){
+  if(completed) return;
+  if(!freeMode && !stepTouched[currentStep]) return;
+
+  if(currentStep >= tasks.length - 1){
+    completed = true;
+    showDone();
+    return;
+  }
+  setStepUI(currentStep + 1);
+}
+
+function guardedSwitch(target){
+  if(autoPlaying) return;
+  if(freeMode) return setState(target,false);
+
+  const need = tasks[currentStep].state;
+  if(target !== need){
+    showToast(`现在是步骤 ${currentStep+1}：请点击「${need==='solid'?'固态':need==='liquid'?'液态':'气态'}」`);
+    return;
+  }
+  setState(target,false);
+}
+
+/* ===== Free mode ===== */
+function setFreeMode(on){
+  freeMode = on;
+  if(on){
+    taskCard.style.opacity = .25;
+    taskCard.style.filter = 'grayscale(0.6)';
+    freeBtn.textContent = '退出自由模式';
+    autoDemoBtn.disabled = true;
+    doneMask.style.display = 'none';
+    showToast('自由模式：可随意切换固/液/气观察差异');
+  }else{
+    taskCard.style.opacity = 1;
+    taskCard.style.filter = 'none';
+    freeBtn.textContent = '自由模式';
+    autoDemoBtn.disabled = false;
+    setStepUI(currentStep);
+  }
+}
+
+/* ===== Reset ===== */
+function resetFlow(){
+  completed = false;
+  doneMask.style.display = 'none';
+
+  createMolecules();
+  stateA = 'liquid';
+  stateB = 'liquid';
+  blending = false;
+  blendT = 1;
+  applyStateVisual('liquid');
+  refreshBasesFor('liquid');
+
+  if(!freeMode){
+    currentStep = 0;
+    stepTouched = [false,false,false];
+    setStepUI(0);
+  }
+
+  autoPlaying = false;
+  btnSolid.disabled = false;
+  btnLiquid.disabled = false;
+  btnGas.disabled = false;
+}
+
+/* ===== Auto demo ===== */
+async function autoDemo(){
+  if(autoPlaying || freeMode) return;
+  autoPlaying = true;
+
+  btnSolid.disabled = true;
+  btnLiquid.disabled = true;
+  btnGas.disabled = true;
+  freeBtn.disabled = true;
+
+  completed = false;
+  doneMask.style.display = 'none';
+  currentStep = 0;
+  stepTouched = [false,false,false];
+  setStepUI(0);
+
+  resetFlow();
+  await sleep(420);
+
+  stepTouched[0]=false; setState('solid', true); stepTouched[0]=true; showCheck();
+  await sleep(1100); setStepUI(1);
+
+  stepTouched[1]=false; setState('liquid', true); stepTouched[1]=true; showCheck();
+  await sleep(1100); setStepUI(2);
+
+  stepTouched[2]=false; setState('gas', true); stepTouched[2]=true; showCheck();
+  await sleep(1100);
+
+  completed = true;
+  showDone();
+
+  autoPlaying = false;
+  btnSolid.disabled = false;
+  btnLiquid.disabled = false;
+  btnGas.disabled = false;
+  freeBtn.disabled = false;
+}
+
+/* ===== Events ===== */
+btnSolid.addEventListener('click', ()=> guardedSwitch('solid'));
+btnLiquid.addEventListener('click', ()=> guardedSwitch('liquid'));
+btnGas.addEventListener('click', ()=> guardedSwitch('gas'));
+
+resetBtn.addEventListener('click', ()=> { if(!autoPlaying) resetFlow(); });
+autoDemoBtn.addEventListener('click', ()=> { if(!autoPlaying) autoDemo(); });
+freeBtn.addEventListener('click', ()=> { if(!autoPlaying) setFreeMode(!freeMode); });
+
+/* ===== Responsive ===== */
+let resizeTimer=null;
+function safeResize(){
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(()=>{
+    const keep = blending ? stateB : stateA;
+    createMolecules();
+    stateA = keep; stateB = keep; blending=false; blendT=1;
+    applyStateVisual(keep);
+    refreshBasesFor(keep);
+  }, 180);
+}
+window.addEventListener('resize', safeResize);
+window.addEventListener('orientationchange', safeResize);
+
+/* ===== Init ===== */
+function init(){
+  createMolecules();
+  stateA = 'liquid';
+  stateB = 'liquid';
+  blending = false;
+  blendT = 1;
+  applyStateVisual('liquid');
+  refreshBasesFor('liquid');
+  setStepUI(0);
+  step();
+}
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum=1"/>
+<title>物体为什么有不同颜色</title>
+<style>
+  :root{
+    --accent:#3ddc97; --warn:#ffb74d; --ink:#e9f2ff;
+  }
+  body{ background:#1a1a1a; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center;}
+
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+  /* 步骤卡 */
+  .task-card{
+    width:100%; max-width:900px; background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s;
+  }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 舞台 */
+  .stageWrap{ width:100%; max-width:900px; height:60vh; max-height:520px; margin-top:10px; }
+  #stage{
+    position: relative; width: 100%; height:100%; overflow:hidden; border-radius:12px;
+    background: radial-gradient(ellipse at 60% 50%, #0b0f1a 0%, #080a12 60%, #06070c 100%);
+    box-shadow:0 8px 24px rgba(0,0,0,.3);
+  }
+
+  /* 灯与光线（长度、角度由 JS 计算） */
+  .lamp{
+    position:absolute; width:60px; height:60px; border-radius:50%;
+    background: radial-gradient(#fff,#dcdcdc); box-shadow:0 0 22px rgba(255,255,255,.65), 0 0 60px rgba(255,255,255,.35);
+  }
+  .beam, .reflection{
+    position:absolute; height:2px; width:0;
+    transform-origin: 0 50%;
+    opacity:0;
+  }
+  .beam{ filter: drop-shadow(0 0 12px currentColor); }
+  .reflection{ filter: drop-shadow(0 0 10px currentColor); }
+
+  @keyframes beamGrow{
+    0%{ width:0; opacity:0; } 15%{ opacity:.9; } 50%{ width: var(--len, 240px); opacity:.95; }
+    85%{ width: var(--len, 240px); opacity:0; } 100%{ width: var(--len, 240px); opacity:0; }
+  }
+  @keyframes reflectGrow{
+    0%{ width:0; opacity:0; } 35%{ opacity:0; } 55%{ opacity:.85; width:0; }
+    95%{ width: var(--len, 240px); opacity:.85; } 100%{ width: var(--len, 240px); opacity:0; }
+  }
+
+  /* 居中的水果容器 —— 初始隐藏（步骤一点击后出现） */
+  .fruit-container{
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:160px; height:160px; display:none; align-items:center; justify-content:center; pointer-events:none;
+  }
+  .fruit{
+    position: relative; width: 100px; height: 100px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ff6666, #cc3333);
+    box-shadow: inset 0 0 18px rgba(0,0,0,0.28), 0 10px 18px rgba(0,0,0,0.25);
+    transition: box-shadow .5s;
+  }
+  /* 把儿默认样式，具体高度在 JS 里按水果微调 */
+  .stem{ position:absolute; left:50%; transform:translateX(-50%); width:6px; height:20px; top:-14px; background:#339933; border-radius:3px; }
+
+  /* 画面内控制（右上角） */
+  .inPanel{
+    position:absolute; right:10px; top:10px; z-index:10; display:flex; flex-direction:column; gap:8px;
+    background: rgba(15,15,15,0.55); border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px; padding:10px; backdrop-filter: blur(6px); width:max-content;
+  }
+  .inPanel h4{ margin:2px 0 6px; font-size:13px; opacity:.95; }
+  .row{ display:flex; gap:6px; flex-wrap:wrap; }
+  .pill{ padding:7px 10px; background:#2f2f2f; color:#fff; border:none; border-radius:8px; font-size:13px; cursor:pointer; }
+  .pill:hover{ background:#454545; } .pill:active{ transform:scale(.98); }
+  .pill.active{ outline:2px solid #ffffff33; box-shadow:0 0 0 2px #ffffff22 inset; }
+
+  /* 底部三按钮 */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; }
+  .toolbar button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s, transform .05s, opacity .2s; }
+  .toolbar button:hover{ background:#5a5a5a;} .toolbar button:active{ transform:scale(.98);} .toolbar button:disabled{ opacity:.5; cursor:not-allowed;}
+
+  /* 对勾 / Toast / 完成弹窗 */
+  .checkmark{ position:absolute; z-index:50; left:50%; top:20%; transform:translate(-50%,-50%) scale(0.6);
+    width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,0.15); border:3px solid var(--accent);
+    display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25); }
+  .checkmark.active{ display:flex; }
+  .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.8); color:#fff; padding:10px 14px; border-radius:10px; font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; }
+  .modal h3{ margin:8px 0 6px; font-size:20px; } .modal p{ color:#cfd8dc; margin-top:0; }
+  .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; border:none; border-radius:10px; padding:10px 14px; }
+
+  /* 说明 */
+  .explain{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink);}
+  .explain h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em;}
+</style>
+</head>
+<body>
+  <!-- 彩色条 -->
+  <div id="spectrum"></div>
+
+  <!-- 步骤卡（6 步） -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 6</div>
+    <div class="task-text">
+      <div id="taskText">选择<strong>红苹果</strong>，并用<strong>白光</strong>照射（无滤光片）。</div>
+      <div class="task-hint" id="taskHint">提示：右上角点「物体→红苹果」，再点「光源→白光」。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+      <span class="dot" id="dot4"></span>
+      <span class="dot" id="dot5"></span>
+      <span class="dot" id="dot6"></span>
+    </div>
+  </div>
+
+  <!-- 舞台 -->
+  <div class="stageWrap">
+    <div id="stage">
+      <!-- 灯泡与光束 -->
+      <div class="lamp" id="lamp"></div>
+      <div class="beam" id="beam"></div>
+      <div class="reflection" id="reflection"></div>
+
+      <!-- 水果（初始隐藏；点击后出现） -->
+      <div class="fruit-container" id="fruitBox">
+        <div class="fruit" id="fruit"></div>
+        <div class="stem" id="stem"></div>
+      </div>
+
+      <!-- 画面内控制 -->
+      <div class="inPanel" id="panel">
+        <div>
+          <h4>光源</h4>
+          <div class="row" id="lightRow">
+            <button class="pill" data-light="white">白光</button>
+            <button class="pill" data-light="red">红光</button>
+            <button class="pill" data-light="green">绿光</button>
+            <button class="pill" data-light="blue">蓝光</button>
+          </div>
+        </div>
+        <div>
+          <h4>物体</h4>
+          <div class="row" id="objRow">
+            <button class="pill" data-obj="apple">红苹果</button>
+            <button class="pill" data-obj="pear">绿梨子</button>
+            <button class="pill" data-obj="blueberry">蓝蓝莓</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <!-- 底部三个主按钮 -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <!-- Toast & 完成弹窗 -->
+  <div class="toast" id="toast">再试一试：请按提示完成本步骤</div>
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3>完成，你真棒！🎉</h3>
+      <p>你已完成 6 个观察：白光下本色 → 变换光色看变暗 → 换物体再验证 → 再换光色 → 蓝莓/白光 → 红光下蓝莓变暗。</p>
+      <button class="ok" id="okBtn">好的</button>
+    </div>
+  </div>
+
+  <!-- 说明 -->
+  <div class="explain">
+    <h2>为什么物体有不同颜色？</h2>
+    <ul>
+      <li><b>选择性反射/吸收：</b>红苹果主要反射红光，吸收绿/蓝，所以白光照射时呈红。</li>
+      <li><b>光源决定“可见通道”：</b>红苹果在绿/蓝光下缺少可反射通道，显暗。</li>
+      <li><b>同一逻辑可验证不同物体：</b>绿梨、蓝蓝莓在不同光色下会更亮或更暗。</li>
+    </ul>
+  </div>
+
+<script>
+/* ========= 复用原动画思想 + 精确对准 ========= */
+const stage = document.getElementById('stage');
+const lamp  = document.getElementById('lamp');
+const fruitBox = document.getElementById('fruitBox');
+const fruit = document.getElementById('fruit');
+const stem  = document.getElementById('stem');
+const beam  = document.getElementById('beam');
+const reflection = document.getElementById('reflection');
+
+const lightRow = document.getElementById('lightRow');
+const objRow   = document.getElementById('objRow');
+const resetBtn = document.getElementById('resetBtn');
+const autoBtn  = document.getElementById('autoBtn');
+const freeBtn  = document.getElementById('freeBtn');
+const checkmark= document.getElementById('checkmark');
+const doneMask = document.getElementById('doneMask');
+const okBtn    = document.getElementById('okBtn');
+const toast    = document.getElementById('toast');
+
+const taskStepEl = document.getElementById('taskStep');
+const taskTextEl = document.getElementById('taskText');
+const taskHintEl = document.getElementById('taskHint');
+const dots = [1,2,3,4,5,6].map(i=>document.getElementById('dot'+i));
+
+let freeMode=false, autoPlaying=false, completed=false, successCooldown=false;
+const state = { obj:null, light:null };
+
+/* —— 水果造型（与原文件风格一致） —— */
+function showFruit(type){
+  // 显示容器（初始隐藏）
+  fruitBox.style.display = 'flex';
+
+  fruit.style.transition = 'box-shadow .5s, background .2s, border-radius .2s, width .2s, height .2s';
+  stem.style.transition  = 'height .2s, top .2s';
+
+  if(type==='apple'){
+    fruit.style.width='100px'; fruit.style.height='100px';
+    fruit.style.borderRadius='60% 60% 55% 55%';
+    fruit.style.background='radial-gradient(circle at 30% 30%, #ff6666, #cc3333)';
+    stem.style.height='20px'; stem.style.top='-6px';       // 更贴近果实
+  }else if(type==='pear'){
+    fruit.style.width='94px'; fruit.style.height='118px';
+    fruit.style.borderRadius='55% 55% 65% 65% / 50% 50% 60% 60%';
+    fruit.style.background='radial-gradient(circle at 30% 30%, #66ff66, #33cc33)';
+    stem.style.height='22px'; stem.style.top='-10px';      // 更贴近果实
+  }else if(type==='blueberry'){
+    fruit.style.width='92px'; fruit.style.height='92px';
+    fruit.style.borderRadius='50%';
+    fruit.style.background='radial-gradient(circle at 30% 30%, #8888ff, #4444cc)';
+    stem.style.height='15px'; stem.style.top='-3px';       // 更贴近果实
+  }
+  state.obj = type;
+  if(state.light) shineLight(state.light);
+}
+
+/* —— 灯位置：左侧 16% 宽、距顶 22% 高 —— */
+function placeLamp(){
+  const r = stage.getBoundingClientRect();
+  const L = { x: r.width*0.16, y: r.height*0.22 };
+  lamp.style.left = (L.x - lamp.offsetWidth/2) + 'px';
+  lamp.style.top  = (L.y - lamp.offsetHeight/2) + 'px';
+  return L;
+}
+
+/* —— 获取水果中心（舞台几何中心） —— */
+function fruitCenter(){
+  const r = stage.getBoundingClientRect();
+  return { x: r.width/2, y: r.height/2 };
+}
+
+/* —— 发光：动态计算角度与长度，让光线“打在”水果中心 —— */
+function shineLight(color){
+  const L = placeLamp();
+  const C = fruitCenter();
+
+  // 入射颜色
+  let cIn = 'rgba(255,255,255,0.95)';
+  if(color==='red') cIn='rgba(255,0,0,0.95)';
+  if(color==='green') cIn='rgba(0,255,0,0.95)';
+  if(color==='blue') cIn='rgba(0,0,255,0.95)';
+
+  // 反射颜色（仅当匹配“本色”或白光时形成明显反射）
+  let cRef = 'transparent';
+  if (state.obj==='apple'    && (color==='white'||color==='red'))   cRef='rgba(255,0,0,0.80)';
+  if (state.obj==='pear'     && (color==='white'||color==='green')) cRef='rgba(0,255,0,0.80)';
+  if (state.obj==='blueberry'&& (color==='white'||color==='blue'))  cRef='rgba(0,0,255,0.80)';
+
+  // 角度 & 长度（入射：从灯→果心）
+  const dx = C.x - L.x, dy = C.y - L.y;
+  const ang = Math.atan2(dy, dx);
+  const lenIn = Math.hypot(dx, dy);
+
+  // 入射光束样式
+  beam.style.left = L.x + 'px';
+  beam.style.top  = L.y + 'px';
+  beam.style.transform = `rotate(${ang}rad)`;
+  beam.style.setProperty('--len', lenIn + 'px');
+  beam.style.color = cIn;
+  beam.style.background = `linear-gradient(90deg, transparent, currentColor)`;
+  beam.style.animation = 'none'; void beam.offsetWidth;
+  beam.style.animation = 'beamGrow 1.6s forwards';
+  beam.style.opacity = 1;
+
+  // 反射方向：横向镜像，向右上方射出
+  const angRef = Math.PI - ang;
+  const lenRef = Math.min(lenIn * 0.9, Math.max(180, lenIn*0.6));
+
+  reflection.style.left = C.x + 'px';
+  reflection.style.top  = C.y + 'px';
+  reflection.style.transform = `rotate(${angRef}rad)`;
+  reflection.style.setProperty('--len', lenRef + 'px');
+  reflection.style.color = cRef;
+  reflection.style.background = `linear-gradient(90deg, transparent, currentColor)`;
+  reflection.style.animation = 'none'; void reflection.offsetWidth;
+  reflection.style.animation = 'reflectGrow 1.8s forwards';
+  reflection.style.opacity = cRef==='transparent' ? 0 : 1;
+
+  // 高亮果实
+  if (cRef !== 'transparent') {
+    fruit.style.boxShadow = `0 0 30px 10px ${cRef}`;
+    setTimeout(()=>{ fruit.style.boxShadow = 'inset 0 0 18px rgba(0,0,0,0.28), 0 10px 18px rgba(0,0,0,0.25)'; }, 1800);
+  }
+
+  state.light = color;
+}
+
+/* ============ 步骤机制（6步）、守卫、自动演示、自由模式 ============ */
+function setActive(group, keyAttr, val){
+  [...group.querySelectorAll('.pill')].forEach(btn=>{
+    if(btn.dataset[keyAttr]===val) btn.classList.add('active'); else btn.classList.remove('active');
+  });
+}
+function showToast(msg){ toast.textContent=msg||'再试一试'; toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>toast.classList.remove('show'),1200); }
+function showCheck(){ checkmark.classList.add('active'); clearTimeout(showCheck.t); showCheck.t=setTimeout(()=>checkmark.classList.remove('active'),520); }
+function showDone(){ doneMask.style.display='flex'; } okBtn.onclick = ()=> doneMask.style.display='none';
+
+const tasks = [
+  { text:'选择<strong>红苹果</strong>，并用<strong>白光</strong>照射（无滤光片）。', hint:'点「物体→红苹果」「光源→白光」。',
+    guard:{ allow:['obj:apple','light:white'] },
+    check:()=> state.obj==='apple' && state.light==='white' },
+
+  { text:'保持红苹果，改用<strong>绿光</strong>照射。看看会怎样？', hint:'点「光源→绿光」。',
+    guard:{ allow:['light:green'] },
+    check:()=> state.obj==='apple' && state.light==='green' },
+
+  { text:'把光源改回<strong>白光</strong>，再把物体换成<strong>绿梨子</strong>。', hint:'点「光源→白光」「物体→绿梨子」。',
+    guard:{ allow:['light:white','obj:pear'] },
+    check:()=> state.obj==='pear' && state.light==='white' },
+
+  { text:'保持绿梨子，改用<strong>蓝光</strong>照射。', hint:'点「光源→蓝光」。',
+    guard:{ allow:['light:blue'] },
+    check:()=> state.obj==='pear' && state.light==='blue' },
+
+  { text:'选择<strong>蓝蓝莓</strong>，再用<strong>白光</strong>照射。', hint:'点「物体→蓝蓝莓」「光源→白光」。',
+    guard:{ allow:['obj:blueberry','light:white'] },
+    check:()=> state.obj==='blueberry' && state.light==='white' },
+
+  { text:'保持蓝蓝莓，改用<strong>红光</strong>照射。观察变化。', hint:'点「光源→红光」。',
+    guard:{ allow:['light:red'] },
+    check:()=> state.obj==='blueberry' && state.light==='red' },
+];
+let currentTask=0;
+
+function setStepUI(i){
+  i=Math.max(0, Math.min(i, tasks.length-1));
+  dots.forEach((d,k)=>{ d.className='dot' + (k<i ? ' done' : k===i ? ' active' : ''); });
+  taskStepEl.textContent = `步骤 ${i+1} / ${tasks.length}`;
+  taskTextEl.innerHTML = tasks[i].text;
+  taskHintEl.textContent = tasks[i].hint;
+}
+function lockSuccess(){ successCooldown=true; setTimeout(()=>successCooldown=false, 450); }
+function nextTask(){
+  showCheck(); lockSuccess();
+  dots[currentTask].classList.remove('active'); dots[currentTask].classList.add('done');
+  currentTask++;
+  if(currentTask>=tasks.length){ completed=true; setTimeout(showDone, 340); return; }
+  dots[currentTask].classList.add('active'); setStepUI(currentTask);
+}
+
+function inStepMode(){ return !freeMode && !autoPlaying && !completed; }
+function guardClick(kind, val, onPass){
+  if(!inStepMode()){ onPass(); return; }
+  const allow = tasks[currentTask].guard?.allow || [];
+  const key = `${kind}:${val}`;
+  if(allow.includes(key)){ onPass(); }
+  else{ showToast(tasks[currentTask].hint || '再试一试'); }
+}
+function evalAndMaybeNext(){
+  if(!inStepMode() || successCooldown || completed) return;
+  const ok = tasks[currentTask].check();
+  if(ok) nextTask();
+}
+
+/* —— 面板事件 —— */
+lightRow.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-light]'); if(!btn) return;
+  const val = btn.dataset.light;
+  guardClick('light', val, ()=>{
+    setActive(lightRow, 'light', val);
+    shineLight(val);
+    evalAndMaybeNext();
+  });
+});
+objRow.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-obj]'); if(!btn) return;
+  const val = btn.dataset.obj;
+  guardClick('obj', val, ()=>{
+    setActive(objRow, 'obj', val);
+    showFruit(val);
+    evalAndMaybeNext();
+  });
+});
+
+/* —— 三按钮：重置 / 自动演示 / 自由模式 —— */
+function setFreeMode(on){
+  freeMode=on;
+  const card=document.getElementById('taskCard');
+  if(on){ card.style.opacity=.25; card.style.filter='grayscale(.6)'; freeBtn.textContent='退出自由模式'; autoBtn.disabled=true; }
+  else { card.style.opacity=1; card.style.filter='none'; freeBtn.textContent='自由模式'; autoBtn.disabled=false; }
+}
+function stepReset(){
+  autoPlaying=false; completed=false; successCooldown=false;
+  currentTask=0; setStepUI(0);
+  dots.forEach((d,i)=> d.className='dot' + (i===0?' active':''));
+  state.obj=null; state.light=null;
+  setActive(objRow,'obj',''); setActive(lightRow,'light','');
+  [beam,reflection].forEach(el=>{ el.style.animation='none'; el.style.opacity=0; });
+  // 初始不显示水果
+  fruitBox.style.display='none';
+  placeLamp();
+}
+const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+
+/* —— 判断某一步是否会出现反射光（供自动演示节奏用） —— */
+function willReflect(obj, light){
+  if (obj==='apple'     && (light==='white'||light==='red'))   return true;
+  if (obj==='pear'      && (light==='white'||light==='green')) return true;
+  if (obj==='blueberry' && (light==='white'||light==='blue'))  return true;
+  return false;
+}
+
+async function autoDemo(){
+  if(freeMode || autoPlaying) return; autoPlaying=true;
+  try{
+    stepReset(); await sleep(300);
+
+    // 1 红苹果 + 白光（出现水果）
+    showFruit('apple'); setActive(objRow,'obj','apple'); await sleep(260);
+    shineLight('white'); setActive(lightRow,'light','white');
+    await sleep(willReflect(state.obj,'white') ? 2100 : 900);
+    evalAndMaybeNext(); await sleep(260);
+
+    // 2 绿光
+    shineLight('green'); setActive(lightRow,'light','green');
+    await sleep(willReflect(state.obj,'green') ? 2100 : 900);
+    evalAndMaybeNext(); await sleep(260);
+
+    // 3 白光 + 换梨
+    shineLight('white'); setActive(lightRow,'light','white');
+    await sleep(800);
+    showFruit('pear'); setActive(objRow,'obj','pear'); await sleep(320);
+    shineLight('white');
+    await sleep(willReflect(state.obj,'white') ? 2100 : 900);
+    evalAndMaybeNext(); await sleep(260);
+
+    // 4 蓝光
+    shineLight('blue'); setActive(lightRow,'light','blue');
+    await sleep(willReflect(state.obj,'blue') ? 2100 : 900);
+    evalAndMaybeNext(); await sleep(260);
+
+    // 5 蓝莓 + 白光
+    showFruit('blueberry'); setActive(objRow,'obj','blueberry'); await sleep(320);
+    shineLight('white'); setActive(lightRow,'light','white');
+    await sleep(willReflect(state.obj,'white') ? 2100 : 900);
+    evalAndMaybeNext(); await sleep(260);
+
+    // 6 红光
+    shineLight('red'); setActive(lightRow,'light','red');
+    await sleep(willReflect(state.obj,'red') ? 2100 : 900);
+    evalAndMaybeNext(); await sleep(360);
+
+  } finally { autoPlaying=false; }
+}
+
+resetBtn.onclick = ()=>{ if(autoPlaying) return; stepReset(); };
+autoBtn.onclick  = ()=>{ if(!autoPlaying) autoDemo(); };
+freeBtn.onclick  = ()=> setFreeMode(!freeMode);
+
+/* —— 自适应：舞台尺寸变化时重算对准 —— */
+let resizeT=null;
+window.addEventListener('resize', ()=>{ clearTimeout(resizeT); resizeT=setTimeout(()=>{ placeLamp(); if(state.light) shineLight(state.light); }, 120); });
+
+/* 启动 */
+placeLamp();
+setStepUI(0);
+</script>
+</body>
+</html>

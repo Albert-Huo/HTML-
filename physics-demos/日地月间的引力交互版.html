@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>引力真相：太阳 vs 地球</title>
+  <style>
+    /* ====== 复用 UI 框架 (Course Gen Standard) ====== */
+    :root{
+      --card-bg: rgba(255,255,255,0.08);
+      --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --ink:#e9f2ff;
+      --sun-color: #ffaa00;
+      --earth-color: #00bfff;
+    }
+    body{ background:#1a1a1a; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center;}
+
+     /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+    /* 任务卡片 */
+    .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+      display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s;}
+    .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+    .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+    .progress-dots{ display:flex; gap:6px; align-items:center; }
+    .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+    .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+    /* 按钮栏 */
+    .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+    button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s, transform .05s, opacity .2s; user-select:none;}
+    button:hover{ background:#5a5a5a;} button:active{ transform:scale(.98);} button:disabled{ opacity:.5; cursor:not-allowed;}
+    
+    /* 模拟画布 */
+    #canvasWrap{ width:100%; max-width:900px; height:60vh; max-height:500px; margin-top:10px; position: relative;}
+    canvas { width:100%; height:100%; background:#000; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.3); touch-action:none; display: block; }
+    
+    /* 画布内控制层 */
+    .hud{ position:absolute; top:12px; left:12px; display:flex; flex-direction:column; gap:8px; pointer-events:none; z-index: 10; }
+    .hud-item { background:rgba(0,0,0,0.6); padding:4px 8px; border-radius:6px; font-size:12px; color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.1); width:fit-content;}
+    
+    /* 修复重点：增加 z-index 确保可点击 */
+    .ctrl-panel {
+      position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+      display:flex; gap:15px; background:rgba(20,20,20,0.9); padding:10px 20px; border-radius:30px;
+      border:1px solid rgba(255,255,255,0.2); backdrop-filter: blur(8px);
+      z-index: 100; /* 关键修复：置于最上层 */
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .toggle-group { display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; font-size:13px; transition: opacity 0.2s; opacity: 1; }
+    /* 当 input 被禁用时，让 label 变暗 */
+    .toggle-group:has(input:disabled) { opacity: 0.4; cursor: not-allowed; }
+    
+    .toggle-group input { accent-color: var(--accent); cursor:pointer; width:16px; height:16px; margin:0;}
+    .label-sun { color: var(--sun-color); font-weight: 500; }
+    .label-earth { color: var(--earth-color); font-weight: 500; }
+
+    /* 通用反馈组件 */
+    .checkmark{ position:absolute; z-index:150; left:50%; top:40%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15);
+      border:3px solid var(--accent); display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25); animation:pop .55s ease-out;}
+    .checkmark.active{ display:flex;} .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+    @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)} }
+
+    .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.8); color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.35);
+      font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200;}
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+    .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:300; }
+    .modal{ width:min(90vw,380px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:20px; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,.6);}
+    .modal h3{ margin:8px 0 10px; font-size:22px; color:var(--accent);} 
+    .modal p{ color:#b0bec5; margin:10px 0; line-height:1.6;} 
+    .modal .ok{ margin-top:16px; background:var(--accent); color:#081a12; font-weight:700; width:100%; font-size:16px; padding:12px; border:none; border-radius: 8px; cursor: pointer;}
+
+    .explanation{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.7; font-size:.95em; color:var(--ink); background:rgba(255,255,255,0.03); padding:16px; border-radius:12px;}
+    .explanation h2{ margin:.2em 0 .6em; color:#9bd3ff; font-size:1.2em; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:8px;} 
+    .explanation ul{ margin:0; padding-left:1.2em; }
+    .explanation li { margin-bottom: 8px; }
+    .hl { color: var(--warn); font-weight:bold; }
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">初始化中...</div>
+      <div class="task-hint" id="taskHint"></div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="simCanvas"></canvas>
+    
+    <div class="hud">
+      <div class="hud-item" id="forceRatioHud" style="opacity:0; transition: opacity 0.5s;">引力倍数：F日 ≈ 2.2 × F地</div>
+    </div>
+
+    <div class="ctrl-panel">
+      <label class="toggle-group label-earth">
+        <input type="checkbox" id="checkEarthForce"> 地球引力
+      </label>
+      <label class="toggle-group label-sun">
+        <input type="checkbox" id="checkSunForce"> 太阳引力
+      </label>
+      <label class="toggle-group" style="color:#ddd; border-left:1px solid rgba(255,255,255,0.2); padding-left:12px; margin-left:6px;">
+        <input type="checkbox" id="checkTrail"> 显示轨迹
+      </label>
+    </div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">请按提示操作</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3 id="doneTitle">科学真相大揭秘 🎉</h3>
+      <p>虽然月球是地球的卫星，但<strong>太阳对月球的引力其实更大</strong>（约是地球引力的 2.2 倍）！</p>
+      <p>从轨迹上看，月球并不是在画“圈圈”，而是在像一条<strong>波浪线</strong>一样绕着太阳前进。</p>
+      <button class="ok" id="okBtn">明白了</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>为什么地球没把月球“输”给太阳？</h2>
+    <ul>
+      <li><strong>引力拔河：</strong> 计算表明，太阳对月球的引力确实比地球大（F日 > F地）。</li>
+      <li><strong>既然如此，月球为何不飞走？</strong> 因为地球和月球其实是在一起“掉向”太阳（公转）。月球是在围绕太阳公转的同时，被地球的引力“束缚”在了一个小范围内摆动。</li>
+      <li><strong>真实轨迹：</strong> 正如最后一步所示，月球的运动轨迹是一条围绕太阳的<strong>螺旋曲线</strong>（始终凹向太阳），而不是很多人想象的螺旋弹簧圈。</li>
+    </ul>
+  </div>
+
+<script>
+/**
+ * 修复版逻辑：
+ * 1. 增加 ctrl-panel 的 z-index，防止 Canvas 遮挡点击。
+ * 2. 优化 toggleFreeMode 逻辑，强制移除 disabled 属性。
+ */
+
+const canvas = document.getElementById('simCanvas');
+const ctx = canvas.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+
+// DOM 引用
+const ui = {
+  step: document.getElementById('taskStep'),
+  text: document.getElementById('taskText'),
+  hint: document.getElementById('taskHint'),
+  dots: [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')],
+  checkEarth: document.getElementById('checkEarthForce'),
+  checkSun: document.getElementById('checkSunForce'),
+  checkTrail: document.getElementById('checkTrail'),
+  hudRatio: document.getElementById('forceRatioHud'),
+  toast: document.getElementById('toast'),
+  checkmark: document.getElementById('checkmark'),
+  doneMask: document.getElementById('doneMask'),
+  okBtn: document.getElementById('okBtn'),
+  btnReset: document.getElementById('resetBtn'),
+  btnAuto: document.getElementById('autoDemoBtn'),
+  btnFree: document.getElementById('freeBtn'),
+  taskCard: document.getElementById('taskCard')
+};
+
+// 模拟参数
+const SIM = {
+  cx: 0, cy: 0, // 画布中心
+  t: 0,
+  sunR: 50,
+  earthOrbitR: 220, // 地球绕日半径
+  earthR: 18,
+  moonOrbitR: 45,   // 月球绕地半径 (夸大以便观察)
+  moonR: 8,
+  
+  speedEarth: 0.005,
+  speedMoon: 0.045, // 月球转得快
+  
+  // 视角控制
+  scale: 2.5,       // 初始放大倍数 (聚焦地球)
+  cameraX: 0,       // 摄像机追踪的X偏移
+  cameraY: 0,
+  
+  targetScale: 2.5,
+  targetCamX: 0,
+  targetCamY: 0,
+  
+  trails: [] // 轨迹点
+};
+
+// 状态管理
+let stepIndex = 0;
+let freeMode = false;
+let autoPlaying = false;
+let completed = false;
+
+/* ====== 任务流程 ====== */
+const tasks = [
+  {
+    text: "我们先观察<strong>地月系统</strong>。月球绕着地球转，请开启<strong>地球引力</strong>。",
+    hint: "勾选下方的【地球引力】开关，观察蓝色的引力矢量。",
+    setup: () => {
+      setCamera('earth');
+      ui.checkEarth.disabled = false; ui.checkEarth.checked = false;
+      ui.checkSun.disabled = true;    ui.checkSun.checked = false;
+      ui.checkTrail.disabled = true;  ui.checkTrail.checked = false;
+      ui.hudRatio.style.opacity = 0;
+    },
+    check: () => ui.checkEarth.checked && !ui.checkSun.checked
+  },
+  {
+    text: "视角拉远！其实它们都在绕<strong>太阳</strong>转。请开启<strong>太阳引力</strong>并对比大小。",
+    hint: "勾选【太阳引力】。注意看：指向太阳的橙色箭头是不是比蓝色的长？",
+    setup: () => {
+      setCamera('sun'); // 切换到宏观视角
+      ui.checkEarth.disabled = true; // 锁定上一步
+      ui.checkSun.disabled = false;
+      ui.hudRatio.style.opacity = 0.5;
+    },
+    check: () => ui.checkSun.checked
+  },
+  {
+    text: "最后，开启<strong>显示轨迹</strong>。月球真的是在画圆圈吗？",
+    hint: "勾选【显示轨迹】，观察月球在宇宙中真正的运行路线。",
+    setup: () => {
+      ui.checkSun.disabled = true;
+      ui.checkTrail.disabled = false;
+      ui.hudRatio.style.opacity = 1;
+    },
+    check: () => ui.checkTrail.checked
+  }
+];
+
+/* ====== 交互逻辑 ====== */
+function setStep(idx) {
+  if (idx >= tasks.length) {
+    finishGame();
+    return;
+  }
+  stepIndex = idx;
+  
+  // UI 更新
+  ui.step.textContent = `步骤 ${idx + 1} / 3`;
+  ui.text.innerHTML = tasks[idx].text;
+  ui.hint.textContent = tasks[idx].hint;
+  ui.dots.forEach((d, i) => {
+    d.className = `dot ${i < idx ? 'done' : (i === idx ? 'active' : '')}`;
+  });
+
+  // 执行场景设置
+  tasks[idx].setup();
+}
+
+function checkTask() {
+  if (freeMode || autoPlaying || completed) return;
+  const task = tasks[stepIndex];
+  if (task && task.check()) {
+    showCheck();
+    // 延迟进入下一步
+    setTimeout(() => {
+      setStep(stepIndex + 1);
+    }, 1000);
+  }
+}
+
+// 按钮与开关事件
+ui.checkEarth.onchange = checkTask;
+ui.checkSun.onchange = checkTask;
+ui.checkTrail.onchange = checkTask;
+
+// 修复后的自由模式逻辑
+ui.btnFree.onclick = () => {
+  freeMode = !freeMode;
+  ui.btnFree.textContent = freeMode ? "退出自由模式" : "自由模式";
+  ui.btnAuto.disabled = freeMode;
+  ui.taskCard.style.opacity = freeMode ? 0.3 : 1;
+  ui.taskCard.style.filter = freeMode ? 'grayscale(0.8)' : 'none';
+  
+  if (freeMode) {
+    // 强制解锁所有控件
+    ui.checkEarth.disabled = false;
+    ui.checkSun.disabled = false;
+    ui.checkTrail.disabled = false;
+    
+    // 视角切换到宏观，方便玩耍
+    setCamera('sun');
+    ui.hudRatio.style.opacity = 1;
+    showToast("自由模式：所有开关已解锁，请随意探索");
+  } else {
+    resetSim();
+    showToast("已回到教学流程");
+  }
+};
+
+ui.btnReset.onclick = () => { if (!autoPlaying) resetSim(); };
+ui.btnAuto.onclick = runAutoDemo;
+ui.okBtn.onclick = () => { ui.doneMask.style.display = 'none'; };
+
+function showCheck() {
+  ui.checkmark.classList.add('active');
+  setTimeout(() => ui.checkmark.classList.remove('active'), 600);
+}
+
+function finishGame() {
+  completed = true;
+  ui.doneMask.style.display = 'flex';
+  ui.step.textContent = "演示完成";
+  ui.text.textContent = "你已经掌握了天体运动的相对性！";
+  ui.hint.textContent = "";
+  ui.dots[2].className = "dot done";
+  
+  // 完成后允许自由玩耍
+  ui.checkEarth.disabled = false;
+  ui.checkSun.disabled = false;
+  ui.checkTrail.disabled = false;
+}
+
+function showToast(msg) {
+  ui.toast.textContent = msg;
+  ui.toast.classList.add('show');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => ui.toast.classList.remove('show'), 1500);
+}
+
+function resetSim() {
+  stepIndex = 0;
+  completed = false;
+  autoPlaying = false;
+  SIM.trails = [];
+  SIM.t = 0;
+  setStep(0);
+  ui.doneMask.style.display = 'none';
+}
+
+async function runAutoDemo() {
+  if (autoPlaying || freeMode) return;
+  autoPlaying = true;
+  ui.btnAuto.disabled = true; ui.btnFree.disabled = true; ui.btnReset.disabled = true;
+  
+  resetSim();
+  await sleep(800);
+  
+  // Step 1
+  ui.checkEarth.checked = true;
+  ui.checkEarth.onchange(); 
+  await sleep(3500); // 观看地月
+
+  // Step 2
+  ui.checkSun.checked = true;
+  ui.checkSun.onchange();
+  await sleep(4000); // 观看对比
+
+  // Step 3
+  ui.checkTrail.checked = true;
+  ui.checkTrail.onchange();
+  await sleep(5000); // 观看轨迹
+
+  autoPlaying = false;
+  ui.btnAuto.disabled = false; ui.btnFree.disabled = false; ui.btnReset.disabled = false;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ====== 绘图引擎 ====== */
+function resize() {
+  const rect = ui.canvasWrap ? ui.canvasWrap.getBoundingClientRect() : {width:300,height:300};
+  canvas.width = (canvas.offsetWidth || rect.width) * dpr;
+  canvas.height = (canvas.offsetHeight || rect.height) * dpr;
+  SIM.cx = canvas.width / 2;
+  SIM.cy = canvas.height / 2;
+}
+ui.canvasWrap = document.getElementById('canvasWrap');
+window.addEventListener('resize', resize);
+resize();
+
+// 摄像机控制
+function setCamera(mode) {
+  if (mode === 'earth') {
+    // 聚焦地球：放大，摄像机跟随地球位置
+    SIM.targetScale = 2.8; 
+  } else {
+    // 聚焦太阳：缩小，摄像机回到中心
+    SIM.targetScale = 0.85;
+    SIM.targetCamX = 0;
+    SIM.targetCamY = 0;
+  }
+}
+
+function updatePhysics() {
+  SIM.t += 1;
+  
+  // 1. 计算位置
+  const sunX = 0; 
+  const sunY = 0;
+  
+  // 地球位置
+  const angE = SIM.t * SIM.speedEarth;
+  const earthX = Math.cos(angE) * SIM.earthOrbitR;
+  const earthY = Math.sin(angE) * SIM.earthOrbitR;
+  
+  // 月球位置 (相对于地球)
+  const angM = SIM.t * SIM.speedMoon;
+  const relMoonX = Math.cos(angM) * SIM.moonOrbitR;
+  const relMoonY = Math.sin(angM) * SIM.moonOrbitR;
+  
+  const moonX = earthX + relMoonX;
+  const moonY = earthY + relMoonY;
+  
+  // 2. 摄像机平滑插值
+  if (stepIndex === 0 && !freeMode) {
+    // 在第一步，摄像机紧跟地球
+    SIM.targetCamX = -earthX;
+    SIM.targetCamY = -earthY;
+  }
+  
+  SIM.scale += (SIM.targetScale - SIM.scale) * 0.05;
+  SIM.cameraX += (SIM.targetCamX - SIM.cameraX) * 0.05;
+  SIM.cameraY += (SIM.targetCamY - SIM.cameraY) * 0.05;
+  
+  // 3. 记录轨迹 (仅在开启轨迹模式且视角拉远时记录，避免乱线)
+  if (ui.checkTrail.checked) {
+    SIM.trails.push({x: moonX, y: moonY});
+    if (SIM.trails.length > 250) SIM.trails.shift();
+  } else {
+    if (SIM.trails.length > 0) SIM.trails.shift(); // 逐渐消失
+  }
+  
+  return { sunX, sunY, earthX, earthY, moonX, moonY };
+}
+
+function drawArrow(ctx, x1, y1, x2, y2, color, width, label) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const angle = Math.atan2(dy, dx);
+  const len = Math.hypot(dx, dy);
+  
+  // 缩短箭头以避免覆盖天体
+  const padStart = 10; 
+  const padEnd = 15;
+  if (len < padStart + padEnd) return; 
+
+  const startX = x1 + Math.cos(angle) * padStart;
+  const startY = y1 + Math.sin(angle) * padStart;
+  const endX = x2 - Math.cos(angle) * padEnd;
+  const endY = y2 - Math.sin(angle) * padEnd;
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  
+  // 线
+  ctx.beginPath();
+  ctx.moveTo(startX, startY);
+  ctx.lineTo(endX, endY);
+  ctx.stroke();
+  
+  // 箭头头
+  const headLen = 12 + width; 
+  ctx.beginPath();
+  ctx.moveTo(endX, endY);
+  ctx.lineTo(endX - headLen * Math.cos(angle - Math.PI / 6), endY - headLen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(endX - headLen * Math.cos(angle + Math.PI / 6), endY - headLen * Math.sin(angle + Math.PI / 6));
+  ctx.fill();
+  
+  // 文字
+  if (label) {
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    // 文字放在线条中间偏上
+    ctx.fillText(label, (startX+endX)/2, (startY+endY)/2 - 10);
+  }
+  
+  ctx.restore();
+}
+
+function loop() {
+  const { sunX, sunY, earthX, earthY, moonX, moonY } = updatePhysics();
+  
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  ctx.save();
+  // 应用摄像机变换
+  ctx.translate(SIM.cx, SIM.cy);
+  ctx.scale(SIM.scale, SIM.scale);
+  ctx.translate(SIM.cameraX, SIM.cameraY);
+  
+  // 1. 画轨道参考线 (日地轨道)
+  if (ui.checkSun.checked || stepIndex >= 1 || freeMode) {
+    ctx.beginPath();
+    ctx.arc(0, 0, SIM.earthOrbitR, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // 2. 画月球轨迹 (Slinky Spirals)
+  if (SIM.trails.length > 1) {
+    ctx.beginPath();
+    ctx.moveTo(SIM.trails[0].x, SIM.trails[0].y);
+    for (let i = 1; i < SIM.trails.length; i++) {
+      ctx.lineTo(SIM.trails[i].x, SIM.trails[i].y);
+    }
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // 3. 画太阳
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, SIM.sunR, 0, Math.PI*2);
+  const gradSun = ctx.createRadialGradient(sunX, sunY, SIM.sunR*0.2, sunX, sunY, SIM.sunR);
+  gradSun.addColorStop(0, '#fff');
+  gradSun.addColorStop(0.3, '#ffaa00');
+  gradSun.addColorStop(1, 'rgba(255,100,0,0.1)');
+  ctx.fillStyle = gradSun;
+  ctx.fill();
+  // 太阳光晕
+  ctx.shadowBlur = 40; ctx.shadowColor = '#ffaa00';
+  ctx.stroke(); ctx.shadowBlur = 0;
+
+  // 4. 画地球
+  ctx.beginPath();
+  ctx.arc(earthX, earthY, SIM.earthR, 0, Math.PI*2);
+  const gradEarth = ctx.createRadialGradient(earthX, earthY, SIM.earthR*0.2, earthX, earthY, SIM.earthR);
+  gradEarth.addColorStop(0, '#4fc3f7');
+  gradEarth.addColorStop(1, '#0288d1');
+  ctx.fillStyle = gradEarth;
+  ctx.fill();
+
+  // 5. 画月球
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, SIM.moonR, 0, Math.PI*2);
+  ctx.fillStyle = '#eeeeee';
+  ctx.fill();
+  
+  // 6. 画引力矢量 (覆盖在天体之上)
+  // 地球引力 (蓝色，较短)
+  if (ui.checkEarth.checked) {
+    // 故意让长度随距离微调，但保持量级视觉差
+    drawArrow(ctx, moonX, moonY, earthX, earthY, '#00bfff', 3, 'F地');
+  }
+  
+  // 太阳引力 (橙色，很长，视觉上约为地球引力的2.2倍)
+  if (ui.checkSun.checked) {
+    // 计算方向
+    const angle = Math.atan2(sunY - moonY, sunX - moonX);
+    // 视觉造假：为了教学目的，手动设定长度比例。
+    // 假设地球引力显示长度约 40px (半径差)，我们让太阳引力长约 90px
+    const sunForceLen = 100; 
+    const targetX = moonX + Math.cos(angle) * sunForceLen;
+    const targetY = moonY + Math.sin(angle) * sunForceLen;
+    
+    drawArrow(ctx, moonX, moonY, targetX, targetY, '#ffaa00', 5, 'F日');
+  }
+
+  ctx.restore();
+  requestAnimationFrame(loop);
+}
+
+// 启动
+resetSim();
+loop();
+</script>
+</body>
+</html>

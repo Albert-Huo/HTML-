@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<title>酒香不怕巷子深</title>
+<style>
+  :root{ --card-bg: rgba(255,255,255,0.08); --accent:#3ddc97; --warn:#ffb74d; --ink:#e9f2ff; --ui:#444; }
+  body{ background:#0f0f12; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center; }
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡 */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s; }
+  .task-card.muted{ opacity:.3; filter:grayscale(.65); }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.12);}
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 舞台 */
+  .stageWrap{ width:100%; max-width:900px; height:60vh; max-height:520px; margin-top:10px; }
+  .stage{ width:100%; height:100%; position:relative; overflow:hidden; border-radius:12px; background:#0e0f13; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+
+  /* 巷子（具象） */
+  .alley{ position:absolute; inset:0; pointer-events:none; background:
+      radial-gradient(120% 100% at 92% 50%, rgba(255,230,140,0.18), transparent 55%),
+      linear-gradient(90deg, rgba(80,80,90,0.25) 0%, transparent 18%, transparent 82%, rgba(80,80,90,0.25) 100%),
+      linear-gradient(180deg, #25262b 0%, #14151a 100%); }
+  .guide{ position:absolute; left:10%; right:12%; height:2px; background:linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0)); opacity:.7; }
+  .g1{ top:34%; transform:skewY(-6deg);} .g2{ top:66%; transform:skewY(6deg);}
+  .slab{ position:absolute; left:10%; right:12%; bottom:6%; height:40%;
+    background-image: linear-gradient(transparent 85%, rgba(0,0,0,0.45) 86%), linear-gradient(90deg, rgba(0,0,0,0.35) 20%, transparent 21% 39%, rgba(0,0,0,0.35) 40%, transparent 41% 59%, rgba(0,0,0,0.35) 60%, transparent 61% 79%, rgba(0,0,0,0.35) 80%);
+    background-size:100% 26px, 80px 100%; filter:brightness(.9); transform:perspective(800px) rotateX(35deg);}
+  .lantern{ position:absolute; left:24%; top:16%; font-size:28px; filter:drop-shadow(0 8px 18px rgba(255,120,120,.6)); }
+  .gate{ position:absolute; right:3%; top:10%; padding:6px 10px; border:2px solid rgba(255,215,130,.85); color:#ffd782; font-weight:700; border-radius:8px; background:rgba(40,30,10,.35); transform:skewX(-6deg); }
+  .gate:after{ content:"巷口"; letter-spacing:.2em; }
+
+  /* 角色 */
+  .bottle{ position:absolute; left:7%; bottom:18%; font-size:52px; }
+  .cork{ position:absolute; left:7%; bottom:26%; width:26px; height:26px; transform:translateX(10px); opacity:1; transition:transform .35s ease, opacity .35s ease; }
+  .cork.off{ transform:translate(140px,-90px) rotate(-35deg); opacity:0; }
+  .cork svg{ width:100%; height:100%; display:block; }
+
+  /* 远处人物剪影 */
+  .person{ position:absolute; right:5.5%; bottom:18%; width:72px; height:120px; }
+  .person svg{ width:100%; height:100%; display:block; opacity:.85; }
+  .person.smelled svg{ filter: drop-shadow(0 0 10px rgba(255,240,170,.7)); opacity:1; }
+
+  .noseArea{ position:absolute; right:8.4%; bottom:35%; width:72px; height:82px; }
+  .smell{ position:absolute; right:9%; bottom:34%; font-size:28px; opacity:0; transition:opacity .25s; }
+  .smell.show{ opacity:1; }
+
+  .particle{ position:absolute; width:10px; height:10px; border-radius:50%;
+    background: radial-gradient(circle, rgba(255,241,153,0.75) 0%, rgba(255,208,0,0.35) 46%, rgba(255,208,0,0) 70%); pointer-events:none; }
+
+  /* 右上控件 */
+  .in-controls{ position:absolute; right:12px; top:12px; z-index:10; display:flex; flex-direction:column; gap:8px; background:rgba(15,15,15,0.55); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:10px; min-width: 220px; }
+  .btn{ padding:8px 10px; background:var(--ui); color:#fff; border:none; border-radius:8px; cursor:pointer; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .ctrl{ margin-top:6px; } .ctrl label{ display:block; font-size:12px; opacity:.95; margin-bottom:6px; }
+  input[type="range"]{ width:100%; }
+
+  /* 刻度 + 动态三角指示（首尾对齐） */
+  .scale{ position:relative; height:24px; margin-top:4px; font-size:11px; color:#dbe7ff; opacity:.9; display:grid; grid-template-columns:repeat(4,1fr); }
+  .scale span{ text-align:center; }
+  .scale span:first-child{ text-align:left; }   /* 最左贴边 */
+  .scale span:last-child{ text-align:right; }   /* 最右贴边 */
+  .marker{ position:relative; height:0; margin-top:2px; width:100%; }
+  .marker::after{ content:"▲"; position:absolute; top:-2px; transform:translateX(-50%); font-size:12px; color:#ffd54f; text-shadow:0 0 6px rgba(255,213,79,.6); }
+
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  .toolbar button{ padding:10px 16px; background:var(--ui); color:#fff; border:none; border-radius:8px; cursor:pointer; }
+  .toolbar button:disabled{ opacity:.45; cursor:not-allowed; }
+
+  .checkmark{ position:absolute; z-index:50; left:50%; top:18%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15); border:3px solid var(--accent); display:none; align-items:center; justify-content:center; }
+  .checkmark.active{ display:flex; }
+  .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,.8); color:#fff; padding:10px 14px; border-radius:10px; font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:14px; padding:18px 16px; text-align:center; }
+  .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; border:none; border-radius:10px; padding:10px 14px; }
+
+  /* 说明文字 */
+  .explain{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink);}
+  .explain h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.12em;}
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">先<strong>打开瓶塞</strong>，观察香气从瓶口飘出。</div>
+      <div class="task-hint" id="taskHint">提示：点右上角“打开瓶塞”。</div>
+    </div>
+    <div class="progress-dots"><span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span></div>
+  </div>
+
+  <div class="stageWrap">
+    <div class="stage" id="stage">
+      <div class="alley"></div><div class="g1 guide"></div><div class="g2 guide"></div><div class="slab"></div><div class="lantern">🏮</div><div class="gate"></div>
+
+      <div class="bottle" id="bottle">🍾</div>
+      <div class="cork" id="cork" aria-label="cork">
+        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#a8743a"/><stop offset="1" stop-color="#c59254"/></linearGradient></defs><rect x="10" y="8" width="28" height="24" rx="6" fill="url(#g)" stroke="#6e4a24" stroke-width="2"/><circle cx="20" cy="16" r="2" fill="#6e4a24" opacity=".7"/><circle cx="30" cy="22" r="2" fill="#6e4a24" opacity=".6"/></svg>
+      </div>
+
+      <!-- 远处人物剪影 -->
+      <div class="person" id="person" aria-label="远处行人剪影">
+        <svg viewBox="0 0 80 130" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="20" r="12" fill="#0a0a0a"/>
+          <rect x="30" y="32" width="20" height="46" rx="8" fill="#0a0a0a"/>
+          <path d="M30 40 L18 68" stroke="#0a0a0a" stroke-width="10" stroke-linecap="round"/>
+          <path d="M50 40 L62 68" stroke="#0a0a0a" stroke-width="10" stroke-linecap="round"/>
+          <path d="M36 78 L30 120" stroke="#0a0a0a" stroke-width="10" stroke-linecap="round"/>
+          <path d="M44 78 L50 120" stroke="#0a0a0a" stroke-width="10" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="smell" id="smell">💨</div>
+      <div class="noseArea" id="noseArea"></div>
+
+      <div class="in-controls" id="inControls">
+        <button class="btn" id="openBtn">打开瓶塞</button>
+
+        <div class="ctrl" id="tempCtrl">
+          <label>温度（扩散更快）</label>
+          <input type="range" id="tempSlider" min="0" max="100" value="0"/>
+          <div class="scale"><span>凉</span><span>温</span><span>热</span><span>很热</span></div>
+          <div class="marker" id="tempMarker"></div>
+        </div>
+
+        <div class="ctrl" id="windCtrl">
+          <label>风力（方向与强度）</label>
+          <input type="range" id="windSlider" min="-50" max="50" value="-50"/>
+          <div class="scale"><span>左</span><span>向左增大</span><span>向右增大</span><span>右</span></div>
+          <div class="marker" id="windMarker"></div>
+        </div>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">再试一试：按照指令完成本步骤</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你已体验：打开 → 升温加快扩散 → 顺风把香气吹向远处的人。</p>
+      <button class="ok" id="okBtn">好的</button>
+    </div>
+  </div>
+
+  <!-- 说明文字（已加回） -->
+  <div class="explain">
+    <h2>「酒香不怕巷子深」背后的科学</h2>
+    <ul>
+      <li><b>分子扩散</b>：香气分子在空气中做热运动，从浓处向稀处扩散；温度越高，运动越剧烈。</li>
+      <li><b>对流/风</b>：空气流动会整体搬运香气，使其更快到达远处。</li>
+      <li><b>综合效应</b>：时间 + 温度 + 风向 → 香气最终能穿过深巷，到达“巷口”的人鼻子里。</li>
+    </ul>
+  </div>
+
+<script>
+/* ===== 稳健逻辑（ES5，移动/PC通吃） ===== */
+var stage=document.getElementById('stage');
+var bottle=document.getElementById('bottle');
+var cork=document.getElementById('cork');
+var person=document.getElementById('person');
+var noseArea=document.getElementById('noseArea');
+var smell=document.getElementById('smell');
+
+var openBtn=document.getElementById('openBtn');
+var tempSlider=document.getElementById('tempSlider');
+var windSlider=document.getElementById('windSlider');
+var tempMarker=document.getElementById('tempMarker');
+var windMarker=document.getElementById('windMarker');
+
+var dot1=document.getElementById('dot1'), dot2=document.getElementById('dot2'), dot3=document.getElementById('dot3');
+var dots=[dot1,dot2,dot3];
+
+var toast=document.getElementById('toast'), checkmark=document.getElementById('checkmark'), doneMask=document.getElementById('doneMask');
+var okBtn=document.getElementById('okBtn'), btnReset=document.getElementById('resetBtn'), btnAuto=document.getElementById('autoDemoBtn'), btnFree=document.getElementById('freeBtn');
+var taskStepEl=document.getElementById('taskStep'), taskTextEl=document.getElementById('taskText'), taskHintEl=document.getElementById('taskHint');
+var taskCard=document.getElementById('taskCard');
+
+var freeMode=false, autoPlaying=false, completed=false, currentTask=0;
+
+/* 粒子参数（简单稳定） */
+var particles=[], bottlePos={x:0,y:0}, diffusionBase=0.6;
+var temperature=0, wind=-50, bottleOpened=false, lastSpawn=0;
+
+/* “近期用户动作时间戳”，只要最近1.5秒内有真实手势，才允许通过 */
+var lastUserTempTS=0, lastUserWindTS=0;
+var PASS_WINDOW=1500; // ms
+
+function setStepUI(i){
+  var n=3, idx=Math.max(0,Math.min(i,n-1));
+  dots[0].className='dot'+(idx>0?' done': (idx===0?' active':'')); 
+  dots[1].className='dot'+(idx>1?' done': (idx===1?' active':'')); 
+  dots[2].className='dot'+(idx>2?' done': (idx===2?' active':'')); 
+  taskStepEl.textContent='步骤 '+(idx+1)+' / 3';
+  if(idx===0){ taskTextEl.innerHTML='先<strong>打开瓶塞</strong>，观察香气从瓶口飘出。'; taskHintEl.textContent='提示：点右上角“打开瓶塞”。'; }
+  if(idx===1){ taskTextEl.innerHTML='把<strong>温度调高</strong>（≥ 65），观察香气扩散明显加快。'; taskHintEl.textContent='拖动“温度”滑块到 65 以上。'; }
+  if(idx===2){ taskTextEl.innerHTML='把<strong>风力调到向右</strong>（≥ 25），让香气吹向远处的人（完成）。'; taskHintEl.textContent='拖动“风力”滑块到右侧（≥25）。'; 
+    // 进入第3步时，强制清空任何“近期手势”，并把风力归到最左，防误判
+    lastUserWindTS = 0;
+    wind = -50; windSlider.value = -50; placeMarker(windMarker, windSlider, -50, 50);
+  }
+}
+
+function showToast(msg){
+  toast.textContent=msg||'再试一次';
+  toast.classList.add('show');
+  setTimeout(function(){ toast.classList.remove('show'); }, 1100);
+}
+function tickCheckmark(){ checkmark.classList.add('active'); setTimeout(function(){ checkmark.classList.remove('active'); }, 520); }
+function showDone(){ doneMask.style.display='flex'; }
+okBtn.onclick=function(){ doneMask.style.display='none'; };
+
+/* 自由模式切换：步骤卡 & 自动演示按钮变灰 */
+function setFreeMode(on){
+  freeMode=on;
+  btnAuto.disabled=on;
+  btnFree.textContent=on?'退出自由模式':'自由模式';
+  if(on){ taskCard.classList.add('muted'); } else { taskCard.classList.remove('muted'); }
+}
+
+/* Marker */
+function placeMarker(markerEl, sliderEl, min, max){
+  var v=Number(sliderEl.value), t=(v-min)/(max-min);
+  if(t<0)t=0; if(t>1)t=1;
+  markerEl.style.left='calc('+ (t*100).toFixed(2) +'%)';
+}
+
+/* 位置/浓度 */
+function computeBottlePos(){ var r=bottle.getBoundingClientRect(), s=stage.getBoundingClientRect(); bottlePos.x=r.left-s.left+r.width*0.60; bottlePos.y=r.top-s.top+r.height*0.40; }
+function rectInStage(el){ var a=el.getBoundingClientRect(), s=stage.getBoundingClientRect(); return {left:a.left-s.left, top:a.top-s.top, width:a.width, height:a.height}; }
+function inNoseArea(x,y){ var a=rectInStage(noseArea); return x>=a.left && x<=a.left+a.width && y>=a.top && y<=a.top+a.height; }
+function noseConcentration(){ var sum=0; for(var i=0;i<particles.length;i++){ var p=particles[i]; if(p.alpha>0 && inNoseArea(p.x,p.y)) sum+=p.alpha; } return sum; }
+
+/* 粒子（极简） */
+function spawnParticles(){
+  if(!bottleOpened) return;
+  var now=Date.now(); if(now-lastSpawn<60) return; lastSpawn=now;
+  for(var i=0;i<8;i++){
+    var tFactor=0.4+(temperature/100)*1.2;
+    var angle=(Math.random()*0.7-0.35)+(wind>=0?0.05:-0.05);
+    var speed=diffusionBase*(0.6+Math.random()*0.8)*tFactor;
+    particles.push({ x:bottlePos.x+Math.random()*8, y:bottlePos.y+Math.random()*6, vx:Math.cos(angle)*speed+(wind/50)*0.9, vy:Math.sin(angle)*(-speed*0.5)-Math.random()*0.2, alpha:0.85, size:8+Math.random()*8 });
+  }
+}
+function updateParticles(){
+  for(var i=particles.length-1;i>=0;i--){
+    var p=particles[i]; p.x+=p.vx; p.y+=p.vy;
+    p.vx+=(Math.random()-0.5)*0.05*(1+temperature/55)+(wind/50)*0.008;
+    p.vy+=(Math.random()-0.5)*0.03*(1+temperature/55);
+    p.vy-=0.002; p.alpha-=0.006;
+    if(p.alpha<=0) particles.splice(i,1);
+  }
+}
+function renderParticles(){
+  var olds=stage.querySelectorAll('.particle'); for(var i=0;i<olds.length;i++){ if(olds[i].parentNode){ olds[i].parentNode.removeChild(olds[i]); } }
+  var frag=document.createDocumentFragment();
+  for(var j=0;j<particles.length;j++){ var p=particles[j]; if(p.alpha<=0)continue; var el=document.createElement('div'); el.className='particle'; el.style.left=(p.x-p.size/2)+'px'; el.style.top=(p.y-p.size/2)+'px'; el.style.width=p.size+'px'; el.style.height=p.size+'px'; el.style.opacity=p.alpha; frag.appendChild(el); }
+  stage.appendChild(frag);
+}
+
+/* 嗅到反馈 */
+function updateSmell(){
+  var c=noseConcentration();
+  if(c>2.0){ person.classList.add('smelled'); smell.classList.add('show'); }
+  else if(!completed && !autoPlaying){ person.classList.remove('smelled'); smell.classList.remove('show'); }
+}
+
+/* 心跳式“通过判定” */
+function tryAdvanceByHeartbeat(){
+  if(completed || freeMode || autoPlaying) return;
+  var now=Date.now();
+  if(currentTask===0){
+    // 等待开瓶点击
+  }else if(currentTask===1){
+    if(temperature>=65 && (now-lastUserTempTS)<=PASS_WINDOW){ passStep(); }
+  }else if(currentTask===2){
+    if(wind>=25 && (now-lastUserWindTS)<=PASS_WINDOW){ passStep(); }
+  }
+}
+function passStep(){
+  tickCheckmark();
+  dots[currentTask].className='dot done';
+  currentTask++;
+  if(currentTask>=3){ completed=true; setTimeout(showDone, 300); }
+  else{ dots[currentTask].className='dot active'; setStepUI(currentTask); }
+}
+
+/* 交互绑定 */
+document.getElementById('openBtn').onclick=function(){
+  if(completed) return;
+  bottleOpened=true; cork.classList.add('off');
+  if(!freeMode && !autoPlaying && currentTask===0){ passStep(); }
+};
+
+function onTempUserStart(){ lastUserTempTS=Date.now(); }
+function onWindUserStart(){ lastUserWindTS=Date.now(); }
+function onTempInput(){ temperature=Number(tempSlider.value); placeMarker(tempMarker, tempSlider, 0, 100); lastUserTempTS=Date.now(); }
+function onWindInput(){ wind=Number(windSlider.value); placeMarker(windMarker, windSlider, -50, 50); lastUserWindTS=Date.now(); }
+
+tempSlider.addEventListener('touchstart', onTempUserStart, false);
+tempSlider.addEventListener('mousedown', onTempUserStart, false);
+tempSlider.addEventListener('input', onTempInput, false);
+
+windSlider.addEventListener('touchstart', onWindUserStart, false);
+windSlider.addEventListener('mousedown', onWindUserStart, false);
+windSlider.addEventListener('input', onWindInput, false);
+
+/* 自动演示（禁用样式在自由模式下生效） */
+btnAuto.onclick=function(){
+  if(autoPlaying || freeMode) return;
+  autoPlaying=true; reset(false);
+  setTimeout(function(){ document.getElementById('openBtn').click();
+    setTimeout(function(){ tempSlider.value=75; onTempInput();
+      dots[1].className='dot done'; currentTask=2; setStepUI(2);
+      setTimeout(function(){ windSlider.value=35; onWindInput();
+        dots[2].className='dot done'; completed=true; setTimeout(showDone, 300); autoPlaying=false;
+      }, 500);
+    }, 500);
+  }, 250);
+};
+
+/* 重置 / 自由模式 */
+function reset(){
+  completed=false; currentTask=0;
+  bottleOpened=false; cork.classList.remove('off');
+  person.classList.remove('smelled'); smell.classList.remove('show');
+  temperature=0; wind=-50;
+  tempSlider.value=0; windSlider.value=-50;
+  placeMarker(tempMarker, tempSlider, 0, 100);
+  placeMarker(windMarker, windSlider, -50, 50);
+  particles.length=0;
+  dots[0].className='dot active'; dots[1].className='dot'; dots[2].className='dot';
+  lastUserTempTS=0; lastUserWindTS=0;
+  setStepUI(0);
+}
+btnReset.onclick=function(){ reset(); };
+btnFree.onclick=function(){ setFreeMode(!freeMode); };
+
+/* 帧循环：setInterval (30fps) */
+function frameTick(){ computeBottlePos(); spawnParticles(); updateParticles(); renderParticles(); updateSmell(); tryAdvanceByHeartbeat(); }
+var loop=setInterval(frameTick, 33);
+
+/* 初始 */
+window.addEventListener('resize', function(){ placeMarker(tempMarker, tempSlider, 0, 100); placeMarker(windMarker, windSlider, -50, 50); }, false);
+(function init(){ placeMarker(tempMarker, tempSlider, 0, 100); placeMarker(windMarker, windSlider, -50, 50); setStepUI(0); })();
+</script>
+</body>
+</html>

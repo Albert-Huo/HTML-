@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1" />
+<title>蝙蝠穿越铃铛</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --ink:#e9f2ff;
+    --bellSize: clamp(24px, 3.6vh, 38px);
+  }
+  body{ background:#1a1a1a; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center;}
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filterh:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s;}
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 三个主按钮容器（画面下方，靠左） */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s, transform .05s, opacity .2s; user-select:none;}
+  button:hover{ background:#5a5a5a;} button:active{ transform:scale(.98);} button:disabled{ opacity:.5; cursor:not-allowed;}
+  .primary{ background:#2e7d32;} .ghost{ background:transparent; border:1px solid rgba(255,255,255,0.25);}
+
+  #canvasWrap{ width:100%; max-width:900px; height:60vh; max-height:520px; margin-top:10px; }
+  #canvas{ width:100%; height:100%; background:#000; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.3); position:relative; overflow:hidden; touch-action:none;
+    background-image: radial-gradient(circle at 70% 30%, rgba(255,255,255,0.06), transparent 38%),
+                     radial-gradient(circle at 30% 70%, rgba(0,255,255,0.05), transparent 42%);}
+
+  /* 右上角：蒙眼/蒙嘴（纵向） */
+  .sensebar{
+    position:absolute; right:10px; top:10px; z-index:11;
+    display:flex; flex-direction:column; gap:8px;
+    background: rgba(15,15,15,0.55); border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px; padding:8px; backdrop-filter: blur(6px);
+  }
+
+  /* 画布内左下：飞行/重置场景 */
+  .ctrlbar{
+    position:absolute; left:10px; bottom:10px; z-index:10;
+    display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-start;
+    background: rgba(15,15,15,0.55); border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px; padding:8px; backdrop-filter: blur(6px);
+    width: max-content; max-width: 70%;
+  }
+
+  .hud{ position:absolute; left:12px; top:12px; z-index:5; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.15); border-radius:10px; padding:8px 10px; font-size:13px; line-height:1.4;}
+  .tag{ padding:2px 8px; border-radius:999px; margin-right:6px; font-weight:600;}
+  .eye.on{ background:rgba(100,181,246,0.25); border:1px solid rgba(100,181,246,0.6);} .eye.off{ background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25);}
+  .mouth.on{ background:rgba(61,220,151,0.25); border:1px solid rgba(61,220,151,0.6);} .mouth.off{ background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.25);}
+
+  .checkmark{ position:absolute; z-index:50; left:50%; top:20%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25); animation:pop .55s ease-out;}
+  .checkmark.active{ display:flex;} .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)} }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.8); color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.35);
+    font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200;}
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5);}
+  .modal h3{ margin:8px 0 6px; font-size:20px;} .modal p{ color:#cfd8dc; margin-top:0;} .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700;}
+
+  .explanation{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink);}
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em;} .explanation ul{ margin:.2em 0 .2em 1.1em;}
+
+  /* —— 蝙蝠（emoji + 遮罩） —— */
+  .bat{ position:absolute; transform-origin:center; filter:drop-shadow(0 2px 6px rgba(0,0,0,.4)); font-size:48px; }
+  #body{ display:inline-block; transform: scaleX(-1); } /* 朝右飞 */
+  .cover{ position:absolute; pointer-events:none; z-index:6; display:none; }
+  .cover.eye,.cover.mouth{ background:#fff; border-radius:3px; box-shadow:0 0 6px rgba(255,255,255,.4); }
+
+  /* 铃铛 emoji */
+  .bell{
+    position:absolute; left:0; top:0; transform: translate(-50%,-50%);
+    font-size: var(--bellSize); line-height:1; user-select:none; pointer-events:none;
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,.5));
+    text-shadow: 0 0 8px rgba(255,223,120,.35), 0 0 16px rgba(255,223,120,.2);
+  }
+  .bell.swing{ animation: ding 2.8s ease-in-out infinite; transform-origin:50% 20%; }
+  @keyframes ding{ 0%{transform:translate(-50%,-50%) rotate(0deg)} 25%{transform:translate(-50%,-50%) rotate(3deg)} 50%{transform:translate(-50%,-50%) rotate(0)} 75%{transform:translate(-50%,-50%) rotate(-3deg)} 100%{transform:translate(-50%,-50%) rotate(0)} }
+
+  .hitflash{ position:absolute; inset:0; background:radial-gradient(circle, rgba(255,107,107,.25), transparent 60%); opacity:0; pointer-events:none; animation:hit .35s ease-out;}
+  @keyframes hit{ 0%{opacity:.85} 100%{opacity:0} }
+
+  @media (max-width:600px){
+    .explanation{ font-size:.88em;}
+    .ctrlbar button{ flex:1; }
+  }
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">先<strong>蒙住嘴</strong>（关闭回声定位），再点击“飞行”。观察会发生什么。</div>
+      <div class="task-hint" id="taskHint">提示：这一步要求“蒙嘴关、蒙眼开”。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <!-- 画布 -->
+  <div id="canvasWrap">
+    <div id="canvas">
+      <div class="hud"><span class="tag eye on" id="eyeTag">视觉 ON</span><span class="tag mouth on" id="mouthTag">回声 ON</span></div>
+
+      <!-- 右上角：仅“蒙眼 / 蒙嘴” -->
+      <div class="sensebar" aria-label="感官开关">
+        <button id="toggleEyeBtn" class="ghost">蒙眼：关</button>
+        <button id="toggleMouthBtn" class="ghost">蒙嘴：关</button>
+      </div>
+
+      <!-- 左下角：飞行与重置场景 -->
+      <div class="ctrlbar" aria-label="飞行控制栏">
+        <button id="rebuildBtn">重置场景</button>
+        <button id="flyBtn" class="primary">飞行</button>
+      </div>
+
+      <!-- 🦇 + 覆盖 -->
+      <div class="bat" id="bat">
+        <span id="body">🦇</span>
+        <div class="cover eye"  id="eyeCover"></div>
+        <div class="cover mouth" id="mouthCover"></div>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+      <div class="hitflash" id="hitflash" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- 三个主按钮（已回到画面下方，靠左） -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">再试一试：按步骤完成指令</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你已完成：蒙嘴→撞铃体验；蒙眼→靠回声绕行；恢复正常→稳稳通过。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>蝙蝠如何在黑暗中“看见”世界？</h2>
+    <ul>
+      <li><strong>回声定位</strong>：发出高频超声波，回声提供距离/方向/形状信息。</li>
+      <li><strong>视觉 vs 回声</strong>：昏暗时视觉弱，回声能“绕过黑暗”。</li>
+      <li><strong>本版特性</strong>：9 个 🔔 随机布局；蒙嘴必撞；自由模式下撞击掉落。</li>
+    </ul>
+  </div>
+
+<script>
+/* ------------ DOM ------------ */
+const canvas = document.getElementById('canvas');
+const checkmark = document.getElementById('checkmark');
+const hitflash = document.getElementById('hitflash');
+const toast = document.getElementById('toast');
+const doneMask = document.getElementById('doneMask');
+const okBtn = document.getElementById('okBtn');
+
+const eyeTag = document.getElementById('eyeTag');
+const mouthTag = document.getElementById('mouthTag');
+
+const taskStepEl = document.getElementById('taskStep');
+const taskTextEl = document.getElementById('taskText');
+const taskHintEl = document.getElementById('taskHint');
+const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+
+const btnResetStep = document.getElementById('resetBtn');
+const btnAutoDemo = document.getElementById('autoDemoBtn');
+const btnFree = document.getElementById('freeBtn');
+
+const btnEye = document.getElementById('toggleEyeBtn');
+const btnMouth = document.getElementById('toggleMouthBtn');
+const btnFly = document.getElementById('flyBtn');
+const btnRebuild = document.getElementById('rebuildBtn');
+
+/* ------------ State ------------ */
+let freeMode = false, completed = false, isRunning = false, autoLock = false;
+const sense = { eye:true, mouth:true };
+let bat, bells = [];
+const START = { x:16, yRatio:0.52 }; // 更靠中线
+const ctxRun = { lastRun:null };
+let currentTask = 0;
+
+/* 碰撞后自由模式掉落锁定 */
+let droppedLock = false;
+
+/* ------------ Tasks ------------ */
+const tasks = [
+  { id:'crash_with_mouth_off',
+    precheck: ()=> (!sense.mouth && sense.eye),
+    postcheck:(r)=> r.mouthOff && r.eyeOn && r.crashed,
+    text:'先<strong>蒙住嘴</strong>（关闭回声定位），再点击“飞行”。',
+    hint:'这一步要求“蒙嘴关、蒙眼开”，以体验必撞效果。'
+  },
+  { id:'blind_echo_success',
+    precheck: ()=> (sense.mouth && !sense.eye),
+    postcheck:(r)=> r.eyeOff && r.mouthOn && !r.crashed,
+    text:'解除蒙嘴，点击<strong>蒙眼</strong>（仅靠回声定位），再点击“飞行”。',
+    hint:'仅凭回声绕开铃铛，也能顺利通过。'
+  },
+  { id:'both_on_success',
+    precheck: ()=> (sense.mouth && sense.eye),
+    postcheck:(r)=> r.eyeOn && r.mouthOn && !r.crashed,
+    text:'恢复<strong>正常</strong>（视觉与回声同时开启），再点击“飞行”。',
+    hint:'两种感官协作，路线更稳健。'
+  }
+];
+
+/* ------------ UI utils ------------ */
+function showToast(msg){ toast.textContent = msg||'再试一试'; toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>toast.classList.remove('show'),1400); }
+function showCheck(){ checkmark.classList.add('active'); clearTimeout(showCheck.t); showCheck.t=setTimeout(()=>checkmark.classList.remove('active'),520); }
+function showDone(){ doneMask.style.display='flex'; } okBtn.onclick=()=> doneMask.style.display='none';
+
+function updateHud(){
+  eyeTag.className = `tag eye ${sense.eye? 'on':'off'}`; eyeTag.textContent = `视觉 ${sense.eye? 'ON':'OFF'}`;
+  mouthTag.className = `tag mouth ${sense.mouth? 'on':'off'}`; mouthTag.textContent = `回声 ${sense.mouth? 'ON':'OFF'}`;
+  btnEye.textContent   = `蒙眼：${sense.eye? '关':'开'}`;
+  btnMouth.textContent = `蒙嘴：${sense.mouth? '关':'开'}`;
+
+  document.getElementById('eyeCover').style.display   = sense.eye   ? 'none' : 'block';
+  document.getElementById('mouthCover').style.display = sense.mouth ? 'none' : 'block';
+}
+
+function setFreeMode(on){
+  freeMode = on; btnFree.textContent = on? '退出自由模式':'自由模式'; btnAutoDemo.disabled = on;
+  const card = document.getElementById('taskCard'); card.style.opacity = on? .25:1; card.style.filter  = on? 'grayscale(.6)':'none';
+}
+
+function resetStepsUI(){
+  completed=false; currentTask=0;
+  dots.forEach(d=> d.className='dot'); dots[0].classList.add('active');
+  taskStepEl.textContent = `步骤 1 / ${tasks.length}`;
+  taskTextEl.innerHTML   = tasks[0].text; taskHintEl.textContent = tasks[0].hint;
+  doneMask.style.display='none';
+}
+
+/* ------------ 铃铛（9 个随机） ------------ */
+function createBellEmoji(cx, cy){
+  const el = document.createElement('div');
+  el.className = 'bell swing';
+  el.textContent = '🔔';
+  el.style.left = cx+'px';
+  el.style.top  = cy+'px';
+  canvas.appendChild(el);
+  const fs = parseFloat(getComputedStyle(el).fontSize);
+  const r  = fs * 0.38;
+  el.dataset.cx = cx; el.dataset.cy = cy; el.dataset.r = r;
+  return el;
+}
+function randomBellsLayout(){
+  bells.forEach(b=>b.remove()); bells=[];
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  const cols = [0.38, 0.50, 0.62, 0.74];
+  const rows = [0.72, 0.54, 0.36];
+  const pool = [];
+  for (const rx of cols){ for (const ry of rows){ pool.push([rx,ry]); } }
+  for (let i=pool.length-1;i>0;i--){ const j=(Math.random()* (i+1))|0; [pool[i],pool[j]]=[pool[j],pool[i]]; }
+  const picked = pool.slice(0,9);
+  picked.forEach(([rx,ry])=>{
+    const jitterX = (Math.random()*0.04 - 0.02);
+    const jitterY = (Math.random()*0.06 - 0.03);
+    const cx = Math.round(W * (rx + jitterX));
+    const cy = Math.round(H * (ry + jitterY));
+    const b = createBellEmoji(cx, cy); bells.push(b);
+  });
+}
+
+/* ------------ 场景 ------------ */
+function createBat(){
+  const el = document.getElementById('bat');
+  const H = canvas.clientHeight; const y = H*START.yRatio;
+  el.style.left = START.x+'px'; el.style.top = y+'px';
+  el.style.transform = 'rotate(0deg)';
+  el.dataset.x = START.x; el.dataset.y = y;
+  return { el };
+}
+function clearScene(){ [...canvas.querySelectorAll('.bell')].forEach(n=>n.remove()); }
+function rebuildSceneFullRandom(){ clearScene(); bat = createBat(); randomBellsLayout(); updateHud(); updateCoversPosition(); }
+function resetToStart(){
+  if (!bat){ rebuildSceneFullRandom(); return; }
+  const H = canvas.clientHeight; const y = H*START.yRatio;
+  bat.el.style.left = START.x+'px'; bat.el.style.top = y+'px';
+  bat.el.style.transform = 'rotate(0deg)';
+  bat.el.dataset.x = START.x; bat.el.dataset.y = y;
+  updateCoversPosition();
+}
+
+/* —— 眼罩/封口覆盖定位 —— */
+function updateCoversPosition(){
+  const eyeCover = document.getElementById('eyeCover');
+  const mouthCover = document.getElementById('mouthCover');
+  const body = document.getElementById('body');
+  const batEl = document.getElementById('bat');
+  if (!body || !batEl) return;
+
+  const bodyRect = body.getBoundingClientRect();
+  const batRect  = batEl.getBoundingClientRect();
+  const offsetX = bodyRect.left - batRect.left;
+  const offsetY = bodyRect.top  - batRect.top;
+
+  const eyeW = bodyRect.width * 0.15, eyeH = bodyRect.height * 0.05;
+  eyeCover.style.width  = eyeW + 'px';
+  eyeCover.style.height = eyeH + 'px';
+  eyeCover.style.left   = (offsetX + (bodyRect.width - eyeW) / 1.3) + 'px';
+  eyeCover.style.top    = (offsetY + bodyRect.height * 0.52) + 'px';
+
+  const mouthW = bodyRect.width * 0.10, mouthH = bodyRect.height * 0.05;
+  mouthCover.style.width  = mouthW + 'px';
+  mouthCover.style.height = mouthH + 'px';
+  mouthCover.style.left   = (offsetX + (bodyRect.width - mouthW) / 1.14) + 'px';
+  mouthCover.style.top    = (offsetY + bodyRect.height * 0.58) + 'px';
+}
+
+/* ------------ 工具函数 ------------ */
+function showHit(){
+  hitflash.style.display='block'; hitflash.style.animation='none'; void hitflash.offsetWidth; hitflash.style.animation='hit .35s ease-out';
+  setTimeout(()=> hitflash.style.display='none', 380);
+}
+function dist(ax,ay,bx,by){ return Math.hypot(ax-bx, ay-by); }
+function batCenter(px,py){
+  const bw = bat.el.offsetWidth || 54, bh = bat.el.offsetHeight || 32;
+  return { cx: px + bw/2, cy: py + bh/2 };
+}
+
+/* ------------ 控制策略（确保：只蒙嘴=必撞；只蒙眼/双开=必过） ------------ */
+function planControl(px,py){
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  let vx=2.9, vy=0;
+
+  const {cx:cxBat, cy:cyBat} = batCenter(px,py);
+
+  // 找到前方最近铃铛
+  let front = null, minDx = Infinity;
+  for (const b of bells){
+    const cx = +b.dataset.cx; const dx = cx - cxBat;
+    if (dx>0 && dx<minDx){ minDx = dx; front = b; }
+  }
+
+  if (!sense.mouth && sense.eye){
+    /* 蒙嘴关 & 蒙眼开：保持对准 → 必撞 */
+    if (front){
+      const dy = (+front.dataset.cy) - cyBat;
+      vy += Math.sign(dy) * Math.min(2.0, Math.abs(dy)*0.022);
+      vx = 2.2;
+    }
+    return {vx,vy};
+  }
+
+  if (sense.mouth && !sense.eye){
+    /* 只回声：强力排斥，保证通过 */
+    const echoRange = 260, safeGain = 3.0;
+    for (const b of bells){
+      const cx=+b.dataset.cx, cy=+b.dataset.cy;
+      const d = dist(cxBat,cyBat,cx,cy);
+      if (d < echoRange){
+        const gain = Math.max(1.1, (echoRange - d)/echoRange * safeGain);
+        vy += Math.sign(cyBat-cy || 1) * gain;
+      }
+    }
+    if (front){
+      const projGap = Math.abs(cyBat - (+front.dataset.cy));
+      const r = (+front.dataset.r) + 18;
+      if (projGap < r){ vy += Math.sign(cyBat - (+front.dataset.cy) || -1) * 2.2; }
+    }
+    return {vx,vy};
+  }
+
+  if (sense.mouth && sense.eye){
+    /* 双开：中等回避，更平滑，也保证通过 */
+    const lookRange = 130, echoRange = 190;
+    for (const b of bells){
+      const cx=+b.dataset.cx, cy=+b.dataset.cy; const d=dist(cxBat,cyBat,cx,cy);
+      if (d<echoRange){ vy += Math.sign(cyBat-cy || 1) * (1.5 * (echoRange-d)/echoRange); }
+      else if (d<lookRange){ vy += Math.sign(cyBat-cy || 1) * (0.60 * (lookRange-d)/lookRange); }
+    }
+    return {vx,vy};
+  }
+
+  /* 双关：也能过（弱场排斥） */
+  const fieldRange = 200, fieldGain = 1.9;
+  for (const b of bells){
+    const cx=+b.dataset.cx, cy=+b.dataset.cy; const d=dist(cxBat,cyBat,cx,cy);
+    if (d<fieldRange){ vy += Math.sign(cyBat-cy || 1) * (fieldGain * (fieldRange-d)/fieldRange); }
+  }
+  return {vx,vy};
+}
+
+/* —— 碰撞后的“掉落”动画（自由模式可见且停在底部） —— */
+function dropBatFrom(px, py){
+  let vy = 0, rot = 0, y = py;
+  const bh = bat.el.offsetHeight || 36;
+  const ground = canvas.clientHeight - bh - 4; // 让蝙蝠完全显示
+  function step(){
+    vy += 0.7; // 重力
+    y += vy;
+    rot += 5;
+    bat.el.style.top = y+'px';
+    bat.el.style.transform = `rotate(${rot}deg)`;
+    updateCoversPosition();
+    if (y < ground){
+      requestAnimationFrame(step);
+    }else{
+      bat.el.style.top = ground+'px';
+      droppedLock = true; // 锁定：直到“步骤重置”
+      isRunning = false;
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+/* ------------ 飞行（Promise） ------------ */
+function flyOnce(){
+  if (isRunning || droppedLock) return Promise.resolve('busy');
+  isRunning=true;
+
+  const runCtx = {
+    mouthOff: !sense.mouth, mouthOn: !!sense.mouth,
+    eyeOff: !sense.eye,     eyeOn: !!sense.eye,
+    crashed: false
+  };
+
+  return new Promise(resolve=>{
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    let px = bat ? (parseFloat(bat.el.dataset.x)||START.x) : START.x;
+    let py = bat ? (parseFloat(bat.el.dataset.y)||H*START.yRatio) : H*START.yRatio;
+    let rafId=null;
+
+    function end(status){
+      cancelAnimationFrame(rafId);
+      ctxRun.lastRun = runCtx;
+      isRunning=false;
+      if (!freeMode) resetToStart();
+      resolve(status);
+    }
+
+    function step(){
+      const v = planControl(px,py);
+      px += v.vx; py += v.vy;
+
+      // —— 顶/底边界：确保完全可见 —— //
+      const bh = bat.el.offsetHeight || 32;
+      const topMargin = 6;
+      const bottomLimit = H - bh - 4;
+      py = Math.max(topMargin, Math.min(bottomLimit, py));
+
+      bat.el.style.left=px+'px'; bat.el.style.top=py+'px';
+      bat.el.dataset.x=px; bat.el.dataset.y=py;
+      updateCoversPosition();
+
+      const {cx:cxBat, cy:cyBat} = batCenter(px,py);
+
+      // 碰撞检测
+      for (const bell of bells){
+        const cx=+bell.dataset.cx, cy=+bell.dataset.cy, r=+bell.dataset.r;
+        if (dist(cxBat,cyBat,cx,cy) < r+16){
+          if (!sense.mouth){ // 只蒙嘴：判定撞毁 + 掉落
+            runCtx.crashed = true; showHit();
+            if (freeMode){ dropBatFrom(px, py); }
+            return end('crash');
+          }else{
+            // 其余情况：强力侧移避免（保证步骤2/3必过）
+            const dir = Math.sign(cyBat - cy) || (Math.random()<0.5 ? -1 : 1);
+            py += dir * 24; px += 8;
+          }
+        }
+      }
+
+      if (px > W-60) return end('pass');
+      rafId = requestAnimationFrame(step);
+    }
+    rafId = requestAnimationFrame(step);
+  });
+}
+
+/* ------------ 关卡判定 ------------ */
+function canStartForCurrentTask(){
+  const t = tasks[currentTask]; if (!t) return true;
+  if (!t.precheck()){
+    showToast('当前步骤需要：' + (currentTask===0 ? '“蒙嘴关、蒙眼开”' : currentTask===1 ? '“蒙嘴开、蒙眼关”' : '“蒙嘴开、蒙眼开”'));
+    return false;
+  }
+  return true;
+}
+async function runOneFlightWithChecks(){
+  if (freeMode || completed) return;
+  if (!canStartForCurrentTask()) return;
+  const result = await flyOnce(); if (result==='busy') return;
+  const t = tasks[currentTask];
+  if (t && t.postcheck(ctxRun.lastRun)){ showCheck(); setTimeout(()=>{
+    dots[currentTask].classList.remove('active'); dots[currentTask].classList.add('done');
+    currentTask++;
+    if (currentTask>=tasks.length){ completed=true; showDone(); }
+    else{
+      dots[currentTask].classList.add('active');
+      taskStepEl.textContent = `步骤 ${currentTask+1} / ${tasks.length}`;
+      taskTextEl.innerHTML   = tasks[currentTask].text;
+      taskHintEl.textContent = tasks[currentTask].hint;
+    }
+  }, 520); }
+  else { showToast(result==='crash' ? '这一步应该通过哦：请按提示设置' : '这一步需要撞铃：请按提示设置'); }
+}
+
+/* ------------ 自动演示（同步步骤文字/圆点） ------------ */
+function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function setStepUI(idx){
+  currentTask = idx;
+  dots.forEach((d,i)=>{ d.className='dot' + (i<idx ? ' done' : i===idx ? ' active' : ''); });
+  taskStepEl.textContent = `步骤 ${idx+1} / ${tasks.length}`;
+  taskTextEl.innerHTML   = tasks[idx].text;
+  taskHintEl.textContent = tasks[idx].hint;
+}
+async function autoDemo(){
+  if (freeMode || autoLock) return; autoLock = true;
+  try{
+    resetAll(true);
+
+    // Step1
+    setStepUI(0);
+    sense.eye = true; sense.mouth = false; updateHud();
+    await flyOnce(); showCheck(); await wait(350);
+
+    // Step2
+    setStepUI(1);
+    sense.eye = false; sense.mouth = true; updateHud();
+    await flyOnce(); showCheck(); await wait(350);
+
+    // Step3
+    setStepUI(2);
+    sense.eye = true; sense.mouth = true; updateHud();
+    await flyOnce(); showCheck(); await wait(300);
+
+    completed = true; showDone();
+  } finally { autoLock = false; }
+}
+
+/* ------------ Buttons ------------ */
+function toggleEye(on){ if (isRunning || droppedLock) return; sense.eye = (on===undefined)? !sense.eye : !!on; updateHud(); updateCoversPosition(); }
+function toggleMouth(on){ if (isRunning || droppedLock) return; sense.mouth = (on===undefined)? !sense.mouth : !!on; updateHud(); updateCoversPosition(); }
+
+btnEye.onclick   = ()=> toggleEye();
+btnMouth.onclick = ()=> toggleMouth();
+btnRebuild.onclick = ()=> { if (isRunning) return; rebuildSceneFullRandom(); resetToStart(); };
+btnFly.onclick   = ()=> { if (isRunning || droppedLock) return; freeMode ? flyOnce() : runOneFlightWithChecks(); };
+btnAutoDemo.onclick = autoDemo;
+btnResetStep.onclick = ()=> { resetAll(); };
+btnFree.onclick = ()=> setFreeMode(!freeMode);
+
+/* ------------ Reset & Init ------------ */
+function resetAll(silent){
+  resetStepsUI();
+  sense.eye=true; sense.mouth=true; updateHud();
+  rebuildSceneFullRandom(); resetToStart();
+  isRunning=false; autoLock=false; ctxRun.lastRun=null; droppedLock=false;
+  if (!silent) showToast('已重置到起点，铃铛已随机刷新');
+}
+function init(){
+  bat = createBat(); randomBellsLayout(); resetStepsUI(); setFreeMode(false);
+  updateHud(); updateCoversPosition();
+}
+let resizeTimer=null;
+window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer=setTimeout(()=>{ rebuildSceneFullRandom(); resetToStart(); }, 120); });
+init();
+</script>
+</body>
+</html>

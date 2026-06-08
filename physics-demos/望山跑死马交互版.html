@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>望山跑死马</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1, viewport-fit=cover" />
+<style>
+  :root{--accent:#3ddc97;--warn:#ffb74d;--ink:#e9f2ff;--btn-bg:#4CAF50;--btn-bg-hover:#45a049;--btn-shadow:0 6px 16px rgba(0,0,0,.15);--btn-shadow-active:0 3px 10px rgba(0,0,0,.2)}
+  *{box-sizing:border-box}html,body{margin:0;height:100%}
+  body{min-height:100vh;background:#101114;color:#fff;display:flex;flex-direction:column;align-items:center;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;padding-top:env(safe-area-inset-top)}
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+
+  /* 步骤卡 */
+  .task-card{width:100%;max-width:980px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+  .task-step{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 10px;font-weight:700;white-space:nowrap}
+  .task-text{line-height:1.55}.task-hint{color:#ffd54f;font-size:12px;opacity:.95}
+  .progress-dots{display:flex;gap:6px}.dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25);outline:2px solid rgba(255,255,255,.15)}
+  .dot.active{background:var(--warn)}.dot.done{background:var(--accent);outline-color:rgba(61,220,151,.5)}
+
+  /* 舞台 */
+  .animation-container{position:relative;overflow:hidden;width:100%;max-width:980px;height:60vh;max-height:560px;background:linear-gradient(#87CEEB 20%,#bde3ff 60%,#eaf7ff);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .cloud{position:absolute;font-size:30px;animation:floatCloud linear infinite;filter:drop-shadow(2px 2px 3px rgba(0,0,0,.2));z-index:0;pointer-events:none}
+  @keyframes floatCloud{0%{transform:translateX(-120px)}100%{transform:translateX(calc(100vw + 100px))}}
+
+  .mountain{position:absolute;left:50px;top:50%;transform:translateY(-50%);font-size:100px;filter:drop-shadow(5px 5px 5px rgba(0,0,0,.3));z-index:1}
+  .horse{position:absolute;right:50px;top:50%;transform:translateY(-50%);font-size:60px;filter:drop-shadow(2px 2px 2px rgba(0,0,0,.3));z-index:1}
+  .initial-horse{opacity:.3;transition:none}
+  .moving-horse{transition:transform .1s linear}
+
+  .perspective-svg{position:absolute;left:0;top:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:2}
+  .perspective-line{position:absolute;height:1px;background:rgba(255,0,0,.12);transform-origin:left center;z-index:2}
+
+  /* 小短线 + 角标 */
+  .angle-indicator{position:absolute;height:2px;width:24px;background:red;border-radius:2px;transform-origin:left center;display:none;z-index:3}
+  .angle-label{position:absolute;color:red;font-size:12px;background:transparent;pointer-events:none;display:none;z-index:3}
+
+  .center-label{position:absolute;left:50%;top:12px;transform:translateX(-50%);color:rgba(255,255,255,.9);font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.3);display:none;z-index:3}
+
+  .incanvas{position:absolute;right:10px;top:10px;z-index:4;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:8px;backdrop-filter:blur(6px)}
+  .btn{border:none;border-radius:10px;padding:9px 12px;color:#fff;background:var(--btn-bg);box-shadow:var(--btn-shadow);transition:.15s;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  .btn:hover{background:var(--btn-bg-hover)}.btn:active,.btn.is-pressing{transform:translateY(1px) scale(.99);box-shadow:var(--btn-shadow-active)}
+  .btn:disabled{opacity:.55;cursor:not-allowed}.ack{background:#007aff}
+
+  .toolbar{width:100%;max-width:980px;margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-start}
+  .toolbar button{padding:10px 16px;background:#444;border:none;border-radius:10px;color:#fff;cursor:pointer;transition:.2s}
+  .toolbar button:hover{background:#5a5a5a}.toolbar button:disabled{opacity:.5;cursor:not-allowed}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,.82);color:#fff;padding:10px 14px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:2000}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .checkmark{position:absolute;z-index:40;left:50%;top:20%;transform:translate(-50%,-50%) scale(.7);width:120px;height:120px;border-radius:50%;background:rgba(61,220,151,.12);border:3px solid var(--accent);display:none;align-items:center;justify-content:center;box-shadow:0 0 36px rgba(61,220,151,.42),inset 0 0 20px rgba(61,220,151,.22)}
+  .checkmark.active{display:flex}.checkmark>div{width:60px;height:30px;border-left:8px solid var(--accent);border-bottom:8px solid var(--accent);transform:rotate(-45deg) translateY(-6px)}
+  .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1500}
+  .modal{width:min(92vw,380px);background:#111;border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:18px 16px;text-align:center}
+  .modal h3{margin:8px 0 6px;font-size:20px}.modal p{color:#cfd8dc;margin-top:0}
+  .modal .ok{margin-top:12px;background:var(--accent);color:#081a12;font-weight:700;border:none;border-radius:10px;padding:10px 14px;cursor:pointer}
+
+  .explain{width:100%;max-width:980px;margin:8px 0 16px;line-height:1.65;color:var(--ink)}
+  .explain h2{margin:.2em 0 .4em;color:#9bd3ff;font-size:1.08em}
+  @media (max-width:640px){.animation-container{height:58vh}.explain{font-size:.92em}}
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">点击右上角<strong>开始演示</strong>，观察马前进后屏幕出现的红线与黄色扇形。</div>
+      <div class="task-hint" id="taskHint">提示：这是原动画的第一段位移（约 1/7 距离）。</div>
+    </div>
+    <div class="progress-dots"><span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span></div>
+  </div>
+
+  <div class="animation-container" id="stage" aria-label="望山跑死马 场景">
+    <div class="cloud" style="top:15%; animation-duration:70s;">☁️</div>
+    <div class="cloud" style="top:25%; animation-duration:50s;">☁️</div>
+    <div class="cloud" style="top:13%; animation-duration:78s;">☁️</div>
+    <div class="cloud" style="top:27%; animation-duration:25s;">☁️</div>
+    <div class="cloud" style="top:20%; animation-duration:35s;">☁️</div>
+    <div class="cloud" style="top:18%; animation-duration:62s;">☁️</div>
+    <div class="cloud" style="top:22%; animation-duration:55s;">☁️</div>
+
+    <div class="mountain">🏔️</div>
+    <div class="horse initial-horse">🏇</div>
+    <div class="horse moving-horse">🏇</div>
+
+    <svg class="perspective-svg initial-svg" style="display:none"><polygon fill="rgba(255,255,0,0.12)" points="0,0 0,0 0,0"></polygon></svg>
+    <svg class="perspective-svg current-svg" style="display:none"><polygon fill="rgba(255,255,0,0.12)" points="0,0 0,0 0,0"></polygon></svg>
+    <div class="perspective-line initial-top-line"></div>
+    <div class="perspective-line initial-bottom-line"></div>
+    <div class="perspective-line current-top-line"></div>
+    <div class="perspective-line current-bottom-line"></div>
+
+    <div class="angle-indicator initial-angle-indicator"></div>
+    <div class="angle-indicator current-angle-indicator"></div>
+    <div class="angle-label initial-angle">α</div>
+    <div class="angle-label current-angle">β</div>
+    <div class="center-label">α≈β</div>
+
+    <div class="incanvas">
+      <button class="btn" id="startBtn">开始演示</button>
+      <button class="btn" id="resetBtn">重置演示</button>
+      <button class="btn ack" id="ackBtn" style="display:none">我看到了 α≈β</button>
+    </div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <div class="toolbar">
+    <button id="stepResetBtn">步骤重置</button>
+    <button id="autoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3>完成，你真棒！🎉</h3>
+      <p>“望山跑死马”的错觉源于远处目标的<strong>角大小变化很慢</strong>，接近后突然变化很快。</p>
+      <button class="ok" id="okBtn">好的</button>
+    </div>
+  </div>
+  <div class="toast" id="toast">再试一试：请按步骤完成当前指令</div>
+
+  <div class="explain">
+    <h2>原理小结</h2>
+    <ul>
+      <li><b>近大远小：</b>远处山成像很小，在人眼中，视角变化很慢。马跑了很久，但山的大小在人眼中几乎不变，以为可以快速靠近（让山在人眼中的视角快速变大），但难以实现。</li>
+    </ul>
+  </div>
+
+<script>
+/* 工具 */
+const $=s=>document.querySelector(s);const toast=$("#toast");const checkmark=$("#checkmark");const doneMask=$("#doneMask");
+const showToast=t=>{toast.textContent=t||'再试一试';toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1200)}
+const showCheck=()=>{checkmark.classList.add('active');setTimeout(()=>checkmark.classList.remove('active'),520)}
+$("#okBtn").onclick=()=>doneMask.style.display='none';
+
+/* 原动画元素 */
+const horse=document.querySelector('.moving-horse');
+const mountain=document.querySelector('.mountain');
+const container=document.querySelector('.animation-container');
+const initialHorseEl=document.querySelector('.initial-horse');
+const initialSvg=document.querySelector('.initial-svg');
+const currentSvg=document.querySelector('.current-svg');
+const initialTopLine=document.querySelector('.initial-top-line');
+const initialBottomLine=document.querySelector('.initial-bottom-line');
+const currentTopLine=document.querySelector('.current-top-line');
+const currentBottomLine=document.querySelector('.current-bottom-line');
+const initialAngleIndicator=document.querySelector('.initial-angle-indicator');
+const currentAngleIndicator=document.querySelector('.current-angle-indicator');
+const initialAngleLabel=document.querySelector('.initial-angle');
+const currentAngleLabel=document.querySelector('.current-angle');
+const centerLabel=document.querySelector('.center-label');
+
+let isAnimating=false,totalDistance=0,moveDistance=0;
+
+/* 视点（骑手头部大致位置） */
+const EYE_X_RATIO=0.62, EYE_Y_RATIO=0.36;
+function eyeOf(el,contRect){const r=el.getBoundingClientRect();return {x:r.left+r.width*EYE_X_RATIO-contRect.left,y:r.top+r.height*EYE_Y_RATIO-contRect.top};}
+
+/* 计算/重置/启动 */
+function calculateDistances(){const m=mountain.getBoundingClientRect(),h=horse.getBoundingClientRect();totalDistance=Math.abs(m.left-(h.left+h.width/2));moveDistance=totalDistance/7;}
+function resetVisualsOnly(){
+  [initialTopLine,initialBottomLine,currentTopLine,currentBottomLine].forEach(el=>el.style.width='0px');
+  [initialSvg,currentSvg].forEach(svg=>{const p=svg.querySelector('polygon');p.setAttribute('points','0,0 0,0 0,0');svg.style.display='none';});
+  [initialAngleIndicator,currentAngleIndicator,initialAngleLabel,currentAngleLabel,centerLabel].forEach(el=>el.style.display='none');
+}
+function resetAnimation(){isAnimating=false;horse.style.transform='translateY(-50%)';resetVisualsOnly();calculateDistances();}
+function startAnimation(){
+  if(isAnimating)return;resetVisualsOnly();isAnimating=true;let x=0;
+  (function anim(){ if(x<moveDistance){x+=0.5;horse.style.transform=`translateY(-50%) translateX(-${x}px)`;requestAnimationFrame(anim);} else{isAnimating=false;showPerspective();} })();
+}
+
+/* 线条/扇形绘制 */
+function updatePerspectiveLines(eyeX,eyeY,mLeft,mTop,mBottom,topLine,bottomLine){
+  const dxT=mLeft-eyeX,dyT=mTop-eyeY,dxB=mLeft-eyeX,dyB=mBottom-eyeY;
+  const dT=Math.hypot(dxT,dyT),dB=Math.hypot(dxB,dyB),aT=Math.atan2(dyT,dxT)*180/Math.PI,aB=Math.atan2(dyB,dxB)*180/Math.PI;
+  topLine.style.left=`${eyeX}px`;topLine.style.top=`${eyeY}px`;topLine.style.width=`${dT}px`;topLine.style.transform=`rotate(${aT}deg)`;
+  bottomLine.style.left=`${eyeX}px`;bottomLine.style.top=`${eyeY}px`;bottomLine.style.width=`${dB}px`;bottomLine.style.transform=`rotate(${aB}deg)`;
+}
+function updatePerspectivePolygon(svg,eyeX,eyeY,mLeft,mTop,mBottom){svg.querySelector('polygon').setAttribute('points',`${eyeX},${eyeY} ${mLeft},${mTop} ${mLeft},${mBottom}`)}
+function avgAngle(a,b){return Math.atan2(Math.sin(a)+Math.sin(b),Math.cos(a)+Math.cos(b));}
+
+/* === 关键：按你的指令旋转120°，角标在“另一端点” === */
+function placeRotatedIndicator(ind,label,eyeX,eyeY,mLeft,mTop,mBottom){
+  // 两射线角度 → 角平分角
+  const aT=Math.atan2(mTop-eyeY,    mLeft-eyeX);
+  const aB=Math.atan2(mBottom-eyeY, mLeft-eyeX);
+  let aMid=avgAngle(aT,aB);
+  // 逆时针旋转 120°
+  aMid += Math.PI * 2/3; // 120° = 2π/3
+
+  // 短线长度自适应
+  const L=Math.max(18,Math.min(28,container.clientWidth*0.02||22));
+
+  // 绘制短线（左端点为圆心）
+  ind.style.display='block';
+  ind.style.left=`${eyeX}px`; ind.style.top=`${eyeY}px`;
+  ind.style.transform=`rotate(${aMid*180/Math.PI}deg)`;
+  ind.style.width=`${L}px`;
+
+  // 角标放在“另一端点”（右端点）
+  const endX=eyeX + Math.cos(aMid)*L;
+  const endY=eyeY + Math.sin(aMid)*L;
+  label.style.display='block';
+  label.style.left=`${endX - 6}px`;   // 轻微微调居中
+  label.style.top =`${endY - 10}px`;
+}
+
+function showPerspective(){
+  const m=mountain.getBoundingClientRect(),h=horse.getBoundingClientRect(),c=container.getBoundingClientRect(),ih=initialHorseEl.getBoundingClientRect();
+  const mLeft=m.left+m.width/2 - c.left, rawTop=m.top - c.top, rawBottom=m.bottom - c.top, h2=(rawBottom-rawTop)/2;
+  const adjBottom=rawBottom - h2/3, adjTop=rawTop + h2/2 + h2*0.05;
+
+  const eye0=eyeOf(initialHorseEl,c);
+  const eye1=eyeOf(horse,c);
+
+  updatePerspectiveLines(eye0.x,eye0.y,mLeft,adjTop,adjBottom,initialTopLine,initialBottomLine);
+  updatePerspectiveLines(eye1.x,eye1.y,mLeft,adjTop,adjBottom,currentTopLine,currentBottomLine);
+  updatePerspectivePolygon(initialSvg,eye0.x,eye0.y,mLeft,adjTop,adjBottom);
+  updatePerspectivePolygon(currentSvg,eye1.x,eye1.y,mLeft,adjTop,adjBottom);
+  initialSvg.style.display='block'; currentSvg.style.display='block';
+
+  // 按指令：短线整体逆时针120°，角标在另一端点
+  placeRotatedIndicator(initialAngleIndicator,initialAngleLabel,eye0.x,eye0.y,mLeft,adjTop,adjBottom);
+  placeRotatedIndicator(currentAngleIndicator,currentAngleLabel,eye1.x,eye1.y,mLeft,adjTop,adjBottom);
+
+  centerLabel.style.display='block';
+  reportAction('perspective_shown');
+}
+
+/* 步骤引擎（与前版一致） */
+const steps=[
+  {text:'点击右上角<strong>开始演示</strong>，观察马前进后屏幕出现的红线与黄色扇形。',hint:'这是原动画的第一段位移（约 1/7 距离）。',expect:'start_then_perspective',pass:p=>p.perspective===true},
+  {text:'出现 α、β 与黄色扇形后，点击<strong>“我看到了 α≈β”</strong>。',hint:'确认你注意到 α 与 β 很接近 → 前半程看起来“变化不大”。',expect:'ack',pass:p=>p.ack===true},
+  {text:'再点一次<strong>开始演示</strong>，第二次体验“还要走很久”的感觉（自动完成）。',hint:'原动画再次执行同样位移，完成后自动通过。',expect:'start_then_perspective2',pass:p=>p.perspective2===true},
+];
+let cur=0,free=false,auto=false,completed=false;
+const dots=[$('#dot1'),$('#dot2'),$('#dot3')];
+function setStepUI(i){i=Math.max(0,Math.min(i,steps.length-1));$('#taskStep').textContent=`步骤 ${i+1} / ${steps.length}`;$('#taskText').innerHTML=steps[i].text;$('#taskHint').textContent=steps[i].hint;dots.forEach((d,k)=>d.className='dot'+(k<i?' done':k===i?' active':''))}
+function nextStep(){dots[cur].classList.remove('active');dots[cur].classList.add('done');cur++;if(cur>=steps.length){completed=true;doneMask.style.display='flex';return;}dots[cur].classList.add('active');setStepUI(cur)}
+function reportAction(type){if(free||auto||completed)return;const s=steps[cur];if(!s)return;let ok=false,pass=false;
+  if(s.expect==='start_then_perspective' && type==='perspective_shown'){ok=true;pass=s.pass({perspective:true});}
+  else if(s.expect==='ack' && type==='ack'){ok=true;pass=s.pass({ack:true});}
+  else if(s.expect==='start_then_perspective2' && type==='perspective_shown'){ok=true;pass=s.pass({perspective2:true});}
+  if(!ok)return;if(pass){showCheck();setTimeout(nextStep,520);}
+}
+
+/* 按钮/模式 */
+function bindTap(el,handler){let last=0;const P='is-pressing';const on=()=>el.classList.add(P);const off=()=>el.classList.remove(P);
+  el.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;on();handler(e);last=Date.now()},{passive:true});
+  el.addEventListener('pointerup',off,{passive:true});el.addEventListener('pointerleave',off,{passive:true});
+  el.addEventListener('click',e=>{if(Date.now()-last<50)return;handler(e)},{passive:true});
+}
+const startBtn=$("#startBtn"),resetBtn=$("#resetBtn"),ackBtn=$("#ackBtn");
+const stepResetBtn=$("#stepResetBtn"),autoBtn=$("#autoBtn"),freeBtn=$("#freeBtn");
+function enterFree(on){free=on;freeBtn.textContent=on?'退出自由模式':'自由模式';autoBtn.disabled=on;const card=$("#taskCard");card.style.opacity=on?.25:1;card.style.filter=on?'grayscale(.6)':'none'}
+function hardReset(){cur=0;completed=false;auto=false;dots.forEach((d,i)=>d.className='dot'+(i===0?' active':''));setStepUI(0);resetAnimation();ackBtn.style.display='none';checkmark.classList.remove('active');toast.classList.remove('show');doneMask.style.display='none'}
+function guardStartAllowed(){return free||cur===0||cur===2}
+
+bindTap(startBtn,()=>{if(completed){showToast('已完成，点“步骤重置”可再来一次');return;} if(!guardStartAllowed()){showToast('本步骤不需要“开始演示”');return;} startAnimation(); if(cur===0){ackBtn.style.display='block';}});
+bindTap(resetBtn,()=>{resetAnimation();if(!free)showToast('已重置演示（不影响步骤进度）')});
+bindTap(ackBtn,()=>{if(free){showToast('自由模式下无需确认');return;} if(cur!==1){showToast('请按步骤进行');return;} reportAction('ack');ackBtn.style.display='none';});
+bindTap(stepResetBtn,()=>{if(auto)return;hardReset();});
+bindTap(freeBtn,()=>enterFree(!free));
+bindTap(autoBtn,async()=>{if(free||auto)return;auto=true;hardReset();startAnimation();
+  const waitShow=()=>new Promise(r=>{const t=setInterval(()=>{if(initialSvg.style.display==='block'&&currentSvg.style.display==='block'){clearInterval(t);r();}},60);});
+  await waitShow();reportAction('perspective_shown');await new Promise(r=>setTimeout(r,600));
+  reportAction('ack');await new Promise(r=>setTimeout(r,600));startAnimation();await waitShow();reportAction('perspective_shown');auto=false;});
+
+/* 初始化 */
+document.addEventListener('DOMContentLoaded',()=>{hardReset();document.querySelectorAll('.cloud').forEach((c,i)=>{c.style.left='-80px';c.style.animationDelay=`-${i*3}s`;});setTimeout(()=>{try{window.scrollTo({top:0,left:0,behavior:'instant'});}catch{window.scrollTo(0,0);}},0);});
+window.addEventListener('resize',()=>{if(!isAnimating)resetAnimation();});
+</script>
+</body>
+</html>

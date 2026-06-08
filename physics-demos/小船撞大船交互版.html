@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>小船为什么会被大船“吸”过去？互动闯关</title>
+  <style>
+    :root{--card-bg: rgba(255,255,255,0.08);--accent:#3ddc97;--warn:#ffb74d;--error:#ff6b6b;}
+    body{background:#1a1a1a;margin:0;padding:10px;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;}
+     /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+    .task-card{width:100%;max-width:900px;background:var(--card-bg);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px 14px;backdrop-filter:blur(6px);display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;}
+    .task-step{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:700;white-space:nowrap;}
+    .task-text{line-height:1.5}.task-hint{color:#ffd54f;font-size:12px;opacity:.9}
+    .progress-dots{display:flex;gap:6px}.dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.25)}.dot.active{background:var(--warn)}.dot.done{background:var(--accent)}
+
+    #canvas{width:100%;max-width:900px;height:60vh;max-height:520px;position:relative;overflow:hidden;border-radius:12px;background:#000;margin-top:10px;box-shadow:0 8px 24px rgba(0,0,0,.3);touch-action:none;}
+    #sceneCanvas{width:100%;height:100%;display:block}
+
+    .in-controls{position:absolute;left:10px;bottom:10px;display:flex;gap:8px;flex-wrap:wrap;z-index:30;}
+    .in-controls button{padding:6px 10px;font-size:13px;border-radius:8px;border:none;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.4);transition:background .2s,transform .05s,opacity .2s;}
+    .in-controls button:hover{background:rgba(0,0,0,.8)}.in-controls button:active{transform:scale(.97)}.in-controls button:disabled{opacity:.45;cursor:not-allowed}
+
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;width:100%;max-width:900px;margin-top:12px;}
+    .toolbar>button{padding:10px 16px;background:#444;color:#fff;border:none;border-radius:8px;cursor:pointer;transition:background .25s,transform .05s,opacity .2s;}
+    .toolbar>button:hover{background:#5a5a5a}.toolbar>button:active{transform:scale(.98)}.toolbar>button:disabled{opacity:.5;cursor:not-allowed}
+
+    .checkmark{position:absolute;z-index:50;left:50%;top:18%;transform:translate(-50%,-50%) scale(.6);width:120px;height:120px;border-radius:50%;background:rgba(61,220,151,.15);border:3px solid var(--accent);display:none;align-items:center;justify-content:center;}
+    .checkmark.active{display:flex}.checkmark>div{width:60px;height:30px;border-left:8px solid var(--accent);border-bottom:8px solid var(--accent);transform:rotate(-45deg) translateY(-6px)}
+
+    .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:rgba(0,0,0,.8);color:#fff;padding:10px 14px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:200;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    .modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:300;}
+    .modal{width:min(90vw,360px);background:#111;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:18px 16px;text-align:center;}
+    .modal h3{margin:0 0 10px;font-size:18px}.modal p{margin:0 0 16px;font-size:14px;color:#e1f5fe}
+    .modal .ok{padding:8px 18px;border-radius:999px;border:none;background:var(--accent);color:#000;font-weight:700;cursor:pointer;}
+
+    .explanation{width:100%;max-width:900px;margin:14px 0 20px;line-height:1.65;font-size:.95em;color:#e9f2ff;}
+    .explanation h2{margin:.2em 0 .4em;color:#9bd3ff;font-size:1.15em;}
+
+    .quiz-inline{margin-top:6px;display:none;gap:6px;flex-wrap:wrap;}
+    .quiz-inline button{padding:4px 8px;font-size:12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.4);color:#fff;cursor:pointer;transition:background .2s,transform .05s,border-color .2s;}
+    .quiz-inline button:hover{background:rgba(255,255,255,.12)}.quiz-inline button:active{transform:scale(.97)}
+    .quiz-inline button.correct{background:rgba(61,220,151,.25);border-color:var(--accent)}
+    .quiz-inline button.wrong{background:rgba(255,107,107,.22);border-color:var(--error)}
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">先让小船在远处匀速前进，观察水面的情况。</div>
+      <div class="task-hint" id="taskHint">点击【启动小船】按钮。</div>
+      <div class="quiz-inline" id="quizInline">
+        <button data-key="A">A. 两船之间的水流被挤得更快，压强降低，高压一侧把小船推向低压一侧。</button>
+        <button data-key="B">B. 大船有很强的磁力，把小船吸过来。</button>
+        <button data-key="C">C. 小船发动机突然坏了，只能往大船方向“滑行”。</button>
+      </div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvas">
+    <canvas id="sceneCanvas"></canvas>
+    <div class="in-controls">
+      <button id="btnLaunch">启动小船</button>
+      <button id="btnApproach">靠近大船</button>
+      <button id="btnSceneReset">场景复位</button>
+    </div>
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">按步骤操作画面中的小船。</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>完成，你真棒！🎉</h3>
+      <p>你已经搞明白了小船为什么会被大船“吸”过去。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>原理说明：伯努利原理与“小船撞大船”</h2>
+    <p>大船侧边水流更快、压强更低，小船外侧压强更高，于是小船会被“推向”大船侧面。</p>
+  </div>
+
+<script>
+const canvas = document.getElementById('sceneCanvas');
+const ctx = canvas.getContext('2d');
+
+const taskCard = document.getElementById('taskCard');
+const taskStepEl = document.getElementById('taskStep');
+const taskTextEl = document.getElementById('taskText');
+const taskHintEl = document.getElementById('taskHint');
+const dots = [document.getElementById('dot1'),document.getElementById('dot2'),document.getElementById('dot3')];
+const quizInline = document.getElementById('quizInline');
+const quizButtons = quizInline.querySelectorAll('button');
+
+const toast = document.getElementById('toast');
+const doneMask = document.getElementById('doneMask');
+const okBtn = document.getElementById('okBtn');
+const resetBtn = document.getElementById('resetBtn');
+const autoDemoBtn = document.getElementById('autoDemoBtn');
+const freeBtn = document.getElementById('freeBtn');
+const checkmarkEl = document.getElementById('checkmark');
+
+const btnLaunch = document.getElementById('btnLaunch');
+const btnApproach = document.getElementById('btnApproach');
+const btnSceneReset = document.getElementById('btnSceneReset');
+
+const sleep = ms=>new Promise(r=>setTimeout(r,ms));
+const waitFor = async (pred,timeout=3000,interval=50)=>{
+  const t0=performance.now();
+  while(performance.now()-t0<timeout){
+    if(pred()) return true;
+    await sleep(interval);
+  }
+  return false;
+};
+const lerp=(a,b,t)=>a+(b-a)*t;
+
+function showToast(text){
+  toast.textContent=text||'再试一试：按步骤操作画面中的小船。';
+  toast.classList.add('show');
+  setTimeout(()=>toast.classList.remove('show'),1300);
+}
+function showDone(){doneMask.style.display='flex';}
+okBtn.addEventListener('click',()=>doneMask.style.display='none');
+function showCheck(){checkmarkEl.classList.add('active');}
+function hideCheck(){checkmarkEl.classList.remove('active');}
+
+/* tutorial */
+let freeMode=false,autoPlaying=false,successCooldown=false,completed=false,currentTask=0;
+let step1Done=false,step2Done=false,step3Done=false;
+
+/* scene */
+let W=0,H=0,waterLevel=0,horizonY=0;
+let bgOffset=0;
+const SHIP_SPEED=0.45;
+
+/* big ship */
+const BIG_CANON_WIDTH=400;
+let bigShipX=0,bigShipY=0,bigShipWidth=BIG_CANON_WIDTH,bigShipScale=1;
+let bigShipBob=0;
+const DANGER_ZONE_HEIGHT=44;
+
+/* small boat */
+const boatDraft=15;
+let smallBoatX=0,smallBoatY=0,smallBoatAngle=-Math.PI/60;
+let launched=false,beingPulled=false,collided=false,inChannel=false;
+let boatSpeedX=0,flowPhase=0;
+
+/* collision & sink */
+let collisionProgress=0, sinking=false,sinkProgress=0,sinkStartY=0,sinkTargetY=0;
+
+/* approach */
+let approachClickCount=0, approachStepDY=0, targetApproachY=0, outerLaneY=0;
+/* 第三次后“已武装”——即便当时不在危险区，之后追到也会触发 */
+let approachArmed=false;
+
+/* pull */
+let pullTimer=0;
+/* 吸引更短（≈1.2s） */
+const PULL_DELAY_FRAMES=75;
+const CONFIG={boatBaseSpeed:0.9,pullAccel:0.015,maxBoatSpeed:2.2};
+/* 吸引阶段逐渐偏向大船 */
+const targetPullAngle = -Math.PI/18;
+
+/* geometry */
+function getShipSideX(){return bigShipX-bigShipWidth/2+bigShipWidth*0.12;}
+function getHullFrontX(){return bigShipX+bigShipWidth/2;}
+function getDangerCenterY(){ return waterLevel+26; }
+function getDangerBounds(){
+  const shipSideX=getShipSideX();
+  const hullFront=getHullFrontX();
+  const centerY=getDangerCenterY();
+  const zoneHeight=DANGER_ZONE_HEIGHT;
+  const zoneLeft=shipSideX-110;
+  const zoneRight=shipSideX+(hullFront-shipSideX)*0.6;
+  return {shipSideX,hullFront,centerY,zoneHeight,zoneLeft,zoneRight};
+}
+function getOuterLaneY(){return waterLevel+60;}
+
+/* steps */
+const tasks=[
+  {text:'先让小船在远处匀速前进，观察水面的情况。',hint:'点击【启动小船】。',check:()=>step1Done},
+  {text:'再让小船逐渐靠近大船一侧，注意红色危险区域里的水流变化。',hint:'连续点击三次【靠近大船】。',check:()=>step2Done},
+  {text:'想一想：小船为什么会被“大船吸过去”？',hint:'选 A/B/C。',check:()=>step3Done},
+];
+function updateQuizVisibility(){quizInline.style.display=(currentTask===2||completed||freeMode)?'flex':'none';}
+function setStepUI(stepIndex){
+  stepIndex=Math.max(0,Math.min(stepIndex,tasks.length-1));
+  const t=tasks[stepIndex];
+  taskStepEl.textContent=`步骤 ${stepIndex+1} / ${tasks.length}`;
+  taskTextEl.innerHTML=t.text;
+  taskHintEl.textContent=t.hint;
+  dots.forEach((d,i)=>d.className='dot'+(i<stepIndex?' done':'')+(i===stepIndex?' active':''));
+  updateQuizVisibility();
+  if(stepIndex===2){
+    quizButtons.forEach(b=>b.classList.remove('correct','wrong'));
+  }
+}
+function lockSuccess(){successCooldown=true;setTimeout(()=>successCooldown=false,450);}
+function evaluateTask(endGesture,fromAuto=false){
+  if(!endGesture||successCooldown||completed) return;
+  const t=tasks[currentTask];
+  if(t&&t.check()){showCheck();lockSuccess();setTimeout(nextTask,520);}
+  else if(!autoPlaying&&!fromAuto) showToast('再试一试：按照提示完成当前步骤。');
+}
+function nextTask(){
+  hideCheck();currentTask++;
+  if(currentTask>=tasks.length){completed=true;showDone();updateQuizVisibility();return;}
+  setStepUI(currentTask);
+}
+function setFreeMode(on){
+  freeMode=on;
+  if(on){
+    taskCard.style.opacity=0.25;taskCard.style.filter='grayscale(.6)';
+    freeBtn.textContent='退出自由模式';autoDemoBtn.disabled=true;
+    hideCheck();doneMask.style.display='none';
+  }else{
+    taskCard.style.opacity=1;taskCard.style.filter='none';
+    freeBtn.textContent='自由模式';autoDemoBtn.disabled=false;
+  }
+  updateQuizVisibility();
+}
+
+/* reset */
+function resetScenePositions(){
+  const rect=canvas.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=rect.width*dpr;canvas.height=rect.height*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  W=rect.width;H=rect.height;
+  waterLevel=H*0.65;horizonY=waterLevel-80;bgOffset=0;
+
+  bigShipScale=Math.min(1,(W*0.6)/BIG_CANON_WIDTH);
+  bigShipWidth=BIG_CANON_WIDTH*bigShipScale;
+  bigShipX=W*0.7;bigShipY=waterLevel-20*bigShipScale;
+  bigShipBob=0;
+
+  smallBoatX=W*0.12;smallBoatY=getOuterLaneY();
+  smallBoatAngle=-Math.PI/60;
+
+  launched=false;beingPulled=false;collided=false;inChannel=false;
+  boatSpeedX=0;flowPhase=0;collisionProgress=0;
+
+  sinking=false;sinkProgress=0;sinkStartY=0;sinkTargetY=0;
+  approachClickCount=0;pullTimer=0;approachArmed=false;
+
+  const {centerY,zoneHeight}=getDangerBounds();
+  const dangerBottom=centerY+zoneHeight/2;
+  targetApproachY=dangerBottom-boatDraft;
+  outerLaneY=getOuterLaneY();
+  approachStepDY=(targetApproachY-outerLaneY)/3;
+}
+function resetFlow(){
+  completed=false;successCooldown=false;
+  step1Done=step2Done=step3Done=false;
+  if(!freeMode){currentTask=0;setStepUI(0);hideCheck();doneMask.style.display='none';}
+  quizButtons.forEach(b=>b.classList.remove('correct','wrong'));
+  resetScenePositions();
+}
+
+/* drawing */
+function drawSky(){
+  const grad=ctx.createLinearGradient(0,0,0,waterLevel);
+  grad.addColorStop(0,'#0b1020');grad.addColorStop(.5,'#1f3b63');grad.addColorStop(1,'#2b6fa4');
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,waterLevel);
+
+  const shift=bgOffset*0.6,baseX=-(shift%W);
+  ctx.fillStyle='#12313f';
+  for(let r=0;r<2;r++){
+    const x0=baseX+r*W;
+    ctx.beginPath();
+    ctx.moveTo(x0,waterLevel);
+    ctx.quadraticCurveTo(x0+W*0.25,horizonY-40,x0+W*0.5,waterLevel-30);
+    ctx.quadraticCurveTo(x0+W*0.75,horizonY-20,x0+W,waterLevel);
+    ctx.closePath();ctx.fill();
+  }
+
+  const cloudShift=bgOffset*0.4,cBase=-(cloudShift%W);
+  ctx.fillStyle='rgba(255,255,255,0.16)';
+  for(let i=0;i<3;i++){
+    const cx1=cBase+(i+.5)*W/3,cy=horizonY-30-i*6,rw=W*.22,rh=24;
+    [cx1,cx1+W].forEach(cx=>{
+      if(cx>-rw&&cx<W+rw){ctx.beginPath();ctx.ellipse(cx,cy,rw,rh,0,0,Math.PI*2);ctx.fill();}
+    });
+  }
+}
+function drawWater(){
+  const grad=ctx.createLinearGradient(0,waterLevel,0,H);
+  grad.addColorStop(0,'#1b6cc1');grad.addColorStop(1,'#062e63');
+  ctx.fillStyle=grad;ctx.fillRect(0,waterLevel,W,H-waterLevel);
+  ctx.strokeStyle='rgba(255,255,255,.32)';ctx.lineWidth=1;ctx.beginPath();
+  for(let x=0;x<=W;x+=8){const y=waterLevel+Math.sin(x*.06+flowPhase*2)*3;ctx.lineTo(x,y);}
+  ctx.stroke();
+}
+function drawShipWaves(){
+  const baseY=waterLevel+4;
+  const hullX=bigShipX,hullFront=hullX+bigShipWidth/2,hullBack=hullX-bigShipWidth/2;
+  ctx.save();
+  for(let i=0;i<4;i++){
+    const r=18+i*9,alpha=.34-i*.06;if(alpha<=0)continue;
+    ctx.strokeStyle=`rgba(255,255,255,${alpha})`;ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(hullBack-6-i*4,baseY+2,r*.9,r*.35,0,0,Math.PI);ctx.stroke();
+    ctx.beginPath();ctx.ellipse(hullFront+10+i*3,baseY+1,r*.7,r*.28,0,0,Math.PI);ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawBigShip(){
+  ctx.save();
+  const bobY=Math.sin(bigShipBob)*2.5;
+  ctx.translate(bigShipX,bigShipY+bobY);
+  ctx.scale(bigShipScale,bigShipScale);
+  ctx.fillStyle='#444';ctx.fillRect(-200,0,400,40);
+  ctx.fillStyle='#666';ctx.fillRect(-180,-30,360,30);
+  ctx.fillStyle='#333';for(let i=-2;i<=2;i++)ctx.fillRect(i*40-10,-60,20,30);
+  ctx.restore();
+}
+function drawDangerZone(){
+  const {zoneLeft,zoneRight,centerY,zoneHeight}=getDangerBounds();
+  const top=centerY-zoneHeight/2;
+  ctx.save();
+  ctx.fillStyle='rgba(255,0,0,.16)';ctx.fillRect(zoneLeft,top,zoneRight-zoneLeft,zoneHeight);
+  ctx.strokeStyle='rgba(255,80,80,.85)';ctx.setLineDash([6,4]);ctx.lineWidth=1.5;
+  ctx.strokeRect(zoneLeft,top,zoneRight-zoneLeft,zoneHeight);ctx.setLineDash([]);
+  ctx.font='12px sans-serif';ctx.fillStyle='rgba(255,220,220,.95)';ctx.fillText('危险区域',zoneLeft+10,top+16);
+  ctx.restore();
+}
+
+/* 连续水流带：危险区 → 船头非危险区自然过渡 */
+function drawFlowBand(){
+  const {zoneLeft,zoneRight,centerY,hullFront}=getDangerBounds();
+  const endX=hullFront-6;
+  const bandCenterY=centerY,bandHeight=26;
+  flowPhase+=.05;
+
+  const taperStart=zoneRight;                 // 从危险区结束处开始衰减
+  const taperLen=Math.max(80,endX-zoneRight); // 向船头渐窄距离
+
+  ctx.save();
+  for(let layer=0;layer<2;layer++){
+    const baseAlpha=layer===0?.14:.26;
+    const ampBase=layer===0?2.0:3.2;
+    const spacing=layer===0?20:16;
+
+    for(let i=0;i<18;i++){
+      const y=bandCenterY-bandHeight/2+(i/17)*bandHeight;
+
+      ctx.beginPath();
+      for(let x=zoneLeft;x<endX;x+=spacing){
+        const k=x*.06+flowPhase*(3+layer);
+        const taper = x<=taperStart ? 1 : Math.max(0.25, 1-(x-taperStart)/taperLen);
+        const amp = ampBase * taper;
+        ctx.lineTo(x, y + Math.sin(k)*amp);
+      }
+
+      let alpha=baseAlpha+.12;
+      if(beingPulled) alpha+=.06;
+      ctx.strokeStyle=`rgba(255,255,255,${alpha})`;
+      ctx.lineWidth=layer===0?.9:1.2;
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawSmallBoat(){
+  ctx.save();
+  let alpha=1;if(sinking) alpha=Math.max(0,1-sinkProgress);
+  ctx.globalAlpha=alpha;
+  ctx.translate(smallBoatX,smallBoatY);ctx.rotate(smallBoatAngle);
+  ctx.fillStyle='#222';ctx.beginPath();
+  ctx.moveTo(0,0);ctx.lineTo(80,0);ctx.lineTo(70,15);ctx.lineTo(10,15);ctx.closePath();ctx.fill();
+  ctx.fillStyle='#555';ctx.fillRect(20,-20,40,20);
+  ctx.restore();ctx.globalAlpha=1;
+}
+function drawCollisionSplash(){
+  if(!collided||collisionProgress<.9) return;
+  const bowX=smallBoatX+80;
+  const cx=bowX-2, cy=smallBoatY-2;
+  const t=(collisionProgress-.9)/.1,maxR=18;
+  ctx.save();const a=.95*(1-t);ctx.fillStyle=`rgba(255,255,255,${a})`;
+  ctx.beginPath();const petals=10;
+  for(let i=0;i<petals;i++){
+    const ang=Math.PI*2/petals*i,r1=4+t*2,r2=8+t*maxR;
+    ctx.lineTo(cx+Math.cos(ang)*r1,cy+Math.sin(ang)*r1);
+    ctx.lineTo(cx+Math.cos(ang)*r2,cy+Math.sin(ang)*r2);
+  }
+  ctx.closePath();ctx.fill();ctx.restore();
+}
+
+/* physics */
+function updatePhysics(){
+  if(launched && !collided){
+    const factor=(beingPulled&&inChannel)?0.7:1;
+    smallBoatX += boatSpeedX*factor;
+  }
+  if(beingPulled && !collided){
+    boatSpeedX=Math.min(CONFIG.maxBoatSpeed,boatSpeedX+CONFIG.pullAccel);
+    pullTimer++;
+  }
+
+  if(beingPulled && !collided){
+    smallBoatAngle = lerp(smallBoatAngle, targetPullAngle, 0.03);
+  }else if(!collided){
+    smallBoatAngle = lerp(smallBoatAngle, -Math.PI/60, 0.03);
+  }
+
+  if((launched||beingPulled) && !collided){
+    bgOffset += SHIP_SPEED;
+    bigShipBob += 0.03;
+  }
+
+  const {shipSideX,centerY,zoneHeight,zoneLeft,zoneRight,hullFront}=getDangerBounds();
+  const bowX=smallBoatX+80;
+  const zHalf=zoneHeight/2;
+  const inYBand=(smallBoatY>=centerY-zHalf && smallBoatY<=centerY+zHalf);
+  const inDangerX = (bowX>=zoneLeft && bowX<=zoneRight+10);
+
+  // 船头前边界：吸引/碰撞时不允许越过
+  const maxBowXBeforeImpact = hullFront - 6;
+
+  // 第三次之后：
+  // 1) 若当下在危险区 → 立刻进入吸引（强制 A）
+  // 2) 若当下不在危险区 → 先“武装”，之后追到危险区附近也会吸引
+  if(!collided && approachArmed && !beingPulled){
+    // 追到危险区侧面/并排附近即可吸引
+    if(inDangerX || (bowX>=zoneLeft-40 && bowX<=zoneRight+40 && inYBand)){
+      inChannel=true; beingPulled=true; pullTimer=0;
+      boatSpeedX=Math.max(boatSpeedX, CONFIG.boatBaseSpeed*1.1);
+    }
+  }
+
+  // 吸引中：强制夹住X防越头
+  if(beingPulled && !collided){
+    if(smallBoatX+80 > maxBowXBeforeImpact){
+      smallBoatX = maxBowXBeforeImpact-80;
+    }
+  }
+
+  // 到侧面 + 吸引时间到 → 发生碰撞（保证危险区必撞）
+  if(!collided && inChannel && inYBand && bowX>=shipSideX && pullTimer>PULL_DELAY_FRAMES){
+    // 这里不会越过船头了，因为吸引中已 clamp
+    collided=true; launched=false; beingPulled=false; boatSpeedX=0;
+    collisionProgress=0;
+    sinking=false; sinkProgress=0;
+    sinkStartY=smallBoatY; sinkTargetY=H+40;
+
+    step2Done=true;
+    if(!freeMode && currentTask===1) evaluateTask(true, autoPlaying);
+  }
+
+  if(collided){
+    collisionProgress=Math.min(1,collisionProgress+0.03);
+    if(collisionProgress<0.65){
+      smallBoatAngle=lerp(smallBoatAngle,-Math.PI/80,0.06);
+      smallBoatY=lerp(smallBoatY,centerY,0.035);
+    }else{
+      smallBoatAngle=lerp(smallBoatAngle,-Math.PI/9.2,0.10);
+      smallBoatY=lerp(smallBoatY,centerY,0.06);
+    }
+    if(collisionProgress>=1){
+      sinking=true;
+      sinkProgress=Math.min(1,sinkProgress+0.006);
+      smallBoatY=lerp(sinkStartY,sinkTargetY,sinkProgress);
+    }
+  }
+}
+
+/* controls */
+function handleLaunch(fromAuto=false){
+  if(autoPlaying && !fromAuto) return;
+  if(collided){ if(!freeMode && !fromAuto) showToast('已碰撞，请【场景复位】。'); return; }
+  if(!launched){
+    launched=true; boatSpeedX=CONFIG.boatBaseSpeed;
+    step1Done=true;
+    if(!freeMode && currentTask===0) evaluateTask(true, fromAuto);
+  }
+}
+function handleApproach(fromAuto=false){
+  if(autoPlaying && !fromAuto) return;
+  if(collided){ if(!freeMode && !fromAuto) showToast('已碰撞，请【场景复位】。'); return; }
+  if(!launched){ if(!freeMode && !fromAuto) showToast('先【启动小船】。'); return; }
+
+  const {zoneLeft,zoneRight,hullFront}=getDangerBounds();
+  const bowX=smallBoatX+80;
+  const nearDangerX = bowX > zoneLeft-120;
+  const nearBowX = bowX > zoneRight+20;
+
+  if(approachClickCount>=3) return;
+  approachClickCount++;
+
+  smallBoatY += approachStepDY;
+  if(approachStepDY < 0){
+    smallBoatY = Math.max(targetApproachY, smallBoatY);
+  }else{
+    smallBoatY = Math.min(targetApproachY, smallBoatY);
+  }
+
+  if(approachClickCount===3){
+    approachArmed=true;  // ★ 第三次后永久武装（不管当下是否在危险区）
+    const inX=(bowX>=zoneLeft && bowX<=zoneRight+10);
+
+    if(inX){
+      // 当下就在危险区：立刻吸引（强制 A）
+      smallBoatY=targetApproachY;
+      inChannel=true; beingPulled=true; pullTimer=0;
+      boatSpeedX=Math.max(boatSpeedX, CONFIG.boatBaseSpeed*1.15);
+
+      // 若非常靠船头，轻微减速，配合 clamp 防越头
+      if(bowX > hullFront - 40){
+        boatSpeedX *= 0.8;
+      }
+    }else{
+      inChannel=false; beingPulled=false;
+      if(nearDangerX && nearBowX && !freeMode && !fromAuto){
+        showToast('这里接近船头，不是危险区域。');
+      }
+    }
+  }
+}
+
+btnLaunch.addEventListener('click',()=>handleLaunch(false));
+btnApproach.addEventListener('click',()=>handleApproach(false));
+btnSceneReset.addEventListener('click',()=>{ if(autoPlaying) return; resetScenePositions(); });
+
+quizButtons.forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(autoPlaying) return;
+    const key=btn.dataset.key;
+    quizButtons.forEach(b=>b.classList.remove('correct','wrong'));
+    if(key==='A'){
+      btn.classList.add('correct'); step3Done=true;
+      if(!freeMode && currentTask===2) evaluateTask(true,false);
+    }else{
+      btn.classList.add('wrong'); step3Done=false;
+      showToast('再想想“流速大→压强低”。');
+    }
+  });
+});
+
+async function autoDemo(){
+  if(autoPlaying) return;
+  autoPlaying=true; freeBtn.disabled=true;
+
+  resetFlow(); await sleep(400);
+  handleLaunch(true); await sleep(900);
+  handleApproach(true); await sleep(500);
+  handleApproach(true); await sleep(500);
+  handleApproach(true);
+
+  await waitFor(()=>step2Done, 10000, 40);
+  await waitFor(()=>currentTask===2, 3000, 50);
+
+  quizButtons.forEach(btn=>btn.classList.remove('correct','wrong'));
+  const aBtn=[...quizButtons].find(b=>b.dataset.key==='A');
+  if(aBtn) aBtn.classList.add('correct');
+  step3Done=true;
+  if(!freeMode && currentTask===2) evaluateTask(true,true);
+
+  await waitFor(()=>completed, 2000, 40);
+  autoPlaying=false; freeBtn.disabled=false;
+}
+
+resetBtn.addEventListener('click',()=>{ if(!autoPlaying) resetFlow(); });
+autoDemoBtn.addEventListener('click',()=>{ if(!autoPlaying) autoDemo(); });
+freeBtn.addEventListener('click',()=>{ if(autoPlaying) return; setFreeMode(!freeMode); });
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  drawSky(); drawWater(); drawShipWaves();
+  drawDangerZone(); drawBigShip();
+  drawFlowBand();         // ★ 连续水流带
+  drawSmallBoat(); drawCollisionSplash();
+  updatePhysics();
+  requestAnimationFrame(render);
+}
+
+function init(){ resetScenePositions(); setStepUI(0); render(); }
+window.addEventListener('resize', resetScenePositions);
+init();
+</script>
+</body>
+</html>

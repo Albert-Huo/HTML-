@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>银河系示例</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden; /* 隐藏滚动条，满屏显示 */
+      background-color: #000000; /* 背景为纯黑，模拟宇宙环境 */
+    }
+    #info {
+      position: absolute;
+      top: 10px;
+      width: 100%;
+      text-align: center;
+      font-family: sans-serif;
+      z-index: 1;
+      color: #ffffff;
+    }
+  </style>
+</head>
+
+<body>
+<div id="info">银河系演示 - Three.js</div>
+
+<!-- Three.js 核心库（需网络环境） -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+
+<!-- 如果需要文字标签，可使用 Three.js 提供的 CSS2DRenderer -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/renderers/CSS2DRenderer.js"></script>
+
+<script>
+/**
+ * 简要说明：
+ * 1. 创建一个场景 scene。
+ * 2. 添加一个相机 camera，并将其放在某个距离处，以便可以看到整个“银河系”。
+ * 3. 创建渲染器并将其添加到文档中。
+ * 4. 使用点云 (Points) 来模拟银河系星点以及星团。
+ * 5. 添加一个小球用来标记“太阳系”位置，并配合文字标签。
+ * 6. 在 render/animate 循环中执行场景的缓慢自转动画。
+ */
+
+// ----- 1. 创建场景，摄像机，渲染器 -----
+const scene = new THREE.Scene();
+
+// 透视摄像机（视野角度，宽高比，近截面，远截面）
+const camera = new THREE.PerspectiveCamera(
+  60, // 视野角度 (FOV)
+  window.innerWidth / window.innerHeight, // 宽高比
+  0.1, // 近截面
+  10000 // 远截面
+);
+camera.position.set(0, 200, 800); // 将相机放远一些，便于看到整个模型
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// 如果需要在场景中显示文字/标签，则创建 CSS2DRenderer
+const labelRenderer = new THREE.CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+document.body.appendChild(labelRenderer.domElement);
+
+// ----- 2. 创建一个星系组，用于承载所有星点和星团 -----
+const galaxyGroup = new THREE.Group();
+scene.add(galaxyGroup);
+
+// ----- 3. 创建点云来模拟银河系的星点 -----
+
+// 配置星系（越大越逼真，但消耗也越大）
+const ARM_COUNT = 4;            // 银河系一般有 4 条主要旋臂，这里可自行调节
+const STARS_COUNT = 3000;       // 星点总数
+const GALAXY_RADIUS = 500;      // 星系半径
+
+const starGeometry = new THREE.BufferGeometry();
+const positions = new Float32Array(STARS_COUNT * 3); // x, y, z
+
+function generateSpiralArms() {
+  // 简单生成模拟旋臂数据
+  for (let i = 0; i < STARS_COUNT; i++) {
+    // 计算星点所在的旋臂
+    const armIndex = i % ARM_COUNT;
+    const armAngle = (armIndex / ARM_COUNT) * (Math.PI * 2);
+
+    // 让星点在“半径范围”内随机分布
+    const radius = Math.random() * GALAXY_RADIUS;
+    // 让旋臂稍微带点“螺旋”，每个星点基于自身半径位置再增加一定角度
+    const spinAngle = radius * 0.02; // 控制螺旋扭曲的幅度
+
+    // 星点最终角度 = 该旋臂的起始角度 + 本身的螺旋 + 一点随机
+    const totalAngle = armAngle + spinAngle + (Math.random() - 0.5) * 0.3;
+
+    // 将极坐标转换为 xyz
+    const x = Math.cos(totalAngle) * radius;
+    const y = (Math.random() - 0.5) * 20; // 略微随机的高度
+    const z = Math.sin(totalAngle) * radius;
+
+    positions[i * 3 + 0] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+  }
+}
+generateSpiralArms();
+
+starGeometry.setAttribute(
+  'position',
+  new THREE.BufferAttribute(positions, 3)
+);
+
+const starMaterial = new THREE.PointsMaterial({
+  color: 0xffffff,  // 白色星点
+  size: 2,          // 星点大小
+  sizeAttenuation: true,
+  transparent: true,
+  opacity: 0.8
+});
+
+const starsPoints = new THREE.Points(starGeometry, starMaterial);
+galaxyGroup.add(starsPoints);
+
+// ----- 4. 添加一些“星团”，用来模拟银河系中的大星团 -----
+function createCluster(radius = 50, count = 300, color = 0xffaa00) {
+  const clusterGeometry = new THREE.BufferGeometry();
+  const clusterPositions = new Float32Array(count * 3);
+
+  for (let i = 0; i < count; i++) {
+    // 在给定半径内随机分布
+    const r = Math.random() * radius;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = (Math.random() - 0.5) * Math.PI; // -π/2 到 π/2 之间
+
+    const x = r * Math.cos(theta) * Math.cos(phi);
+    const y = r * Math.sin(phi);
+    const z = r * Math.sin(theta) * Math.cos(phi);
+
+    clusterPositions[i * 3 + 0] = x;
+    clusterPositions[i * 3 + 1] = y;
+    clusterPositions[i * 3 + 2] = z;
+  }
+
+  clusterGeometry.setAttribute(
+    'position',
+    new THREE.BufferAttribute(clusterPositions, 3)
+  );
+
+  const clusterMaterial = new THREE.PointsMaterial({
+    color: color,
+    size: 3,
+    sizeAttenuation: true,
+    transparent: true,
+    opacity: 0.9
+  });
+
+  const clusterPoints = new THREE.Points(clusterGeometry, clusterMaterial);
+  return clusterPoints;
+}
+
+// 随机放置几个星团在银河系里
+for (let i = 0; i < 3; i++) {
+  const cluster = createCluster(30 + Math.random() * 30, 200 + Math.random() * 200);
+  // 星团随机坐标，保证在银河系半径之内
+  cluster.position.x = (Math.random() - 0.5) * GALAXY_RADIUS * 1.6;
+  cluster.position.y = (Math.random() - 0.5) * 50;
+  cluster.position.z = (Math.random() - 0.5) * GALAXY_RADIUS * 1.6;
+  galaxyGroup.add(cluster);
+}
+
+// ----- 5. 标注太阳系位置 -----
+const solarSystemRadius = 5; // 太阳系标记可稍大一些以便于看清
+const solarSystemGeometry = new THREE.SphereGeometry(solarSystemRadius, 16, 16);
+const solarSystemMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+const solarSystemMesh = new THREE.Mesh(solarSystemGeometry, solarSystemMaterial);
+
+// 设定太阳系坐标（在银河系中心附近，但不是绝对中心）
+solarSystemMesh.position.set(30, 0, 0);
+galaxyGroup.add(solarSystemMesh);
+
+// 文字标签
+const solarSystemDiv = document.createElement('div');
+solarSystemDiv.className = 'label';
+solarSystemDiv.textContent = '太阳系';
+solarSystemDiv.style.color = '#ff0000';
+solarSystemDiv.style.fontSize = '14px';
+
+const solarSystemLabel = new THREE.CSS2DObject(solarSystemDiv);
+solarSystemLabel.position.set(0, solarSystemRadius + 10, 0); 
+solarSystemMesh.add(solarSystemLabel);
+
+// ----- 6. 添加简单的环境光，以便能看到球体等 -----
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+scene.add(ambientLight);
+
+// ----- 7. 自适应窗口大小 -----
+window.addEventListener('resize', onWindowResize, false);
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// ----- 8. 动画循环，让星系慢慢转动 -----
+function animate() {
+  requestAnimationFrame(animate);
+
+  // 慢速旋转，可根据需要调整
+  galaxyGroup.rotation.y += 0.001;
+
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+}
+
+animate();
+</script>
+
+</body>
+</html>

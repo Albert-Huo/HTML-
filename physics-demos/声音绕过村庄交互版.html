@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>声音为什么会“舍近求远”？</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+  }
+  body {
+    background: #1a1a1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+    margin: 0;
+    padding: 10px;
+  }
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡（三原色模板同款） */
+  .task-card{
+    width: 100%;
+    max-width: 900px;
+    background: var(--card-bg);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 12px 14px;
+    backdrop-filter: blur(6px);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+    transition: opacity .2s, filter .2s, display .2s;
+  }
+  .task-step{
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    white-space: nowrap;
+  }
+  .task-text{ line-height: 1.5; }
+  .task-hint{
+    color: #ffd54f;
+    font-size: 12px;
+    opacity: .9;
+  }
+  .progress-dots{ display: flex; gap:6px; align-items:center; }
+  .dot{
+    width:10px; height:10px; border-radius:50%;
+    background: rgba(255,255,255,0.25);
+    outline: 2px solid rgba(255,255,255,0.15);
+  }
+  .dot.active{ background: var(--warn);}
+  .dot.done{ background: var(--accent); outline-color: rgba(61,220,151,0.5); }
+
+  /* 画布容器 */
+  #canvas {
+    width: 100%;
+    max-width: 900px;
+    height: 60vh;
+    max-height: 540px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    background: #000;
+    margin-top: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    touch-action: none;
+  }
+
+  /* 画布里的控制按钮（把“高温区/启动爆炸”放进画面内） */
+  .inline-controls{
+    position: absolute;
+    left: 12px; top: 12px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+    z-index: 10;
+  }
+  .inline-btn{
+    padding: 8px 12px; background: #444; color: #fff;
+    border: none; border-radius: 8px; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,.35);
+    font-size: 14px;
+    transition: background .25s, transform .05s, opacity .2s;
+  }
+  .inline-btn:hover{ background:#595959; }
+  .inline-btn:active{ transform: scale(.98); }
+  .inline-btn:disabled{ opacity:.6; cursor:not-allowed; }
+
+  /* 底部三按钮（三原色模板同款） */
+  .toolbar{
+    display: flex; gap:10px; flex-wrap:wrap;
+    width: 100%; max-width:900px; margin-top: 10px;
+    justify-content:flex-start;
+  }
+  button.main-btn{
+    padding: 10px 16px; background: #444; color: white;
+    border: none; border-radius: 8px; cursor: pointer;
+    transition: background .25s, transform .05s, opacity .2s;
+  }
+  button.main-btn:hover { background: #5a5a5a; }
+  button.main-btn:active { transform: scale(.98); }
+  button.main-btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+  /* ✅/Toast/完成弹窗（三原色模板同款） */
+  .checkmark{
+    position:absolute; z-index: 50;
+    left: 50%; top: 20%;
+    transform: translate(-50%,-50%) scale(0.6);
+    width:120px; height:120px; border-radius:50%;
+    background: rgba(61,220,151,0.15);
+    border: 3px solid var(--accent);
+    display: none; align-items:center; justify-content:center;
+    box-shadow: 0 0 40px rgba(61,220,151,0.45), inset 0 0 20px rgba(61,220,151,0.25);
+  }
+  .checkmark.active{ display:flex; }
+  .checkmark > div{
+    width: 60px; height: 30px;
+    border-left: 8px solid var(--accent);
+    border-bottom: 8px solid var(--accent);
+    transform: rotate(-45deg) translateY(-6px);
+    filter: drop-shadow(0 0 6px rgba(61,220,151,0.6));
+  }
+  .toast{
+    position: fixed; left:50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: rgba(0,0,0,0.8); color: #fff; padding: 10px 14px; border-radius: 10px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    font-size: 14px; opacity: 0; pointer-events:none; transition: opacity .25s, transform .25s;
+    z-index: 200;
+  }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+  .modal-mask{
+    position: fixed; inset:0; background: rgba(0,0,0,0.5); display:none;
+    align-items:center; justify-content:center; z-index: 300;
+  }
+  .modal{
+    width:min(90vw, 360px); background:#111; color:#fff; border: 1px solid rgba(255,255,255,0.15);
+    border-radius:14px; padding:18px 16px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  .modal h3{ margin: 8px 0 6px; color: #fff; font-size: 20px; }
+  .modal p{ color: #cfd8dc; margin-top: 0; }
+  .modal .ok{ margin-top: 12px; background: var(--accent); color:#081a12; font-weight:700; }
+
+  /* —— “声音绕过村庄”的场景（SVG） —— */
+  svg.scene { width: 100%; height: 100%; }
+  .house-body { fill: #fdf5e6; stroke: #8B4513; stroke-width: 2; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.4)); }
+  .roof { fill: #c0392b; stroke: #7f1d1a; stroke-width: 2; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.4)); }
+  .waveRipple { fill: none; stroke: rgba(0,255,255,0.9); stroke-width: 2; filter: drop-shadow(0 0 6px rgba(0,255,255,0.9)); }
+  .message { fill: #fff; font-size: 22px; text-anchor: middle; display: none; }
+  .hot-area { display: none; }
+  .hot-area-text { display: none; }
+
+  /* 说明区 */
+  .explanation {
+    width: 100%; max-width: 900px;
+    margin: 14px 0 20px; line-height: 1.65; font-size: 0.95em; color: #e9f2ff;
+  }
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size: 1.15em; }
+  .explanation ul{ margin:.2em 0 .2em 1.1em; }
+  @media (max-width: 600px) {
+    .explanation { font-size: 0.88em; }
+    button.main-btn { flex:1; }
+  }
+</style>
+</head>
+<body>
+  <!-- 顶部彩带 -->
+  <div id="spectrum"></div>
+
+  <!-- 步骤卡 -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">点击画面内的<strong>显示高温区</strong>按钮，看看“热空气顶棚”把近处上方空间“撑起来”。</div>
+      <div class="task-hint" id="taskHint">提示：热空气使上方空气密度更低，声波会被“上拱”，绕过近处的村庄 A。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <!-- 画布（内置“高温区 / 启动爆炸”按钮 + SVG 场景） -->
+  <div id="canvas">
+    <div class="inline-controls">
+      <button id="hotAreaBtn" class="inline-btn">显示高温区</button>
+      <button id="startBtn" class="inline-btn">启动爆炸</button>
+    </div>
+
+    <svg class="scene" viewBox="0 0 1200 600" aria-label="声音绕过村庄场景">
+      <defs>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="4" result="blurOut" />
+          <feMerge><feMergeNode in="blurOut"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <linearGradient id="hotGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stop-color="rgba(255,180,0,0)" />
+          <stop offset="100%" stop-color="rgba(255,180,0,0.3)" />
+        </linearGradient>
+        <!-- 蒙版：热区让声波“上拱”，与原文件一致思想 -->
+        <mask id="hotMask">
+          <rect width="1200" height="600" fill="white" />
+          <path class="hot-area" id="hotCurvePath" d="M348,475 Q600,232 852,475 Z" fill="black" />
+        </mask>
+        <clipPath id="upperClip"><rect x="0" y="0" width="1200" height="450" /></clipPath>
+      </defs>
+
+      <!-- 背景地形 -->
+      <path d="M0,500 Q200,350 400,500 T800,500 T1200,500 L1200,600 L0,600 Z" fill="#3cb371" />
+      <path d="M0,530 Q250,380 500,530 T900,530 T1200,530 L1200,600 L0,600 Z" fill="#2e8b57" />
+      <rect y="550" width="1200" height="50" fill="rgba(80,50,20,0.8)" />
+
+      <!-- 爆炸源与标签 -->
+      <text id="device" x="80" y="450" text-anchor="middle" font-size="32">💥</text>
+      <text x="80" y="470" text-anchor="middle" fill="#fff" font-size="12">爆炸装置</text>
+
+      <!-- 村庄 A -->
+      <g id="villageA">
+        <rect class="house-body" x="550" y="430" width="60" height="45" rx="4" ry="4" />
+        <polygon class="roof" points="550,430 580,400 610,430" />
+        <rect class="house-body" x="590" y="450" width="45" height="30" rx="4" ry="4" />
+        <polygon class="roof" points="590,450 615,425 640,450" />
+      </g>
+      <text x="590" y="500" text-anchor="middle" fill="#fff" font-size="12">村庄 A</text>
+
+      <!-- 高温区显示 -->
+      <path id="hotAir" class="hot-area" d="M348,475 Q600,232 852,475 Z" fill="url(#hotGradient)" />
+      <text class="hot-area-text" id="hotLabel" x="600" y="360" text-anchor="middle" fill="rgba(255,80,0,0.9)" font-size="18" style="display:none;">高温区域</text>
+
+      <!-- 村庄 B -->
+      <g id="villageB">
+        <rect class="house-body" x="950" y="430" width="60" height="45" rx="4" ry="4" />
+        <polygon class="roof" points="950,430 980,400 1010,430" />
+        <rect class="house-body" x="990" y="450" width="45" height="30" rx="4" ry="4" />
+        <polygon class="roof" points="990,450 1015,425 1040,450" />
+      </g>
+      <text x="990" y="500" text-anchor="middle" fill="#fff" font-size="12">村庄 B</text>
+
+      <!-- 信息提示 -->
+      <text id="messageA" class="message" x="600" y="250">绕过村庄 A</text>
+      <text id="messageB" class="message" x="990" y="380">到达村庄 B</text>
+
+      <!-- 声波波纹（套热区蒙版 + 只显示上半空） -->
+      <g id="waveGroup">
+        <circle id="wave1" class="waveRipple" cx="80" cy="450" r="0" visibility="hidden" mask="url(#hotMask)" clip-path="url(#upperClip)"/>
+        <circle id="wave2" class="waveRipple" cx="80" cy="450" r="0" visibility="hidden" mask="url(#hotMask)" clip-path="url(#upperClip)"/>
+      </g>
+    </svg>
+
+    <!-- 成功打勾 -->
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <!-- 底部三按钮（步骤重置 / 自动演示 / 自由模式） -->
+  <div class="toolbar">
+    <button id="resetBtn" class="main-btn">步骤重置</button>
+    <button id="autoDemoBtn" class="main-btn">自动演示</button>
+    <button id="freeBtn" class="main-btn">自由模式</button>
+  </div>
+
+  <!-- 轻提示与完成弹窗 -->
+  <div class="toast" id="toast">再试一试：按照指令操作画面内按钮</div>
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你已观察到：声波被高温稀薄空气上拱，绕过近处却传到更远。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <!-- 说明区 -->
+  <div class="explanation">
+    <h2>为什么近处“听不见”，远处却听见？</h2>
+    <ul>
+      <li><b>声波是机械波</b>，要靠空气等介质传播；速度与能量衰减受温度、密度、风切变等影响。</li>
+      <li><b>高温区空气更稀薄</b>，折射率（对声来说可理解为“传播条件”）改变，会让波前“上拱”。</li>
+      <li>于是，近处的村庄 A 反而被“绕开”，更远的村庄 B 接收到更强的波。</li>
+    </ul>
+    <p>点击上方画面内的「显示高温区」与「启动爆炸」体验这个有趣的现象；也可以开启自由模式随便玩。</p>
+  </div>
+
+<script>
+  /* —— 工具函数（与三原色模板保持一致的交互骨架） —— */
+  const getEl = id => document.getElementById(id);
+
+  const taskCard   = getEl('taskCard');
+  const taskStepEl = getEl('taskStep');
+  const taskTextEl = getEl('taskText');
+  const taskHintEl = getEl('taskHint');
+  const dots = [getEl('dot1'), getEl('dot2'), getEl('dot3')];
+
+  const autoDemoBtn = getEl('autoDemoBtn');
+  const freeBtn     = getEl('freeBtn');
+  const resetBtn    = getEl('resetBtn');
+
+  const canvasEl    = getEl('canvas');
+  const startBtn    = getEl('startBtn');
+  const hotBtn      = getEl('hotAreaBtn');
+
+  const checkmark   = getEl('checkmark');
+  const toast       = getEl('toast');
+  const doneMask    = getEl('doneMask');
+  const okBtn       = getEl('okBtn');
+
+  /* —— 声音场景节点（来自原“声音绕过村庄”） —— */
+  const wave1 = getEl('wave1');
+  const wave2 = getEl('wave2');
+  const messageA = getEl('messageA');
+  const messageB = getEl('messageB');
+  const hotAreas = document.querySelectorAll('.hot-area');
+  const hotLabel = getEl('hotLabel');
+
+  /* —— 状态 —— */
+  let freeMode = false;
+  let autoPlaying = false;
+  let successCooldown = false;
+  let completed = false;
+  let currentTask = 0;
+
+  // 声波动画参数（复用原逻辑）
+  const maxR = 1500;
+  const speed = maxR / 4000; // 越大越快
+  const delay = 500;
+  const hotThreshold = 350;  // “绕过 A”判定阈值（半径）
+  const lowThreshold = 910;  // “到达 B”判定阈值（半径）
+  let hotAreaEnabled = false;
+  let hotTriggered = false, lowTriggered = false;     // 两个提示达成状态
+  let animationId = null;
+  let startTime = null;
+
+  /* —— 任务步骤定义（对齐三原色模板的三步 UI） —— */
+  const tasks = [
+    { id:'hot', text:'点击画面内的<strong>显示高温区</strong>按钮，看看“热空气顶棚”把近处上方空间“撑起来”。',
+      hint:'热空气使上方空气密度更低，声波会被“上拱”。',
+      check:()=> hotAreaEnabled === true },
+    { id:'bypassA', text:'点击<strong>启动爆炸</strong>，观察出现“<strong>绕过村庄 A</strong>”提示。',
+      hint:'当波前半径达到一定阈值，会显示“绕过村庄 A”。',
+      check:()=> hotTriggered === true },
+    { id:'reachB', text:'继续观察声波传播，出现“<strong>到达村庄 B</strong>”提示。',
+      hint:'更远处依然能听到，是因为波被上拱后走了“另一条路径”。',
+      check:()=> lowTriggered === true }
+  ];
+
+  /* —— UI 同步 —— */
+  function setStepUI(i){
+    i = Math.max(0, Math.min(i, tasks.length-1));
+    dots.forEach((d,idx)=> d.className = 'dot' + (idx<i ? ' done' : '') + (idx===i ? ' active' : ''));
+    taskStepEl.textContent = `步骤 ${i+1} / ${tasks.length}`;
+    taskTextEl.innerHTML = tasks[i].text;
+    taskHintEl.textContent = tasks[i].hint;
+  }
+
+  /* —— ✅ / Toast / 完成 —— */
+  let checkTimer=null, toastTimer=null, cooldownTimer=null;
+  function showCheck(){ clearTimeout(checkTimer); checkmark.classList.add('active'); checkTimer=setTimeout(()=>checkmark.classList.remove('active'), 520); }
+  function hideCheck(){ checkmark.classList.remove('active'); }
+  function showToast(text){ if(autoPlaying) return; clearTimeout(toastTimer); toast.textContent=text||'再试一试：按照指令操作'; toast.classList.add('show'); toastTimer=setTimeout(()=>toast.classList.remove('show'), 1300); }
+  function showDone(){ doneMask.style.display='flex'; }
+  okBtn.addEventListener('click', ()=> doneMask.style.display='none');
+
+  function lockSuccess(){ successCooldown=true; clearTimeout(cooldownTimer); cooldownTimer=setTimeout(()=> successCooldown=false, 450); }
+
+  /* —— 声波动画（基本复用原文件） —— */
+  function resetWaves(){
+    cancelAnimationFrame(animationId);
+    wave1.setAttribute('visibility','hidden');
+    wave2.setAttribute('visibility','hidden');
+    wave1.setAttribute('r', 0); wave2.setAttribute('r', 0);
+    wave1.setAttribute('stroke-opacity', 1); wave2.setAttribute('stroke-opacity', 1);
+    messageA.style.display='none'; messageB.style.display='none';
+    startTime=null; hotTriggered=false; lowTriggered=false;
+  }
+  function startExplosion(){
+    wave1.setAttribute('visibility','visible');
+    wave2.setAttribute('visibility','visible');
+    messageA.style.display='none'; messageB.style.display='none';
+    wave1.setAttribute('r', 0); wave2.setAttribute('r', 0);
+    wave1.setAttribute('stroke-opacity', 1); wave2.setAttribute('stroke-opacity', 1);
+    hotTriggered=false; lowTriggered=false;
+    startTime=performance.now();
+    animationId = requestAnimationFrame(animate);
+  }
+  function animate(now){
+    if(!startTime) startTime=now;
+    const elapsed = now - startTime;
+
+    const r1 = Math.min(maxR, elapsed * speed);
+    wave1.setAttribute('r', r1);
+    wave1.setAttribute('stroke-opacity', Math.max(0, 1 - r1/(maxR*1.2)));
+
+    const r2 = Math.min(maxR, Math.max(0, (elapsed - delay) * speed));
+    wave2.setAttribute('r', r2);
+    wave2.setAttribute('stroke-opacity', Math.max(0, 1 - r2/(maxR*1.2)));
+
+    // 只有显示高温区后才触发提示
+    if(hotAreaEnabled){
+      if(!hotTriggered && r1 >= hotThreshold){
+        hotTriggered = true;
+        messageA.style.display='block';
+        setTimeout(()=> messageA.style.display='none', 1500);
+        // 若当前处在第 2 步目标（bypassA），触发一次判定
+        evaluateTask(true, /*fromAuto*/autoPlaying);
+      }
+      if(!lowTriggered && r1 >= lowThreshold){
+        lowTriggered = true;
+        messageB.style.display='block';
+        setTimeout(()=> messageB.style.display='none', 1500);
+        // 若当前处在第 3 步目标（reachB），触发一次判定
+        evaluateTask(true, /*fromAuto*/autoPlaying);
+      }
+    }
+
+    if(r1 < maxR || r2 < maxR){
+      animationId = requestAnimationFrame(animate);
+    }else{
+      wave1.setAttribute('visibility','hidden');
+      wave2.setAttribute('visibility','hidden');
+    }
+  }
+
+  /* —— 按钮行为（画布内） —— */
+  hotBtn.addEventListener('click', ()=>{
+    if(hotAreaEnabled) return; // 与原文件一致：只显示不隐藏
+    hotAreaEnabled = true;
+    hotAreas.forEach(el=> el.style.display='block');
+    hotLabel.style.display='block';
+    hotBtn.disabled = true;
+    evaluateTask(true); // 可能完成第 1 步
+  });
+  startBtn.addEventListener('click', ()=>{
+    startExplosion();
+    // 若正处在第 2 步，后续动画到 hotThreshold 会自动判定
+  });
+
+  /* —— 任务评估 —— */
+  function evaluateTask(endGesture, fromAuto=false){
+    if(!endGesture || successCooldown || completed || freeMode) return;
+    const task = tasks[currentTask];
+    if(task && task.check()){
+      showCheck(); lockSuccess();
+      setTimeout(nextTask, 520);
+    }else{
+      if(!fromAuto) showToast('再试一试：按照指令点击画面内按钮');
+    }
+  }
+
+  function nextTask(){
+    hideCheck();
+    dots[currentTask].classList.remove('active');
+    dots[currentTask].classList.add('done');
+    currentTask++;
+    if(currentTask >= tasks.length){
+      completed = true;
+      // 与你常用风格保持一致：延迟 2 秒再弹出恭喜（便于观察终态）
+      setTimeout(()=> showDone(), 2000);
+      return;
+    }
+    dots[currentTask].classList.add('active');
+    taskStepEl.textContent = `步骤 ${currentTask+1} / ${tasks.length}`;
+    taskTextEl.innerHTML = tasks[currentTask].text;
+    taskHintEl.textContent = tasks[currentTask].hint;
+  }
+
+  /* —— 底部三个主按钮 —— */
+  function setFreeMode(on){
+    freeMode = on;
+    if(freeMode){
+      taskCard.style.opacity=.25; taskCard.style.filter='grayscale(0.6)';
+      freeBtn.textContent='退出自由模式';
+      autoDemoBtn.disabled=true;
+      toast.classList.remove('show'); doneMask.style.display='none';
+    }else{
+      taskCard.style.opacity=1; taskCard.style.filter='none';
+      freeBtn.textContent='自由模式';
+      autoDemoBtn.disabled=false;
+    }
+  }
+  freeBtn.addEventListener('click', ()=> setFreeMode(!freeMode));
+
+  resetBtn.addEventListener('click', ()=>{
+    // 重置声波 + 热区
+    resetWaves();
+    hotAreaEnabled=false;
+    hotAreas.forEach(el=> el.style.display='none');
+    hotLabel.style.display='none';
+    hotBtn.disabled=false;
+
+    // 重置步骤
+    autoPlaying=false; completed=false; successCooldown=false;
+    currentTask=0;
+    dots.forEach(d=> d.className='dot');
+    dots[0].classList.add('active');
+    setStepUI(0);
+    doneMask.style.display='none';
+  });
+
+  /* —— 自动演示：严格同步步骤与动画 —— */
+  function autoDemo(){
+    if(freeMode || autoPlaying) return;
+    autoPlaying = true;
+
+    // 步骤 1：显示高温区
+    setStepUI(0);
+    setTimeout(()=> {
+      if(!hotAreaEnabled){ hotBtn.click(); } // 触发并判定
+      // 等 UI 打勾 + nextTask
+      setTimeout(()=> setStepUI(1), 700);
+
+      // 步骤 2：启动爆炸，等待“绕过A”
+      setTimeout(()=> {
+        startBtn.click();
+        // 动画自己会在半径达阈值时触发 evaluateTask
+        const waitA = setInterval(()=>{
+          if(hotTriggered){ clearInterval(waitA); setTimeout(()=> setStepUI(2), 500); }
+        }, 100);
+        // 步骤 3：等待“到达B”
+        const waitB = setInterval(()=>{
+          if(lowTriggered){
+            clearInterval(waitB);
+            // 让动画再跑一小会儿后收尾
+            setTimeout(()=> { autoPlaying=false; }, 800);
+          }
+        }, 120);
+      }, 650);
+    }, 400);
+  }
+  autoDemoBtn.addEventListener('click', autoDemo);
+
+  /* —— 初始化 —— */
+  function init(){
+    setStepUI(0);
+    setFreeMode(false);
+    resetWaves();
+  }
+  init();
+</script>
+</body>
+</html>

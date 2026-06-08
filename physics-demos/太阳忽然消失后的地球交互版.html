@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>太阳忽然消失后的地球 · 交互演示</title>
+<style>
+  :root{ --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --fg:#ffffffcc; }
+
+  /* 固定顶部留白，避免被 iPad 顶栏压盖（参考大小错觉做法） */
+  html,body{
+    margin:0; padding:0; background:#141518; color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Arial,"PingFang SC",sans-serif;
+    overscroll-behavior-y: contain;
+  }
+  .page{
+    display:flex; flex-direction:column; align-items:center;
+    padding:95px 64px 12px 20px;
+  }
+  @media (max-width: 820px){
+    .page{ padding-top: 72px; }
+  }
+
+ /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡片 */
+  .task-card{ width:100%; max-width:980px; background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:10px 12px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:700; white-space:nowrap;}
+  .task-text{ line-height:1.6; color:var(--fg);} .task-hint{ color:#ffd54f; font-size:12px; opacity:.95;}
+  .progress-dots{ display:flex; gap:6px;} .dot{ width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.28);}
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent);}
+
+  /* 第三步答案：紧贴步骤卡片，位于动画上方 */
+  .choice-bar{ width:100%; max-width:980px; display:flex; gap:8px; margin:10px 0 4px; flex-wrap:wrap;}
+  .choice{ flex:1 1 160px; text-align:center; padding:10px 12px; border-radius:10px; background:#2a2e39; border:1px solid #ffffff1f; color:#fff;}
+  .choice.ok{ outline:3px solid var(--accent); background:#1b3a2b; }
+  .choice.bad{ outline:3px solid var(--error); background:#3a1b1b; }
+  .tip{ font-size:12px; color:#a0aec0; margin-top:4px; width:100%; max-width:980px;}
+
+  /* 舞台区域 */
+  #stageWrap{ width:100%; max-width:980px; height:min(62vh,560px); margin-top:6px; }
+  #stage{ position:relative; width:100%; height:100%; background:#0d0f13; border-radius:14px; overflow:hidden;
+    box-shadow:0 12px 30px rgba(0,0,0,.35); }
+  #scene{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+
+  /* 舞台内 HUD（计时/状态 + 太阳消失/舞台重置） */
+  .hud{ position:absolute; left:12px; top:12px; z-index:5; display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .badge{ font-family:ui-monospace,Menlo,Consolas,monospace; padding:6px 10px; border-radius:10px;
+    background:#0b1220cc; border:1px solid #ffffff22; color:#9cff9c; }
+  .badge.dim{ color:#a2c8ff; }
+  .stage-btn{ padding:8px 12px; border:none; border-radius:10px;
+    background:linear-gradient(180deg,#7dd3fc,#38bdf8); color:#001018;
+    box-shadow:0 10px 20px rgba(56,189,248,.25), 0 0 0 1px rgba(255,255,255,.08) inset; cursor:pointer; }
+  .stage-btn:active{ transform:translateY(1px) scale(.98); }
+
+  /* 底部三按钮 */
+  .toolbar{ width:100%; max-width:980px; margin:10px 0 8px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; }
+  .toolbar button{ padding:9px 14px; background:#3a3d45; color:#fff; border:none; border-radius:10px; cursor:pointer; transition:.15s;}
+  .toolbar button:hover{ background:#4b4f59;} .toolbar button:disabled{opacity:.55;cursor:not-allowed;}
+
+  /* 说明 */
+  .explain{ width:100%; max-width:980px; margin:12px 0 22px; background:#0e1117; border:1px solid #ffffff12; border-radius:12px; padding:14px 16px; color:var(--fg);}
+  .explain h3{ margin:6px 0 10px; color:#9bd3ff; }
+  .explain ul{ margin:6px 0 0 1.1em; line-height:1.7; }
+  .explain li{ margin:6px 0; }
+
+  @media (max-width:720px){
+    #stageWrap{ height:min(58vh,520px); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div id="spectrum"></div>
+
+  <div class="task-card">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">观察：太阳在中心发光，地球绕它公转（已加速展示）。</div>
+      <div class="task-hint" id="taskHint">提示：点击舞台里的「太阳消失」，再按步骤进行。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div class="choice-bar" id="choiceBar" style="display:none">
+    <button class="choice" data-choice="tangent">沿切线直线飞出</button>
+    <button class="choice" data-choice="toward">径向飞向太阳原位置</button>
+    <button class="choice" data-choice="stop">立刻停下悬在原地</button>
+  </div>
+  <div class="tip" id="choiceTip" style="display:none">选择正确答案后进入完成提示。</div>
+
+  <div id="stageWrap">
+    <div id="stage">
+      <canvas id="scene"></canvas>
+
+      <div class="hud">
+        <div class="badge" id="timer">00分00秒</div>
+        <div class="badge dim" id="status">状态：公转中</div>
+        <button class="stage-btn" id="disappearBtn">太阳消失</button>
+        <button class="stage-btn" id="stageResetBtn">舞台重置</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="explain">
+    <h3>原理说明</h3>
+    <ul>
+      <li><b>信息延迟</b>：太阳突然“消失”，光与引力的改变都会在约 <b>8分20秒</b> 后才到达地球（演示压缩至数秒）。</li>
+      <li><b>轨迹</b>：失去引力的瞬间，地球以当时的 <b>切线方向</b> 与 <b>瞬时速度</b> 做匀速直线运动（惯性）。</li>
+      <li><b>可见变化</b>：星空骤现，地球变暗并逐步结冰（白色覆盖层示意）。</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+/* ===== 步骤 UI ===== */
+const dots=[document.getElementById('dot1'),document.getElementById('dot2'),document.getElementById('dot3')];
+const taskStep=document.getElementById('taskStep');
+const taskText=document.getElementById('taskText');
+const taskHint=document.getElementById('taskHint');
+const choiceBar=document.getElementById('choiceBar');
+const choiceTip=document.getElementById('choiceTip');
+
+const resetBtn=document.getElementById('resetBtn');
+const autoBtn=document.getElementById('autoBtn');
+const freeBtn=document.getElementById('freeBtn');
+
+/* 舞台 HUD */
+const stage = document.getElementById('stage');
+const timerEl = document.getElementById('timer');
+const statusEl = document.getElementById('status');
+const disappearBtn = document.getElementById('disappearBtn');
+const stageResetBtn = document.getElementById('stageResetBtn');
+
+let currentStep=0, autoPlaying=false, freeMode=false;
+
+function setStepUI(i){
+  currentStep=i;
+  dots.forEach((d,idx)=>{ d.className='dot'; if(idx<i)d.classList.add('done'); else if(idx===i)d.classList.add('active'); });
+  taskStep.textContent=`步骤 ${i+1} / 3`;
+
+  if(i===0){
+    taskText.textContent='观察：太阳在中心发光，地球绕它公转（已加速展示）。';
+    taskHint.textContent='提示：点击舞台里的「太阳消失」，再按步骤进行。';
+    choiceBar.style.display='none'; choiceTip.style.display='none';
+  }else if(i===1){
+    taskText.textContent='等待：太阳消失后有信息延迟（演示为数秒），随后地球沿切线飞离。';
+    taskHint.textContent='提示：请观察左上角计时到达阈值。';
+    choiceBar.style.display='none'; choiceTip.style.display='none';
+  }else{
+    taskText.textContent='判断：太阳消失那一刻，地球将如何运动？';
+    taskHint.textContent='请选择正确的物理结果。';
+    showChoices();
+  }
+}
+function showChoices(){
+  choiceBar.style.display='flex'; choiceTip.style.display='block';
+  choiceBar.querySelectorAll('.choice').forEach(btn=>{
+    btn.classList.remove('ok','bad');
+    btn.onclick=()=>{
+      if(freeMode) return;
+      if(btn.dataset.choice==='tangent'){
+        btn.classList.add('ok');
+        setTimeout(()=>alert('正确：沿切线做匀速直线运动（惯性）'),120);
+      }else{
+        btn.classList.add('bad');
+      }
+    };
+  });
+}
+setStepUI(0);
+
+/* ===== 动画引擎 ===== */
+const canvas=document.getElementById('scene');
+const ctx=canvas.getContext('2d',{alpha:false});
+
+let W=0,H=0,CX=0,CY=0,DPR=1, orbitR=0, sunR=0;
+
+function resize(){
+  const r=stage.getBoundingClientRect();
+  DPR=Math.max(1, Math.min(window.devicePixelRatio||1, 2));
+  W=canvas.width=Math.floor(r.width*DPR);
+  H=canvas.height=Math.floor(r.height*DPR);
+  canvas.style.width=r.width+'px';
+  canvas.style.height=r.height+'px';
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  CX=r.width/2; CY=r.height/2;
+  orbitR=Math.min(r.width,r.height)*0.32;
+  sunR=Math.max(38, Math.min(72, Math.round(Math.min(r.width,r.height)*0.08)));
+  buildStars();
+}
+new ResizeObserver(resize).observe(stage);
+
+/* 地球纹理 */
+const earthImg=new Image(); earthImg.crossOrigin='anonymous';
+earthImg.src='https://upload.wikimedia.org/wikipedia/commons/9/97/The_Earth_seen_from_Apollo_17.jpg';
+let earthReady=false; earthImg.onload=()=>earthReady=true;
+
+/* 星空数据 */
+let stars=[];
+function buildStars(){
+  const r=stage.getBoundingClientRect();
+  const n=Math.round((r.width*r.height)/9000);
+  stars=Array.from({length:n},()=>({x:Math.random()*r.width,y:Math.random()*r.height,s:Math.random()*1.2+0.4}));
+}
+
+/* ===== 状态机与参数（你可手调） ===== */
+const orbitPeriod    = 10000;  // 公转加速展示
+const timingDuration = 5000;   // 太阳消失到“感知到”的压缩延迟
+const flightDuration = 5000;   // 飞离阶段时长
+const iceDuration    = 10000;  // 冰封过程时长（想变慢就调大）
+const maxSimSec      = 8*60+20;// 8分20秒
+
+const starDriftScale = 0.25;   // ★ 星空漂移强度：越大相对运动越明显（可手调）
+
+let state='orbit', angle=0, timingStart=0, flightStart=0, last=performance.now();
+let flightX0=0,flightY0=0,dirX=0,dirY=0;
+
+function disappear(){
+  if(state!=='orbit')return;
+  state='timing'; timingStart=performance.now();
+  if(!freeMode && currentStep===0) setStepUI(1);
+}
+function resetAll(){
+  state='orbit'; angle=0; timingStart=0; flightStart=0;
+  timerEl.textContent='00分00秒';
+  statusEl.textContent='状态：公转中';
+  if(!freeMode) setStepUI(0);
+}
+function freeModeOn(){
+  freeMode=!freeMode;
+  // 自由模式：禁用底部步骤相关按钮，但舞台 HUD 可用
+  resetBtn.disabled=freeMode;
+  autoBtn.disabled=freeMode;
+  freeBtn.textContent = freeMode ? '退出自由模式' : '自由模式';
+}
+function autoPlay(){
+  if(freeMode || autoPlaying) return;
+  autoPlaying=true;
+  setStepUI(0);
+  setTimeout(()=>{ disappear(); },600);
+  setTimeout(()=>{ setStepUI(2); }, 600 + timingDuration + 700);
+  setTimeout(()=>{ autoPlaying=false; }, 600 + timingDuration + 3000);
+}
+
+/* HUD 绑定 */
+disappearBtn.onclick = ()=> disappear();
+stageResetBtn.onclick = ()=> resetAll();
+
+/* 底部三按钮 */
+resetBtn.onclick = ()=> resetAll();
+autoBtn.onclick  = ()=> autoPlay();
+freeBtn.onclick  = ()=> freeModeOn();
+
+/* 绘制工具 */
+function drawSun(){
+  if(state==='orbit'){
+    const g=ctx.createRadialGradient(CX,CY,sunR*0.2,CX,CY,sunR);
+    g.addColorStop(0,'#fffbe6'); g.addColorStop(0.55,'#ffe066'); g.addColorStop(1,'#ff9d2f');
+    ctx.beginPath(); ctx.arc(CX,CY,sunR,0,Math.PI*2); ctx.fillStyle=g; ctx.fill();
+  }
+}
+function drawOrbit(fade=false){
+  ctx.beginPath(); ctx.arc(CX,CY,orbitR,0,Math.PI*2);
+  ctx.strokeStyle=fade?'rgba(255,255,255,0.12)':'rgba(255,255,255,0.22)';
+  ctx.setLineDash([5,6]); ctx.stroke(); ctx.setLineDash([]);
+}
+
+/* ★ 星空绘制：现在支持 shiftX/shiftY（核心修改点 1） */
+function drawStars(shiftX=0, shiftY=0){
+  const r=stage.getBoundingClientRect();
+  const w=r.width, h=r.height;
+  const mx = ((shiftX % w) + w) % w;
+  const my = ((shiftY % h) + h) % h;
+
+  for(const s of stars){
+    const x = (s.x + mx) % w;
+    const y = (s.y + my) % h;
+    ctx.fillStyle='rgba(255,255,255,0.9)';
+    ctx.fillRect(x,y,s.s,s.s);
+  }
+}
+function drawEarth(ex,ey,dim=0,ice=0){
+  const rr=Math.min(48, Math.max(28, Math.round(Math.min(W/DPR,H/DPR)*0.045)));
+  ctx.save();
+  ctx.beginPath(); ctx.arc(ex,ey,rr,0,Math.PI*2); ctx.clip();
+  ctx.fillStyle='#0b3d91'; ctx.fillRect(ex-rr,ey-rr,rr*2,rr*2);
+  if(earthReady) ctx.drawImage(earthImg,ex-rr,ey-rr,rr*2,rr*2);
+  if(dim>0){
+    ctx.fillStyle=`rgba(0,0,0,${dim})`;
+    ctx.fillRect(ex-rr,ey-rr,rr*2,rr*2);
+  }
+  if(ice>0){
+    ctx.fillStyle=`rgba(240,248,255,${0.25+ice*0.6})`;
+    ctx.fillRect(ex-rr,ey-rr,rr*2,rr*2);
+  }
+  ctx.restore();
+}
+
+/* 主循环 */
+function tick(now){
+  const dt=now-last; last=now;
+  ctx.fillStyle='#000'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  if(state==='orbit'||state==='timing') angle+=dt/orbitPeriod*Math.PI*2;
+
+  if(state==='timing' && now - timingStart >= timingDuration){
+    state='flight'; flightStart=now;
+    const ex0=CX+orbitR*Math.cos(angle), ey0=CY+orbitR*Math.sin(angle);
+    flightX0=ex0; flightY0=ey0;
+    dirX=-Math.sin(angle); dirY=Math.cos(angle); // 地球飞离切线方向
+    if(!freeMode && currentStep===1) setStepUI(2);
+  }
+  if(state==='flight' && now - flightStart >= flightDuration){
+    state='end';
+  }
+
+  /* 计时显示 */
+  let simSec=0, flightP=0;
+  if(state==='timing'){
+    const p=Math.min(1,(now - timingStart)/timingDuration);
+    simSec = p * maxSimSec;
+  }else if(state==='flight' || state==='end'){
+    simSec = maxSimSec;
+    flightP = (state==='end') ? 1 : Math.min(1,(now - flightStart)/flightDuration);
+  }
+  const mm=String(Math.floor(simSec/60)).padStart(2,'0');
+  const ss=String(Math.floor(simSec%60)).padStart(2,'0');
+  timerEl.textContent = `${mm}分${ss}秒`;
+
+  statusEl.textContent =
+    (state==='orbit') ? '状态：公转中' :
+    (state==='timing')? '状态：计时中（光与引力传播延迟）' :
+    (state==='flight')? '状态：飞离中（沿切线）' : '状态：远离';
+
+  /* ★ 星空：始终与地球飞离方向相反（核心修改点 2） */
+  if(state==='flight' || state==='end'){
+    const r=stage.getBoundingClientRect();
+    const dist=Math.hypot(r.width,r.height);
+
+    // 星空位移：按“地球方向”的反方向漂移（-dirX, -dirY）
+    const shiftX = (-dirX) * flightP * dist * starDriftScale;
+    const shiftY = (-dirY) * flightP * dist * starDriftScale;
+
+    drawStars(shiftX, shiftY);
+  }
+
+  const showOrbit=(state==='orbit'||state==='timing')||(state==='flight'&&(now-flightStart<220));
+  if(showOrbit) drawOrbit(state!=='orbit');
+
+  drawSun();
+
+  /* 地球位置 */
+  let ex,ey;
+  if(state==='orbit'||state==='timing'){
+    ex=CX+orbitR*Math.cos(angle);
+    ey=CY+orbitR*Math.sin(angle);
+  }else{
+    const r=stage.getBoundingClientRect();
+    const dist=Math.hypot(r.width,r.height);
+    const ep = flightP * 0.2 * dist; // 地球飞离“速度强度”
+    ex=flightX0 + dirX*ep;
+    ey=flightY0 + dirY*ep;
+  }
+
+  /* 变暗与结冰 */
+  let dim=0,ice=0;
+  if(state==='flight'||state==='end'){
+    const tDim=Math.min(1,(now-flightStart)/140);
+    dim=0.55*tDim;
+    ice=Math.min(1,(now-flightStart)/iceDuration);
+  }
+  drawEarth(ex,ey,dim,ice);
+
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

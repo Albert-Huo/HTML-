@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>飞矢不动</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+  }
+  body{
+    background:#0f1216;
+    color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+    margin:0; padding:10px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡（复用模板） */
+  .task-card{
+    width:100%; max-width:980px; background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px;
+    transition:opacity .2s, filter .2s;
+  }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; }
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn); }
+  .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5); }
+
+  /* 舞台（承载原文件演示区） */
+  #stage{
+    width:100%; max-width:980px; height:60vh; max-height:560px;
+    position:relative; overflow:hidden; border-radius:12px;
+    background:linear-gradient(180deg,#111924,#0a0e14);
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+  }
+
+  /* —— 保留原文件样式并适配深色舞台 —— */
+  .demo-wrap{
+    position:absolute; inset:0; display:flex; flex-direction:column; padding:16px;
+  }
+  #timer{
+    font-size:22px; font-family:'Courier New', monospace;
+    background:#222; color:#fff; padding:8px 14px; border-radius:8px; display:inline-block;
+  }
+  .controls{ display:flex; gap:10px; flex-wrap:wrap; margin:12px 0; }
+  .controls button{
+    padding:10px 16px; cursor:pointer; background:#4a6baf; color:#fff;
+    border:none; border-radius:8px; font-size:15px; transition:background .25s, transform .05s, opacity .2s;
+  }
+  .controls button:hover{ background:#3a5a9f; }
+  .controls button:active{ transform:scale(.98); }
+  #track{
+    width:100%; flex:1; min-height:120px; border-bottom:2px solid #e0e0e0;
+    position:relative; overflow:hidden; background:rgba(255,255,255,0.04); border-radius:8px;
+  }
+  .arrow{
+    position:absolute; left:-40px; top:30px; width:40px; font-size:24px; transition:left 2s linear;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+  }
+
+  /* 底部三按钮（模板） */
+  .toolbar{ display:flex; gap:10px; flex-wrap:wrap; width:100%; max-width:980px; margin-top:10px; }
+  .toolbar button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition: background .25s, transform .05s, opacity .2s; }
+  .toolbar button:hover{ background:#5a5a5a; }
+  .toolbar button:active{ transform:scale(.98); }
+  .toolbar button:disabled{ opacity:.5; cursor:not-allowed; }
+
+  /* 对勾、Toast、完成弹窗（模板） */
+  .checkmark{
+    position:absolute; z-index:50; left:50%; top:22%;
+    transform:translate(-50%,-50%) scale(0.6);
+    width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,0.15);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center;
+    box-shadow:0 0 40px rgba(61,220,151,0.45), inset 0 0 20px rgba(61,220,151,0.25);
+  }
+  .checkmark.active{ display:flex; }
+  .checkmark > div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); filter:drop-shadow(0 0 6px rgba(61,220,151,.6)); }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.85); color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.35); font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:500; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:600; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,0.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  .modal h3{ margin:8px 0 6px; font-size:20px; }
+  .modal p{ color:#cfd8dc; margin-top:0; }
+  .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; border:none; border-radius:10px; padding:10px 14px; }
+
+  /* 说明区 */
+  .explanation{ width:100%; max-width:980px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:#e9f2ff; }
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.1em; }
+
+  @media (max-width:768px){
+    #stage{ height:56vh; }
+    .controls{ justify-content:flex-start; }
+  }
+</style>
+</head>
+<body>
+  <!-- 顶部彩色条 -->
+  <div id="spectrum"></div>
+
+  <!-- 步骤卡 -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">点击<strong>发射</strong>，让箭开始连续飞行（注意：到达右侧后会自动发射下一支）。</div>
+      <div class="task-hint" id="taskHint">提示：本步只需点击“发射”；其他按钮先别点。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <!-- 舞台：原文件动画区 -->
+  <div id="stage">
+    <div class="demo-wrap">
+      <div id="timer">0.000 秒</div>
+      <div class="controls">
+        <button id="startBtn">发射</button>
+        <button id="pauseBtn" disabled>暂停</button>
+        <button id="resetBtn">重置</button>
+      </div>
+      <div id="track"></div>
+    </div>
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <!-- 底部三按钮 -->
+  <div class="toolbar">
+    <button id="stepResetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <!-- 完成提示 -->
+  <div class="toast" id="toast">再试一试：按步骤来操作哦</div>
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你已按顺序完成：发射 → 暂停理解“瞬时速度” → 重置归零。</p>
+      <button class="ok" id="okBtn">好的</button>
+    </div>
+  </div>
+
+  <!-- 说明 -->
+  <div class="explanation">
+    <h2>“飞矢不动”简明说明</h2>
+    <p>暂停的一瞬看似“静止”，但依然存在<strong>瞬时速度</strong>（位置对时间的导数）。用连续变化（微积分）即可消除“每个瞬间都静止”带来的悖论直觉。这个演示通过“发射—暂停—重置”的操作，配合箭矢循环与冻结效果，让这一点更直观。 </p>
+  </div>
+
+<script>
+/* ============ 原文件逻辑（复用） ============ */
+// 关键DOM
+const track = document.getElementById('track');
+const timerDisplay = document.getElementById('timer');
+const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+// 原状态
+let startTime;
+let timer;
+let isRunning = false;
+let isPaused = false;
+let arrows = [];
+
+// 创建新箭
+function createArrow() {
+  const arrow = document.createElement('div');
+  arrow.className = 'arrow';
+  arrow.textContent = '→';
+  track.appendChild(arrow);
+  return arrow;
+}
+
+// 发射一支箭（并在结束后自动续射）
+function launchArrow() {
+  if (!isRunning || isPaused) return;
+
+  const arrow = createArrow();
+  arrows.push(arrow);
+
+  // 设置初始位置，再开始动画
+  setTimeout(() => {
+    arrow.style.left = '-40px';
+    setTimeout(() => {
+      arrow.style.transition = 'left 2s linear';
+      arrow.style.left = '100%';
+    }, 10);
+
+    // 动画结束后移除并自动发射下一支
+    arrow.addEventListener('transitionend', () => {
+      if (arrow.parentNode) {
+        track.removeChild(arrow);
+        arrows = arrows.filter(a => a !== arrow);
+        if (isRunning && !isPaused) {
+          launchArrow(); // 续射
+        }
+      }
+    });
+  }, 10);
+}
+
+// 开始发射
+function start() {
+  if (isRunning) return;
+  isRunning = true;
+  isPaused = false;
+  startTime = Date.now();
+  timer = setInterval(updateTimer, 10);
+  launchArrow();                         // 启动第一支箭
+  startBtn.disabled = true;
+  pauseBtn.disabled = false;
+}
+
+// 暂停（冻结当前箭位置并弹提示）
+let _suppressAlert = false;              // 自动演示时抑制alert
+function pause() {
+  if (!isRunning || isPaused) return;
+  isPaused = true;
+  clearInterval(timer);
+
+  // 冻结所有箭位置
+  arrows.forEach(arrow => {
+    const computedStyle = getComputedStyle(arrow);
+    const currentLeft = parseFloat(computedStyle.left);
+    arrow.style.transition = 'none';
+    arrow.style.left = currentLeft + 'px';
+  });
+
+  if (!_suppressAlert) {
+    alert('这个时刻，箭虽然看似静止，但也是有瞬时速度的！');
+  }
+
+  pauseBtn.disabled = true;
+  startBtn.disabled = false;
+}
+
+// 重置
+function resetOrigin() {
+  isRunning = false;
+  isPaused = false;
+  clearInterval(timer);
+  timerDisplay.textContent = '0.000 秒';
+
+  arrows.forEach(arrow => { if (arrow.parentNode) track.removeChild(arrow); });
+  arrows = [];
+
+  startBtn.disabled = false;
+  pauseBtn.disabled = false;
+}
+
+// 计时器
+function updateTimer() {
+  const elapsed = Date.now() - startTime;
+  timerDisplay.textContent = (elapsed / 1000).toFixed(3) + ' 秒';
+}
+
+/* ============ 模板：步骤/自由/自动/提示 ============ */
+const taskCard = document.getElementById('taskCard');
+const taskStepEl = document.getElementById('taskStep');
+const taskTextEl = document.getElementById('taskText');
+const taskHintEl = document.getElementById('taskHint');
+const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+const stepResetBtn = document.getElementById('stepResetBtn');
+const autoDemoBtn = document.getElementById('autoDemoBtn');
+const freeBtn = document.getElementById('freeBtn');
+const checkmark = document.getElementById('checkmark');
+const toast = document.getElementById('toast');
+const doneMask = document.getElementById('doneMask');
+const okBtn = document.getElementById('okBtn');
+
+let freeMode = false, autoPlaying = false, completed = false, currentTask = 0;
+
+const tasks = [
+  {
+    text: '点击<strong>发射</strong>，让箭开始连续飞行（注意：到达右侧后会自动发射下一支）。',
+    hint: '只需点击“发射”；其他按钮先别点。',
+    precheck: () => true,
+    check:   () => isRunning && !isPaused && arrows.length >= 0 // 发射后立即满足（续射在进行）
+  },
+  {
+    text: '点击<strong>暂停</strong>，观察“一瞬虽似静止，但仍有瞬时速度”的提示。',
+    hint: '此时请只点“暂停”。',
+    precheck: () => isRunning && !isPaused,
+    check:   () => isPaused
+  },
+  {
+    text: '点击<strong>重置</strong>，计时清零、箭矢清空（回到最初状态）。',
+    hint: '最后一步点击“重置”。',
+    precheck: () => true,
+    check:   () => !isRunning && !isPaused && arrows.length === 0 && /0\.000 秒/.test(timerDisplay.textContent)
+  },
+];
+
+function setStepUI(i){
+  i = Math.max(0, Math.min(i, tasks.length-1));
+  dots.forEach((d,k)=>{ d.className = 'dot' + (k<i ? ' done' : '') + (k===i ? ' active' : ''); });
+  taskStepEl.textContent = `步骤 ${i+1} / ${tasks.length}`;
+  taskTextEl.innerHTML = tasks[i].text;
+  taskHintEl.textContent = tasks[i].hint;
+}
+
+function showToast(text){
+  toast.textContent = text || '再试一试';
+  toast.classList.add('show');
+  setTimeout(()=> toast.classList.remove('show'), 1200);
+}
+function showCheck(){ checkmark.classList.add('active'); setTimeout(()=>checkmark.classList.remove('active'), 500); }
+function showDone(){ doneMask.style.display='flex'; }
+okBtn.addEventListener('click', ()=> doneMask.style.display='none' );
+
+function setFreeMode(on){
+  freeMode = on;
+  if (on){
+    taskCard.style.opacity=.25; taskCard.style.filter='grayscale(.6)';
+    freeBtn.textContent='退出自由模式';
+    autoDemoBtn.disabled = true;
+    toast.classList.remove('show'); doneMask.style.display='none';
+  }else{
+    taskCard.style.opacity=1; taskCard.style.filter='none';
+    freeBtn.textContent='自由模式';
+    autoDemoBtn.disabled = false;
+  }
+}
+freeBtn.addEventListener('click', ()=> setFreeMode(!freeMode));
+
+function stepReset(){
+  autoPlaying=false; completed=false; currentTask=0;
+  dots.forEach(d=> d.className='dot'); dots[0].classList.add('active');
+  setStepUI(0);
+  // 不强制重置原画面，保持“步骤重置”只重置步骤；用户可用“重置”按钮复位动画
+}
+stepResetBtn.addEventListener('click', stepReset);
+
+/* —— 按钮“守卫”：步骤模式下误点仅提示，不改画面 —— */
+startBtn.addEventListener('click', ()=>{
+  if (autoPlaying) return;
+  if (freeMode || currentTask === 0){
+    start();
+    // 判定通过
+    if (!freeMode && tasks[currentTask].check()){
+      showCheck(); advanceStep();
+    }
+  } else {
+    showToast('当前需要操作：' + (currentTask===1? '暂停' : '重置'));
+  }
+});
+pauseBtn.addEventListener('click', ()=>{
+  if (autoPlaying) return;
+  if (freeMode || currentTask === 1){
+    pause();
+    if (!freeMode && tasks[currentTask].check()){
+      showCheck(); advanceStep();
+    }
+  } else {
+    showToast('当前需要操作：' + (currentTask===0? '发射' : '重置'));
+  }
+});
+resetBtn.addEventListener('click', ()=>{
+  if (autoPlaying) return;
+  if (freeMode || currentTask === 2){
+    resetOrigin();
+    if (!freeMode && tasks[currentTask].check()){
+      showCheck(); advanceStep(true);
+    }
+  } else {
+    showToast('当前需要操作：' + (currentTask===0? '发射' : '暂停'));
+  }
+});
+
+function advanceStep(isLast=false){
+  dots[currentTask].classList.remove('active'); dots[currentTask].classList.add('done');
+  currentTask++;
+  if (currentTask >= tasks.length){
+    completed = true;
+    setTimeout(showDone, 360);
+  }else{
+    dots[currentTask].classList.add('active');
+    setStepUI(currentTask);
+  }
+}
+
+/* 自动演示（严格按同一判定逻辑推进） */
+async function autoDemo(){
+  if (freeMode || autoPlaying) return;
+  autoPlaying = true;
+  _suppressAlert = true; // 自动演示时不弹系统alert
+
+  try{
+    // Step 1: 发射
+    setStepUI(0);
+    start();
+    await wait(900);
+    if (tasks[0].check()){ showCheck(); await wait(300); advanceStep(); }
+
+    // Step 2: 暂停
+    setStepUI(1);
+    await wait(400);
+    pause();
+    await wait(300);
+    if (tasks[1].check()){ showCheck(); await wait(300); advanceStep(); }
+
+    // Step 3: 重置
+    setStepUI(2);
+    await wait(400);
+    resetOrigin();
+    await wait(200);
+    if (tasks[2].check()){ showCheck(); await wait(300); advanceStep(true); }
+  } finally{
+    _suppressAlert = false;
+    autoPlaying = false;
+  }
+}
+autoDemoBtn.addEventListener('click', autoDemo);
+
+function wait(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+/* 初始化 */
+setStepUI(0);
+</script>
+</body>
+</html>

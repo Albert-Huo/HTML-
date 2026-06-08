@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>惊人的大气压：手掌上的100公斤</title>
+  <style>
+    :root{
+      --card-bg: rgba(255,255,255,0.08);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --error:#ff6b6b;
+      --ink:#e9f2ff;
+    }
+    body {
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      margin: 0;
+      padding: 10px;
+      /* 优化2：允许页面垂直滚动，但禁止水平溢出 */
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+     /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+    /* 任务卡片 */
+    .task-card{
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      backdrop-filter: blur(6px);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      transition: opacity .2s, filter .2s;
+      z-index: 20;
+      flex-shrink: 0;
+    }
+    .task-step{
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .task-text{ line-height: 1.5; }
+    .task-hint{ color: #ffd54f; font-size: 12px; opacity: .9; }
+    .progress-dots{ display: flex; gap:6px; align-items:center; }
+    .dot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,0.25); }
+    .dot.active{ background: var(--warn);}
+    .dot.done{ background: var(--accent); }
+
+    /* 画布区域 */
+    #canvas {
+      width: 100%;
+      max-width: 900px;
+      height: 60vh;
+      max-height: 520px;
+      min-height: 400px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #000;
+      margin-top: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      /* 优化2：移除 touch-action: none，允许在大背景上滑动页面 */
+      background: linear-gradient(to bottom, #0a1f3d, #2a5f8a);
+      flex-shrink: 0;
+    }
+
+    /* 场景元素 */
+    .draggable {
+      position: absolute;
+      cursor: grab;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      /* 优化1：移除默认 transition，消除拖拽时的“慢半拍”残影 */
+      /* 优化1：touch-action: none 仅加在可拖拽元素上，确保拖拽流畅且不触发滚屏 */
+      touch-action: none; 
+      will-change: transform;
+    }
+    .draggable:active { cursor: grabbing; transform: scale(1.05); }
+    /* 仅在吸附回弹时添加动画 */
+    .draggable.snapping { transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+    /* 1. 手掌 (目标区域) */
+    #handTarget {
+      position: absolute;
+      bottom: 25%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 90px;
+      z-index: 10;
+      transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+      transform-origin: bottom center;
+      user-select: none;
+    }
+    #handTarget.crushed {
+      transform: translateX(-50%) scaleY(0.6) scaleX(1.1); /* 压扁 */
+      filter: grayscale(1) sepia(1) saturate(5) hue-rotate(-50deg); /* 变红 */
+    }
+    #handTarget.shake { animation: shake 0.15s infinite; }
+    
+    @keyframes shake {
+      0% { transform: translateX(-50%) scaleY(0.6) scaleX(1.1) rotate(0deg); }
+      25% { transform: translateX(-51%) scaleY(0.6) scaleX(1.1) rotate(-3deg); }
+      75% { transform: translateX(-49%) scaleY(0.6) scaleX(1.1) rotate(3deg); }
+      100% { transform: translateX(-50%) scaleY(0.6) scaleX(1.1) rotate(0deg); }
+    }
+
+    /* 2. 大气柱 */
+    #airCol {
+      width: 100px;
+      height: 160px;
+      background: linear-gradient(to top, rgba(137, 207, 240, 0.8), rgba(255,255,255,0));
+      border: 2px dashed rgba(255,255,255,0.4);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      text-align: center;
+      padding-top: 10px;
+    }
+    #airCol::after { content: "空气柱\A P=10⁵Pa"; white-space: pre; font-weight: bold; }
+
+    /* 3. 重物 */
+    #sumo {
+      width: 100px;
+      height: 100px;
+      font-size: 80px;
+      line-height: 1;
+      text-align: center;
+    }
+    .weight-tag {
+      background: #ff4757;
+      color: #fff;
+      font-size: 14px;
+      font-weight: bold;
+      padding: 2px 8px;
+      border-radius: 4px;
+      position: absolute;
+      top: -10px;
+      white-space: nowrap;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    /* 4. 体内压力 */
+    #internalP {
+      width: 60px;
+      height: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .arrow-up {
+      width: 0; 
+      height: 0; 
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 30px solid #3ddc97;
+    }
+    .arrow-body {
+      width: 20px;
+      height: 40px;
+      background: #3ddc97;
+    }
+    .label-in {
+      font-size: 12px; color: #3ddc97; font-weight: bold; margin-top: 4px; white-space: nowrap;
+    }
+
+    /* HUD */
+    .hud {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      color: rgba(255,255,255,0.9);
+      font-family: monospace;
+      font-size: 13px;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 10px;
+      border-radius: 8px;
+      pointer-events: none;
+      line-height: 1.6;
+    }
+    .hud b { color: var(--warn); }
+    .status-alert { color: var(--error); font-weight: bold; display: none; margin-top: 4px; animation: blink 1s infinite; }
+    @keyframes blink { 50% { opacity: 0.5; } }
+
+    /* 工具栏 */
+    .toolbar{
+      display: flex;
+      gap:10px;
+      flex-wrap:wrap;
+      width: 100%; 
+      max-width:900px; 
+      margin-top: 12px; 
+      justify-content:flex-start;
+      flex-shrink: 0;
+    }
+    button {
+      padding: 10px 16px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.25s, transform .05s, opacity .2s;
+      font-weight: 500;
+    }
+    button:hover { background: #5a5a5a; }
+    button:active { transform: scale(.98); }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+
+    /* 反馈组件 */
+    .checkmark{ position:absolute; z-index: 50; left: 50%; top: 40%; transform: translate(-50%,-50%) scale(0.6);
+      width:120px; height:120px; border-radius:50%; background: rgba(61,220,151,0.15);
+      border: 3px solid var(--accent); display: none; align-items:center; justify-content:center; pointer-events: none;}
+    .checkmark.active{ display:flex; animation: pop 0.4s ease-out; }
+    .checkmark > div{ width: 60px; height: 30px; border-left: 8px solid var(--accent);
+      border-bottom: 8px solid var(--accent); transform: rotate(-45deg) translateY(-6px); }
+    @keyframes pop { 0%{transform: translate(-50%,-50%) scale(0.1);} 70%{transform: translate(-50%,-50%) scale(1.1);} 100%{transform: translate(-50%,-50%) scale(1.0);} }
+
+    .toast{ position: fixed; left:50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.85); color: #fff; padding: 10px 14px; border-radius: 10px;
+      font-size: 14px; opacity: 0; pointer-events:none; transition: opacity .25s, transform .25s;
+      z-index: 200; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+    .modal-mask{ position: fixed; inset:0; background: rgba(0,0,0,0.6); display:none;
+      align-items:center; justify-content:center; z-index: 300; backdrop-filter: blur(4px); }
+    .modal{ width:min(90vw, 360px); background:#111; color:#fff; border: 1px solid rgba(255,255,255,0.15);
+      border-radius:14px; padding:20px 18px; text-align:center; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+    .modal h3{ margin: 8px 0 10px; font-size: 22px; color: var(--accent); }
+    .modal p{ color: #cfd8dc; margin-top: 0; line-height: 1.6; }
+    .modal .ok{ margin-top: 16px; background: var(--accent); color:#081a12; font-weight:700; width: 100%; font-size: 16px; padding: 12px; border:none; border-radius: 8px; cursor: pointer; }
+
+    .explanation {
+      width: 100%;
+      max-width: 900px;
+      margin: 14px 0 40px; /* 增加底部边距，方便滚动查看 */
+      line-height: 1.65;
+      font-size: 0.95em;
+      color: #e9f2ff;
+      flex-shrink: 0;
+    }
+    .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size: 1.15em; }
+    .explanation li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">拖动<strong>大气柱</strong>到手掌上方，可视化空气的重量。</div>
+      <div class="task-hint" id="taskHint">提示：虽然空气看不见，但每一平方米都承载着巨大的质量。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvas">
+    <div class="hud" id="hud">
+      <div>向下压力 F(外) ≈ <b id="val-down">0</b> N</div>
+      <div>向上支撑 F(内) ≈ <b id="val-up">0</b> N</div>
+      <hr style="border:0; border-top:1px solid rgba(255,255,255,0.2); margin:4px 0;">
+      <div>合力 F(合) = <span id="val-net">0</span> N</div>
+      <div class="status-alert" id="statusAlert">⚠️ 手掌濒临压溃！</div>
+    </div>
+
+    <div id="handTarget">✋</div>
+
+    <div id="airCol" class="draggable" draggable="false"></div>
+    
+    <div id="sumo" class="draggable" draggable="false">
+      <div class="weight-tag">100kg</div>
+      🏋️
+    </div>
+
+    <div id="internalP" class="draggable" draggable="false">
+      <div class="arrow-up"></div>
+      <div class="arrow-body"></div>
+      <div class="label-in">体内压强</div>
+    </div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="explanation">
+    <h2>科学原理：为什么手没有断？</h2>
+    <ul>
+      <li><strong>惊人的数值：</strong> 标准大气压约为 100000Pa，手掌面积约 0.01 平方米，算下来压力高达 1000N。</li>
+      <li><strong>等效替换：</strong> 1000N的压力，相当于一个 **100公斤的相扑手** 站在你手掌上！这就是为什么我们计算出来会感到惊讶。</li>
+      <li><strong>自然的平衡：</strong> 如果只有这个向下的力，手掌肯定会废掉。但人体内部充满了液体和气体，产生的向外的压强，**内外抵消**，合力为零。</li>
+    </ul>
+  </div>
+
+  <div class="toast" id="toast">再试一试</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3 id="doneTitle">疑惑解决！🎉</h3>
+      <p>你现在明白了吧？<br>大气压虽然有 <strong>1000N (100kg)</strong> 那么重，但因为我们身体内部也有同样的压力向外推，所以手掌才能安然无恙。</p>
+      <button class="ok" id="okBtn">我懂了</button>
+    </div>
+  </div>
+
+  <script>
+    /* ====== 基础工具 ====== */
+    function getPoint(e){
+      if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+      return { x: e.clientX, y: e.clientY };
+    }
+    const sleep = (ms)=> new Promise(r=>setTimeout(r, ms));
+    const lerp = (a,b,t)=> a + (b-a)*t;
+
+    /* ====== 元素引用 ====== */
+    const els = {
+      air: document.getElementById('airCol'),
+      sumo: document.getElementById('sumo'),
+      internal: document.getElementById('internalP'),
+      hand: document.getElementById('handTarget')
+    };
+    const canvasEl = document.getElementById('canvas');
+    const hud = {
+      down: document.getElementById('val-down'),
+      up: document.getElementById('val-up'),
+      net: document.getElementById('val-net'),
+      alert: document.getElementById('statusAlert')
+    };
+    const ui = {
+      card: document.getElementById('taskCard'),
+      step: document.getElementById('taskStep'),
+      text: document.getElementById('taskText'),
+      hint: document.getElementById('taskHint'),
+      dots: [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')],
+      btns: {
+        reset: document.getElementById('resetBtn'),
+        auto: document.getElementById('autoDemoBtn'),
+        free: document.getElementById('freeBtn')
+      },
+      feedback: {
+        check: document.getElementById('checkmark'),
+        toast: document.getElementById('toast'),
+        modal: document.getElementById('doneMask'),
+        ok: document.getElementById('okBtn')
+      }
+    };
+
+    /* ====== 状态管理 ====== */
+    let state = {
+      step: 0,
+      freeMode: false,
+      autoPlaying: false,
+      completed: false,
+      dragging: null,
+      offset: {x:0, y:0},
+      hasAir: false,
+      hasSumo: false,
+      hasInternal: false
+    };
+
+    /* ====== 任务定义 ====== */
+    const tasks = [
+      {
+        text: '第一步：拖动蓝色<strong>大气柱</strong>到手掌上方，可视化空气的压力。',
+        hint: '提示：虽然空气看不见，但每一平方米都承载着巨大的质量。',
+        check: () => state.hasAir && !state.hasSumo,
+        onPass: () => {}
+      },
+      {
+        text: '第二步：移开大气柱，放上<strong>100kg重物</strong>。感受如果是纯压力会发生什么？',
+        hint: '提示：1000N的压力相当于100kg。如果不抵抗，手会被压扁的！',
+        check: () => !state.hasAir && state.hasSumo && !state.hasInternal,
+        onPass: () => {
+          showToast("天呐！手掌被压扁了！这股力量太大了！");
+        }
+      },
+      {
+        text: '第三步：保持重物不动，拖动绿色<strong>体内压强</strong>到手掌下方进行抵抗。',
+        hint: '提示：加上内部向外的力，来平衡外部的大气压力。',
+        check: () => state.hasSumo && state.hasInternal,
+        onPass: () => {
+          showToast("平衡了！这就是为什么我们平时没感觉重。");
+        }
+      }
+    ];
+
+    /* ====== 物理与逻辑 ====== */
+    
+    function resetPositions(){
+      const w = canvasEl.clientWidth;
+      const h = canvasEl.clientHeight;
+      
+      setPos(els.air, w*0.1, h*0.15);
+      setPos(els.sumo, w*0.78, h*0.15);
+      setPos(els.internal, w*0.12, h*0.7);
+      
+      // 移除可能存在的吸附动画类
+      [els.air, els.sumo, els.internal].forEach(el => el.classList.remove('snapping'));
+
+      state.hasAir = false;
+      state.hasSumo = false;
+      state.hasInternal = false;
+      
+      updatePhysics();
+    }
+
+    function setPos(el, x, y){
+      el.style.transform = `translate(${x}px, ${y}px)`;
+      el.dataset.x = x;
+      el.dataset.y = y;
+    }
+    
+    function getPos(el){
+      return { x: parseFloat(el.dataset.x)||0, y: parseFloat(el.dataset.y)||0 };
+    }
+
+    function updatePhysics(){
+      const forceAir = state.hasAir ? 1000 : 0;
+      const forceSumo = state.hasSumo ? 1000 : 0;
+      const forceInternal = state.hasInternal ? 1000 : 0;
+
+      const forceDown = forceAir + forceSumo;
+      const forceUp = forceInternal;
+      const netForce = forceDown - forceUp;
+
+      hud.down.textContent = forceDown;
+      hud.up.textContent = forceUp;
+      hud.net.textContent = netForce;
+      hud.net.style.color = netForce > 0 ? '#ff6b6b' : '#3ddc97';
+
+      if (netForce > 0 && forceSumo > 0) {
+        els.hand.className = 'crushed shake';
+        hud.alert.style.display = 'block';
+      } else {
+        els.hand.className = '';
+        hud.alert.style.display = 'none';
+      }
+
+      if (!state.freeMode && !state.completed && !state.autoPlaying) {
+        checkTask();
+      }
+    }
+
+    function checkTask(){
+      const task = tasks[state.step];
+      if (task && task.check()) {
+        ui.feedback.check.classList.add('active');
+        setTimeout(()=>ui.feedback.check.classList.remove('active'), 500);
+        task.onPass();
+        nextStep();
+      }
+    }
+
+    function nextStep(){
+      ui.dots[state.step].classList.remove('active');
+      ui.dots[state.step].classList.add('done');
+      
+      state.step++;
+      
+      if (state.step >= tasks.length) {
+        state.completed = true;
+        setTimeout(() => ui.feedback.modal.style.display = 'flex', 800);
+      } else {
+        ui.dots[state.step].classList.add('active');
+        updateTaskUI();
+      }
+    }
+
+    function updateTaskUI(){
+      if (state.step >= tasks.length) return;
+      ui.step.textContent = `步骤 ${state.step+1} / ${tasks.length}`;
+      ui.text.innerHTML = tasks[state.step].text;
+      ui.hint.textContent = tasks[state.step].hint;
+    }
+
+    /* ====== 拖拽系统 ====== */
+    function checkSnaps(el){
+      const elRect = el.getBoundingClientRect();
+      const handRect = els.hand.getBoundingClientRect();
+      const cRect = canvasEl.getBoundingClientRect();
+
+      const elCx = (elRect.left - cRect.left) + elRect.width/2;
+      const elCy = (elRect.top - cRect.top) + elRect.height/2;
+      
+      const handCx = (handRect.left - cRect.left) + handRect.width/2;
+      const handCy = (handRect.top - cRect.top) + handRect.height/2;
+
+      const dist = Math.hypot(elCx - handCx, elCy - handCy);
+      const threshold = 100;
+      
+      let targetX = null, targetY = null;
+
+      if (el === els.air) {
+        if (dist < threshold) {
+          state.hasAir = true;
+          targetX = handCx - el.offsetWidth/2;
+          targetY = handCy - 90 - el.offsetHeight/2;
+        } else state.hasAir = false;
+      } else if (el === els.sumo) {
+        if (dist < threshold) {
+          state.hasSumo = true;
+          targetX = handCx - el.offsetWidth/2;
+          targetY = handCy - 55 - el.offsetHeight/2;
+        } else state.hasSumo = false;
+      } else if (el === els.internal) {
+        if (dist < threshold) {
+          state.hasInternal = true;
+          targetX = handCx - el.offsetWidth/2;
+          targetY = handCy + 60 - el.offsetHeight/2;
+        } else state.hasInternal = false;
+      }
+      
+      // 如果触发了吸附，使用 CSS 动画平滑过渡过去
+      if(targetX !== null){
+        el.classList.add('snapping'); // 启用动画
+        setPos(el, targetX, targetY);
+        // 动画结束后移除类，以免影响后续拖拽
+        setTimeout(() => el.classList.remove('snapping'), 300);
+      }
+      
+      updatePhysics();
+    }
+
+    function startDrag(e){
+      if (state.autoPlaying) return;
+      // 阻止默认行为（防止 iOS 选中文字等），但只有在点到 draggable 时才阻止
+      const el = e.target.closest('.draggable');
+      if (!el) return; // 如果点的是空白处，不阻止，允许页面滚动
+      
+      // 明确禁止滚动，因为我们现在要拖拽了
+      e.preventDefault();
+
+      state.dragging = el;
+      const rect = el.getBoundingClientRect();
+      const p = getPoint(e);
+      state.offset = { x: p.x - rect.left, y: p.y - rect.top };
+      
+      el.style.zIndex = 999;
+      // 关键优化：开始拖拽时，确保移除任何过渡效果，防止残影
+      el.classList.remove('snapping'); 
+    }
+
+    function drag(e){
+      if (!state.dragging) return;
+      
+      // 阻止页面滚动，保证拖拽流畅
+      e.preventDefault();
+
+      const cRect = canvasEl.getBoundingClientRect();
+      const p = getPoint(e);
+      
+      let x = p.x - cRect.left - state.offset.x;
+      let y = p.y - cRect.top - state.offset.y;
+      
+      x = Math.max(0, Math.min(x, cRect.width - state.dragging.offsetWidth));
+      y = Math.max(0, Math.min(y, cRect.height - state.dragging.offsetHeight));
+      
+      setPos(state.dragging, x, y);
+    }
+
+    function endDrag(e){
+      if (!state.dragging) return;
+      state.dragging.style.zIndex = "";
+      checkSnaps(state.dragging);
+      state.dragging = null;
+    }
+
+    /* ====== 自动演示 ====== */
+    async function moveEl(el, tx, ty){
+      const start = getPos(el);
+      const frames = 40;
+      for(let i=0; i<=frames; i++){
+        const t = i/frames;
+        const ease = t * (2 - t);
+        setPos(el, lerp(start.x, tx, ease), lerp(start.y, ty, ease));
+        await sleep(16);
+      }
+    }
+
+    async function autoDemo(){
+      if (state.autoPlaying) return;
+      state.autoPlaying = true;
+      ui.btns.free.disabled = true;
+      
+      resetFlow(true); 
+      await sleep(500);
+
+      const cRect = canvasEl.getBoundingClientRect();
+      const hRect = els.hand.getBoundingClientRect();
+      const cx = (hRect.left - cRect.left) + hRect.width/2;
+      const cy = (hRect.top - cRect.top) + hRect.height/2;
+
+      // Step 1
+      await moveEl(els.air, cx - els.air.offsetWidth/2, cy - 90 - els.air.offsetHeight/2);
+      state.hasAir = true; updatePhysics();
+      ui.feedback.check.classList.add('active');
+      await sleep(1000);
+      ui.feedback.check.classList.remove('active');
+      nextStep();
+
+      // Step 2
+      moveEl(els.air, cRect.width*0.1, cRect.height*0.15);
+      state.hasAir = false;
+      await sleep(300);
+      await moveEl(els.sumo, cx - els.sumo.offsetWidth/2, cy - 55 - els.sumo.offsetHeight/2);
+      state.hasSumo = true; updatePhysics();
+      ui.feedback.check.classList.add('active');
+      showToast("天呐！100公斤压在手上！");
+      await sleep(1500);
+      ui.feedback.check.classList.remove('active');
+      nextStep();
+
+      // Step 3
+      await moveEl(els.internal, cx - els.internal.offsetWidth/2, cy + 60 - els.internal.offsetHeight/2);
+      state.hasInternal = true; updatePhysics();
+      ui.feedback.check.classList.add('active');
+      await sleep(500);
+      ui.feedback.check.classList.remove('active');
+      nextStep();
+
+      state.autoPlaying = false;
+      ui.btns.free.disabled = false;
+    }
+
+    /* ====== 按钮逻辑 ====== */
+    function resetFlow(silent){
+      state.step = 0;
+      state.completed = false;
+      resetPositions();
+      if (!state.freeMode) {
+        ui.dots.forEach(d => d.className = 'dot');
+        ui.dots[0].className = 'dot active';
+        updateTaskUI();
+        ui.feedback.modal.style.display = 'none';
+        if (!silent) showToast("场景已重置，请重新开始");
+      }
+    }
+
+    function toggleFree(){
+      state.freeMode = !state.freeMode;
+      ui.btns.free.textContent = state.freeMode ? "退出自由模式" : "自由模式";
+      ui.btns.auto.disabled = state.freeMode;
+      
+      if (state.freeMode) {
+        ui.card.style.opacity = 0.2;
+        ui.card.style.filter = "grayscale(1)";
+        ui.feedback.modal.style.display = 'none';
+        showToast("自由模式：随意拖放，观察受力分析");
+      } else {
+        ui.card.style.opacity = 1;
+        ui.card.style.filter = "none";
+        resetFlow(true);
+      }
+    }
+
+    function showToast(msg){
+      ui.feedback.toast.textContent = msg;
+      ui.feedback.toast.classList.add('show');
+      setTimeout(()=>ui.feedback.toast.classList.remove('show'), 2000);
+    }
+
+    /* ====== 事件监听 ====== */
+    // 使用非被动监听器以允许 preventDefault
+    window.addEventListener('mousedown', startDrag);
+    window.addEventListener('touchstart', startDrag, {passive:false});
+    window.addEventListener('mousemove', drag, {passive:false});
+    window.addEventListener('touchmove', drag, {passive:false});
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchend', endDrag);
+    window.addEventListener('resize', resetPositions);
+
+    ui.btns.reset.onclick = ()=> resetFlow(false);
+    ui.btns.auto.onclick = autoDemo;
+    ui.btns.free.onclick = toggleFree;
+    ui.feedback.ok.onclick = ()=> ui.feedback.modal.style.display = 'none';
+
+    // 初始化
+    resetPositions();
+    updateTaskUI();
+  </script>
+</body>
+</html>

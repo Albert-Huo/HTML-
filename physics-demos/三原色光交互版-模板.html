@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>三原色光互动闯关</title>
+  <style>
+    :root{
+      --card-bg: rgba(255,255,255,0.08);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --error:#ff6b6b;
+    }
+    body {
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+      font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+      margin: 0;
+      padding: 10px;
+    }
+
+    /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+    .task-card{
+      width: 100%;
+      max-width: 900px;
+      background: var(--card-bg);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 12px 14px;
+      backdrop-filter: blur(6px);
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+    .task-step{
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .task-text{ line-height: 1.5; }
+    .task-hint{ color: #ffd54f; font-size: 12px; opacity: .9; }
+    .progress-dots{ display: flex; gap:6px; align-items:center; }
+    .dot{ width:10px; height:10px; border-radius:50%; background: rgba(255,255,255,0.25); }
+    .dot.active{ background: var(--warn);}
+    .dot.done{ background: var(--accent); }
+
+    #canvas {
+      width: 100%;
+      max-width: 900px;
+      height: 60vh;
+      max-height: 520px;
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      background: #000;
+      margin-top: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      touch-action: none;
+    }
+    .light {
+      width: 18vw;
+      max-width: 130px;
+      min-width: 80px;
+      aspect-ratio: 1/1;
+      border-radius: 50%;
+      position: absolute;
+      mix-blend-mode: lighten;
+      cursor: grab;
+      filter: brightness(1.15) drop-shadow(0 0 10px rgba(255,255,255,0.28));
+      touch-action: none;
+    }
+    .light:active{ cursor: grabbing; }
+
+    /* 三按钮容器：画面下方，靠左排列 */
+    .toolbar{
+      display: flex;
+      gap:10px;
+      flex-wrap:wrap;
+      width: 100%; 
+      max-width:900px; 
+      margin-top: 12px; 
+      justify-content:flex-start; /* 靠左 */
+    }
+    button {
+      padding: 10px 16px;
+      background: #444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.25s, transform .05s, opacity .2s;
+    }
+    button:hover { background: #5a5a5a; }
+    button:active { transform: scale(.98); }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .checkmark{ position:absolute; z-index: 50; left: 50%; top: 20%; transform: translate(-50%,-50%) scale(0.6);
+      width:120px; height:120px; border-radius:50%; background: rgba(61,220,151,0.15);
+      border: 3px solid var(--accent); display: none; align-items:center; justify-content:center; }
+    .checkmark.active{ display:flex; }
+    .checkmark > div{ width: 60px; height: 30px; border-left: 8px solid var(--accent);
+      border-bottom: 8px solid var(--accent); transform: rotate(-45deg) translateY(-6px); }
+
+    .toast{ position: fixed; left:50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.8); color: #fff; padding: 10px 14px; border-radius: 10px;
+      font-size: 14px; opacity: 0; pointer-events:none; transition: opacity .25s, transform .25s;
+      z-index: 200; }
+    .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+    .modal-mask{ position: fixed; inset:0; background: rgba(0,0,0,0.5); display:none;
+      align-items:center; justify-content:center; z-index: 300; }
+    .modal{ width:min(90vw, 360px); background:#111; color:#fff; border: 1px solid rgba(255,255,255,0.15);
+      border-radius:14px; padding:18px 16px; text-align:center; }
+    .modal h3{ margin: 8px 0 6px; font-size: 20px; }
+    .modal p{ color: #cfd8dc; margin-top: 0; }
+    .modal .ok{ margin-top: 12px; background: var(--accent); color:#081a12; font-weight:700; }
+
+    .explanation {
+      width: 100%;
+      max-width: 900px;
+      margin: 14px 0 20px;
+      line-height: 1.65;
+      font-size: 0.95em;
+      color: #e9f2ff;
+    }
+    .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size: 1.15em; }
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">把红光和绿光重叠，组合出<strong>黄色</strong></div>
+      <div class="task-hint" id="taskHint">提示：拖动红、绿两个圆重叠；蓝色不要压上去。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvas">
+    <div id="red" class="light" style="background: rgba(255,0,0,0.5)"></div>
+    <div id="green" class="light" style="background: rgba(0,255,0,0.5)"></div>
+    <div id="blue" class="light" style="background: rgba(0,0,255,0.5)"></div>
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <!-- 三个按钮：画面下方靠左 -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">再试一试：让需要的两束色光明显重叠</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3 id="doneTitle">完成，你真棒！🎉</h3>
+      <p>你已经完成了三项配色挑战：黄色 → 青色 → 白色。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>光学三原色原理（加色混合）</h2>
+    <ul>
+      <li>红 + 绿 = 黄</li>
+      <li>绿 + 蓝 = 青</li>
+      <li>红 + 蓝 = 品红</li>
+      <li>三色等量叠加 = 白</li>
+    </ul>
+  </div>
+
+  <script>
+    /* ====== 工具与状态 ====== */
+    function getPoint(e){
+      if (e.touches && e.touches.length) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      if (e.changedTouches && e.changedTouches.length) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+      return { x: e.clientX, y: e.clientY };
+    }
+    const sleep = (ms)=> new Promise(r=>setTimeout(r, ms));
+    const waitFor = async (predicate, timeout=1200, interval=30)=>{
+      const start = performance.now();
+      while (performance.now() - start < timeout){
+        if (predicate()) return true;
+        await sleep(interval);
+      }
+      return false;
+    };
+    const lerp = (a,b,t)=> a + (b-a)*t;
+
+    const lights = {
+      red: document.getElementById('red'),
+      green: document.getElementById('green'),
+      blue: document.getElementById('blue')
+    };
+    const canvasEl = document.getElementById('canvas');
+    const checkmark = document.getElementById('checkmark');
+    const toast = document.getElementById('toast');
+    const doneMask = document.getElementById('doneMask');
+    const okBtn = document.getElementById('okBtn');
+
+    const taskCard = document.getElementById('taskCard');
+    const taskStepEl = document.getElementById('taskStep');
+    const taskTextEl = document.getElementById('taskText');
+    const taskHintEl = document.getElementById('taskHint');
+    const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+
+    const autoDemoBtn = document.getElementById('autoDemoBtn');
+    const freeBtn = document.getElementById('freeBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let freeMode = false;
+    let autoPlaying = false;
+    let dragging = null;
+    let offset = { x: 0, y: 0 };
+    let successCooldown = false;
+    let completed = false;
+    let resizeTimer = null;
+
+    const tasks = [
+      { text:'把红光和绿光重叠，组合出<strong>黄色</strong>', 
+        hint:'把红、绿两个圆拖到有明显重叠处；此时蓝色尽量不要同时压在它们上面。',
+        check:()=> pairOverlap('red','green') && !tripleOverlap() },
+      { text:'把绿光和蓝光重叠，组合出<strong>青色</strong>', 
+        hint:'让绿色与蓝色重叠；红色不要也压在相同区域形成白色。',
+        check:()=> pairOverlap('green','blue') && !tripleOverlap() },
+      { text:'让红、绿、蓝三束光重叠，组合出<strong>白色</strong>',
+        hint:'把第三个圆也拖过来，让三者在某一小块区域重叠即可。',
+        check:()=> tripleOverlap() }
+    ];
+    let currentTask = 0;
+
+    function setStepUI(stepIndex){
+      stepIndex = Math.max(0, Math.min(stepIndex, tasks.length-1));
+      dots.forEach((d,i)=>{
+        d.className = 'dot' + (i<stepIndex ? ' done' : '') + (i===stepIndex ? ' active' : '');
+      });
+      taskStepEl.textContent = `步骤 ${stepIndex+1} / ${tasks.length}`;
+      taskTextEl.innerHTML = tasks[stepIndex].text;
+      taskHintEl.textContent = tasks[stepIndex].hint;
+    }
+
+    /* ====== 位置与重叠判定 ====== */
+    function resetLights() {
+      const w = canvasEl.clientWidth, h = canvasEl.clientHeight;
+      const positions = [
+        { x: w*0.28, y: h*0.42 },
+        { x: w*0.50, y: h*0.50 },
+        { x: w*0.40, y: h*0.62 }
+      ];
+      [lights.red, lights.green, lights.blue].forEach((el, i) => {
+        el.style.transform = `translate(${positions[i].x}px, ${positions[i].y}px)`;
+        el.dataset.x = positions[i].x;
+        el.dataset.y = positions[i].y;
+      });
+      hideCheck();
+    }
+
+    function centerOf(el){
+      const x = parseFloat(el.dataset.x)||0, y=parseFloat(el.dataset.y)||0;
+      const w = el.offsetWidth, h=el.offsetHeight;
+      return { cx: x + w/2, cy: y + h/2, r: w/2 };
+    }
+    function dist(a,b){ return Math.hypot(a.cx-b.cx, a.cy-b.cy); }
+    function overlap(elA, elB, factor=0.80){
+      const A=centerOf(elA), B=centerOf(elB);
+      return dist(A,B) < Math.min(A.r,B.r)*factor;
+    }
+    function pairOverlap(a,b){ return overlap(lights[a], lights[b], 0.80); }
+    function tripleOverlap(){
+      return pairOverlap('red','green') && pairOverlap('green','blue') && pairOverlap('red','blue');
+    }
+
+    /* ====== 步骤流转（与原逻辑一致） ====== */
+    function evaluateTask(endGesture, fromAuto=false){
+      if (!endGesture || successCooldown || completed) return;
+      const task = tasks[currentTask];
+      if (task && task.check()){
+        showCheck();
+        lockSuccess();
+        setTimeout(nextTask, 520);
+      } else {
+        if (!autoPlaying && !fromAuto) {
+          showToast("再试一试：按照指令让对应两束（或三束）光重叠");
+        }
+      }
+    }
+
+    function nextTask(){
+      hideCheck();
+      dots[currentTask].classList.remove('active');
+      dots[currentTask].classList.add('done');
+
+      currentTask++;
+      if(currentTask >= tasks.length){
+        completed = true;
+        // 原文件：完成后显示完成弹窗
+        showDone();
+        return;
+      }
+      dots[currentTask].classList.add('active');
+      setStepUI(currentTask);
+    }
+
+    function showCheck(){
+      checkmark.classList.add('active');
+      setTimeout(()=> checkmark.classList.remove('active'), 500);
+    }
+    function hideCheck(){ checkmark.classList.remove('active'); }
+    function showToast(text){
+      toast.textContent = text || '再试一试';
+      toast.classList.add('show');
+      setTimeout(()=> toast.classList.remove('show'), 1200);
+    }
+    function showDone(){ doneMask.style.display='flex'; }
+    okBtn.addEventListener('click', ()=>{ doneMask.style.display='none'; });
+
+    function lockSuccess(){
+      successCooldown = true;
+      setTimeout(()=> successCooldown = false, 450);
+    }
+
+    /* ====== 自由模式 ====== */
+    function setFreeMode(on){
+      freeMode = on;
+      if (freeMode){
+        taskCard.style.opacity = .25;
+        taskCard.style.filter = 'grayscale(0.6)';
+        freeBtn.textContent = '退出自由模式';
+        autoDemoBtn.disabled = true;
+        hideCheck();
+        toast.classList.remove('show');
+        doneMask.style.display = 'none';
+      } else {
+        taskCard.style.opacity = 1;
+        taskCard.style.filter = 'none';
+        freeBtn.textContent = '自由模式';
+        autoDemoBtn.disabled = false;
+      }
+    }
+
+    /* ====== 自动演示（完全复用步骤判定逻辑） ====== */
+    function getPos(el){ return { x: parseFloat(el.dataset.x)||0, y: parseFloat(el.dataset.y)||0 }; }
+    function setPos(el, p){
+      el.dataset.x = p.x; el.dataset.y = p.y;
+      el.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    }
+    async function tweenTo(el, target, steps=24, dt=16){
+      const start = getPos(el);
+      for(let i=1;i<=steps;i++){
+        const t = i/steps;
+        setPos(el, { x: lerp(start.x, target.x, t), y: lerp(start.y, target.y, t) });
+        await sleep(dt);
+      }
+    }
+
+    // 让 a 与 b 明显重叠，同时把 avoid 拖离重叠区
+    async function moveToOverlap(pairKeys, avoidKey){
+      const [ak, bk] = pairKeys;
+      const a = lights[ak], b = lights[bk], c = lights[avoidKey];
+      const ca = centerOf(a), cb = centerOf(b);
+      // 目标：在两者中点附近制造重叠
+      const mid = { x: (ca.cx + cb.cx)/2, y: (ca.cy + cb.cy)/2 };
+      const goalA = { x: mid.x - a.offsetWidth*0.55, y: mid.y - a.offsetHeight*0.55 };
+      const goalB = { x: mid.x - b.offsetWidth*0.45, y: mid.y - b.offsetHeight*0.45 };
+      // 避开色：推开到远一点
+      const cp = getPos(c);
+      const goalC = { x: cp.x + 120, y: cp.y + (Math.random()>0.5?80:-80) };
+
+      await Promise.all([tweenTo(a, goalA), tweenTo(b, goalB), tweenTo(c, goalC, 18)]);
+    }
+
+    // 把 third 拉入现有重叠区形成三色重叠
+    async function moveThirdInto(thirdKey, refKeys){
+      const [k1,k2] = refKeys;
+      const r1 = centerOf(lights[k1]);
+      const r2 = centerOf(lights[k2]);
+      const targetCenter = { x:(r1.cx + r2.cx)/2, y:(r1.cy + r2.cy)/2 };
+      const el = lights[thirdKey];
+      const goal = { x: targetCenter.x - el.offsetWidth/2 + 6, y: targetCenter.y - el.offsetHeight/2 + 6 };
+      await tweenTo(el, goal);
+    }
+
+    async function autoDemo(){
+      if (autoPlaying) return;
+      autoPlaying = true;
+      freeBtn.disabled = true;
+
+      // 走与手动一致的流程：复位 → 步骤1/2/3，每一步都由 evaluateTask 驱动 step 变更
+      resetFlow(false);           // 复位但不退出自由模式标志（由 resetFlow 内部控制）
+      await sleep(200);
+
+      // Step 1: 红+绿 → 黄；蓝远离
+      await moveToOverlap(['red','green'], 'blue');
+      evaluateTask(true, true);
+      // 等待 step 进入 2
+      await waitFor(()=> currentTask === 1);
+
+      // Step 2: 绿+蓝 → 青；红远离
+      await moveToOverlap(['green','blue'], 'red');
+      evaluateTask(true, true);
+      await waitFor(()=> currentTask === 2);
+
+      // Step 3: 三色重叠 → 白
+      await moveThirdInto('red', ['green','blue']);
+      evaluateTask(true, true);
+      await waitFor(()=> completed === true);
+
+      autoPlaying = false;
+      freeBtn.disabled = false;
+    }
+
+    /* ====== 交互（鼠标/触控拖动） ====== */
+    function startDrag(e) {
+      if (autoPlaying) return; // 自动演示中禁拖拽
+      const rect = this.getBoundingClientRect();
+      const p = getPoint(e);
+      dragging = this;
+      offset = { x: p.x - rect.left, y: p.y - rect.top };
+      this.style.boxShadow = "0 0 14px #fff";
+      e.preventDefault();
+    }
+    function drag(e) {
+      if (!dragging || autoPlaying) return;
+      const cRect = canvasEl.getBoundingClientRect();
+      const p = getPoint(e);
+      let x = p.x - cRect.left - offset.x;
+      let y = p.y - cRect.top - offset.y;
+      x = Math.max(0, Math.min(x, cRect.width - dragging.offsetWidth));
+      y = Math.max(0, Math.min(y, cRect.height - dragging.offsetHeight));
+      dragging.style.transform = `translate(${x}px, ${y}px)`;
+      dragging.dataset.x = x;
+      dragging.dataset.y = y;
+      e.preventDefault();
+    }
+    function endDrag() {
+      if (!dragging) return;
+      dragging.style.boxShadow = "";
+      if (!freeMode && !completed) evaluateTask(true);
+      dragging = null;
+    }
+
+    Object.values(lights).forEach(el => {
+      el.addEventListener('mousedown', startDrag);
+      el.addEventListener('touchstart', startDrag, {passive:false});
+    });
+    window.addEventListener('mousemove', drag, {passive:false});
+    window.addEventListener('touchmove', drag, {passive:false});
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchend', endDrag);
+
+    /* ====== 重置按钮（按原文件：自由模式下仅复位位置，不退出自由模式） ====== */
+    function resetFlow(showTip=true){
+      completed = false;
+      successCooldown = false;
+      // 注意：若在自由模式，不改 freeMode 与 UI 灰化状态
+      if (!freeMode){
+        currentTask = 0;
+        setStepUI(0);
+        dots.forEach((d,i)=>{ d.className = 'dot' + (i===0?' active':''); });
+        hideCheck();
+        doneMask.style.display = 'none';
+      } else {
+        // 自由模式：不动步骤与文案，保持灰化，仅位置复位
+        hideCheck();
+        doneMask.style.display = 'none';
+      }
+      resetLights();
+      if (showTip && !freeMode){
+        // showToast('拖动彩色光圈，按步骤完成配色挑战');
+      }
+    }
+
+    resetBtn.addEventListener('click', ()=>{
+      if (autoPlaying) return;      // 自动演示期间不响应
+      resetFlow(true);              // 自由模式下只复位，不退出自由模式
+    });
+    autoDemoBtn.addEventListener('click', ()=> {
+      if (!autoPlaying) autoDemo();
+    });
+    freeBtn.addEventListener('click', ()=> setFreeMode(!freeMode));
+
+    /* ====== 自适应（旋转/窗口变化后重置位置） ====== */
+    function safeResetPositions(){
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(()=> resetLights(), 150);
+    }
+    window.addEventListener('resize', safeResetPositions);
+    window.addEventListener('orientationchange', safeResetPositions);
+
+    /* ====== 初始化 ====== */
+    function init(){
+      ['red','green','blue'].forEach((k)=>{
+        const el = lights[k];
+        const colors = {red:'rgba(255,0,0,0.5)', green:'rgba(0,255,0,0.5)', blue:'rgba(0,0,255,0.5)'};
+        el.style.background = colors[k];
+      });
+      setStepUI(0);
+      resetLights();
+    }
+    init();
+  </script>
+</body>
+</html>

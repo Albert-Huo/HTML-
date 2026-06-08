@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1" />
+<title>比邻星上观察地球</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97; --warn:#ffb74d; --ink:#e9f2ff;
+  }
+  body{ background:#000; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center;}
+
+   /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡片（交互引导） */
+  .task-card{ width:100%; max-width:1000px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:.2s;}
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; } .dot{ width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.25);}
+  .dot.active{background:var(--warn);} .dot.done{background:var(--accent);}
+
+  /* 步骤下方三按钮 */
+  .toolbar{ width:100%; max-width:1000px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; }
+  button:hover{ background:#5a5a5a;} button:disabled{ opacity:.5;}
+
+  /* 画面区域：完整保留原文件结构与动画 */
+  #scene-container{ position:relative; width:100%; max-width:1000px; height:62vh; min-height:520px; margin-top:10px; border-radius:12px; overflow:hidden; }
+  .scene{ position:absolute; width:100%; height:100%; transition:opacity 1.5s ease-in-out; opacity:0; display:flex; flex-direction:column; justify-content:center; align-items:center;}
+  .scene.active{ opacity:1; }
+
+  /* 原文件背景与地面（保留） */
+  #earth-scene{ background: linear-gradient(to bottom, #87CEEB 0%, #1E90FF 100%); }
+  #proxima-scene{ background: linear-gradient(to bottom, #8B4513 0%, #A0522D 100%); }
+  .ground{ position:absolute; bottom:0; width:100%; height:30%; }
+  #earth-ground{ background: linear-gradient(to bottom, #7CFC00 0%, #228B22 100%); }
+  #proxima-ground{ background: linear-gradient(to bottom, #CD853F 0%, #8B4513 100%); }
+
+  .mountain { position: absolute; bottom: 20%; font-size: 300px; z-index: 2; }
+  .proxima-mountain {
+    position: absolute; bottom: 20%; font-size: 150px; z-index: 2;
+    filter: sepia(0.5) saturate(0.8) brightness(0.5);
+  }
+  .house { position: absolute; bottom: 20%; font-size: 60px; z-index: 4; }
+  .character { font-size: 60px; position: absolute; bottom: 20%; z-index: 3; }
+  .character-label {
+    position: absolute; bottom: 15%; font-size: 20px; background: rgba(0,0,0,0.7);
+    padding: 5px 10px; border-radius: 10px; z-index: 4;
+  }
+
+  /* 望远镜与视口（保留原动画） */
+  .telescope { font-size: 80px; position: absolute; bottom: 35%; transform: rotate(-20deg); z-index: 1; transition: all 2s ease-in-out; opacity: 1; }
+  .telescope.zoomed { transform: scale(3) rotate(0deg); opacity: 0.8; }
+  .telescope-viewport {
+    position: absolute; width:200px; height:200px; border-radius:50%;
+    background: radial-gradient(circle, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.7) 100%);
+    border: 3px solid rgba(255,255,255,0.5); box-shadow: 0 0 30px rgba(255,255,255,0.3);
+    z-index: 4; opacity:0; transition: all 2s ease-in-out; overflow:hidden; display:flex; justify-content:center; align-items:center;
+  }
+  .telescope-viewport.active { opacity:1; width:600px; height:600px; }
+
+  .earth-view { font-size:30px; transition: all 2s ease-in-out; transform: scale(0.5); opacity:1; }
+  .earth-view.zoomed { font-size:300px; transform: scale(1.5); opacity:0; }
+
+  .earth-detail {
+    position:absolute; width:100%; height:100%;
+    background: linear-gradient(to bottom, #87CEEB 0%, #1E90FF 100%);
+    overflow:hidden; display:flex; justify-content:center; align-items:center; opacity:0; transition: opacity 2s ease-in-out;
+  }
+  .earth-detail.active { opacity: 1; }
+  .earth-ground-in { position:absolute; bottom:0; width:100%; height:30%; background: linear-gradient(to bottom, #7CFC00 0%, #228B22 100%); }
+  .earth-mountain { position:absolute; bottom:10%; font-size:300px; z-index:2; }
+  .earth-house { position:absolute; bottom:10%; font-size:60px; z-index:3; }
+  .earth-character { font-size:60px; position:absolute; bottom:10%; z-index:3; opacity:0; transition: opacity 1s ease-in-out; }
+  .earth-character.active { opacity:1; }
+  .earth-character-label {
+    position:absolute; bottom:6%; font-size:20px; background:rgba(0,0,0,0.7); padding:5px 10px; border-radius:10px; z-index:4; opacity:0; transition: opacity 1s ease-in-out;
+  }
+  .earth-character-label.active { opacity:1; }
+
+  /* 星场（保留） */
+  .starfield{ position:absolute; top:0; left:0; width:100%; height:70%; z-index:1; }
+  .star{ position:absolute; background-color:white; border-radius:50%; }
+
+  /* 画面内功能按钮（保留：切地球/切比邻星/观察） */
+  .controls{
+    position: fixed;
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    left: 0; width: 100%; display: flex; justify-content: center; gap: 20px; z-index: 10; padding-bottom: env(safe-area-inset-bottom);
+  }
+  .proxima-controls{
+    position: fixed; bottom: calc(80px + env(safe-area-inset-bottom));
+    left:0; width:100%; display:flex; justify-content:center; gap:20px; z-index:10; opacity:0; transition:opacity .5s ease-in-out; padding-bottom: env(safe-area-inset-bottom);
+  }
+  .proxima-controls.active{ opacity:1; }
+
+  /* 对勾与完成弹窗 */
+  .checkmark{ position:fixed; z-index:50; left:50%; top:22%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center;}
+  .checkmark.active{ display:flex;} .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px);}
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:300;}
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px; text-align:center;}
+  .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700;}
+
+  /* 解释区（保留并略优化） */
+  .explanation{
+    width:100%; max-width:1000px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink);
+    background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px;
+  }
+
+  /* 第三步的小测验 —— 改动点：不预先高亮正确选项，仅在答对后绿框显示 */
+  .quiz{ margin-top:8px; display:none; gap:8px; flex-wrap:wrap;}
+  .quiz button{ background:#2f2f2f; }
+  /* ✅ 仅在用户点击正确后，为该按钮添加 revealed 类来显示绿框 */
+  .quiz button.revealed{ outline:2px solid var(--accent); }
+  .shake{ animation:shake .3s; }
+  @keyframes shake{ 0%{transform:translateX(0)}25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}100%{transform:translateX(0)} }
+
+  @media (max-width: 640px){
+    #scene-container{ min-height: 70vh; }
+    .task-text{ font-size: 14px; }
+  }
+</style>
+</head>
+<body>
+  <!-- 头部彩色条 -->
+  <div id="spectrum"></div>
+
+  <!-- 步骤交互卡片 -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">切换到<strong>地球</strong>场景，看看地球上的人。</div>
+      <div class="task-hint" id="taskHint">提示：点击下方“切换到地球”。</div>
+      <!-- 第三步的小测验（出现在步骤3） -->
+      <div class="quiz" id="quiz">
+        <div style="width:100%;opacity:.9;">你在比邻星望远镜里看到的是几年前的地球？</div>
+        <button data-ans="0">现在</button>
+        <button data-ans="1" class="correct">4.24 年前</button>
+        <button data-ans="0">8 年前</button>
+      </div>
+    </div>
+    <div class="progress-dots"><span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span></div>
+  </div>
+
+  <!-- 步骤下方三按钮 -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <!-- 演示主舞台（完整保留原文件元素与动画） -->
+  <div id="scene-container">
+    <!-- 地球场景 -->
+    <div id="earth-scene" class="scene active">
+      <div class="starfield" id="earth-starfield"></div>
+      <div id="earth-ground" class="ground"></div>
+      <div class="mountain" style="right: 20%;">🏔️</div>
+      <div class="house" style="right: 25%;">🏠</div>
+      <div class="character">👩‍🍼</div>
+      <div class="character-label">24岁</div>
+    </div>
+
+    <!-- 比邻星场景 -->
+    <div id="proxima-scene" class="scene">
+      <div class="starfield" id="proxima-starfield"></div>
+      <div id="proxima-ground" class="ground"></div>
+      <div class="proxima-mountain" style="right: 20%;">⛰️</div>
+      <div class="proxima-mountain" style="right: 22%;">⛰️</div>
+      <div class="telescope">🔭</div>
+
+      <!-- 望远镜视口（保留动画流程） -->
+      <div class="telescope-viewport">
+        <div class="earth-view">🌍</div>
+        <div class="earth-detail">
+          <div class="earth-ground-in"></div>
+          <div class="earth-mountain" style="right: 20%;">🏔</div>
+          <div class="earth-house" style="right: 25%;">🏠</div>
+          <div class="earth-character">👩‍⚖️</div>
+          <div class="earth-character-label">20岁</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 画面内按钮（保留） -->
+    <div class="controls">
+      <button id="earthBtn">切换到地球</button>
+      <button id="proximaBtn">切换到比邻星</button>
+    </div>
+    <div class="proxima-controls">
+      <button id="observeBtn">观察地球</button>
+    </div>
+
+    <!-- 对勾 -->
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <!-- 完成弹窗 -->
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>完成，你真棒！🎉</h3>
+      <p>你已理解光传播延迟：比邻星看到的是 4.24 年前的地球。</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <!-- 原理说明（保留） -->
+  <div class="explanation">
+    <h2>比邻星观察地球的时空相对性</h2>
+    <ul>
+      <li>比邻星距离太阳系约 4.24 光年；从比邻星看到的地球，是 4.24 年前发出的光。</li>
+      <li>在地球上：看到她 <strong>24 岁</strong>；在比邻星望远镜里：看到她 <strong>20 岁</strong>。</li>
+      <li>第三步小结：<em>看到的“现在”取决于光的传播时间</em>。</li>
+    </ul>
+  </div>
+
+<script>
+/* ===== 原文件：星空生成/视口动画/场景切换（保留并封装） ===== */
+function createStarfield(elementId, starCount = 200) {
+  const starfield = document.getElementById(elementId);
+  starfield.innerHTML = '';
+  for (let i = 0; i < starCount; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    const size = Math.random() * 2 + 1;
+    star.style.width = `${size}px`;
+    star.style.height = `${size}px`;
+    star.style.left = `${Math.random() * 100}%`;
+    star.style.top = `${Math.random() * 100}%`;
+    star.style.opacity = Math.random() * 0.8 + 0.2;
+    starfield.appendChild(star);
+  }
+}
+createStarfield('earth-starfield'); createStarfield('proxima-starfield');
+
+const telescope = document.querySelector('.telescope');
+const viewport = document.querySelector('.telescope-viewport');
+const earthView = document.querySelector('.earth-view');
+const earthDetail = document.querySelector('.earth-detail');
+const earthChar = document.querySelector('.earth-character');
+const earthLabel = document.querySelector('.earth-character-label');
+
+function resetProximaScene() {
+  telescope.classList.remove('zoomed');
+  telescope.style.opacity = '1';
+  viewport.classList.remove('active');
+  earthView.classList.remove('zoomed');
+  earthDetail.classList.remove('active');
+  earthChar.classList.remove('active');
+  earthLabel.classList.remove('active');
+  viewport.style.opacity = 0;
+}
+
+const earthScene = document.getElementById('earth-scene');
+const proximaScene = document.getElementById('proxima-scene');
+const proximaControlsEl = document.querySelector('.proxima-controls');
+
+document.getElementById('earthBtn').addEventListener('click', () => {
+  earthScene.classList.add('active');
+  proximaScene.classList.remove('active');
+  proximaControlsEl.classList.remove('active');
+  resetProximaScene();
+  // 步骤判定：第1步
+  if(!freeMode && currentTask===0 && tasks[0].check()){ okStep(); }
+});
+
+document.getElementById('proximaBtn').addEventListener('click', () => {
+  earthScene.classList.remove('active');
+  proximaScene.classList.add('active');
+  proximaControlsEl.classList.add('active');
+  resetProximaScene();
+});
+
+let observeDone=false; // 观察动画完成标记
+document.getElementById('observeBtn').addEventListener('click', () => {
+  observeEarth();
+});
+
+function observeEarth(){
+  observeDone=false;
+  // 原动画时间序列（保留）
+  setTimeout(() => { telescope.classList.add('zoomed'); }, 500);
+  setTimeout(() => {
+    viewport.classList.add('active');
+    viewport.style.opacity = 1;
+    earthView.classList.add('zoomed');
+    telescope.style.opacity = '0';
+  }, 1500);
+  setTimeout(() => { earthDetail.classList.add('active'); }, 3500);
+  setTimeout(() => {
+    earthChar.classList.add('active');
+    earthLabel.classList.add('active');
+    observeDone=true;
+    // 步骤判定：第2步
+    if(!freeMode && currentTask===1 && tasks[1].check()){ okStep(); }
+  }, 4500);
+}
+
+/* ===== 步骤系统（来自蝙蝠的交互模式，适配本场景） ===== */
+const taskCard=document.getElementById('taskCard');
+const taskStep=document.getElementById('taskStep');
+const taskText=document.getElementById('taskText');
+const taskHint=document.getElementById('taskHint');
+const dots=[document.getElementById('dot1'),document.getElementById('dot2'),document.getElementById('dot3')];
+const checkmark=document.getElementById('checkmark');
+const doneMask=document.getElementById('doneMask');
+const okBtn=document.getElementById('okBtn');
+const btnReset=document.getElementById('resetBtn');
+const btnAuto=document.getElementById('autoDemoBtn');
+const btnFree=document.getElementById('freeBtn');
+const quiz=document.getElementById('quiz');
+
+let currentTask=0, freeMode=false, completed=false;
+
+const tasks=[
+ {id:"earth", text:"切换到<strong>地球</strong>场景，看看地球上的人。", hint:"提示：点击下方“切换到地球”。", check:()=> earthScene.classList.contains('active')},
+ {id:"proxima", text:"切换到<strong>比邻星</strong>场景，并点击“观察地球”。", hint:"提示：先点“切换到比邻星”，再点“观察地球”。", check:()=> observeDone===true},
+ {id:"quiz", text:"思考：为什么比邻星看到的她比地球上年轻 4 岁？", hint:"提示：光有传播时间（距离 4.24 光年 → 看到 4.24 年前）。", check:()=>true}
+];
+
+function updateStepUI(){
+  dots.forEach((d,i)=>{d.className="dot"; if(i<currentTask)d.classList.add("done"); else if(i===currentTask)d.classList.add("active");});
+  taskStep.textContent=`步骤 ${currentTask+1} / ${tasks.length}`;
+  taskText.innerHTML=tasks[currentTask].text;
+  taskHint.textContent=tasks[currentTask].hint;
+
+  // 只有第3步显示小测验
+  quiz.style.display = (currentTask===2 && !freeMode) ? 'flex' : 'none';
+}
+
+function showCheck(){ checkmark.classList.add("active"); setTimeout(()=>checkmark.classList.remove("active"),600); }
+function nextStep(){ dots[currentTask].classList.add("done"); currentTask++; if(currentTask>=tasks.length){completed=true; doneMask.style.display="flex";return;} updateStepUI(); }
+function okStep(){ showCheck(); setTimeout(nextStep,600); }
+
+btnReset.onclick=()=>{ // 步骤重置
+  currentTask=0; completed=false; freeMode=false; btnFree.textContent="自由模式";
+  // 画面也复位到原始
+  earthScene.classList.add('active'); proximaScene.classList.remove('active');
+  proximaControlsEl.classList.remove('active'); resetProximaScene(); observeDone=false;
+  createStarfield('earth-starfield'); createStarfield('proxima-starfield');
+  // 取消可能残留的绿框
+  document.querySelectorAll('#quiz button').forEach(b=>b.classList.remove('revealed'));
+  taskCard.classList.remove('shake'); updateStepUI();
+};
+
+btnFree.onclick=()=>{ // 自由模式
+  freeMode=!freeMode; btnFree.textContent=freeMode?"退出自由模式":"自由模式";
+  taskCard.style.opacity=freeMode?0.35:1;
+};
+
+btnAuto.onclick=async()=>{ // 自动演示（不弹“再试一次”）
+  btnReset.click();
+  // 步骤1
+  document.getElementById('earthBtn').click();
+  await delay(900);
+  // 步骤2
+  document.getElementById('proximaBtn').click();
+  await delay(700);
+  observeEarth();
+  await waitUntil(()=>observeDone, 7000);
+  okStep(); // 第二步完成
+  await delay(700);
+  // 步骤3自动选择正确答案，并显示绿框
+  currentTask=2; updateStepUI();
+  await delay(400);
+  const correctBtn = document.querySelector('#quiz button.correct');
+  if (correctBtn) correctBtn.classList.add('revealed');
+  handleQuizAnswer(true, /*silent*/true);
+};
+
+okBtn.onclick=()=> doneMask.style.display="none";
+
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+async function waitUntil(cond, timeout=5000, int=100){
+  const start=Date.now();
+  while(Date.now()-start < timeout){ if(cond()) return true; await delay(int); }
+  return false;
+}
+
+/* 第三步小测验：正确=4.24年前
+   改动点：只有在点击正确后，给该按钮加 .revealed 类显示绿框 */
+quiz.addEventListener('click', (e)=>{
+  if(e.target.tagName!=='BUTTON') return;
+  const isCorrect = e.target.classList.contains('correct');
+  handleQuizAnswer(isCorrect, false, e.target);
+});
+
+function handleQuizAnswer(isCorrect, silent, btnEl){
+  if(isCorrect){
+    if(btnEl) btnEl.classList.add('revealed'); // ✅ 点击正确后才显示绿框
+    if(!freeMode && currentTask===2){ okStep(); }
+  }else{
+    if(!silent){ // 仅手动模式提示
+      taskCard.classList.remove('shake'); void taskCard.offsetWidth; taskCard.classList.add('shake');
+    }
+  }
+}
+
+updateStepUI();
+</script>
+</body>
+</html>

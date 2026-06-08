@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>人体与大气压实验室</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent: #3ddc97; 
+    --warn: #ffb74d; 
+    --error: #ff6b6b; 
+    --blue: #29b6f6;
+    --ink: #e9f2ff;
+  }
+  body{ 
+    background:#111; color:#fff; 
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; 
+    margin:0; padding:10px; 
+    display:flex; flex-direction:column; align-items:center;
+  }
+
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+
+  /* --- 复用 UI 框架 (任务卡) --- */
+  .task-card{ 
+    width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); 
+    border-radius:12px; padding:12px 14px; backdrop-filter:blur(10px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; 
+    transition:opacity .3s, filter .3s;
+  }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; font-size: 14px;}
+  .task-text{ line-height:1.4; font-size: 15px; } 
+  .task-hint{ color:var(--warn); font-size:12px; opacity:.9; margin-top: 2px; }
+  .progress-dots{ display:flex; gap:6px; }
+  .dot{ width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.2); transition: all 0.3s;}
+  .dot.active{ background:var(--warn); transform: scale(1.2);} 
+  .dot.done{ background:var(--accent);}
+
+  /* --- 主画布区域 --- */
+  #canvasWrap{ width:100%; max-width:900px; margin-top:10px; position:relative; }
+  #canvas{ 
+    width:100%; height: 60vh; max-height: 500px; 
+    background: radial-gradient(circle at center, #1a2a3a 0%, #000 90%);
+    border-radius:12px; border: 1px solid rgba(255,255,255,0.1);
+    box-shadow:0 10px 30px rgba(0,0,0,.5); 
+    position:relative; overflow:hidden; user-select: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 20px 0;
+  }
+
+  /* --- 仪表盘 (Sci-Fi Style) --- */
+  .gauge-container {
+    position: absolute; top: 20px; right: 20px;
+    width: 140px; height: 140px;
+    background: rgba(0,0,0,0.6); border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: 0 0 15px rgba(0,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .gauge-face {
+    width: 90%; height: 90%; border-radius: 50%; border: 1px dashed rgba(255,255,255,0.3);
+    position: relative;
+  }
+  .gauge-tick {
+    position: absolute; left: 50%; top: 0; width: 2px; height: 8px; background: #555;
+    transform-origin: 50% 63px; /* Radius approx */
+  }
+  .gauge-tick.long { height: 12px; background: #fff; width: 2px; }
+  .gauge-pointer {
+    position: absolute; left: 50%; top: 50%; width: 4px; height: 50%;
+    background: linear-gradient(to top, var(--accent), transparent);
+    transform-origin: bottom center; transform: translate(-50%, -100%) rotate(-90deg);
+    transition: transform 0.1s linear; z-index: 2;
+  }
+  .gauge-value {
+    position: absolute; bottom: 25%; left: 50%; transform: translateX(-50%);
+    color: var(--accent); font-family: monospace; font-size: 18px; font-weight: bold;
+    text-shadow: 0 0 8px var(--accent);
+  }
+  .gauge-label {
+    position: absolute; bottom: 12%; left: 50%; transform: translateX(-50%);
+    color: #888; font-size: 10px; letter-spacing: 1px;
+  }
+
+  /* --- 人体模拟 (Bio-Monitor) --- */
+  .monitor-screen {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    position: relative; width: 100%;
+  }
+  .human-silhouette {
+    width: 100px; height: 220px;
+    background: var(--accent);
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'%3E%3Cpath d='M50 0 C35 0 25 10 25 25 C25 35 30 40 35 45 L20 50 L10 120 L25 125 L35 60 L35 130 L25 220 L45 220 L48 150 L52 150 L55 220 L75 220 L65 130 L65 60 L75 125 L90 120 L80 50 L65 45 C70 40 75 35 75 25 C75 10 65 0 50 0'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'%3E%3Cpath d='M50 0 C35 0 25 10 25 25 C25 35 30 40 35 45 L20 50 L10 120 L25 125 L35 60 L35 130 L25 220 L45 220 L48 150 L52 150 L55 220 L75 220 L65 130 L65 60 L75 125 L90 120 L80 50 L65 45 C70 40 75 35 75 25 C75 10 65 0 50 0'/%3E%3C/svg%3E");
+    mask-size: contain; -webkit-mask-size: contain;
+    mask-repeat: no-repeat; -webkit-mask-repeat: no-repeat;
+    mask-position: center; -webkit-mask-position: center;
+    transition: transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94), background-color 0.3s;
+    filter: drop-shadow(0 0 10px var(--accent));
+  }
+  
+  /* 状态指示文字 */
+  .status-hud {
+    position: absolute; left: 20px; top: 20px;
+    font-family: monospace; font-size: 14px; line-height: 1.6;
+    color: rgba(255,255,255,0.6); pointer-events: none;
+  }
+  .status-row span { color: #fff; font-weight: bold; margin-left: 8px; }
+
+  /* --- 底部控制台 --- */
+  .control-deck {
+    width: 90%; max-width: 600px;
+    background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px; padding: 15px 20px;
+    display: flex; flex-direction: column; gap: 10px;
+    backdrop-filter: blur(4px); margin-bottom: 10px;
+  }
+  .deck-title { text-align: center; font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+  
+  /* 滑块样式 */
+  input[type=range] {
+    -webkit-appearance: none; width: 100%; background: transparent; cursor: pointer;
+  }
+  input[type=range]:focus { outline: none; }
+  /* 滑轨 */
+  input[type=range]::-webkit-slider-runnable-track {
+    width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  /* 滑块头 */
+  input[type=range]::-webkit-slider-thumb {
+    height: 24px; width: 40px; border-radius: 4px; background: #eee;
+    background-image: linear-gradient(90deg, transparent 45%, #ccc 45%, #ccc 55%, transparent 55%);
+    border: 1px solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    -webkit-appearance: none; margin-top: -9px; /* center */
+    transition: transform 0.1s;
+  }
+  input[type=range]::-webkit-slider-thumb:active { transform: scale(1.1); background: #fff; }
+  
+  .scale-labels { display: flex; justify-content: space-between; font-size: 12px; color: #666; font-family: monospace; margin-top: -5px; padding: 0 2px;}
+
+  /* --- 复用 UI 框架 (底部按钮栏) --- */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  button{ padding:10px 18px; background:#333; color:#fff; border:1px solid rgba(255,255,255,0.1); border-radius:8px; cursor:pointer; transition:all .2s; font-size: 14px;}
+  button:hover{ background:#444; border-color: rgba(255,255,255,0.3);}
+  button:active{ transform:scale(.98);}
+  button:disabled{ opacity:.5; cursor:not-allowed;}
+  .btn-primary { background: #2e7d32; border: none; }
+  .btn-primary:hover { background: #388e3c; }
+
+  /* --- 弹窗与提示 --- */
+  .toast{ 
+    position:fixed; left:50%; bottom:80px; transform:translateX(-50%) translateY(20px); 
+    background:rgba(0,0,0,0.85); color:#fff; padding:10px 20px; border-radius:20px; 
+    box-shadow:0 6px 18px rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,0.15);
+    font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:300; backdrop-filter: blur(4px);}
+  .modal{ width:min(90vw,360px); background:#1a1a1a; color:#fff; border:1px solid rgba(255,255,255,.2); border-radius:16px; padding:24px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.7);}
+  .modal h3{ margin:0 0 10px; font-size:22px; color: var(--accent);} 
+  .modal p{ color:#ccc; margin-bottom: 20px; line-height: 1.5;} 
+  .modal .ok{ width: 100%; background:var(--accent); color:#000; font-weight:700; border: none;}
+
+  .explanation{ width:100%; max-width:900px; margin:20px 0; line-height:1.7; font-size:15px; color:var(--ink); opacity: 0.9;}
+  .explanation h2{ color:#9bd3ff; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;}
+
+  /* 动画 */
+  @keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg) scale(var(--s)); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg) scale(var(--s)); }
+    20% { transform: translate(-3px, 0px) rotate(1deg) scale(var(--s)); }
+    30% { transform: translate(3px, 2px) rotate(0deg) scale(var(--s)); }
+    40% { transform: translate(1px, -1px) rotate(1deg) scale(var(--s)); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg) scale(var(--s)); }
+    60% { transform: translate(-3px, 1px) rotate(0deg) scale(var(--s)); }
+    70% { transform: translate(3px, 1px) rotate(-1deg) scale(var(--s)); }
+    80% { transform: translate(-1px, -1px) rotate(1deg) scale(var(--s)); }
+    90% { transform: translate(1px, 2px) rotate(0deg) scale(var(--s)); }
+    100% { transform: translate(1px, -2px) rotate(-1deg) scale(var(--s)); }
+  }
+  @keyframes pulse {
+    0% { filter: drop-shadow(0 0 5px var(--col)); opacity: 0.8;}
+    50% { filter: drop-shadow(0 0 20px var(--col)); opacity: 1;}
+    100% { filter: drop-shadow(0 0 5px var(--col)); opacity: 0.8;}
+  }
+
+  /* 成功打勾动画 */
+  .checkmark{ position:absolute; z-index:50; left:50%; top:40%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25); animation:pop .55s ease-out;}
+  .checkmark.active{ display:flex;} .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)} }
+
+</style>
+</head>
+<body>
+
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">拖动滑块，将气压<strong>降低</strong>至 60 kPa 左右。</div>
+      <div class="task-hint" id="taskHint">模拟高原环境或飞机失压，观察人体体积变化。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="canvas">
+      
+      <div class="status-hud">
+        <div class="status-row">外部气压:<span id="hudPressure">100 kPa</span></div>
+        <div class="status-row">生理状态:<span id="hudStatus" style="color:#3ddc97">正常</span></div>
+        <div class="status-row">危险指数:<span id="hudDanger">0%</span></div>
+      </div>
+
+      <div class="gauge-container">
+        <div class="gauge-face" id="gaugeFace">
+          <div class="gauge-pointer" id="pointer"></div>
+          <div class="gauge-value" id="gaugeVal">100</div>
+          <div class="gauge-label">kPa</div>
+        </div>
+      </div>
+      
+      <div class="monitor-screen">
+        <div class="human-silhouette" id="human"></div>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+
+      <div class="control-deck">
+        <div class="deck-title">/// ATMOSPHERIC PRESSURE REGULATOR ///</div>
+        <input type="range" id="pressureSlider" min="0" max="200" value="100" step="1">
+        <div class="scale-labels">
+          <span>0 (真空)</span>
+          <span>50</span>
+          <span>100 (标准)</span>
+          <span>150</span>
+          <span>200 (深海)</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">请调整气压以完成当前任务</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>实验完成！🎉</h3>
+      <p>你已成功模拟了低压缺氧、高压压缩以及安全复原的全过程。<br>大气压对人体生理机能有决定性影响。</p>
+      <button class="ok" id="okBtn">明白</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>科学原理：大气压与人体</h2>
+    <ul>
+      <li><strong>标准气压 (100 kPa)</strong>：人体内外部压力平衡，呼吸顺畅，血液循环正常。</li>
+      <li><strong>低气压 (< 70 kPa)</strong>：如高原或高空。外部压力减小，**体内气体膨胀**，可能导致组织肿胀；同时氧分压降低，引发缺氧（高原反应）。</li>
+      <li><strong>高气压 (> 130 kPa)</strong>：如深海潜水。外部压力巨大，**压缩人体**含气空腔（肺、耳膜）。血液中溶解过量氮气，若快速上浮会形成气泡导致“减压病”。</li>
+    </ul>
+  </div>
+
+<script>
+/* ============ 初始化与配置 ============ */
+const slider = document.getElementById('pressureSlider');
+const human = document.getElementById('human');
+const pointer = document.getElementById('pointer');
+const gaugeVal = document.getElementById('gaugeVal');
+const hudPressure = document.getElementById('hudPressure');
+const hudStatus = document.getElementById('hudStatus');
+const hudDanger = document.getElementById('hudDanger');
+
+const taskStepEl = document.getElementById('taskStep');
+const taskTextEl = document.getElementById('taskText');
+const taskHintEl = document.getElementById('taskHint');
+const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+const taskCard = document.getElementById('taskCard');
+
+const checkmark = document.getElementById('checkmark');
+const toast = document.getElementById('toast');
+const doneMask = document.getElementById('doneMask');
+const okBtn = document.getElementById('okBtn');
+
+const btnReset = document.getElementById('resetBtn');
+const btnAuto = document.getElementById('autoDemoBtn');
+const btnFree = document.getElementById('freeBtn');
+
+let currentPressure = 100;
+let currentTask = 0;
+let completed = false;
+let freeMode = false;
+let autoLock = false;
+let checkTimer = null;
+
+/* 任务配置 */
+const tasks = [
+  {
+    text: '拖动滑块，将气压<strong>降低</strong>至 60 kPa 左右 (40-60范围内)。',
+    hint: '模拟高原低压环境，观察人体因体内气体膨胀而产生的变化。',
+    check: (p) => p >= 40 && p <= 60
+  },
+  {
+    text: '将气压<strong>升高</strong>至 140 kPa 左右 (140-160范围内)。',
+    hint: '模拟深潜高压环境，体验巨大的外部压力对人体的压缩感。',
+    check: (p) => p >= 140 && p <= 160
+  },
+  {
+    text: '将气压恢复至<strong>标准大气压</strong> (98-102 kPa)。',
+    hint: '让实验体回到安全状态，消除所有生理不适。',
+    check: (p) => p >= 98 && p <= 102
+  }
+];
+
+/* ============ 核心逻辑：视觉更新 ============ */
+function updateVisuals(p) {
+  currentPressure = parseInt(p);
+  
+  // 1. 仪表盘更新
+  // 0kPa = -135deg, 200kPa = +135deg. Range 270deg.
+  // 100kPa = 0deg.
+  const angle = (currentPressure - 100) * 1.35; 
+  pointer.style.transform = `translate(-50%, -100%) rotate(${angle}deg)`;
+  gaugeVal.textContent = currentPressure;
+  hudPressure.textContent = currentPressure + " kPa";
+
+  // 2. 人体形态与颜色更新
+  // Scale: Low pressure -> Expand (>1), High pressure -> Compress (<1)
+  // Base scale 1. 
+  // At 0 kPa -> Scale 1.25. At 200 kPa -> Scale 0.85
+  let scale = 1;
+  let color = "#3ddc97"; // Normal Green
+  let statusText = "正常";
+  let dangerLevel = 0;
+  let shake = false;
+  let pulse = false;
+
+  if (currentPressure < 100) {
+    // 低压膨胀
+    scale = 1 + (100 - currentPressure) * 0.0025; 
+  } else {
+    // 高压压缩
+    scale = 1 - (currentPressure - 100) * 0.0015;
+  }
+
+  // 状态判定
+  if (currentPressure < 50) {
+    statusText = "极度缺氧/膨胀";
+    color = "#546e7a"; // Grey death
+    dangerLevel = 90 + Math.random()*10;
+    shake = true;
+  } else if (currentPressure < 80) {
+    statusText = "高原反应";
+    color = "#ffb74d"; // Warning Yellow
+    dangerLevel = 40 + (80-currentPressure);
+    pulse = true;
+  } else if (currentPressure > 150) {
+    statusText = "严重挤压/中毒";
+    color = "#d32f2f"; // Red Alert
+    dangerLevel = 95;
+    shake = true;
+  } else if (currentPressure > 120) {
+    statusText = "高压不适";
+    color = "#ffb74d";
+    dangerLevel = 40 + (currentPressure-120);
+    pulse = true;
+  } else if (Math.abs(currentPressure - 100) > 5) {
+    statusText = "轻微失衡";
+    color = "#81c784";
+    dangerLevel = 10;
+  } else {
+    statusText = "生理稳态";
+    color = "#3ddc97"; // Accent
+    dangerLevel = 0;
+  }
+
+  // 应用样式
+  human.style.backgroundColor = color;
+  human.style.setProperty('--s', scale); // 给动画用
+  
+  if (shake) {
+    human.style.animation = "shake 0.5s infinite";
+  } else if (pulse) {
+    human.style.setProperty('--col', color);
+    human.style.animation = "pulse 1.5s infinite";
+    human.style.transform = `scale(${scale})`;
+  } else {
+    human.style.animation = "none";
+    human.style.transform = `scale(${scale})`;
+  }
+
+  hudStatus.textContent = statusText;
+  hudStatus.style.color = color;
+  hudDanger.textContent = Math.floor(dangerLevel) + "%";
+  
+  // 仪表盘数字颜色同步
+  gaugeVal.style.color = color;
+  gaugeVal.style.textShadow = `0 0 10px ${color}`;
+
+  // 检查任务进度 (非自由模式、非自动演示、非已完成)
+  if (!freeMode && !autoLock && !completed) {
+    checkCurrentTask();
+  }
+}
+
+/* ============ 任务流程控制 ============ */
+
+function checkCurrentTask() {
+  if (checkTimer) clearTimeout(checkTimer);
+  checkTimer = setTimeout(() => {
+    const task = tasks[currentTask];
+    if (task.check(currentPressure)) {
+      completeStep();
+    }
+  }, 500); // 保持状态0.5秒才算成功
+}
+
+function completeStep() {
+  if (completed) return;
+  
+  // UI 反馈
+  checkmark.classList.add('active');
+  setTimeout(() => checkmark.classList.remove('active'), 600);
+  
+  // 更新圆点
+  dots[currentTask].classList.remove('active');
+  dots[currentTask].classList.add('done');
+
+  currentTask++;
+
+  if (currentTask >= tasks.length) {
+    completed = true;
+    setTimeout(() => {
+      doneMask.style.display = 'flex';
+    }, 800);
+  } else {
+    // 进入下一步
+    setTimeout(() => {
+      dots[currentTask].classList.add('active');
+      taskStepEl.textContent = `步骤 ${currentTask + 1} / ${tasks.length}`;
+      taskTextEl.innerHTML = tasks[currentTask].text;
+      taskHintEl.textContent = tasks[currentTask].hint;
+    }, 600);
+  }
+}
+
+/* ============ 交互事件 ============ */
+
+slider.addEventListener('input', (e) => {
+  if (autoLock) return; // 演示中禁止手动
+  updateVisuals(e.target.value);
+});
+
+/* 自动演示 */
+async function autoDemo() {
+  if (autoLock || freeMode) return;
+  autoLock = true;
+  btnAuto.disabled = true;
+  slider.disabled = true;
+  
+  resetAll(true); // 静默重置
+
+  // 辅助函数：平滑过渡压力
+  const tweenPressure = (target) => {
+    return new Promise(resolve => {
+      const start = currentPressure;
+      const dist = target - start;
+      const steps = 40;
+      let i = 0;
+      const intv = setInterval(() => {
+        i++;
+        const prog = i / steps;
+        // Ease in out
+        const ease = prog < .5 ? 2 * prog * prog : -1 + (4 - 2 * prog) * prog;
+        const val = start + dist * ease;
+        slider.value = val;
+        updateVisuals(val);
+        if (i >= steps) {
+          clearInterval(intv);
+          resolve();
+        }
+      }, 20);
+    });
+  };
+
+  const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+  // Step 1: Low
+  await wait(500);
+  await tweenPressure(50); 
+  checkmark.classList.add('active'); await wait(600); checkmark.classList.remove('active');
+  // 模拟切换UI
+  dots[0].className='dot done'; dots[1].className='dot active';
+  
+  // Step 2: High
+  await tweenPressure(150);
+  checkmark.classList.add('active'); await wait(600); checkmark.classList.remove('active');
+  dots[1].className='dot done'; dots[2].className='dot active';
+
+  // Step 3: Normal
+  await tweenPressure(100);
+  checkmark.classList.add('active'); await wait(600); checkmark.classList.remove('active');
+  dots[2].className='dot done';
+  
+  // Finish
+  doneMask.style.display = 'flex';
+  
+  autoLock = false;
+  btnAuto.disabled = false;
+  slider.disabled = false;
+}
+
+/* 模式切换与重置 */
+function resetAll(silent = false) {
+  currentTask = 0;
+  completed = false;
+  currentPressure = 100;
+  slider.value = 100;
+  updateVisuals(100);
+  
+  doneMask.style.display = 'none';
+  dots.forEach(d => d.className = 'dot');
+  dots[0].classList.add('active');
+  
+  taskStepEl.textContent = `步骤 1 / ${tasks.length}`;
+  taskTextEl.innerHTML = tasks[0].text;
+  taskHintEl.textContent = tasks[0].hint;
+
+  if (!silent) {
+    showToast("已重置实验，请重新开始");
+  }
+}
+
+function setFreeMode(on) {
+  freeMode = on;
+  btnFree.textContent = on ? '退出自由模式' : '自由模式';
+  btnAuto.disabled = on;
+  
+  if (on) {
+    taskCard.style.opacity = 0.3;
+    taskCard.style.filter = "grayscale(0.8)";
+    toast.style.opacity = 0;
+    doneMask.style.display = 'none';
+  } else {
+    taskCard.style.opacity = 1;
+    taskCard.style.filter = "none";
+    resetAll(true);
+  }
+}
+
+function showToast(msg) {
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+/* 绑定按钮 */
+btnReset.onclick = () => { if(!autoLock) resetAll(); };
+btnAuto.onclick = autoDemo;
+btnFree.onclick = () => { if(!autoLock) setFreeMode(!freeMode); };
+okBtn.onclick = () => doneMask.style.display = 'none';
+
+/* 生成仪表盘刻度 */
+function initGauge() {
+  const face = document.getElementById('gaugeFace');
+  for (let i = 0; i <= 200; i+=10) {
+    const tick = document.createElement('div');
+    // 0 -> -135deg, 100 -> 0deg, 200 -> 135deg
+    const deg = (i - 100) * 1.35;
+    tick.className = (i % 50 === 0) ? 'gauge-tick long' : 'gauge-tick';
+    tick.style.transform = `translate(-50%, 0) rotate(${deg}deg)`;
+    face.appendChild(tick);
+  }
+  updateVisuals(100);
+}
+
+initGauge();
+
+</script>
+</body>
+</html>

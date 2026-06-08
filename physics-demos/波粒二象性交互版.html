@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum=1" />
+<title>波粒二象性 · 双缝与观测</title>
+<style>
+  :root{ --card-bg: rgba(255,255,255,0.08); --accent:#3ddc97; --warn:#ffb74d; --ink:#e9f2ff; }
+  body{ background:#0f1117; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center; }
+
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 步骤卡 */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px; transition:opacity .2s, filter .2s; }
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15);}
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 舞台与画布 */
+  #stageWrap{ width:100%; max-width:900px; height:60vh; max-height:520px; margin-top:10px; }
+  #stage{ width:100%; height:100%; position:relative; overflow:hidden; border-radius:12px;
+    background: radial-gradient(1200px 600px at 70% 50%, #1a1f2e 0%, #0b0d14 60%); box-shadow:0 8px 24px rgba(0,0,0,.35); }
+  canvas#sim{ width:100%; height:100%; display:block; }
+
+  /* 舞台内控件 */
+  .in-controls{ position:absolute; right:10px; top:10px; z-index:12; display:flex; flex-direction:column; gap:8px;
+    background:rgba(15,15,20,.55); border:1px solid rgba(255,255,255,.12); padding:8px; border-radius:12px; backdrop-filter:blur(6px); }
+  .in-controls button{ padding:8px 10px; background:rgba(0,0,0,.4); color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .2s; }
+  .in-controls button:hover{ background:rgba(0,0,0,.6); }
+  .in-controls .on{ outline:2px solid rgba(61,220,151,.55); }
+
+  .legend{ position:absolute; left:12px; top:12px; z-index:12; font-size:13px; line-height:1.4;
+    background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:8px 10px; }
+  .tag{ padding:2px 8px; border-radius:999px; margin-right:6px; font-weight:700;}
+  .det.on{ background:rgba(61,220,151,.25); border:1px solid rgba(61,220,151,.6);}
+  .det.off{ background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.25);}
+
+  /* 正面小屏（实测+拟合） */
+  .mini{
+    position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+    z-index:11; background:rgba(6,8,12,.6); border:1px solid rgba(255,255,255,.12); border-radius:10px;
+    backdrop-filter: blur(4px); box-shadow:0 8px 20px rgba(0,0,0,.35);
+    display:flex; flex-direction:column; align-items:stretch; padding:6px 8px;
+    width:min(62%, 560px);
+  }
+  .mini-head{ font-size:12px; color:#cfe3ff; opacity:.9; display:flex; justify-content:space-between; margin-bottom:4px; }
+  .mini canvas{ width:100%; height:120px; border-radius:6px; background:linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.06)); }
+
+  /* 底部三按钮 */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; }
+  .toolbar button{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s, transform .05s, opacity .2s; user-select:none; }
+  .toolbar button:hover{ background:#5a5a5a;} .toolbar button:active{ transform:scale(.98);} .toolbar button:disabled{ opacity:.5; cursor:not-allowed;}
+
+  /* 对勾、Toast、完成弹窗 */
+  .checkmark{ position:absolute; z-index:50; left:50%; top:20%; transform:translate(-50%,-50%) scale(.6);
+    width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15); border:3px solid var(--accent);
+    display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25); }
+  .checkmark.active{ display:flex; }
+  .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,.82); color:#fff;
+    padding:10px 14px; border-radius:10px; font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5); }
+  .modal h3{ margin:8px 0 6px; font-size:20px; } .modal p{ color:#cfd8dc; margin-top:0; }
+  .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; border:none; border-radius:10px; padding:10px 14px; }
+
+  /* 说明 */
+  .explain{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink); }
+  .explain h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em; }
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">保持<strong>探测器关闭</strong>，点击“发射粒子”（或“连续发射”）直到出现<strong>干涉条纹</strong>。</div>
+      <div class="task-hint" id="taskHint">提示：探测器关=波动性 → 有条纹。</div>
+    </div>
+    <div class="progress-dots"><span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span></div>
+  </div>
+
+  <div id="stageWrap">
+    <div id="stage">
+      <canvas id="sim"></canvas>
+
+      <div class="legend"><span class="tag det off" id="detTag">探测器 OFF</span><span class="tag" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25)">双缝</span><span class="tag" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25)">屏幕</span></div>
+
+      <div class="in-controls">
+        <button id="toggleDetBtn">探测器：关</button>
+        <button id="shootOnceBtn">发射粒子</button>
+        <button id="shootContBtn">连续发射</button>
+        <button id="clearBtn">清屏</button>
+      </div>
+
+      <!-- 正面小屏：实测 + 理论拟合（初始空白；按模式统计） -->
+      <div class="mini" id="miniBox">
+        <div class="mini-head"><span>正面光屏 · 实测分布 + 理论拟合</span><span id="miniMode">模式：波动（干涉）</span></div>
+        <canvas id="mini"></canvas>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">再试一试：请按步骤提示操作</div>
+
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+    <div class="modal"><h3 id="doneTitle">完成，你真棒！🎉</h3><p>你已完成：未观测→干涉条纹；观测→无条纹；切换比较两种结果。</p><button class="ok" id="okBtn">好的</button></div>
+  </div>
+
+  <div class="explain">
+    <h2>波粒二象性要点</h2>
+    <ul>
+      <li><b>未观测（波动）</b>：光发生干涉，光强分布呈现波形分布，体现出波动性。</li>
+      <li><b>观测（粒子）</b>：光不发生干涉，光强分布只有两处（对应挡板上两条缝隙），体现出粒子性。</li>
+    </ul>
+  </div>
+
+<script>
+/* 兼容 */
+(function(){ if(!('performance' in window) || !('now' in window.performance)){ window.performance = window.performance || {}; window.performance.now = function(){ return Date.now(); }; }})();
+
+/* 画布 */
+const canvas = document.getElementById('sim');
+const ctx = canvas.getContext('2d');
+let W=0, H=0;
+
+function resize(){
+  const sw = document.getElementById('stage');
+  if(!sw) return;
+  W = canvas.width  = sw.clientWidth  || 900;
+  H = canvas.height = sw.clientHeight || 520;
+  sizeMini();
+  drawStatic();
+}
+window.addEventListener('resize', resize);
+
+/* 工具 */
+const sleep = (ms)=> new Promise(r=>setTimeout(r, ms));
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg||'再试一试'; t.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>t.classList.remove('show'),1400); }
+function showCheck(){ const c=document.getElementById('checkmark'); c.classList.add('active'); clearTimeout(showCheck.t); showCheck.t=setTimeout(()=>c.classList.remove('active'),520); }
+function showDone(){ document.getElementById('doneMask').style.display='flex'; }
+function hideDone(){ document.getElementById('doneMask').style.display='none'; }
+const clamp = (v,a,b)=> Math.max(a, Math.min(b, v));
+
+/* 几何（随画面自适应） */
+const src = ()=> ({ x: W*0.10, y: H*0.50 });
+const barrierX = ()=> W*0.35;
+const slitGap   = ()=> H*0.22; // 两缝中心距（像素）
+const slitH     = ()=> H*0.07; // 单缝“高度”（像素），用于近似宽度
+const screenX   = ()=> W*0.90;
+
+/* ===== 统一物理模型 ===== */
+function sinc(x){ return Math.abs(x) < 1e-6 ? 1 : Math.sin(x)/x; }
+function gapN(){   return slitGap()/H; }   // 相对缝距
+function widthN(){ return slitH()/H; }     // 相对缝宽
+
+/* 可调参数（不破坏一致性） */
+const K_d = 60;   // 条纹密度系数（越大越密）
+const K_a = 80;   // 包络收缩系数（越大包络越窄 → 峰更尖）
+
+function alpha_of(y){ const u = y-0.5; return Math.PI * u * (K_d * gapN()); }           // 干涉相位
+function beta_of(y){  const u = y-0.5; return Math.PI * u * (K_a * widthN()); }         // 单缝相位
+function beta_of_mu(y, mu){ return Math.PI * (y - mu) * (K_a * widthN()); }             // 以缝中心为参考
+
+function I_wave(y){
+  const env = Math.pow(sinc(beta_of(y)), 2);
+  const fringe = Math.pow(Math.cos(alpha_of(y)), 2);
+  return env * fringe;
+}
+function I_part(y){
+  const mu1 = 0.5 - gapN()/2, mu2 = 0.5 + gapN()/2;
+  return Math.pow(sinc(beta_of_mu(y, mu1)), 2) + Math.pow(sinc(beta_of_mu(y, mu2)), 2);
+}
+
+/* 规范化用于拒绝采样 */
+function normIntensity(detOn){
+  const N=400, arr=new Array(N); let maxv=0;
+  for(let i=0;i<N;i++){ const y=i/(N-1); const v = detOn ? I_part(y) : I_wave(y); arr[i]=v; if(v>maxv) maxv=v; }
+  for(let i=0;i<N;i++) arr[i] = maxv ? arr[i]/maxv : 0;
+  return {arr, max:maxv};
+}
+
+/* ===== 侧屏：发射采样严格按理论 ===== */
+function sampleY_byIntensity(detOn){
+  if(!sampleY_byIntensity.cache || sampleY_byIntensity.cache.detOn!==detOn){
+    const table = normIntensity(detOn).arr;
+    sampleY_byIntensity.cache = {detOn, table};
+  }
+  const table = sampleY_byIntensity.cache.table;
+  for(let t=0;t<80;t++){
+    const y = Math.random();
+    const i = Math.min(table.length-1, Math.round(y*(table.length-1)));
+    const p = table[i];
+    if (Math.random() < p) return clamp(y, 0.02, 0.98);
+  }
+  return 0.5;
+}
+
+/* 命中记录（侧屏） */
+const hits = []; // {y, glow, wave}  wave=true 表示“探测器关（波动）”时的命中
+function addHit(y, wave){ hits.push({ y, glow:1, wave: !!wave }); if (hits.length>3000) hits.splice(0, hits.length-3000); }
+function fadeHits(){ for(const h of hits){ h.glow *= 0.985; } }
+
+/* 背景/障碍/屏幕（侧视） */
+function drawStatic(){
+  if(!W||!H) return;
+  ctx.fillStyle = '#0b0d14'; ctx.fillRect(0,0,W,H);
+  for(let i=0;i<60;i++){ const x=Math.random()*W, y=Math.random()*H, a=0.05+Math.random()*0.08;
+    ctx.fillStyle=`rgba(255,255,255,${a})`; ctx.fillRect(x,y,1,1); }
+  const g = ctx.createRadialGradient(src().x, src().y, 10, src().x, src().y, 120);
+  g.addColorStop(0,'rgba(120,200,255,.25)'); g.addColorStop(1,'rgba(120,200,255,0)');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(src().x,src().y,160,0,Math.PI*2); ctx.fill();
+
+  ctx.fillStyle = '#151a24'; ctx.fillRect(barrierX()-4, 0, 8, H);
+  ctx.fillStyle = '#0b0d14';
+  const c1 = H/2 - slitGap()/2, c2 = H/2 + slitGap()/2;
+  ctx.fillRect(barrierX()-5, c1 - slitH()/2, 10, slitH());
+  ctx.fillRect(barrierX()-5, c2 - slitH()/2, 10, slitH());
+  ctx.fillStyle = 'rgba(200,220,255,.07)'; ctx.fillRect(screenX(), 0, 6, H);
+}
+
+/* 侧屏粒子动画 */
+let particles = []; // {x,y, tx,ty, t, T, wave}
+function emitOne(detOn){
+  const yN = sampleY_byIntensity(detOn);
+  const target = { x: screenX()-2, y: yN*H };
+  const s = src();
+  const y0 = s.y + (Math.random()-0.5)*H*0.06;
+  const T = 480 + Math.random()*240;
+  particles.push({ x:s.x, y:y0, tx:target.x, ty:target.y, t:0, T, wave:!detOn });
+}
+function updateParticles(dt){
+  const res=[];
+  for(const p of particles){
+    p.t += dt;
+    const t = Math.min(1, p.t/p.T);
+    const e = t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+    const x = p.x + (p.tx - p.x)*e;
+    const wobble = p.wave ? Math.sin((p.y/13 + p.t/90))*6 : 0;
+    const y = p.y + (p.ty - p.y)*e + wobble*(1-e);
+
+    const alpha = 0.35 + 0.45*(1-t);
+    ctx.strokeStyle = `rgba(120,200,255,${0.12*alpha})`;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(x, y); ctx.stroke();
+    ctx.fillStyle = `rgba(255,255,255,${0.6+0.4*(1-t)})`; ctx.fillRect(x-1.2, y-1.2, 2.4, 2.4);
+
+    if (x >= p.tx-1){ addHit(p.ty/H, p.wave); } else res.push(p);
+  }
+  particles = res;
+}
+function drawHitsSide(){
+  const x = screenX();
+  for(const h of hits){
+    const y=h.y*H, g=h.glow;
+    const r = 2.0 + 2.4*g;
+    const grd = ctx.createRadialGradient(x-2,y,0,x-2,y,8+r*2);
+    grd.addColorStop(0, `rgba(255,230,160,${0.45*g})`);
+    grd.addColorStop(1, `rgba(255,230,160,0)`);
+    ctx.fillStyle = grd;
+    ctx.beginPath(); ctx.arc(x-2,y,8+r*2,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = `rgba(255,240,200,${0.85*Math.min(1,0.4+g)})`;
+    ctx.fillRect(x-2.2, y-1.2, 4.4, 2.4);
+  }
+}
+
+/* 小屏：实测 + 理论拟合（初始空白；按模式过滤） */
+const mini = document.getElementById('mini');
+const miniModeEl = document.getElementById('miniMode');
+let mCtx = mini.getContext('2d');
+
+function sizeMini(){
+  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const cssW = document.getElementById('miniBox').clientWidth - 16;
+  const cssH = Math.min(160, Math.round(H*0.26));
+  mini.width  = Math.round(cssW * dpr);
+  mini.height = Math.round(cssH * dpr);
+  mini.style.height = cssH + 'px';
+  mini.style.width  = cssW + 'px';
+  mCtx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+/* 统计当前模式下是否已有数据（用于初始空白） */
+function hasDataForCurrentMode(){
+  const needWave = !detectorOn; // 探测器关 → wave=true
+  for(let i=hits.length-1, cnt=0; i>=0 && cnt<1800; i--, cnt++){
+    if (hits[i].wave === needWave) return true;
+  }
+  return false;
+}
+
+function drawMini(){
+  const Wc = mini.clientWidth, Hc = mini.clientHeight, pad = 8;
+  mCtx.clearRect(0,0,Wc,Hc);
+  mCtx.fillStyle = 'rgba(8,10,16,.55)'; mCtx.fillRect(0,0,Wc,Hc);
+
+  // 底线始终画出（便于视觉基准）
+  mCtx.strokeStyle='rgba(255,255,255,0.12)'; mCtx.lineWidth=1;
+  mCtx.beginPath(); mCtx.moveTo(pad, Hc-pad); mCtx.lineTo(Wc-pad, Hc-pad); mCtx.stroke();
+
+  const haveData = hasDataForCurrentMode();
+  if (!haveData){
+    // 初始空白：不画实测、不画理论曲线、不画峰谷
+    miniModeEl.textContent = '模式：' + (detectorOn? '粒子（两主峰·拟合）' : '波动（干涉·拟合）');
+    return;
+  }
+
+  /* 实测直方图（只统计“当前模式”的命中），并用最近 1800 个样本增强时效性 */
+  const bins = 140, hist=new Array(bins).fill(0); let hmax=0;
+  const needWave = !detectorOn;
+  for(let i=hits.length-1, cnt=0; i>=0 && cnt<1800; i--, cnt++){
+    const h = hits[i];
+    if (h.wave !== needWave) continue;
+    const idx = Math.max(0, Math.min(bins-1, Math.floor(h.y * bins)));
+    hist[idx] += (0.3 + 0.7*h.glow);
+    if(hist[idx]>hmax) hmax=hist[idx];
+  }
+  const Hs = hist.slice();
+  for(let i=1;i<bins-1;i++) Hs[i]=(hist[i-1]+hist[i]+hist[i+1])/3;
+
+  // 实测面积
+  mCtx.beginPath();
+  for(let i=0;i<bins;i++){
+    const x = pad + (Wc-2*pad) * (i/(bins-1));
+    const yv = hmax ? Hs[i]/hmax : 0;
+    const y = Hc - pad - (Hc-2*pad)* yv;
+    if(i===0) mCtx.moveTo(x,y); else mCtx.lineTo(x,y);
+  }
+  mCtx.lineTo(Wc-pad, Hc-pad); mCtx.lineTo(pad, Hc-pad); mCtx.closePath();
+  const measFill = mCtx.createLinearGradient(0,pad,0,Hc-pad);
+  measFill.addColorStop(0,'rgba(160,185,255,0.28)');
+  measFill.addColorStop(1,'rgba(160,185,255,0.08)');
+  mCtx.fillStyle = measFill; mCtx.fill();
+
+  /* 理论曲线（与采样一致） */
+  const N=280; const arr=new Array(N); let maxv=0;
+  for(let i=0;i<N;i++){
+    const y=i/(N-1);
+    const v = detectorOn ? I_part(y) : I_wave(y);
+    arr[i]=v; if(v>maxv) maxv=v;
+  }
+  for(let i=0;i<N;i++) arr[i]= maxv? arr[i]/maxv : 0;
+
+  // 面积底
+  mCtx.beginPath();
+  for(let i=0;i<N;i++){
+    const x = pad + (Wc-2*pad) * (i/(N-1));
+    const y = Hc - pad - (Hc-2*pad)*arr[i];
+    if(i===0) mCtx.moveTo(x,y); else mCtx.lineTo(x,y);
+  }
+  mCtx.lineTo(Wc-pad, Hc-pad); mCtx.lineTo(pad, Hc-pad); mCtx.closePath();
+  const theoFill = mCtx.createLinearGradient(0,pad,0,Hc-pad);
+  if(!detectorOn){ theoFill.addColorStop(0,'rgba(120,220,255,0.33)'); theoFill.addColorStop(1,'rgba(120,220,255,0.10)'); }
+  else{            theoFill.addColorStop(0,'rgba(255,210,140,0.40)'); theoFill.addColorStop(1,'rgba(255,210,140,0.10)'); }
+  mCtx.fillStyle=theoFill; mCtx.fill();
+
+  // 亮色轮廓
+  mCtx.strokeStyle = detectorOn ? 'rgba(255,220,170,0.95)' : 'rgba(160,235,255,0.95)';
+  mCtx.lineWidth=1.6; mCtx.beginPath();
+  for(let i=0;i<N;i++){
+    const x = pad + (Wc-2*pad) * (i/(N-1));
+    const y = Hc - pad - (Hc-2*pad) * arr[i];
+    if(i===0) mCtx.moveTo(x,y); else mCtx.lineTo(x,y);
+  }
+  mCtx.stroke();
+
+  // 峰谷标注
+  if(!detectorOn){
+    const peaks=[], troughs=[];
+    for(let i=1;i<N-1;i++){
+      if(arr[i]>arr[i-1] && arr[i]>arr[i+1] && arr[i]>0.10) peaks.push(i);
+      if(arr[i]<arr[i-1] && arr[i]<arr[i+1]) troughs.push(i);
+    }
+    const center=(N-1)/2;
+    peaks.sort((a,b)=>Math.abs(a-center)-Math.abs(b-center));
+    troughs.sort((a,b)=>Math.abs(a-center)-Math.abs(b-center));
+    const pk=peaks.slice(0,5), tv=troughs.slice(0,4);
+    mCtx.fillStyle='rgba(255,255,255,0.95)';
+    pk.forEach(i=>{ const x=pad+(Wc-2*pad)*(i/(N-1)); const y=Hc-pad-(Hc-2*pad)*arr[i]; mCtx.beginPath(); mCtx.arc(x,y,2.3,0,Math.PI*2); mCtx.fill(); });
+    mCtx.fillStyle='rgba(255,255,255,0.65)';
+    tv.forEach(i=>{ const x=pad+(Wc-2*pad)*(i/(N-1)); const y=Hc-pad-(Hc-2*pad)*arr[i]; mCtx.beginPath(); mCtx.arc(x,y,2,0,Math.PI*2); mCtx.fill(); });
+  }else{
+    const mu=[0.5-gapN()/2, 0.5+gapN()/2];
+    mCtx.fillStyle='rgba(255,240,200,0.95)';
+    mu.forEach(m=>{ const x=pad+(Wc-2*pad)*m; const y=Hc-pad-(Hc-2*pad)*1.0; mCtx.beginPath(); mCtx.arc(x,y+4,3,0,Math.PI*2); mCtx.fill(); });
+  }
+
+  miniModeEl.textContent = '模式：' + (detectorOn? '粒子（两主峰·拟合）' : '波动（干涉·拟合）');
+}
+
+/* 状态与守卫（沿用原逻辑） */
+let detectorOn=false, continuous=false, freeMode=false, autoPlaying=false, completed=false;
+let currentTask=0, step1Hits=0, step2Hits=0, toggledInStep3=false, hitsAfterToggle=0;
+
+const toggleDetBtn=document.getElementById('toggleDetBtn');
+const shootOnceBtn=document.getElementById('shootOnceBtn');
+const shootContBtn=document.getElementById('shootContBtn');
+const clearBtn=document.getElementById('clearBtn');
+const detTag=document.getElementById('detTag');
+
+function refreshDetUI(){
+  detTag.className=`tag det ${detectorOn?'on':'off'}`;
+  detTag.textContent=`探测器 ${detectorOn?'ON':'OFF'}`;
+  toggleDetBtn.textContent=`探测器：${detectorOn?'开':'关'}`;
+  toggleDetBtn.classList.toggle('on', detectorOn);
+}
+
+const taskCard=document.getElementById('taskCard');
+const taskStepEl=document.getElementById('taskStep');
+const taskTextEl=document.getElementById('taskText');
+const taskHintEl=document.getElementById('taskHint');
+const dots=[document.getElementById('dot1'),document.getElementById('dot2'),document.getElementById('dot3')];
+const btnReset=document.getElementById('resetBtn');
+const btnAuto=document.getElementById('autoDemoBtn');
+const btnFree=document.getElementById('freeBtn');
+const okBtn=document.getElementById('okBtn');
+
+const tasks=[
+  { text:'保持<strong>探测器关闭</strong>，点击“发射粒子”（或“连续发射”）直到出现<strong>干涉条纹</strong>。',
+    hint:'探测器关=波动性；命中数≥150自动通过。', guard:'must_det_off' },
+  { text:'打开<strong>探测器</strong>，再次发射，观察<strong>条纹消失、出现双峰</strong>。',
+    hint:'探测器开=粒子性；命中数≥150自动通过。', guard:'must_det_on' },
+  { text:'来回切换一次<strong>探测器开/关</strong>并各发射一阵，比较两种结果（自动完成）。',
+    hint:'切换后累计命中≥80 自动完成。', guard:'allow_toggle' }
+];
+
+function setStepUI(i){
+  i=Math.max(0, Math.min(i, tasks.length-1));
+  dots.forEach((d,k)=>{ d.className = 'dot' + (k<i ? ' done' : '') + (k===i ? ' active' : ''); });
+  taskStepEl.textContent=`步骤 ${i+1} / ${tasks.length}`;
+  taskTextEl.innerHTML=tasks[i].text;
+  taskHintEl.textContent=tasks[i].hint;
+}
+function inStepMode(){ return !freeMode && !autoPlaying && !completed; }
+function nextTask(){
+  showCheck(); dots[currentTask].classList.remove('active'); dots[currentTask].classList.add('done');
+  currentTask++;
+  if(currentTask>=tasks.length){ completed=true; setTimeout(showDone,360); return; }
+  dots[currentTask].classList.add('active'); setStepUI(currentTask);
+}
+function resetFlow(){
+  completed=false; autoPlaying=false; currentTask=0; setStepUI(0);
+  dots.forEach((d,i)=> d.className='dot' + (i===0?' active':''));
+  hits.length=0; particles.length=0; step1Hits=0; step2Hits=0; toggledInStep3=false; hitsAfterToggle=0;
+  detectorOn=false; refreshDetUI(); drawStatic(); hideDone();
+}
+btnReset.onclick=()=>{ if(autoPlaying) return; resetFlow(); };
+btnAuto.onclick =()=>{ if(freeMode || autoPlaying) return; autoDemo(); };
+btnFree.onclick =()=> setFreeMode(!freeMode);
+okBtn.onclick   = hideDone;
+
+function setFreeMode(on){
+  freeMode=on; btnAuto.disabled=on;
+  taskCard.style.opacity= on?.25:1; taskCard.style.filter= on?'grayscale(.6)':'none';
+  btnFree.textContent= on?'退出自由模式':'自由模式';
+}
+
+/* 操作守卫 */
+function guardToggleDet(){
+  if(!inStepMode()){ detectorOn=!detectorOn; refreshDetUI(); return; }
+  const g=tasks[currentTask].guard;
+  if(g==='must_det_off'){ showToast('本步骤需要“探测器：关”'); return; }
+  if(g==='must_det_on'){ detectorOn=true; refreshDetUI(); return; }
+  const before=detectorOn; detectorOn=!detectorOn; refreshDetUI();
+  if(currentTask===2 && !toggledInStep3 && before!==detectorOn){ toggledInStep3=true; hitsAfterToggle=0; }
+}
+function guardEmit(single){
+  if(!inStepMode()){ single?emitOne(detectorOn):(continuous=!continuous); return; }
+  const g=tasks[currentTask].guard;
+  if(g==='must_det_off' && detectorOn){ showToast('保持探测器关闭再发射'); return; }
+  if(g==='must_det_on'  && !detectorOn){ showToast('请先打开探测器'); return; }
+  if(single) emitOne(detectorOn); else continuous=!continuous;
+}
+function clearScreen(){ hits.length=0; particles.length=0; drawStatic(); }
+
+toggleDetBtn.onclick=()=> guardToggleDet();
+shootOnceBtn.onclick=()=> guardEmit(true);
+shootContBtn.onclick=()=> guardEmit(false);
+clearBtn.onclick    =()=> clearScreen();
+
+/* 自动演示（沿用） */
+async function autoDemo(){
+  autoPlaying=true; resetFlow(); autoPlaying=true;
+  detectorOn=false; refreshDetUI(); drawStatic();
+  for(let i=0;i<170;i++){ emitOne(false); await sleep(12); }
+  await sleep(400); nextTask();
+
+  detectorOn=true; refreshDetUI();
+  for(let i=0;i<170;i++){ emitOne(true); await sleep(12); }
+  await sleep(400); nextTask();
+
+  detectorOn=false; refreshDetUI();
+  for(let i=0;i<60;i++){ emitOne(false); await sleep(10); }
+  detectorOn=true; refreshDetUI();
+  for(let i=0;i<60;i++){ emitOne(true); await sleep(10); }
+
+  completed=true; setTimeout(showDone, 300); autoPlaying=false;
+}
+
+/* 主循环 */
+let last = performance.now();
+function loop(now){
+  if(!W||!H){ requestAnimationFrame(loop); return; }
+  const dt = now - last; last = now;
+
+  ctx.clearRect(0,0,W,H);
+  drawStatic();
+  updateParticles(dt);
+  drawHitsSide(); fadeHits();
+
+  if(inStepMode()){
+    if(currentTask===0){ step1Hits=hits.length; if(step1Hits>=150) nextTask(); }
+    else if(currentTask===1){ step2Hits=hits.length-step1Hits; if(step2Hits>=150) nextTask(); }
+    else if(currentTask===2){ if(toggledInStep3){ hitsAfterToggle+=1; if(hitsAfterToggle>=80) nextTask(); } }
+  }
+  if(continuous && !autoPlaying){ if(Math.random()<0.65) emitOne(detectorOn); }
+
+  drawMini();
+  requestAnimationFrame(loop);
+}
+
+/* 初始化 */
+function init(){
+  setStepUI(0); refreshDetUI(); resize();
+  requestAnimationFrame(t=>{ last=t||performance.now(); loop(t||performance.now()); });
+}
+init();
+</script>
+</body>
+</html>

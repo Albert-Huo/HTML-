@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>枯井投石 - 逼真人物版</title>
+  <style>
+    :root{
+      --card-bg: rgba(255,255,255,0.08);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --soil-dark: #1a100e;
+      --well-width: 90px;
+      --ground-y: 120px; 
+    }
+    body {
+      background: #0f0f0f;
+      display: flex; flex-direction: column; align-items: center;
+      color: white; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+      margin: 0; padding: 10px;
+    }
+
+     /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+    /* === 任务卡片 === */
+    .task-card{ width: 100%; max-width: 900px; background: var(--card-bg); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 12px 14px; backdrop-filter: blur(10px); display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; z-index: 50; margin-bottom: 10px; }
+    .task-step{ background: rgba(255,255,255,0.15); border-radius: 8px; padding: 6px 10px; font-weight: 600; white-space: nowrap; font-size: 14px; }
+    .task-text{ line-height: 1.5; font-size: 15px; }
+    .task-hint{ color: #ffd54f; font-size: 13px; opacity: .9; }
+    .progress-dots{ display: flex; gap:6px; align-items:center; }
+    .dot{ width:8px; height:8px; border-radius:50%; background: rgba(255,255,255,0.2); outline:2px solid rgba(255,255,255,0.1); }
+    .dot.active{ background: var(--warn); transform: scale(1.2); } .dot.done{ background: var(--accent); }
+
+    /* === 画布 === */
+    #canvasWrap { width: 100%; max-width: 900px; height: 60vh; max-height: 600px; position: relative; }
+    #canvas {
+      width: 100%; height: 100%;
+      background: #87CEEB;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      position: relative; overflow: hidden;
+    }
+    #canvas::before {
+      content:''; position: absolute; inset: 0;
+      background: linear-gradient(to bottom, #1a237e 0%, #311b92 40%, #bf360c 100%);
+      opacity: 0.85; z-index: 0; pointer-events: none;
+    }
+
+    /* === 场景结构 === */
+    .ground-layer {
+      position: absolute; top: var(--ground-y); left: 0; right: 0; bottom: 0;
+      display: flex; z-index: 10;
+    }
+    .soil {
+      flex: 1; background: var(--soil-dark);
+      background-image: radial-gradient(rgba(255,255,255,0.1) 1px, transparent 1px);
+      background-size: 12px 12px;
+      border-top: 10px solid #2e7d32; /* 草地 */
+      position: relative;
+    }
+    .well-shaft {
+      width: var(--well-width);
+      background: #080808; 
+      position: relative;
+      box-shadow: inset 12px 0 20px #000, inset -12px 0 20px #000;
+      overflow: hidden; 
+    }
+    .well-rim {
+      position: absolute; top: -14px; left: -6px; right: -6px; height: 14px;
+      background: #5d4037; border-radius: 6px 6px 0 0;
+      z-index: 12;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.9);
+    }
+
+    /* 井底 */
+    .well-bottom {
+      position: absolute; left: 0; width: 100%; height: 40px;
+      background: #3e2723; border-top: 2px solid #8d6e63;
+      display: flex; justify-content: center;
+      transition: top 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      z-index: 5;
+    }
+    .debris { width: 70%; height: 5px; background: rgba(0,0,0,0.3); margin-top: 6px; border-radius: 50%; }
+
+    /* === 角色优化 (SVG) === */
+    #personWrapper {
+      position: absolute;
+      /* 让人趴在草地上 */
+      top: calc(var(--ground-y) - 45px); 
+      /* 调整水平位置，让肩膀靠近井边 */
+      left: calc(50% - 155px); 
+      width: 160px; height: 60px;
+      z-index: 20;
+      pointer-events: none;
+      /* border: 1px solid rgba(255,0,0,0.3); Debug框 */
+    }
+    .person-fill { fill: #222; stroke: #000; stroke-width: 1px; }
+    
+    /* 手臂组合：旋转中心设置在肩膀处 */
+    #armGroup {
+      transform-origin: 118px 25px; /* 对应SVG中肩膀的坐标 */
+      transform: rotate(0deg); 
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* 弹性动画 */
+    }
+
+    /* 物理石块 */
+    .stone {
+      width: 10px; height: 10px;
+      background: #fff; border-radius: 50%;
+      position: absolute; left: 50%; top: 0; transform: translateX(-50%);
+      z-index: 30; box-shadow: 0 0 10px rgba(255,255,255,0.9);
+      opacity: 0; pointer-events: none;
+    }
+    .stone.visible { opacity: 1; }
+
+    /* 声波 */
+    .sound-wave {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      width: 60px; height: 15px;
+      border-top: 3px solid var(--warn); border-radius: 50% 50% 0 0;
+      opacity: 0; z-index: 25;
+    }
+    
+    .sound-icon {
+      position: absolute; left: 45%; top: 90px;
+      font-size: 24px; color: var(--warn); opacity: 0; z-index: 40;
+      text-shadow: 0 0 10px black;
+    }
+    .sound-icon.show { animation: popSound 0.6s ease-out forwards; }
+    @keyframes popSound { 0% {opacity:0; transform: scale(0.5) translateY(10px);} 50%{opacity:1; transform: scale(1.2);} 100%{opacity:0; transform: scale(1);} }
+
+    /* UI控件 */
+    .scale-ruler { position: absolute; top: var(--ground-y); right: 12%; bottom: 0; width: 40px; pointer-events: none; z-index: 15; }
+    .scale-mark { position: absolute; right: 0; width: 10px; height: 1px; background: rgba(255,255,255,0.3); }
+    .scale-num { position: absolute; right: 14px; transform: translateY(-50%); font-size: 10px; color: rgba(255,255,255,0.5); font-family: monospace; }
+
+    .hud { position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.15); padding: 10px 14px; border-radius: 8px; font-family: monospace; z-index: 60; }
+    .hud div { margin-bottom: 4px; color: #ccc; font-size: 12px; }
+    .hud span { color: var(--accent); font-size: 16px; font-weight: bold; }
+    .hud .final { color: var(--warn); }
+
+    .slider-panel { position: absolute; left: 15px; bottom: 80px; background: rgba(0,0,0,0.7); padding: 12px 8px; border-radius: 8px; display: none; flex-direction: column; align-items: center; z-index: 60; }
+    .slider-panel input { writing-mode: bt-lr; -webkit-appearance: slider-vertical; width: 6px; height: 120px; }
+
+    .action-bar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 100; }
+    .toolbar{ display: flex; gap:10px; flex-wrap:wrap; width: 100%; max-width:900px; margin-top: 12px; }
+    button { padding: 10px 18px; background: #333; color: #eee; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px; }
+    button:hover { background: #444; } button:disabled{ opacity:.5; cursor:not-allowed; }
+    .btn-primary { background: var(--accent); color: #000; font-weight: bold; border:none; }
+
+    .toast{ position: fixed; left:50%; bottom: 80px; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #fff; padding: 10px 16px; border-radius: 50px; opacity: 0; transition: 0.3s; z-index: 200; font-size: 13px; pointer-events: none; }
+    .toast.show{ opacity:1; bottom: 100px; }
+    .modal-mask{ position: fixed; inset:0; background: rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index: 300; backdrop-filter: blur(4px); }
+    .modal{ width:300px; background:#1a1a1a; color:#fff; border: 1px solid #333; border-radius:14px; padding:20px; text-align:center; }
+    .modal .ok{ background: var(--accent); color:#000; width: 100%; margin-top: 15px; font-weight: bold; border:none; padding:10px; border-radius:6px; cursor:pointer;}
+    .checkmark{ position:absolute; z-index: 50; left: 50%; top: 40%; transform: translate(-50%,-50%) scale(0.6); width:100px; height:100px; border-radius:50%; background: rgba(61,220,151,0.1); border: 3px solid var(--accent); display: none; align-items:center; justify-content:center; }
+    .checkmark.active{ display:flex; animation: popCheck 0.5s ease-out forwards; }
+    .checkmark div{ width: 50px; height: 25px; border-left: 6px solid var(--accent); border-bottom: 6px solid var(--accent); transform: rotate(-45deg) translateY(-5px); }
+    @keyframes popCheck { 0% { transform: translate(-50%,-50%) scale(0.4); opacity: 0; } 60% { transform: translate(-50%,-50%) scale(1.1); opacity: 1; } 100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
+
+    .explanation { width: 100%; max-width: 900px; margin: 14px 0 20px; color: #e9f2ff; font-size: 14px; line-height: 1.6; }
+    .explanation h2 { color: #9bd3ff; font-size: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">这是一口较浅的井(5m)。小人已<strong>趴在井口</strong>准备就绪，点击“释放石块”开始实验。</div>
+      <div class="task-hint" id="taskHint">观察：手臂从肩膀处摆动，将石块垂直放入井中。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="canvas">
+      <div class="ground-layer">
+        <div class="soil"></div>
+        <div class="well-shaft">
+           <div class="well-rim"></div>
+           <div class="well-bottom" id="wellBottom">
+             <div class="debris"></div>
+           </div>
+           <div class="sound-wave" id="soundWave"></div>
+        </div>
+        <div class="soil"></div>
+      </div>
+
+      <div class="scale-ruler" id="scaleRuler"></div>
+
+      <div id="personWrapper">
+        <svg viewBox="0 0 160 60" width="100%" height="100%">
+          <defs>
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+              <feOffset dx="2" dy="2" result="offsetblur"/>
+              <feComponentTransfer>
+                <feFuncA type="linear" slope="0.5"/>
+              </feComponentTransfer>
+              <feMerge> 
+                <feMergeNode in="offsetblur"/>
+                <feMergeNode in="SourceGraphic"/> 
+              </feMerge>
+            </filter>
+          </defs>
+          <g filter="url(#shadow)">
+            <path d="M10,25 L35,40 L60,35" stroke="#222" stroke-width="8" stroke-linecap="round" fill="none" />
+            
+            <path d="M55,35 Q85,15 115,25" stroke="#222" stroke-width="14" stroke-linecap="round" fill="none" />
+            
+            <circle cx="125" cy="18" r="9" fill="#222" />
+            
+            <g id="armGroup">
+               <line x1="115" y1="25" x2="135" y2="35" stroke="#222" stroke-width="5" stroke-linecap="round" />
+               <line x1="135" y1="35" x2="138" y2="48" stroke="#222" stroke-width="4" stroke-linecap="round" />
+               <circle cx="138" cy="50" r="4" fill="#fff" id="handStone" />
+            </g>
+          </g>
+        </svg>
+      </div>
+
+      <div class="stone" id="phyStone"></div>
+
+      <div class="sound-icon" id="soundIcon">🔊</div>
+
+      <div class="hud">
+        <div>下落时间: <span id="timeVal">0.00</span> s</div>
+        <div>估算深度: <span id="depthVal">0.0</span> m</div>
+        <div style="text-align:right; font-size:10px; opacity:0.6;">h ≈ 5t²</div>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+
+      <div class="slider-panel" id="freeControl">
+        <span style="font-size:10px; color:#aaa; margin-bottom:4px;">深度</span>
+        <input type="range" id="depthSlider" min="5" max="80" value="5" step="5">
+      </div>
+
+      <div class="action-bar">
+        <button id="dropBtn" class="btn-primary">释放石块</button>
+        <button id="resetStoneBtn">重置场景</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示信息</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3 style="color:var(--accent); margin-top:0;">探索完成！🎉</h3>
+      <p style="color:#ccc; font-size:14px; margin:15px 0;">你已经完成了深井探测实验。</p>
+      <button class="ok">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>科学原理：自由落体</h2>
+    <p>通过趴在井沿这种安全的姿势，我们让石块做近似完美的自由落体运动。</p>
+    <ul>
+      <li>石块离开手掌瞬间，初速度为0。</li>
+      <li>声音从井底传回井口需要时间，但在初中物理估算中，通常忽略声速带来的微小延迟。</li>
+    </ul>
+  </div>
+
+  <script>
+    /* ====== 配置 ====== */
+    const G = 10;
+    const PX_PER_M = 6;
+    // 井口 Y 坐标 (全局位置)
+    const WELL_OFFSET_Y = 120; 
+    
+    /* ====== DOM ====== */
+    const wellBottom = document.getElementById('wellBottom');
+    const scaleRuler = document.getElementById('scaleRuler');
+    
+    const armGroup = document.getElementById('armGroup');
+    const handStone = document.getElementById('handStone');
+    const phyStone = document.getElementById('phyStone');
+    const soundWave = document.getElementById('soundWave');
+    const soundIcon = document.getElementById('soundIcon');
+    
+    const timeVal = document.getElementById('timeVal');
+    const depthVal = document.getElementById('depthVal');
+    const dropBtn = document.getElementById('dropBtn');
+    const resetStoneBtn = document.getElementById('resetStoneBtn');
+
+    /* ====== 状态 ====== */
+    let currentDepth = 5;
+    let isDropping = false;
+    let animId = null;
+    let freeMode = false;
+    let autoPlaying = false;
+    let completed = false;
+    let currentTask = 0;
+
+    const tasks = [
+      { d: 5,  text: '浅井(5m)。小人已趴好，点击释放石块。', hint: '下落约1秒。' },
+      { d: 20, text: '中井(20m)。井深增加，石块需要飞一会儿。', hint: '下落约2秒。' },
+      { d: 45, text: '深井(45m)。耐心等待回声。', hint: '下落约3秒。' }
+    ];
+
+    /* ====== 初始化 ====== */
+    function initScale(){
+      scaleRuler.innerHTML = '';
+      for(let m=0; m<=80; m+=10){
+        let tick = document.createElement('div');
+        tick.className = 'scale-mark';
+        tick.style.top = (m * PX_PER_M) + 'px';
+        let num = document.createElement('div');
+        num.className = 'scale-num';
+        num.innerText = m + 'm';
+        num.style.top = (m * PX_PER_M) + 'px';
+        scaleRuler.appendChild(tick);
+        scaleRuler.appendChild(num);
+      }
+    }
+    initScale();
+    setDepth(5);
+
+    /* ====== 逻辑控制 ====== */
+    function setDepth(m){
+      currentDepth = m;
+      let px = m * PX_PER_M;
+      wellBottom.style.top = px + 'px';
+    }
+
+    function resetScene(){
+      isDropping = false;
+      cancelAnimationFrame(animId);
+
+      // UI复位
+      timeVal.innerText = '0.00';
+      depthVal.innerText = '0.0';
+      depthVal.classList.remove('final');
+      soundIcon.classList.remove('show');
+      soundWave.style.opacity = 0; 
+      soundWave.style.transition = 'none';
+
+      // 手臂复位 (rotate 0 deg = 初始下垂)
+      armGroup.style.transform = 'rotate(0deg)';
+      handStone.style.opacity = 1;
+
+      // 物理石块复位
+      phyStone.classList.remove('visible');
+      phyStone.style.top = WELL_OFFSET_Y + 'px';
+
+      dropBtn.disabled = false;
+      resetStoneBtn.disabled = true;
+    }
+
+    function startDrop(){
+      if(isDropping) return;
+      isDropping = true;
+      dropBtn.disabled = true;
+      resetStoneBtn.disabled = true;
+
+      // 1. 手臂动作：抬起前伸
+      // 旋转轴在肩膀，逆时针转动让手伸到井上方
+      armGroup.style.transform = 'rotate(-35deg)'; 
+      
+      setTimeout(() => {
+        // 2. 松手
+        handStone.style.opacity = 0;
+        
+        // 3. 物理石块出现并下落
+        phyStone.classList.add('visible');
+        let startY = WELL_OFFSET_Y; // 从井口平齐处开始
+        phyStone.style.top = startY + 'px';
+
+        let startTime = performance.now();
+        let targetDistPx = currentDepth * PX_PER_M;
+        let stopY = startY + targetDistPx - 5; 
+
+        function loop(){
+          let now = performance.now();
+          let t = (now - startTime) / 1000;
+          let h = 0.5 * G * t * t; 
+          let px = h * PX_PER_M;
+          
+          timeVal.innerText = t.toFixed(2);
+          depthVal.innerText = h.toFixed(1);
+
+          let currentY = startY + px;
+          
+          if(currentY >= stopY){
+            // 触底
+            phyStone.style.top = stopY + 'px';
+            let finalT = Math.sqrt(2 * currentDepth / G);
+            timeVal.innerText = finalT.toFixed(2);
+            depthVal.innerText = currentDepth.toFixed(1);
+            
+            triggerImpact(targetDistPx);
+          } else {
+            phyStone.style.top = currentY + 'px';
+            animId = requestAnimationFrame(loop);
+          }
+        }
+        animId = requestAnimationFrame(loop);
+
+      }, 400); // 动作等待时间
+    }
+
+    function triggerImpact(distPx){
+      if(navigator.vibrate) navigator.vibrate(40);
+      
+      // === 声波位置修正 ===
+      soundWave.style.top = distPx + 'px'; 
+      soundWave.style.opacity = 1;
+      void soundWave.offsetWidth; // 强制重绘
+
+      // 声波上浮
+      soundWave.style.transition = 'top 0.5s linear, opacity 0.5s ease-in';
+      soundWave.style.top = '0px'; 
+      
+      setTimeout(() => {
+        soundWave.style.opacity = 0;
+        soundIcon.classList.add('show');
+        depthVal.classList.add('final');
+        
+        resetStoneBtn.disabled = false;
+        isDropping = false;
+
+        if(!freeMode && !autoPlaying && !completed) checkPass();
+
+      }, 500); 
+    }
+
+    /* ====== 任务系统 ====== */
+    const taskStepEl = document.getElementById('taskStep');
+    const taskTextEl = document.getElementById('taskText');
+    const taskHintEl = document.getElementById('taskHint');
+    const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
+    const checkmark = document.getElementById('checkmark');
+    const doneMask = document.getElementById('doneMask');
+
+    function checkPass(){
+      checkmark.classList.add('active'); 
+      setTimeout(()=>{ 
+        checkmark.classList.remove('active');
+        nextTask();
+      }, 800);
+    }
+
+    function nextTask(){
+      dots[currentTask].classList.remove('active');
+      dots[currentTask].classList.add('done');
+      currentTask++;
+      
+      if(currentTask >= tasks.length){
+        completed = true;
+        doneMask.style.display = 'flex';
+      } else {
+        setTaskUI(currentTask);
+      }
+    }
+
+    function setTaskUI(idx){
+      let t = tasks[idx];
+      taskStepEl.innerText = `步骤 ${idx+1} / 3`;
+      taskTextEl.innerHTML = t.text;
+      taskHintEl.innerText = t.hint;
+      dots.forEach((d, i) => {
+        d.className = 'dot' + (i<idx ? ' done' : (i===idx?' active':''));
+      });
+      setDepth(t.d);
+      resetScene();
+    }
+    
+    function showToast(m){ const t=document.getElementById('toast'); t.innerText=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1500); }
+
+    /* ====== 交互控制 ====== */
+    dropBtn.onclick = startDrop;
+    resetStoneBtn.onclick = resetScene;
+    document.querySelector('.ok').onclick = ()=> doneMask.style.display='none';
+    
+    document.getElementById('resetBtn').onclick = () => {
+      if(autoPlaying) return;
+      currentTask = 0; completed = false;
+      setTaskUI(0);
+      doneMask.style.display='none';
+      if(freeMode) setDepth(5);
+    };
+
+    const freeControl = document.getElementById('freeControl');
+    document.getElementById('freeBtn').onclick = function() {
+      freeMode = !freeMode;
+      const card = document.getElementById('taskCard');
+      const auto = document.getElementById('autoDemoBtn');
+      if(freeMode){
+        this.innerText = '退出自由模式';
+        card.style.opacity = 0.3;
+        freeControl.style.display = 'flex';
+        auto.disabled = true;
+        document.getElementById('depthSlider').value = currentDepth;
+      } else {
+        this.innerText = '自由模式';
+        card.style.opacity = 1;
+        freeControl.style.display = 'none';
+        auto.disabled = false;
+        if(!completed) setTaskUI(currentTask);
+      }
+    };
+
+    document.getElementById('depthSlider').oninput = function(e){
+      let v = parseInt(e.target.value);
+      setDepth(v);
+      if(isDropping) resetScene();
+    };
+
+    /* ====== 自动演示 ====== */
+    const wait = ms => new Promise(r=>setTimeout(r,ms));
+    document.getElementById('autoDemoBtn').onclick = async function() {
+      if(autoPlaying || freeMode) return;
+      autoPlaying = true; 
+      this.disabled = true; document.getElementById('freeBtn').disabled=true;
+
+      currentTask = 0; completed = false; setTaskUI(0);
+      
+      await wait(800);
+      startDrop();
+      await wait(2500); 
+      checkPass(); await wait(1000); 
+      
+      dots[0].className='dot done'; dots[1].className='dot active';
+      taskStepEl.innerText='步骤 2 / 3'; setDepth(20); resetScene();
+      await wait(800);
+      startDrop();
+      await wait(3500); 
+      checkPass(); await wait(1000);
+
+      dots[1].className='dot done'; dots[2].className='dot active';
+      taskStepEl.innerText='步骤 3 / 3'; setDepth(45); resetScene();
+      await wait(800);
+      startDrop();
+      await wait(4500);
+      checkPass(); await wait(1000);
+
+      dots[2].className='dot done';
+      completed = true;
+      doneMask.style.display='flex';
+      
+      autoPlaying = false;
+      this.disabled = false; document.getElementById('freeBtn').disabled=false;
+    };
+
+    setTaskUI(0);
+  </script>
+</body>
+</html>

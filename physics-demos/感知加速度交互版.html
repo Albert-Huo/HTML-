@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1" />
+<title>感知加速度：极速对决</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --ink:#e9f2ff;
+    --red-car: #ff4757; --blue-car: #2e86de;
+  }
+  body{ background:#1a1a1a; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center;}
+
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    /* 恢复正常的间距，依靠 body 的 padding 来避让顶部 */
+    margin: 0 0 12px; 
+    flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    /* 流动彩光动画 */
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 任务卡片 */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s;}
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 主画布区域 */
+  #canvasWrap{ width:100%; max-width:900px; height:60vh; max-height:400px; margin-top:10px; position:relative;}
+  #canvas{ width:100%; height:100%; background:#0f1215; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.3); position:relative; overflow:hidden; touch-action:none;
+    /* 赛道背景 */
+    background-image: 
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+  
+  /* 终点线 */
+  .finish-line {
+      position: absolute; right: 10%; top: 0; bottom: 0; width: 4px;
+      background: repeating-linear-gradient(0deg, #fff, #fff 10px, transparent 10px, transparent 20px);
+      z-index: 1;
+      box-shadow: 0 0 10px rgba(255,255,255,0.3);
+  }
+  .finish-label { position: absolute; right: 10%; top: 10px; color: rgba(255,255,255,0.5); font-size: 12px; transform: translateX(50%); }
+
+  /* 赛车 */
+  .car {
+      width: 80px; height: 36px; position: absolute; left: 20px; border-radius: 8px 16px 4px 4px;
+      display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: white;
+      box-shadow: 4px 4px 12px rgba(0,0,0,0.4); z-index: 10;
+      transition: transform 0.1s;
+  }
+  .car::after { /* 尾焰 */
+      content:''; position: absolute; left: -10px; top: 10px; width: 10px; height: 16px;
+      background: orange; opacity: 0; border-radius: 50%; filter: blur(4px); transition: opacity 0.2s;
+  }
+  .car.running::after { opacity: 0.8; }
+  
+  #redCar { top: 35%; background: linear-gradient(90deg, #c0392b, #e74c3c); border: 1px solid rgba(255,100,100,0.5); }
+  #blueCar { top: 65%; background: linear-gradient(90deg, #2980b9, #3498db); border: 1px solid rgba(100,150,255,0.5); }
+
+  /* 仪表盘 HUD (优化版) */
+  .hud-panel {
+      position: absolute; left: 20px; top: 20px; display: flex; flex-direction: column; gap: 8px;
+      z-index: 20; pointer-events: none;
+  }
+  .hud-tag {
+      background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.15); padding: 6px 12px;
+      border-radius: 6px; font-size: 13px; font-family: monospace; 
+      display: flex; align-items: center; justify-content: space-between;
+      width: 170px; /* 稍微加宽以容纳两行 */
+      min-height: 38px;
+  }
+  .hud-tag.red { border-left: 3px solid var(--red-car); }
+  .hud-tag.blue { border-left: 3px solid var(--blue-car); }
+  
+  .hud-name { font-weight: bold; opacity: 0.9; }
+  .hud-values { text-align: right; line-height: 1.3; font-size: 12px; color: #eee; }
+
+  /* 控制面板 */
+  .control-deck {
+      position: absolute; bottom: 15px; left: 20px; right: 20px;
+      display: flex; justify-content: space-between; align-items: center;
+      z-index: 30;
+  }
+  .torque-control {
+      background: rgba(15,15,15,0.8); backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 8px 16px;
+      display: flex; align-items: center; gap: 12px;
+  }
+  .torque-val { font-size: 18px; font-weight: bold; color: var(--warn); min-width: 40px; text-align: center;}
+  .torque-label { font-size: 12px; color: #aaa; margin-right: 4px; }
+  
+  .btn-round {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3);
+      background: #333; color: #fff; font-size: 18px; line-height: 1; cursor: pointer;
+      display: grid; place-items: center; padding: 0;
+  }
+  .btn-round:hover { background: #555; border-color: #fff; }
+  .btn-round:active { transform: scale(0.9); }
+
+  .action-btn {
+      padding: 10px 24px; font-size: 16px; font-weight: 600; border-radius: 8px; border: none; cursor: pointer;
+      background: var(--accent); color: #000; box-shadow: 0 4px 12px rgba(61,220,151,0.3);
+      transition: all 0.2s; min-width: 130px;
+  }
+  .action-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(61,220,151,0.5); }
+  .action-btn:active { transform: translateY(0); }
+  .action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* 动画组件 */
+  .checkmark{ position:absolute; z-index:50; left:50%; top:30%; transform:translate(-50%,-50%) scale(.6); width:120px; height:120px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:3px solid var(--accent); display:none; align-items:center; justify-content:center; box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25); animation:pop .55s ease-out;}
+  .checkmark.active{ display:flex;} .checkmark>div{ width:60px; height:30px; border-left:8px solid var(--accent); border-bottom:8px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)} }
+
+  /* 底部工具栏 */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+  button.tool-btn{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s, transform .05s, opacity .2s; user-select:none;}
+  button.tool-btn:hover{ background:#5a5a5a;} button.tool-btn:active{ transform:scale(.98);} button.tool-btn:disabled{ opacity:.5; cursor:not-allowed;}
+  .tool-btn.primary{ background:#2e7d32;} .tool-btn.ghost{ background:transparent; border:1px solid rgba(255,255,255,0.25);}
+
+  /* 反馈与弹窗 */
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.8); color:#fff; padding:10px 14px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,.35);
+    font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200;}
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.5); display:none; align-items:center; justify-content:center; z-index:300; }
+  .modal{ width:min(90vw,360px); background:#111; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:18px 16px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,.5);}
+  .modal h3{ margin:8px 0 6px; font-size:20px;} .modal p{ color:#cfd8dc; margin-top:0;} .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; border:none; padding:10px 20px; border-radius:6px; cursor:pointer;}
+
+  .explanation{ width:100%; max-width:900px; margin:14px 0 20px; line-height:1.65; font-size:.95em; color:var(--ink);}
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size:1.15em;} .explanation ul{ margin:.2em 0 .2em 1.1em;}
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">将<strong>动力(扭矩)</strong>调至最低 (1.0)，观察起步效果。</div>
+      <div class="task-hint" id="taskHint">提示：点击 "-" 按钮减小扭矩，然后点击“启动”。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="canvas">
+      <div class="finish-line"></div>
+      <div class="finish-label">速度检测点</div>
+
+      <div class="hud-panel">
+        <div class="hud-tag red">
+           <span class="hud-name">红车(可变)</span> 
+           <div class="hud-values" id="redHud"></div>
+        </div>
+        <div class="hud-tag blue">
+           <span class="hud-name">蓝车(恒定)</span> 
+           <div class="hud-values" id="blueHud"></div>
+        </div>
+      </div>
+
+      <div class="car" id="redCar">我</div>
+      <div class="car" id="blueCar">对手</div>
+
+      <div class="control-deck">
+        <div class="torque-control">
+          <span class="torque-label">动力(扭矩)</span>
+          <button class="btn-round" id="btnDec">-</button>
+          <span class="torque-val" id="torqueDisp">3.0</span>
+          <button class="btn-round" id="btnInc">+</button>
+        </div>
+        <button class="action-btn" id="startBtn">启动引擎 ▶</button>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="resetStepBtn">步骤重置</button>
+    <button class="tool-btn" id="autoDemoBtn">自动演示</button>
+    <button class="tool-btn" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">请按步骤调整扭矩数值</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3 id="doneTitle">实验完成！🏆</h3>
+      <p>你已深刻理解了力与加速度的关系：动力越大，加速度越大，达到目标速度的时间越短。</p>
+      <button class="ok" id="okBtn">太棒了</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>加速度与力的奥秘 (牛顿第二定律)</h2>
+    <ul>
+      <li><strong>加速度 (a)</strong>：描述速度增加快慢的物理量。不是“跑得快”，而是“提速快”。</li>
+      <li><strong>关系 (F=ma)</strong>：红车质量不变，你调节的<strong>扭矩(动力)</strong>越大，<strong>加速度</strong>就越大。</li>
+      <li><strong>实验现象</strong>：
+        <ul>
+          <li>低扭矩：提速慢，被蓝车超越。</li>
+          <li>高扭矩：提速极快，瞬间达到最高速，赢得比赛。</li>
+        </ul>
+      </li>
+    </ul>
+  </div>
+
+<script>
+/* ------------ 状态与变量 ------------ */
+const STATE = {
+  torque: 3.0,     // 当前设置的扭矩 (对应红车加速度)
+  redAcc: 0, redVel: 0, redPos: 0,
+  blueAcc: 2.0, blueVel: 0, bluePos: 0, // 蓝车固定加速度 2.0
+  isRunning: false,
+  finished: false,
+  freeMode: false,
+  currentTask: 0,
+  completed: false
+};
+
+// 物理常量
+const PHYS = {
+  maxSpeed: 100,    // 模拟最大速度
+  friction: 0.98,   // 空气阻力模拟
+  trackLen: 100,    // 赛道长度 (百分比)
+  finishLine: 90    // 终点线位置 (百分比)
+};
+
+/* ------------ DOM 引用 ------------ */
+const els = {
+  redCar: document.getElementById('redCar'),
+  blueCar: document.getElementById('blueCar'),
+  redHud: document.getElementById('redHud'),
+  blueHud: document.getElementById('blueHud'),
+  torqueDisp: document.getElementById('torqueDisp'),
+  btnInc: document.getElementById('btnInc'),
+  btnDec: document.getElementById('btnDec'),
+  startBtn: document.getElementById('startBtn'),
+  checkmark: document.getElementById('checkmark'),
+  toast: document.getElementById('toast'),
+  modal: document.getElementById('doneMask'),
+  okBtn: document.getElementById('okBtn'),
+  taskStep: document.getElementById('taskStep'),
+  taskText: document.getElementById('taskText'),
+  taskHint: document.getElementById('taskHint'),
+  dots: [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')],
+  taskCard: document.getElementById('taskCard')
+};
+
+/* ------------ 任务定义 ------------ */
+const tasks = [
+  {
+    text: '将<strong>动力(扭矩)</strong>调至最低 (≤ 1.5)，点击启动。体验“动力不足”。',
+    hint: '点击 "-" 按钮将数值减小到 1.5 或更低。',
+    checkStart: () => STATE.torque <= 1.5,
+    checkEnd: (winner) => true 
+  },
+  {
+    text: '增加动力！将<strong>扭矩</strong>调至中等 (2.5 - 3.5)，再次启动。',
+    hint: '点击 "+" 增加动力。观察加速度数值的变化。',
+    checkStart: () => STATE.torque >= 2.5 && STATE.torque <= 3.5,
+    checkEnd: (winner) => true
+  },
+  {
+    text: '全速前进！将<strong>扭矩</strong>调至最高 (≥ 4.5)，瞬间超越对手。',
+    hint: '加满动力！体验高加速度带来的推背感。',
+    checkStart: () => STATE.torque >= 4.5,
+    checkEnd: (winner) => winner === 'red'
+  }
+];
+
+/* ------------ 核心物理引擎 ------------ */
+let rafId = null;
+
+function resetPos() {
+  STATE.redPos = 2; STATE.bluePos = 2; // 起始位置 %
+  STATE.redVel = 0; STATE.blueVel = 0;
+  STATE.redAcc = 0; 
+  STATE.finished = false;
+  
+  els.redCar.style.left = STATE.redPos + '%';
+  els.blueCar.style.left = STATE.bluePos + '%';
+  els.redCar.classList.remove('running');
+  els.blueCar.classList.remove('running');
+  
+  updateHud();
+}
+
+function updateHud() {
+  // 优化：分行显示
+  els.redHud.innerHTML = `<div>a: ${STATE.redAcc.toFixed(1)}</div><div>v: ${STATE.redVel.toFixed(1)}</div>`;
+  els.blueHud.innerHTML = `<div>a: ${STATE.blueAcc.toFixed(1)}</div><div>v: ${STATE.blueVel.toFixed(1)}</div>`;
+  els.torqueDisp.textContent = STATE.torque.toFixed(1);
+}
+
+// 统一的启动处理函数 (点击一次：如果正在跑则忽略，否则重置并启动)
+function handleStartClick() {
+  if (STATE.isRunning) return; // 正在跑的时候禁用
+
+  // 1. 任务前置检查
+  if (!STATE.freeMode && !STATE.completed) {
+    const task = tasks[STATE.currentTask];
+    if (!task.checkStart()) {
+      showToast(task.hint);
+      return;
+    }
+  }
+
+  // 2. 无论是否跑过，先重置位置，确保从头开始
+  resetPos();
+
+  // 3. 立即启动
+  startRunLoop();
+}
+
+function startRunLoop() {
+  STATE.isRunning = true;
+  els.startBtn.disabled = true;
+  els.startBtn.textContent = "加速中...";
+  els.redCar.classList.add('running');
+  els.blueCar.classList.add('running');
+
+  // 根据扭矩设定红车加速度
+  const targetRedAcc = STATE.torque; 
+  let lastTime = performance.now();
+
+  function loop(now) {
+    const dt = (now - lastTime) / 1000 * 6; // 时间缩放因子
+    lastTime = now;
+
+    // --- 红车物理 ---
+    if (STATE.redPos < PHYS.finishLine + 5) {
+      STATE.redAcc = targetRedAcc;
+      STATE.redVel += STATE.redAcc * dt;
+      STATE.redVel *= PHYS.friction; 
+      STATE.redPos += STATE.redVel * dt * 0.5;
+    } else {
+      STATE.redAcc = 0;
+    }
+
+    // --- 蓝车物理 ---
+    if (STATE.bluePos < PHYS.finishLine + 5) {
+      if (STATE.blueVel < 8) {
+         STATE.blueVel += STATE.blueAcc * dt;
+      }
+      STATE.bluePos += STATE.blueVel * dt * 0.5;
+    }
+
+    // 渲染
+    els.redCar.style.left = Math.min(92, STATE.redPos) + '%';
+    els.blueCar.style.left = Math.min(92, STATE.bluePos) + '%';
+    updateHud();
+
+    // 判定结束
+    if (STATE.redPos > PHYS.finishLine && STATE.bluePos > PHYS.finishLine) {
+       finishRace();
+       return;
+    }
+    
+    // 超时保护
+    if (STATE.redPos < PHYS.finishLine && STATE.redVel < 0.1 && STATE.torque < 0.2) {
+        finishRace();
+        return;
+    }
+
+    rafId = requestAnimationFrame(loop);
+  }
+  
+  rafId = requestAnimationFrame(loop);
+}
+
+function finishRace() {
+  cancelAnimationFrame(rafId);
+  STATE.isRunning = false;
+  STATE.finished = true;
+  
+  // 比赛结束，按钮文字变成“再次启动”
+  els.startBtn.textContent = "再次启动 ▶";
+  els.startBtn.disabled = false;
+
+  if (STATE.freeMode || STATE.completed) return;
+
+  // 任务后置检查
+  const winner = (STATE.redPos > STATE.bluePos) ? 'red' : 'blue'; 
+  const task = tasks[STATE.currentTask];
+  
+  if (task.checkEnd(winner)) {
+    showCheck();
+    setTimeout(nextStep, 1000);
+  } else {
+    showToast("结果似乎不符合预期，请调整扭矩重试");
+  }
+}
+
+/* ------------ 任务流控制 ------------ */
+function setStepUI(idx) {
+  STATE.currentTask = idx;
+  els.dots.forEach((d, i) => {
+    d.className = 'dot' + (i < idx ? ' done' : i === idx ? ' active' : '');
+  });
+  if (idx < tasks.length) {
+    els.taskStep.textContent = `步骤 ${idx + 1} / ${tasks.length}`;
+    els.taskText.innerHTML = tasks[idx].text;
+    els.taskHint.textContent = tasks[idx].hint;
+  }
+}
+
+function nextStep() {
+  els.dots[STATE.currentTask].classList.remove('active');
+  els.dots[STATE.currentTask].classList.add('done');
+  
+  STATE.currentTask++;
+  if (STATE.currentTask >= tasks.length) {
+    STATE.completed = true;
+    els.modal.style.display = 'flex';
+  } else {
+    setStepUI(STATE.currentTask);
+    els.dots[STATE.currentTask].classList.add('active');
+    // 自动复位，准备下一轮
+    resetPos();
+    els.startBtn.textContent = "启动引擎 ▶";
+  }
+}
+
+function resetAll() {
+  STATE.currentTask = 0;
+  STATE.completed = false;
+  STATE.torque = 3.0;
+  setStepUI(0);
+  resetPos();
+  els.startBtn.textContent = "启动引擎 ▶";
+  updateHud();
+  els.modal.style.display = 'none';
+  if (!STATE.freeMode) showToast("已重置任务");
+}
+
+/* ------------ 交互事件 ------------ */
+function changeTorque(delta) {
+  if (STATE.isRunning) return;
+  let newVal = STATE.torque + delta;
+  newVal = Math.max(0.5, Math.min(6.0, newVal)); // 限制范围
+  STATE.torque = newVal;
+  updateHud();
+}
+
+els.btnInc.onclick = () => changeTorque(0.5);
+els.btnDec.onclick = () => changeTorque(-0.5);
+els.startBtn.onclick = handleStartClick; // 绑定优化后的点击事件
+
+// 底部工具栏
+document.getElementById('resetStepBtn').onclick = resetAll;
+document.getElementById('freeBtn').onclick = () => {
+  STATE.freeMode = !STATE.freeMode;
+  const btn = document.getElementById('freeBtn');
+  btn.textContent = STATE.freeMode ? "退出自由模式" : "自由模式";
+  
+  if (STATE.freeMode) {
+    els.taskCard.style.opacity = 0.3;
+    els.taskCard.style.filter = 'grayscale(1)';
+  } else {
+    els.taskCard.style.opacity = 1;
+    els.taskCard.style.filter = 'none';
+    resetAll();
+  }
+};
+
+// 自动演示
+document.getElementById('autoDemoBtn').onclick = async () => {
+  if (STATE.isRunning || STATE.freeMode) return;
+  const autoBtn = document.getElementById('autoDemoBtn');
+  autoBtn.disabled = true;
+  
+  resetAll();
+  
+  // Step 1: Low
+  STATE.torque = 1.0; updateHud();
+  await runRacePromise(); 
+  showCheck(); await wait(800);
+  
+  // Step 2: Mid
+  STATE.torque = 3.0; updateHud();
+  await runRacePromise();
+  showCheck(); await wait(800);
+  
+  // Step 3: High
+  STATE.torque = 5.0; updateHud();
+  await runRacePromise();
+  
+  STATE.completed = true;
+  els.modal.style.display = 'flex';
+  autoBtn.disabled = false;
+};
+
+// 辅助函数
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+function runRacePromise() {
+  return new Promise(resolve => {
+    // 劫持 finishRace 的一部分逻辑来 resolve
+    const originalFinish = finishRace;
+    finishRace = function() {
+      originalFinish();
+      finishRace = originalFinish; // 还原
+      setTimeout(() => {
+        if(STATE.currentTask < tasks.length -1) resetPos();
+        resolve();
+      }, 1000);
+    };
+    handleStartClick(); // 使用新的启动逻辑
+  });
+}
+
+function showToast(msg) {
+  els.toast.textContent = msg;
+  els.toast.classList.add('show');
+  setTimeout(() => els.toast.classList.remove('show'), 2000);
+}
+
+function showCheck() {
+  els.checkmark.classList.add('active');
+  setTimeout(() => els.checkmark.classList.remove('active'), 600);
+}
+
+els.okBtn.onclick = () => els.modal.style.display = 'none';
+
+// 初始化
+resetAll();
+</script>
+</body>
+</html>
