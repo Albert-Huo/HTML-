@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1" />
+<title>高中物理必修1 实验3：测量匀变速直线运动物体的加速度（拟合直线法）</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --ink:#e9f2ff;
+
+    --panel-bg: rgba(15,15,15,0.55);
+    --line: rgba(255,255,255,0.12);
+
+    --zPanel: 12;
+    --zResults: 11;
+    --zStats: 10;
+
+    --dragShadow: 0 18px 48px rgba(0,0,0,0.55);
+    /* 纸带默认占比：调小一点，减少“堆叠拥挤感” */
+    --tapeH: 26;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    background:#141518; color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
+    margin:0; padding:10px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+
+  /* 顶部区域：把“三按钮”并入同一行，减少纵向堆叠 */
+  #topRow{
+    width:100%; max-width:980px;
+    display:grid;
+    grid-template-columns: 1fr auto;
+    gap:10px;
+    align-items:stretch;
+  }
+
+  /* 顶部彩条 */
+  #spectrum{
+    position:relative; width:100%; max-width:980px; height:40px;
+    border-radius:10px; overflow:hidden;
+    box-shadow:0 0 15px rgba(255,255,255,0.15);
+    margin:0 0 12px;
+    background:#000;
+    flex-shrink:0;
+  }
+  #spectrum::before{
+    content:""; position:absolute; inset:0; border-radius:inherit;
+    background: linear-gradient(90deg,
+      #ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,
+      #ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000
+    );
+    background-size:200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow{ 0%{background-position:0% 0} 100%{background-position:-100% 0} }
+
+  /* 步骤卡 */
+  .task-card{
+    width:100%; max-width:980px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:10px 12px;
+    backdrop-filter: blur(6px);
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:10px; align-items:center;
+    transition:opacity .2s, filter .2s;
+  }
+
+  /* 顶部右侧三按钮：更紧凑、更不抢占空间 */
+  .toolbar{
+    width:auto; max-width:none;
+    display:flex; gap:8px;
+    margin:0;
+    justify-content:flex-end;
+    align-items:stretch;
+  }
+  .toolbar button{
+    min-width: 96px;
+    padding:10px 10px;
+    border-radius:12px;
+    font-size:13px;
+  }
+  .task-card.dim{ opacity:.45; filter: grayscale(0.35); }
+  .task-step{
+    background:rgba(255,255,255,0.15);
+    border-radius:8px;
+    padding:6px 10px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+  .task-text{ line-height:1.6; color:var(--ink); }
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.12); }
+  .dot.active{ background:var(--warn); }
+  .dot.done{ background:var(--accent); outline-color: rgba(61,220,151,0.5); }
+
+  /* 舞台 */
+  #stageWrap{ width:100%; max-width:980px; height:min(62vh,560px); margin-top:10px; }
+  #stage{
+    position:relative; width:100%; height:100%;
+    background:#0b0e14;
+    border-radius:14px; overflow:hidden;
+    box-shadow:0 12px 30px rgba(0,0,0,.35);
+    border:1px solid rgba(255,255,255,0.08);
+    touch-action:none;
+    background-image:
+      radial-gradient(circle at 70% 25%, rgba(255,255,255,0.06), transparent 40%),
+      radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 45%);
+  }
+
+  /* 问号 */
+  .helpBtn{
+    position:absolute; left:10px; top:10px; z-index:60;
+    width:38px; height:38px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(0,0,0,0.35);
+    color:#eaf2ff;
+    font-weight:900;
+    cursor:pointer;
+    backdrop-filter: blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    transition:.15s;
+    user-select:none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .helpBtn:hover{ background: rgba(255,255,255,0.10); }
+  .helpBtn:active{ transform: scale(.98); }
+  .helpMask{
+    position:absolute; inset:0; z-index:70;
+    background: rgba(0,0,0,0.52);
+    display:none;
+    align-items:flex-start;
+    justify-content:flex-start;
+    padding:10px;
+  }
+  .helpMask.show{ display:flex; }
+  .helpCard{
+    margin-top:54px;
+    width:min(600px, 92%);
+    background: rgba(15,15,15,0.80);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:14px;
+    padding:12px 12px;
+    backdrop-filter: blur(8px);
+    color:#dbe7ff;
+    line-height:1.55;
+    font-size:12.5px;
+    box-shadow:0 16px 50px rgba(0,0,0,0.45);
+  }
+  .helpCard b{ color:#fff; }
+  .helpCard .mini{ margin-top:8px; font-size:12px; opacity:.86; }
+  .helpCard .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .kbd{
+    display:inline-flex; align-items:center; gap:6px;
+    background: rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:999px;
+    padding:6px 10px;
+    color:#eaf2ff;
+    font-size:12px;
+    white-space:nowrap;
+  }
+
+  /* 轨道与小车 */
+  .track{
+    position:absolute; left:0; right:0; top:88px; height:140px;
+    pointer-events:none;
+  }
+  .rail{
+    position:absolute; left:10%; right:10%; top:86px; height:8px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.20), rgba(255,255,255,0.07));
+    border-radius:999px;
+    box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+  }
+  .dotter{
+    position:absolute; top:46px;
+    width:124px; height:60px;
+    border-radius:14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.05));
+    border:1px solid rgba(255,255,255,0.14);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.32);
+    display:flex; flex-direction:column;
+    padding:8px 10px;
+    gap:6px;
+    backdrop-filter: blur(6px);
+    z-index:4;
+  }
+  .dotter .label{
+    font-size:11px; color:#cfe2ff; opacity:.92; font-weight:900;
+    letter-spacing:.2px;
+  }
+  .dotter .display{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:6px;
+    font-variant-numeric: tabular-nums;
+    font-size:12px; color:#eaf2ff;
+  }
+  .dotter .lamp{
+    width:10px; height:10px; border-radius:50%;
+    background: rgba(255,183,77,0.25);
+    outline:2px solid rgba(255,183,77,0.18);
+    box-shadow: 0 0 14px rgba(255,183,77,0.18);
+  }
+  .dotter.running .lamp{
+    background: rgba(255,183,77,0.95);
+    outline-color: rgba(255,183,77,0.40);
+    box-shadow: 0 0 22px rgba(255,183,77,0.35);
+    animation: blink .22s linear infinite;
+  }
+  @keyframes blink{ 0%{ filter:brightness(0.9);} 50%{ filter:brightness(1.25);} 100%{ filter:brightness(0.9);} }
+
+  .cart{
+    position:absolute; top:62px;
+    width:82px; height:44px;
+    border-radius:14px;
+    background: linear-gradient(180deg, rgba(122,170,255,0.95), rgba(56,98,190,0.95));
+    border:1px solid rgba(255,255,255,0.22);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900; color:#071328;
+    z-index:4;
+    pointer-events:none;
+    will-change: transform;
+    transition:none; /* 运动时无过渡；回位时 JS 临时加过渡 */
+  }
+  .wheel{
+    position:absolute; bottom:-9px;
+    width:16px; height:16px; border-radius:50%;
+    background:#111; border:2px solid rgba(255,255,255,0.25);
+    box-shadow: inset 0 0 10px rgba(255,255,255,0.12);
+  }
+  .wheel.l{ left:16px; }
+  .wheel.r{ right:16px; }
+
+  /* 砝码显示（自由模式可变） */
+  .weights{ position:absolute; left:6px; top:-18px; display:flex; gap:4px; }
+  .w{
+    width:14px; height:16px;
+    border-radius:4px;
+    background: rgba(0,0,0,0.55);
+    border:1px solid rgba(255,255,255,0.22);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.35);
+  }
+
+  /* 纸带 */
+  .tapeWrap{
+    position:absolute; left:12px; right:12px; bottom:12px;
+    height: calc(var(--tapeH) * 1%);
+    border-radius:12px;
+    background: rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.10);
+    overflow:hidden;
+    z-index:2;
+    transition: height .18s ease;
+  }
+  .tapeTitle{
+    position:absolute; left:10px; top:10px; z-index:2;
+    font-size:12px; color:#dbe7ff; opacity:.95;
+    background: rgba(0,0,0,0.35);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:999px;
+    padding:4px 10px;
+    backdrop-filter: blur(6px);
+  }
+  .tapeHint{
+    position:absolute; right:10px; top:10px; z-index:2;
+    font-size:12px; color:#ffd54f; opacity:.92;
+    background: rgba(0,0,0,0.35);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:999px;
+    padding:4px 10px;
+    backdrop-filter: blur(6px);
+    text-align:right;
+  }
+  canvas#tape{ position:absolute; left:0; top:0; width:100%; height:100%; }
+
+  /* 抽屉 */
+  .dock{ position:absolute; pointer-events:auto; user-select:none; transition: box-shadow .12s ease, transform .12s ease; }
+  .dock.dragging{ box-shadow: var(--dragShadow); transform: scale(1.01); transition:none; }
+  .panelDock{ z-index: var(--zPanel); width:min(360px, 70%); }
+  .resultsDock{ z-index: var(--zResults); width:min(560px, 92%); }
+  .statsDock{ z-index: var(--zStats); width:min(520px, 96%); } /* 统计表更宽一点 */
+
+  .panelHead,.resultsHead,.statsHead{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px;
+    background: rgba(15,15,15,0.50);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:10px 10px;
+    backdrop-filter: blur(6px);
+    cursor: grab;
+  }
+  .panelHead{ background: var(--panel-bg); border-color: var(--line); }
+  .panelHead:active,.resultsHead:active,.statsHead:active{ cursor: grabbing; }
+
+  .title{
+    font-weight:900; font-size:13px; color:#9bd3ff; letter-spacing:.2px;
+    display:flex; align-items:center; gap:8px;
+    flex-wrap:wrap;
+  }
+  .chip{
+    font-size:12px; opacity:.88;
+    padding:3px 8px; border-radius:999px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(0,0,0,0.28);
+    color:#eaf2ff;
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+  }
+  .iconBtn{
+    border:none; cursor:pointer;
+    padding:8px 10px;
+    border-radius:10px;
+    background: rgba(255,255,255,0.10);
+    color:#fff;
+    font-weight:900;
+    transition:.15s;
+    white-space:nowrap;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .iconBtn:hover{ background: rgba(255,255,255,0.16); }
+  .iconBtn:active{ transform: scale(.98); }
+
+  .panelBody,.resultsBody,.statsBody{
+    margin-top:8px;
+    background: rgba(15,15,15,0.50);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:10px 12px;
+    backdrop-filter: blur(6px);
+    overflow:hidden;
+    transition: max-height .18s ease, opacity .18s ease, transform .18s ease, padding .18s ease;
+    transform-origin: top;
+    max-height: 520px;
+    user-select:text;
+  }
+  .panelBody{ background: var(--panel-bg); border-color: var(--line); }
+  .resultsBody.scroll,.statsBody.scroll{ overflow:auto; -webkit-overflow-scrolling: touch; }
+  .collapsed{
+    max-height:0 !important;
+    padding-top:0 !important; padding-bottom:0 !important;
+    opacity:0;
+    transform: translateY(8px) scale(0.99);
+    border-color: transparent !important;
+  }
+
+  .row{
+    display:grid; grid-template-columns: 110px 1fr 88px; gap:8px; align-items:center;
+    margin:8px 0;
+  }
+  .row label{ font-size:12px; color:#cfe2ff; opacity:.92; font-weight:900; }
+  input[type="range"]{ width:100%; }
+  .val{
+    text-align:right;
+    font-variant-numeric: tabular-nums;
+    font-size:12px; color:#eaf2ff;
+    opacity:.95;
+    white-space:nowrap;
+    user-select:text;
+  }
+
+  .miniBtns{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .miniBtns button{
+    padding:9px 12px;
+    background:#3a3d45;
+    color:#fff; border:none; border-radius:10px;
+    cursor:pointer; transition:.15s;
+    user-select:none;
+    flex: 1 1 140px;
+    white-space:nowrap;
+    font-weight:900;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .miniBtns button:hover{ background:#4b4f59; }
+  .miniBtns button:active{ transform:scale(.98); }
+  .miniBtns button.primary{
+    background: linear-gradient(180deg, rgba(61,220,151,0.95), rgba(26,125,88,0.95));
+    color:#062018;
+  }
+  .miniBtns button.ghost{ background:transparent; border:1px solid rgba(255,255,255,0.25); }
+  .miniBtns button:disabled{ opacity:.55; cursor:not-allowed; transform:none; }
+
+  .tabs{ display:flex; gap:6px; align-items:center; }
+  .tab{
+    padding:7px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.06);
+    font-size:12px;
+    cursor:pointer;
+    color:#eaf2ff;
+    user-select:none;
+    transition:.15s;
+    white-space:nowrap;
+    font-weight:900;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab.active{
+    border-color: rgba(61,220,151,0.35);
+    background: rgba(61,220,151,0.14);
+  }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:4px 10px; border-radius:999px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(0,0,0,0.35);
+    color:#eaf2ff; font-size:12px;
+    margin-right:6px; margin-bottom:6px;
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+  }
+  .pill .k{ opacity:.75; font-weight:900; }
+
+  .table{
+    width:100%; border-collapse:collapse; font-size:12px; color:#eaf2ff;
+    overflow:hidden; border-radius:10px;
+  }
+  .table th,.table td{
+    padding:6px 8px;
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    text-align:center;
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+  }
+  .table th{ color:#cfe2ff; opacity:.92; font-weight:900; background: rgba(255,255,255,0.05); }
+  .table tr:last-child td{ border-bottom:none; }
+
+  .graphWrap{
+    width:100%;
+    height: 180px;
+    border-radius:12px;
+    background: rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.10);
+    overflow:hidden;
+    margin-top:8px;
+    display:block;
+  }
+  canvas#graph{ width:100%; height:100%; display:block; }
+
+  /* 三按钮（保留原样式能力，但默认改为顶部右侧紧凑布局） */
+  .toolbar button{
+    flex:0 0 auto;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color:#fff;
+    cursor:pointer;
+    font-weight:900;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity .2s, filter .2s;
+  }
+  .toolbar button:hover{ background: rgba(255,255,255,0.12); }
+  .toolbar button:disabled{ opacity:.45; cursor:not-allowed; filter: grayscale(0.5); }
+
+  /* 顶部三按钮：低调的“红/黄/绿灯”风格（不改位置/尺寸，只做质感优化） */
+  .toolbar .trafficBtn{
+    position:relative;
+    /* 整体轮廓上色：轻微渐变 + 低饱和的内发光，避免过于张扬 */
+    border-color: rgba(var(--tl-rgb,255,255,255), 0.30);
+    background:
+      linear-gradient(180deg,
+        rgba(var(--tl-rgb,255,255,255), 0.18),
+        rgba(var(--tl-rgb,255,255,255), 0.08)
+      );
+    box-shadow:
+      0 10px 26px rgba(0,0,0,0.22),
+      inset 0 1px 0 rgba(255,255,255,0.06),
+      inset 0 0 0 1px rgba(var(--tl-rgb,255,255,255), 0.10);
+    transition: background .18s, border-color .18s, box-shadow .18s, transform .08s;
+  }
+  .toolbar .trafficBtn:hover{
+    background:
+      linear-gradient(180deg,
+        rgba(var(--tl-rgb,255,255,255), 0.22),
+        rgba(var(--tl-rgb,255,255,255), 0.11)
+      );
+    border-color: rgba(var(--tl-rgb,255,255,255), 0.40);
+    box-shadow:
+      0 14px 32px rgba(0,0,0,0.26),
+      inset 0 1px 0 rgba(255,255,255,0.07),
+      inset 0 0 0 1px rgba(var(--tl-rgb,255,255,255), 0.14);
+  }
+  .toolbar .trafficBtn:active{ transform: scale(0.99); }
+  .toolbar .trafficBtn:focus-visible{
+    outline: 2px solid rgba(var(--tl-rgb,255,255,255), 0.22);
+    outline-offset: 2px;
+  }
+  .toolbar .trafficBtn:disabled{
+    border-color: rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.05);
+    box-shadow: none;
+  }
+  .toolbar .trafficRed{ --tl-rgb: 255, 107, 107; }   /* 柔和红 */
+  .toolbar .trafficYellow{ --tl-rgb: 255, 197, 92; } /* 柔和黄 */
+  .toolbar .trafficGreen{ --tl-rgb: 61, 220, 151; }  /* 沿用主题绿 */
+
+  /* 对号 */
+  .checkmark{
+    position:absolute; z-index:90; left:50%; top:22%;
+    transform: translate(-50%,-50%) scale(0.62);
+    width:120px; height:120px; border-radius:50%;
+    background: rgba(61,220,151,0.15);
+    border: 3px solid var(--accent);
+    display:none; align-items:center; justify-content:center;
+    box-shadow: 0 0 40px rgba(61,220,151,.35), inset 0 0 18px rgba(61,220,151,.18);
+    animation: pop .55s ease-out;
+    pointer-events:none;
+  }
+  .checkmark.active{ display:flex; }
+  .checkmark > div{
+    width:60px; height:30px;
+    border-left: 8px solid var(--accent);
+    border-bottom: 8px solid var(--accent);
+    transform: rotate(-45deg) translateY(-6px);
+  }
+  @keyframes pop{
+    0%{ transform:translate(-50%,-50%) scale(.4); opacity:.2; }
+    60%{ transform:translate(-50%,-50%) scale(1.08); opacity:1; }
+    100%{ transform:translate(-50%,-50%) scale(.62); }
+  }
+
+  /* toast */
+  .toast{
+    position:fixed;
+    left:50%; bottom:22px;
+    transform:translateX(-50%) translateY(18px);
+    background:rgba(0,0,0,0.78);
+    border:1px solid rgba(255,255,255,0.14);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:999px;
+    font-weight:900;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s, transform .2s;
+    z-index:9999;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0px); }
+
+  /* 完成弹窗 */
+  .mask{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.55);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:999;
+  }
+  .modal{
+    width:min(520px, 92%);
+    background:rgba(15,15,15,0.88);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:16px;
+    padding:14px 14px;
+    box-shadow:0 24px 80px rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px);
+  }
+  .modal h3{ margin:0 0 8px; }
+  .modal p{ margin:8px 0 0; line-height:1.6; color:#dce9ff; }
+  .modal button{
+    width:100%;
+    margin-top:12px;
+    padding:12px 10px;
+    border-radius:12px;
+    border:0;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .modal button.ok{
+    background:linear-gradient(180deg, rgba(61,220,151,0.95), rgba(26,125,88,0.95));
+    color:#062018;
+  }
+
+  /* 说明 */
+  .explain{
+    width:100%; max-width:980px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:12px 14px;
+    color:#e9f2ffcc;
+    line-height:1.7;
+    margin-bottom:18px;
+  }
+  .explain h3{ margin:0 0 8px; color:#fff; }
+  .explain ul{ margin:0; padding-left:18px; }
+  .explain li{ margin:6px 0; }
+
+  @media (max-width:620px){
+    #topRow{ grid-template-columns: 1fr; }
+    .task-card{ grid-template-columns: 1fr; gap:6px; }
+    .task-step{ width:fit-content; }
+    .progress-dots{ justify-content:flex-start; }
+    .panelDock{ width:min(360px, 86%); }
+    .graphWrap{ height:170px; }
+    .toolbar{ width:100%; justify-content:flex-start; flex-wrap:wrap; flex-direction:row; }
+    .toolbar button{ min-width: 104px; }
+    .statsDock{ width:min(560px, 98%); }
+  }
+</style>
+</head>
+
+<body>
+  <div id="spectrum"></div>
+
+  <!-- 顶部：步骤卡 + 三按钮合并为一行，减少页面堆叠 -->
+  <div id="topRow">
+    <div class="task-card" id="taskCard">
+      <div class="task-step" id="taskStep">步骤 1 / 5</div>
+      <div class="task-text">
+        <div id="taskText">点击 <b>开始打点</b>，相邻两点时间间隔为 <b>0.02 s</b>。</div>
+        <div class="task-hint" id="taskHint">提示：选点时要“隔 4 个点选 1 个点”，这样选取 5 个点后可做 v-t 拟合。</div>
+      </div>
+      <div class="progress-dots">
+        <span class="dot active" id="dot1"></span>
+        <span class="dot" id="dot2"></span>
+        <span class="dot" id="dot3"></span>
+        <span class="dot" id="dot4"></span>
+        <span class="dot" id="dot5"></span>
+      </div>
+    </div>
+
+    <!-- 三按钮（紧凑在右侧） -->
+    <div class="toolbar">
+      <button id="resetBtn" class="trafficBtn trafficRed">步骤重置</button>
+      <button id="autoDemoBtn" class="trafficBtn trafficYellow">自动演示</button>
+      <button id="freeBtn" class="trafficBtn trafficGreen">自由模式</button>
+    </div>
+  </div>
+
+  <div id="stageWrap">
+    <div id="stage">
+
+      <button class="helpBtn" id="helpBtn" title="实验说明">？</button>
+      <div class="helpMask" id="helpMask">
+        <div class="helpCard">
+          <div><b>选点规则（关键）：</b>打点计时器相邻点 <b>Δt₀ = 0.02 s</b>。</div>
+          <div class="mini">
+            为了让用于计算的时间间隔为 <b>0.1 s</b>：你需要 <b>每次选点都隔 4 个点</b>（索引差为 <b>5</b>）。<br/>
+            例如：选 <b>i、i+5、i+10、i+15、i+20</b>（共 5 个点）→ 得到 4 个速度点，每个速度点对应 <b>0.1 s</b>。<br/>
+            在 <b>v-t 图</b> 对速度点拟合：<b>v = kt + b</b>，斜率 <b>k≈a</b>。
+          </div>
+          <div class="row">
+            <span class="kbd">纸带上每 5 个点会有“短刻度”提示</span>
+            <span class="kbd">被选中的点会高亮圈</span>
+            <span class="kbd">选错只提示，不自动改画面</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="track">
+        <div class="rail"></div>
+
+        <div class="dotter" id="dotter">
+          <div class="label">打点计时器</div>
+          <div class="display">
+            <span id="dotterT">t=0.00s</span>
+            <span class="lamp"></span>
+          </div>
+        </div>
+
+        <div class="cart" id="cart">
+          <div class="weights" id="weights"></div>
+          小车
+          <span class="wheel l"></span><span class="wheel r"></span>
+        </div>
+      </div>
+
+      <!-- 实验控制抽屉 -->
+      <div class="dock panelDock" id="panelDock">
+        <div class="panelHead" id="panelHead">
+          <div class="title">
+            实验控制
+            <span class="chip" id="modeChip">步骤</span>
+            <span class="chip" id="dtChip">相邻Δt₀=0.02s</span>
+            <span class="chip" id="selChip">选点Δt=0.10s</span>
+            <span class="chip" id="massChip">砝码×0</span>
+          </div>
+          <button class="iconBtn" id="panelToggleBtn" title="折叠/展开">收起</button>
+        </div>
+
+        <div class="panelBody" id="panelBody">
+          <div class="row">
+            <label>初速度 v₀</label>
+            <input id="v0" type="range" min="0" max="1.2" step="0.01" value="0.20">
+            <div class="val" id="v0Val">0.20 m/s</div>
+          </div>
+
+          <div class="row">
+            <label>基准加速度 a₀</label>
+            <input id="acc" type="range" min="0.20" max="2.50" step="0.01" value="1.10">
+            <div class="val" id="accVal">1.10 m/s²</div>
+          </div>
+
+          <div class="row">
+            <label>点数 N</label>
+            <input id="nDots" type="range" min="28" max="60" step="1" value="46">
+            <div class="val" id="nDotsVal">46</div>
+          </div>
+
+          <div class="miniBtns">
+            <button class="primary" id="runBtn">开始打点</button>
+            <button class="ghost" id="clearSelBtn">清除选点</button>
+            <button id="confirmSelBtn" disabled>确认选点</button>
+            <button id="vtBtn">制作 v-t 图</button>
+            <button class="ghost" id="fitBtn">拟合直线</button>
+          </div>
+
+          <!-- 自由模式砝码控制 -->
+          <div id="massBox" style="margin-top:10px; padding-top:10px; border-top:1px dashed rgba(255,255,255,0.12); display:none;">
+            <div style="font-size:12px; color:#cfe2ff; opacity:.92; line-height:1.55;">
+              <b>自由模式：</b>点击按钮给小车 <b>加砝码</b> 或 <b>减砝码</b>。砝码越多，模拟中“有效加速度”越小。
+            </div>
+            <div class="miniBtns" style="margin-top:8px;">
+              <button id="addMassBtn">+ 砝码</button>
+              <button class="ghost" id="subMassBtn">- 砝码</button>
+            </div>
+          </div>
+
+          <div style="margin-top:10px; font-size:12px; color:#cfe2ff; opacity:.92; line-height:1.55;">
+            选点规则：必须选 <b>5 个点</b>，且每相邻两次选点要 <b>隔 4 个点</b>（索引差 <b>5</b>）。<br/>
+            完成后用 <b>统计面板</b> 记录 <b>3 次</b>，看均值更稳。
+          </div>
+        </div>
+      </div>
+
+      <!-- 结果抽屉 -->
+      <div class="dock resultsDock" id="resultsDock">
+        <div class="resultsHead" id="resultsHead">
+          <div class="tabs">
+            <div class="tab active" id="tabData">数据</div>
+            <div class="tab" id="tabVT">v-t 图</div>
+          </div>
+          <button class="iconBtn" id="resultsToggleBtn">展开</button>
+        </div>
+
+        <div class="resultsBody scroll collapsed" id="resultsBody">
+          <div id="panelData">
+            <div>
+              <div id="pills"></div>
+              <table class="table" style="margin-top:8px;">
+                <thead>
+                  <tr>
+                    <th>点对</th>
+                    <th>t 中点 (s)</th>
+                    <th>v=Δx/0.1 (m/s)</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody">
+                  <tr><td colspan="3" style="opacity:.7;">按“隔 4 个点选 1 个点”，选满 5 点后会生成 4 个速度点。</td></tr>
+                </tbody>
+              </table>
+              <div style="margin-top:8px; font-size:12px; opacity:.85; line-height:1.55;">
+                说明：速度点取两次选点之间的 <b>平均速度</b>（时间间隔 0.1s），对应 <b>中点时刻</b>。
+              </div>
+            </div>
+          </div>
+
+          <div id="panelVT" style="display:none;">
+            <div class="graphWrap" id="graphWrap">
+              <canvas id="graph"></canvas>
+            </div>
+            <div style="opacity:.82;font-size:12px;margin-top:6px; line-height:1.55;">
+              提示：点击“拟合直线”得到斜率 <b>k≈a</b>。拟合后可去统计面板“记录本次”。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 统计面板 -->
+      <div class="dock statsDock" id="statsDock">
+        <div class="statsHead" id="statsHead">
+          <div class="title">测量统计 <span class="chip" id="trialChip">0 次</span></div>
+          <button class="iconBtn" id="statsToggleBtn">展开</button>
+        </div>
+
+        <div class="statsBody scroll collapsed" id="statsBody">
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+            <button class="iconBtn" id="recordBtn" style="background:rgba(61,220,151,0.16); border:1px solid rgba(61,220,151,0.25);">记录本次</button>
+            <button class="iconBtn" id="clearStatsBtn">清空记录</button>
+          </div>
+
+          <div style="font-size:12px; opacity:.85; line-height:1.55; margin-bottom:8px;">
+            记录条件：需要完成 <b>拟合直线</b>（得到 a）。<br/>
+            <span style="color:#ffd54f;">自由模式建议：加/减砝码 → 重打点 → 选点 → 拟合 → 记录。</span>
+          </div>
+
+          <table class="table" style="margin-top:6px;">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>砝码</th>
+                <th>v₀</th>
+                <th>a₀</th>
+                <th>a_eff</th>
+                <th>a(拟合)</th>
+              </tr>
+            </thead>
+            <tbody id="statsTbody">
+              <tr><td colspan="6" style="opacity:.7;">暂无记录</td></tr>
+            </tbody>
+          </table>
+
+          <div style="margin-top:10px;">
+            <span class="pill"><span class="k">均值 a</span><b id="avgA">—</b></span>
+            <span class="pill"><span class="k">最近一次 a</span><b id="lastA">—</b></span>
+          </div>
+
+          <div style="margin-top:10px; font-size:12px; opacity:.8; line-height:1.55;">
+            说明：a_eff 为当前砝码下模拟“有效加速度”，用于生成纸带；a(拟合)为你从 v-t 直线斜率得到的测量值。
+          </div>
+        </div>
+      </div>
+
+      <!-- 纸带 -->
+      <div class="tapeWrap" id="tapeWrap">
+        <div class="tapeTitle">纸带（白底黑点）</div>
+        <div class="tapeHint" id="tapeHint">相邻点 0.02s；选点需“隔4点选1点”（Δt=0.10s）</div>
+        <canvas id="tape"></canvas>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="mask" id="doneMask">
+    <div class="modal">
+      <h3>完成：你用拟合得到加速度 ✅</h3>
+      <p>
+        你已完成：选点（隔4点）→ 制作 v-t 图 → 拟合直线得到 <b>a</b>。<br/>
+        <b>建议：</b>进入 <b>自由模式</b>，加/减砝码改变数据，记录 <b>3 次</b>，看 <b>均值</b> 更稳。
+      </p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h3>原理说明</h3>
+    <ul>
+      <li>打点计时器相邻点时间间隔：<b>Δt₀ = 0.02 s</b>。</li>
+      <li>为了让用于计算速度的时间间隔为 <b>0.1 s</b>：选点时每次要 <b>隔 4 个点</b>（索引差为 5）。</li>
+      <li>对每段：<b>v = Δx / 0.1</b>，并把该速度点放在这段的 <b>中点时刻</b>。</li>
+      <li>在 <b>v-t</b> 图上做直线拟合：<b>v = kt + b</b>，斜率 <b>k≈a</b>。</li>
+      <li>自由模式下砝码改变“有效加速度”，从而改变纸带间距与拟合结果，便于多次测量取均值。</li>
+    </ul>
+  </div>
+
+<script>
+/* ========= 工具 ========= */
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+/* ✅ 兼容未来可能出现的重复 id：一次更新多个 */
+function setTextAll(selector, text){
+  document.querySelectorAll(selector).forEach(el => el.textContent = text);
+}
+
+/* toast */
+const toastEl = $('#toast');
+function showToast(msg){
+  toastEl.textContent = msg || '提示';
+  toastEl.classList.add('show');
+  clearTimeout(showToast.t);
+  showToast.t = setTimeout(()=>toastEl.classList.remove('show'), 1300);
+}
+/* check */
+const checkmark = $('#checkmark');
+function showCheck(){
+  checkmark.classList.add('active');
+  clearTimeout(showCheck.t);
+  showCheck.t = setTimeout(()=>checkmark.classList.remove('active'), 520);
+}
+
+/* ========= 模式/步骤 ========= */
+let step = 1;
+let freeMode = false;
+let autoPlaying = false;
+let autoSim = false;
+function allowInput(){ return !autoPlaying || autoSim; }
+
+function setDimWhenFree(on){
+  $('#taskCard').classList.toggle('dim', on);
+  $('#autoDemoBtn').disabled = on;
+}
+function setModeChip(){
+  $('#modeChip').textContent = freeMode ? '自由' : '步骤';
+  $('#massBox').style.display = freeMode ? '' : 'none';
+}
+function setStep(n){
+  step = clamp(n,1,5);
+  $('#taskStep').textContent = `步骤 ${step} / 5`;
+  for(let i=1;i<=5;i++){
+    const d = $('#dot'+i);
+    d.classList.remove('active','done');
+    if(i<step) d.classList.add('done');
+    if(i===step) d.classList.add('active');
+  }
+  const t = $('#taskText');
+  const h = $('#taskHint');
+  const tips = [
+    ['点击 <b>开始打点</b>，相邻两点时间间隔为 <b>0.02 s</b>。', '提示：后续选点要“隔 4 个点选 1 个点”，才能保证 Δt=0.1s。'],
+    ['在纸带上选择 <b>5 个点</b>，且每次都要 <b>隔 4 个点</b>。', '提示：示例：i、i+5、i+10、i+15、i+20。'],
+    ['点击 <b>确认选点</b>（代表你已完成“读数记录”）。', '提示：这一步必须点确认，才能进入 v-t。'],
+    ['点击 <b>制作 v-t 图</b>，查看速度点。', '提示：每段速度 v=Δx/0.1s，对应中点时刻。'],
+    ['点击 <b>拟合直线</b> 得到加速度 a。完成后建议自由模式多次测量取均值。', '提示：拟合后去统计面板“记录本次”。'],
+  ];
+  t.innerHTML = tips[step-1][0];
+  h.textContent = tips[step-1][1];
+}
+setStep(1);
+
+/* ========= 帮助 ========= */
+$('#helpBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  $('#helpMask').classList.toggle('show');
+});
+$('#helpMask').addEventListener('click', (e)=>{
+  if(e.target.id==='helpMask') $('#helpMask').classList.remove('show');
+});
+
+/* ========= 抽屉：层级、拖动、吸附 ========= */
+const stage = $('#stage');
+function bringToFront(which){
+  if(which==='panel'){
+    document.documentElement.style.setProperty('--zPanel','15');
+    document.documentElement.style.setProperty('--zResults','12');
+    document.documentElement.style.setProperty('--zStats','11');
+  }else if(which==='results'){
+    document.documentElement.style.setProperty('--zResults','15');
+    document.documentElement.style.setProperty('--zPanel','12');
+    document.documentElement.style.setProperty('--zStats','11');
+  }else{
+    document.documentElement.style.setProperty('--zStats','15');
+    document.documentElement.style.setProperty('--zPanel','12');
+    document.documentElement.style.setProperty('--zResults','11');
+  }
+}
+const dockState = { panel:{userMoved:false}, results:{userMoved:false}, stats:{userMoved:false} };
+function getStageRect(){ return stage.getBoundingClientRect(); }
+function setDockPos(el, x, y){
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  el.style.right = 'auto';
+  el.style.bottom = 'auto';
+}
+function snapPoints(kind){
+  const s = getStageRect();
+  const pad = 10;
+  const el = (kind==='panel')? $('#panelDock') : (kind==='results'? $('#resultsDock') : $('#statsDock'));
+  const r = el.getBoundingClientRect();
+  const w = r.width, h = r.height;
+  const pts = [];
+  pts.push({x:pad, y:pad});
+  pts.push({x:s.width - w - pad, y:pad});
+  pts.push({x:pad, y:s.height - h - pad});
+  pts.push({x:s.width - w - pad, y:s.height - h - pad});
+
+  const tapeR = $('#tapeWrap').getBoundingClientRect();
+  const y = (tapeR.top - s.top) - h - 10;
+
+  if(kind==='results'){
+    pts.push({x:12, y:clamp(y, 78, s.height - h - pad)});
+    pts.push({x:(s.width - w)/2, y:clamp(y, 78, s.height - h - pad)});
+    pts.push({x:s.width - w - 12, y:clamp(y, 78, s.height - h - pad)});
+  }
+  if(kind==='stats'){
+    pts.push({x:12, y:clamp(y, 78, s.height - h - pad)});
+    pts.push({x:s.width - w - 12, y:clamp(y, 78, s.height - h - pad)});
+  }
+  return pts.map(p=>({ x:clamp(p.x, pad, s.width-w-pad), y:clamp(p.y, pad, s.height-h-pad) }));
+}
+function snapToNearest(kind, x, y){
+  const pts = snapPoints(kind);
+  let best = pts[0], bestD = Infinity;
+  for(const p of pts){
+    const d = (p.x-x)*(p.x-x) + (p.y-y)*(p.y-y);
+    if(d<bestD){ bestD=d; best=p; }
+  }
+  const dist = Math.sqrt(bestD);
+  return (dist<=26) ? best : {x,y};
+}
+function bindDraggable(el, headEl, kind){
+  let dragging=false;
+  let startX=0, startY=0, baseX=0, baseY=0;
+
+  function currentPos(){
+    const s = getStageRect();
+    const r = el.getBoundingClientRect();
+    return { x: r.left - s.left, y: r.top - s.top, w:r.width, h:r.height };
+  }
+
+  headEl.addEventListener('pointerdown', (e)=>{
+    if(!allowInput()) return;
+    if(e.target.closest('button') || e.target.classList.contains('tab')) return;
+    bringToFront(kind);
+    dragging=true;
+    el.classList.add('dragging');
+    headEl.setPointerCapture(e.pointerId);
+    const p = currentPos();
+    baseX=p.x; baseY=p.y;
+    startX=e.clientX; startY=e.clientY;
+    e.preventDefault();
+  });
+
+  headEl.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    const s = getStageRect();
+    const r = el.getBoundingClientRect();
+    const w = r.width, h = r.height;
+    const pad = 10;
+    let nx = baseX + (e.clientX - startX);
+    let ny = baseY + (e.clientY - startY);
+    nx = clamp(nx, pad, s.width - w - pad);
+    ny = clamp(ny, pad, s.height - h - pad);
+    setDockPos(el, nx, ny);
+    e.preventDefault();
+  });
+
+  headEl.addEventListener('pointerup', ()=>{
+    if(!dragging) return;
+    dragging=false;
+    el.classList.remove('dragging');
+    dockState[kind].userMoved = true;
+    const s = getStageRect();
+    const r = el.getBoundingClientRect();
+    const x = r.left - s.left;
+    const y = r.top - s.top;
+    const p = snapToNearest(kind, x, y);
+    setDockPos(el, p.x, p.y);
+  });
+  headEl.addEventListener('pointercancel', ()=>{
+    dragging=false;
+    el.classList.remove('dragging');
+  });
+}
+bindDraggable($('#panelDock'), $('#panelHead'), 'panel');
+bindDraggable($('#resultsDock'), $('#resultsHead'), 'results');
+bindDraggable($('#statsDock'), $('#statsHead'), 'stats');
+
+$('#panelDock').addEventListener('pointerdown', ()=>bringToFront('panel'));
+$('#resultsDock').addEventListener('pointerdown', ()=>bringToFront('results'));
+$('#statsDock').addEventListener('pointerdown', ()=>bringToFront('stats'));
+
+/* 折叠 */
+const panelBody = $('#panelBody');
+let panelCollapsed = false;
+$('#panelToggleBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  panelCollapsed = !panelCollapsed;
+  panelBody.classList.toggle('collapsed', panelCollapsed);
+  $('#panelToggleBtn').textContent = panelCollapsed ? '展开' : '收起';
+  bringToFront('panel');
+});
+
+const resultsBody = $('#resultsBody');
+let resultsCollapsed = true;
+function setResultsCollapsed(on){ resultsBody.classList.toggle('collapsed', on); }
+$('#resultsToggleBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  resultsCollapsed = !resultsCollapsed;
+  setResultsCollapsed(resultsCollapsed);
+  $('#resultsToggleBtn').textContent = resultsCollapsed ? '展开' : '收起';
+  bringToFront('results');
+});
+
+const statsBody = $('#statsBody');
+let statsCollapsed = true;
+function setStatsCollapsed(on){ statsBody.classList.toggle('collapsed', on); }
+$('#statsToggleBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  statsCollapsed = !statsCollapsed;
+  setStatsCollapsed(statsCollapsed);
+  $('#statsToggleBtn').textContent = statsCollapsed ? '展开' : '收起';
+  bringToFront('stats');
+});
+
+/* tabs */
+const tabData = $('#tabData');
+const tabVT = $('#tabVT');
+function setTab(which){
+  tabData.classList.toggle('active', which==='data');
+  tabVT.classList.toggle('active', which==='vt');
+  $('#panelData').style.display = (which==='data') ? '' : 'none';
+  $('#panelVT').style.display = (which==='vt') ? '' : 'none';
+  bringToFront('results');
+}
+tabData.addEventListener('click', ()=>{ if(allowInput()) setTab('data'); });
+tabVT.addEventListener('click', ()=>{ if(allowInput()) setTab('vt'); });
+
+/* ========= 关键时间 ========= */
+const DT0 = 0.02;
+const SKIP = 4;
+const GAP = SKIP + 1;      // 5
+const DT_SEL = DT0 * GAP;  // 0.10
+$('#dtChip').textContent = `相邻Δt₀=${DT0.toFixed(2)}s`;
+$('#selChip').textContent = `选点Δt=${DT_SEL.toFixed(2)}s`;
+
+/* ========= 参数/砝码 ========= */
+const v0Slider = $('#v0');
+const accSlider = $('#acc');
+const nDotsSlider = $('#nDots');
+const v0Val = $('#v0Val');
+const accVal = $('#accVal');
+const nDotsVal = $('#nDotsVal');
+
+let dotsN = +nDotsSlider.value;
+let v0 = +v0Slider.value;
+let aBase = +accSlider.value;
+
+/* 砝码：自由模式可改（影响“有效加速度”） */
+let massCount = 0;
+const m0 = 1.0;
+const mw = 0.4;
+function effectiveA(){
+  return aBase * (m0 / (m0 + mw*massCount));
+}
+function updateMassUI(){
+  $('#massChip').textContent = `砝码×${massCount}`;
+  const box = $('#weights');
+  box.innerHTML = '';
+  for(let i=0;i<massCount;i++){
+    const d = document.createElement('div');
+    d.className = 'w';
+    box.appendChild(d);
+  }
+}
+updateMassUI();
+
+function updateVals(){
+  v0Val.textContent = `${(+v0Slider.value).toFixed(2)} m/s`;
+  accVal.textContent = `${(+accSlider.value).toFixed(2)} m/s²`;
+  nDotsVal.textContent = `${(+nDotsSlider.value)}`;
+}
+[v0Slider, accSlider, nDotsSlider].forEach(el=>{
+  el.addEventListener('input', ()=>{
+    if(!allowInput()) return;
+    updateVals();
+    dotsN = +nDotsSlider.value;
+    v0 = +v0Slider.value;
+    aBase = +accSlider.value;
+  });
+});
+updateVals();
+
+/* 自由模式砝码按钮 */
+$('#addMassBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  if(!freeMode){ showToast('请先进入自由模式'); return; }
+  massCount = clamp(massCount+1, 0, 6);
+  updateMassUI();
+  showToast('已加砝码：请重新打点再测量');
+});
+$('#subMassBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  if(!freeMode){ showToast('请先进入自由模式'); return; }
+  massCount = clamp(massCount-1, 0, 6);
+  updateMassUI();
+  showToast('已减砝码：请重新打点再测量');
+});
+
+/* ========= 数据 ========= */
+let xs_m = [];
+let xs_px = [];
+let selected = [];
+let showCount = 0;
+
+let lastFit = null;
+let lastAFit = null;
+let lastFitMeta = null;
+
+function genData(){
+  dotsN = +nDotsSlider.value;
+  v0 = +v0Slider.value;
+  aBase = +accSlider.value;
+
+  const aEff = effectiveA();
+  xs_m = [];
+  const noise = ()=> (Math.random()*2-1) * 0.0018;
+  for(let i=0;i<dotsN;i++){
+    const t = i * DT0;
+    const x = v0*t + 0.5*aEff*t*t + noise();
+    xs_m.push(Math.max(0, x));
+  }
+}
+
+/* ========= 纸带绘制/选点 ========= */
+const tapeCanvas = $('#tape');
+const tapeWrap = $('#tapeWrap');
+const tapeCtx = tapeCanvas.getContext('2d');
+
+function resizeTape(){
+  const r = tapeWrap.getBoundingClientRect();
+  const dpr = Math.max(1, Math.min(2.2, window.devicePixelRatio || 1));
+  tapeCanvas.width = Math.floor(r.width * dpr);
+  tapeCanvas.height = Math.floor(r.height * dpr);
+  tapeCanvas.style.width = r.width + 'px';
+  tapeCanvas.style.height = r.height + 'px';
+  tapeCtx.setTransform(dpr,0,0,dpr,0,0);
+
+  const W = r.width;
+  const padL = 22, padR = 22;
+  const span = Math.max(1e-6, xs_m[xs_m.length-1] - xs_m[0] + 0.02);
+  xs_px = xs_m.map(x => padL + (x - xs_m[0]) / span * (W - padL - padR));
+  drawTape();
+}
+
+function drawTape(){
+  const r = tapeWrap.getBoundingClientRect();
+  const W = r.width, H = r.height;
+
+  tapeCtx.clearRect(0,0,W,H);
+  tapeCtx.fillStyle = 'rgba(255,255,255,0.96)';
+  tapeCtx.fillRect(0,0,W,H);
+
+  tapeCtx.globalAlpha = 0.55;
+  tapeCtx.strokeStyle = 'rgba(0,0,0,0.10)';
+  tapeCtx.lineWidth = 1;
+  for(let x=0;x<=W;x+=18){
+    tapeCtx.beginPath();
+    tapeCtx.moveTo(x, 0);
+    tapeCtx.lineTo(x, H);
+    tapeCtx.stroke();
+  }
+  tapeCtx.globalAlpha = 1;
+
+  const y = Math.round(H*0.58);
+
+  tapeCtx.strokeStyle = 'rgba(0,0,0,0.22)';
+  tapeCtx.lineWidth = 2;
+  for(let i=0;i<showCount;i++){
+    if(i % GAP === 0){
+      const x = xs_px[i];
+      tapeCtx.beginPath();
+      tapeCtx.moveTo(x, y+10);
+      tapeCtx.lineTo(x, y+18);
+      tapeCtx.stroke();
+    }
+  }
+  tapeCtx.lineWidth = 1;
+
+  for(let i=0;i<showCount;i++){
+    const x = xs_px[i];
+    const isSel = selected.includes(i);
+    const baseR = (i % GAP === 0) ? 3.2 : 2.4;
+
+    tapeCtx.beginPath();
+    tapeCtx.fillStyle = '#111';
+    tapeCtx.arc(x, y, baseR, 0, Math.PI*2);
+    tapeCtx.fill();
+
+    if(isSel){
+      tapeCtx.beginPath();
+      tapeCtx.strokeStyle = 'rgba(255,183,77,0.95)';
+      tapeCtx.lineWidth = 2.6;
+      tapeCtx.arc(x, y, 7.4, 0, Math.PI*2);
+      tapeCtx.stroke();
+      tapeCtx.lineWidth = 1;
+    }
+  }
+
+  tapeCtx.fillStyle = 'rgba(0,0,0,0.55)';
+  tapeCtx.font = '12px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial';
+  tapeCtx.fillText(`已出现：0 … ${Math.max(0,showCount-1)}`, 12, 18);
+  tapeCtx.fillStyle = 'rgba(0,0,0,0.45)';
+  tapeCtx.fillText(`每5点=0.1s`, W-92, 18);
+}
+
+function nearestDotIndex(px){
+  let best=-1, bestD=1e9;
+  for(let i=0;i<showCount;i++){
+    const d = Math.abs(xs_px[i] - px);
+    if(d<bestD){ bestD=d; best=i; }
+  }
+  return (bestD<=14) ? best : -1;
+}
+
+function isGapSelection(arr){
+  if(arr.length!==5) return false;
+  const s = [...arr].sort((a,b)=>a-b);
+  for(let i=1;i<s.length;i++){
+    if(s[i]-s[i-1] !== GAP) return false;
+  }
+  return true;
+}
+function updateConfirmSelBtn(){
+  $('#confirmSelBtn').disabled = !isGapSelection(selected);
+}
+/* ✅ 清除拟合只清除拟合状态，不再乱改统计面板 lastA */
+function clearFitState(){
+  lastFit = null;
+  lastAFit = null;
+  lastFitMeta = null;
+}
+
+tapeCanvas.addEventListener('pointerdown', (e)=>{
+  if(!allowInput()) return;
+  const r = tapeWrap.getBoundingClientRect();
+  const x = e.clientX - r.left;
+
+  if(!freeMode){
+    if(step===1){ showToast('先点击“开始打点”。'); return; }
+    if(step>2){ showToast('步骤模式：本步骤不需要再选点。'); return; }
+  }
+  const idx = nearestDotIndex(x);
+  if(idx<0){ showToast('请点在黑点附近。'); return; }
+
+  if(selected.includes(idx)){
+    selected = selected.filter(v=>v!==idx);
+    clearFitState();
+    renderDataPanel();
+    drawTape();
+    updateConfirmSelBtn();
+    return;
+  }
+
+  if(selected.length>=5){
+    showToast('已选满 5 个点：可先清除选点。');
+    return;
+  }
+
+  if(selected.length>=1){
+    const s = [...selected].sort((a,b)=>a-b);
+    const last = s[s.length-1];
+    if(idx - last !== GAP){
+      showToast(`选点需隔 4 个点（索引差=5）。你刚选的是差=${idx-last}。`);
+      return;
+    }
+  }
+
+  selected.push(idx);
+  selected.sort((a,b)=>a-b);
+  clearFitState();
+  drawTape();
+  renderDataPanel();
+  updateConfirmSelBtn();
+
+  if(selected.length===5){
+    showToast('选点完成 ✅'); showCheck();
+    if(!freeMode && step===2) setStep(3);
+  }
+});
+
+/* ========= 数据面板 ========= */
+function computeVTPoints(){
+  if(!isGapSelection(selected)) return null;
+  const s = [...selected].sort((a,b)=>a-b);
+  const points = [];
+  for(let k=0;k<4;k++){
+    const iA = s[k];
+    const iB = s[k+1];
+    const dx = xs_m[iB] - xs_m[iA];
+    const v = dx / DT_SEL;
+    const tMid = ((iA + iB)/2) * DT0;
+    points.push({ t: tMid, v, pairLabel: `${iA}-${iB}` });
+  }
+  return points;
+}
+
+function renderDataPanel(){
+  const pills = [];
+  pills.push(`<span class="pill"><span class="k">相邻Δt₀</span><b>${DT0.toFixed(2)} s</b></span>`);
+  pills.push(`<span class="pill"><span class="k">选点Δt</span><b>${DT_SEL.toFixed(2)} s</b></span>`);
+  pills.push(`<span class="pill"><span class="k">已出现</span><b>${showCount}</b></span>`);
+  pills.push(`<span class="pill"><span class="k">选点</span><b>${selected.length}/5</b></span>`);
+  if(selected.length>0) pills.push(`<span class="pill"><span class="k">索引</span><b>${selected.join(',')}</b></span>`);
+  if(lastAFit!=null && Number.isFinite(lastAFit)){
+    pills.push(`<span class="pill"><span class="k">a(拟合)</span><b>${lastAFit.toFixed(2)} m/s²</b></span>`);
+    pills.push(`<span class="pill"><span class="k">砝码</span><b>${massCount}</b></span>`);
+  }
+  $('#pills').innerHTML = pills.join('');
+
+  const tb = $('#tbody');
+  const pts = computeVTPoints();
+  if(!pts){
+    tb.innerHTML = `<tr><td colspan="3" style="opacity:.7;">按“隔 4 个点选 1 个点”，选满 5 点后会生成 4 个速度点。</td></tr>`;
+    return;
+  }
+  tb.innerHTML = pts.map((p)=>`
+    <tr>
+      <td>${p.pairLabel}</td>
+      <td>${p.t.toFixed(2)}</td>
+      <td>${p.v.toFixed(2)}</td>
+    </tr>
+  `).join('');
+}
+
+/* ========= v-t 图与拟合 ========= */
+const graph = $('#graph');
+const gctx = graph.getContext('2d');
+
+function resizeGraph(){
+  const wrap = $('#graphWrap');
+  if(!wrap) return;
+  const r = wrap.getBoundingClientRect();
+  const dpr = Math.max(1, Math.min(2.2, window.devicePixelRatio || 1));
+  graph.width = Math.floor(r.width * dpr);
+  graph.height = Math.floor(r.height * dpr);
+  graph.style.width = r.width + 'px';
+  graph.style.height = r.height + 'px';
+  gctx.setTransform(dpr,0,0,dpr,0,0);
+  drawGraph();
+}
+
+function linFit(xs, ys){
+  const n = xs.length;
+  const sx = xs.reduce((a,b)=>a+b,0);
+  const sy = ys.reduce((a,b)=>a+b,0);
+  const sxx = xs.reduce((a,b)=>a+b*b,0);
+  const sxy = xs.reduce((a,b,i)=>a+b*ys[i],0);
+  const den = (n*sxx - sx*sx) || 1e-9;
+  const k = (n*sxy - sx*sy)/den;
+  const b = (sy - k*sx)/n;
+  return {k,b};
+}
+
+function drawGraph(){
+  const wrap = $('#graphWrap');
+  if(!wrap) return;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+
+  gctx.clearRect(0,0,W,H);
+  gctx.fillStyle = 'rgba(255,255,255,0.02)';
+  gctx.fillRect(0,0,W,H);
+
+  const padL=38, padR=10, padT=10, padB=26;
+  gctx.strokeStyle = 'rgba(255,255,255,0.20)';
+  gctx.lineWidth = 1;
+  gctx.beginPath();
+  gctx.moveTo(padL, padT);
+  gctx.lineTo(padL, H-padB);
+  gctx.lineTo(W-padR, H-padB);
+  gctx.stroke();
+
+  gctx.fillStyle = 'rgba(233,242,255,0.85)';
+  gctx.font = '12px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial';
+  gctx.fillText('v (m/s)', 6, 14);
+  gctx.fillText('t (s)', W-40, H-8);
+
+  const pts = computeVTPoints();
+  if(!pts){
+    gctx.fillStyle = 'rgba(233,242,255,0.70)';
+    gctx.fillText('先按“隔4点”选 5 个点，才能制作 v-t 图。', padL+10, padT+24);
+    return;
+  }
+
+  const ts = pts.map(p=>p.t);
+  const vs = pts.map(p=>p.v);
+
+  const tMin=Math.min(...ts), tMax=Math.max(...ts);
+  const vMin=Math.min(...vs), vMax=Math.max(...vs);
+  const tPad=0.10, vPad=0.12;
+  const t0 = tMin - tPad*(tMax-tMin || 1);
+  const t1 = tMax + tPad*(tMax-tMin || 1);
+  const v0m = vMin - vPad*(vMax-vMin || 1);
+  const v1m = vMax + vPad*(vMax-vMin || 1);
+
+  const X = t => padL + (t - t0)/(t1 - t0) * (W - padL - padR);
+  const Y = v => (H-padB) - (v - v0m)/(v1m - v0m) * (H - padT - padB);
+
+  gctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  for(let i=1;i<=4;i++){
+    const x = padL + i*(W-padL-padR)/5;
+    gctx.beginPath(); gctx.moveTo(x, padT); gctx.lineTo(x, H-padB); gctx.stroke();
+  }
+  for(let i=1;i<=3;i++){
+    const y = padT + i*(H-padT-padB)/4;
+    gctx.beginPath(); gctx.moveTo(padL, y); gctx.lineTo(W-padR, y); gctx.stroke();
+  }
+
+  gctx.fillStyle = 'rgba(255,183,77,0.95)';
+  for(let i=0;i<pts.length;i++){
+    gctx.beginPath();
+    gctx.arc(X(ts[i]), Y(vs[i]), 3.8, 0, Math.PI*2);
+    gctx.fill();
+  }
+
+  if(lastFit && Number.isFinite(lastFit.k) && Number.isFinite(lastFit.b)){
+    gctx.strokeStyle = 'rgba(61,220,151,0.95)';
+    gctx.lineWidth = 2.2;
+    const yA = lastFit.k*t0 + lastFit.b;
+    const yB = lastFit.k*t1 + lastFit.b;
+    gctx.beginPath();
+    gctx.moveTo(X(t0), Y(yA));
+    gctx.lineTo(X(t1), Y(yB));
+    gctx.stroke();
+    gctx.lineWidth = 1;
+
+    gctx.fillStyle = 'rgba(233,242,255,0.88)';
+    gctx.fillText(`拟合：v = ${lastFit.k.toFixed(2)} t + ${lastFit.b.toFixed(2)}`, padL+10, padT+16);
+    gctx.fillText(`a(拟合)≈${lastFit.k.toFixed(2)} m/s²`, padL+10, padT+34);
+  }else{
+    gctx.fillStyle = 'rgba(233,242,255,0.70)';
+    gctx.fillText('提示：点击“拟合直线”显示斜率。', padL+10, padT+16);
+  }
+}
+
+/* ========= 小车运动（匀加速 + 完成后回到起点） ========= */
+const cart = $('#cart');
+const dotter = $('#dotter');
+const dotterT = $('#dotterT');
+
+let running = false;
+let runStartTs = 0;
+let elapsed = 0;
+
+const DOT_INTERVAL_MS = 160;
+
+function placeDotterFixed(){
+  const W = stage.clientWidth;
+  const left = W*0.10 + 8;
+  dotter.style.left = left + 'px';
+}
+function trackXMinMax(){
+  const W = stage.clientWidth;
+  const leftMin = W*0.10;
+  const leftMax = W*0.90 - 82;
+  return {leftMin, leftMax};
+}
+function cartProgressFromPhysics(tPhys){
+  const aEff = effectiveA();
+  const T = (dotsN-1) * DT0;
+  const xT = v0*T + 0.5*aEff*T*T;
+  const x  = v0*tPhys + 0.5*aEff*tPhys*tPhys;
+  if(xT <= 1e-9) return 0;
+  return clamp(x / xT, 0, 1);
+}
+function placeCartByProgress(p){
+  const {leftMin, leftMax} = trackXMinMax();
+  const x = leftMin + (leftMax-leftMin) * clamp(p,0,1);
+  cart.style.transform = `translateX(${x}px)`;
+}
+function returnCartHomeNow(){
+  cart.style.transition = 'transform 220ms cubic-bezier(.2,.9,.2,1)';
+  placeCartByProgress(0);
+  setTimeout(()=>{ cart.style.transition = 'none'; }, 240);
+}
+
+let rafId = 0;
+function stopRAF(){ if(rafId) cancelAnimationFrame(rafId); rafId = 0; }
+function startRAF(){
+  stopRAF();
+  const tick = (ts)=>{
+    if(!running){
+      rafId = requestAnimationFrame(tick);
+      return;
+    }
+    if(!runStartTs) runStartTs = ts;
+    elapsed = ts - runStartTs;
+
+    const tPhys = (elapsed / DOT_INTERVAL_MS) * DT0;
+    dotterT.textContent = `t=${Math.max(0,tPhys).toFixed(2)}s`;
+
+    const p = cartProgressFromPhysics(tPhys);
+    cart.style.transition = 'none';
+    placeCartByProgress(p);
+
+    const want = clamp(Math.floor(tPhys/DT0) + 1, 0, dotsN);
+    if(want !== showCount){
+      showCount = want;
+      drawTape();
+      updateConfirmSelBtn();
+      renderDataPanel();
+    }
+
+    if(p >= 1){
+      running = false;
+      $('#dotter').classList.remove('running');
+      $('#runBtn').disabled = false;
+
+      returnCartHomeNow();
+
+      if(!freeMode && step===1){
+        showToast('打点完成 ✅'); showCheck();
+        setStep(2);
+      }
+    }
+
+    rafId = requestAnimationFrame(tick);
+  };
+  rafId = requestAnimationFrame(tick);
+}
+
+function clearAllSelectionsOnly(){
+  selected = [];
+  updateConfirmSelBtn();
+  clearFitState();
+  renderDataPanel();
+  drawTape();
+  drawGraph();
+}
+
+function runOnce(){
+  if(running) return;
+  if(!freeMode && step!==1){
+    showToast('步骤模式：当前步骤不需要再次打点。');
+    return;
+  }
+
+  genData();
+
+  running = true;
+  runStartTs = 0;
+  elapsed = 0;
+  showCount = 0;
+
+  clearAllSelectionsOnly();
+
+  $('#dotter').classList.add('running');
+  $('#runBtn').disabled = true;
+
+  placeCartByProgress(0);
+  dotterT.textContent = 't=0.00s';
+  drawTape();
+  renderDataPanel();
+  drawGraph();
+
+  startRAF();
+}
+
+/* ========= 按钮（严格守卫） ========= */
+$('#runBtn').addEventListener('click', ()=>{ if(allowInput()) runOnce(); });
+
+$('#clearSelBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  if(!freeMode && step===1){ showToast('先完成打点。'); return; }
+  clearAllSelectionsOnly();
+  showToast('已清除选点');
+});
+
+$('#confirmSelBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  if(!isGapSelection(selected)){ showToast('请先按“隔4点”选满 5 个点。'); return; }
+  showToast('选点已确认 ✅'); showCheck();
+
+  if(!freeMode){
+    if(step!==3){ showToast('步骤模式：当前不需要确认选点。'); return; }
+    setStep(4);
+  }
+});
+
+$('#vtBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  if(!isGapSelection(selected)){
+    showToast('请先按“隔4点”选满 5 个点。'); return;
+  }
+  if(!freeMode && step<4){
+    showToast('步骤模式：先在步骤3点击“确认选点”。'); return;
+  }
+
+  setResultsCollapsed(false);
+  resultsCollapsed = false;
+  $('#resultsToggleBtn').textContent = '收起';
+  setTab('vt');
+  resizeGraph();
+  drawGraph();
+
+  showToast('v-t 图已制作 ✅');
+  if(!freeMode && step===4){
+    showCheck();
+    setStep(5);
+  }
+});
+
+$('#fitBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+
+  const pts = computeVTPoints();
+  if(!pts){ showToast('先按“隔4点”选 5 个点，再制作 v-t 图。'); return; }
+
+  const ts = pts.map(p=>p.t);
+  const vs = pts.map(p=>p.v);
+  const fit = linFit(ts, vs);
+
+  if(!Number.isFinite(fit.k)){
+    showToast('拟合失败：请重新选点后再试。');
+    return;
+  }
+
+  lastFit = fit;
+  lastAFit = fit.k;
+
+  lastFitMeta = {
+    massCount,
+    v0: +v0Slider.value,
+    aBase: +accSlider.value,
+    aEff: effectiveA(),
+    selectedIdx: [...selected]
+  };
+
+  /* ✅ 不再写 #lastA（那是“统计面板最近一次记录”，必须点“记录本次”才更新） */
+  renderDataPanel();
+  drawGraph();
+
+  setResultsCollapsed(false);
+  resultsCollapsed = false;
+  $('#resultsToggleBtn').textContent = '收起';
+
+  showToast(`a(拟合)≈${lastAFit.toFixed(2)} m/s²`);
+  showCheck();
+
+  if(!freeMode && step===5){
+    $('#doneMask').style.display = 'flex';
+  }
+});
+
+/* ========= 三按钮 ========= */
+$('#resetBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  resetAll(false);
+  showToast('已重置到步骤 1');
+});
+$('#freeBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  freeMode = !freeMode;
+
+  // ✅ 这里：切换按钮文字
+  $('#freeBtn').textContent = freeMode ? '退出自由模式' : '自由模式';
+
+  setModeChip();
+  setDimWhenFree(freeMode);
+
+  if(freeMode){
+    showToast('已进入自由模式：可加砝码改变数据');
+    statsCollapsed = false;
+    setStatsCollapsed(false);
+    $('#statsToggleBtn').textContent = '收起';
+  }else{
+    showToast('已退出自由模式：回到步骤流程');
+    resetAll(false);
+  }
+});
+
+$('#okBtn').addEventListener('click', ()=>{ $('#doneMask').style.display='none'; });
+
+/* 自动演示（略） */
+const AUTO_GAP = 420;
+const AUTO_PICK_GAP = 240;
+async function autoDemo(){
+  if(autoPlaying) return;
+  if(freeMode){ showToast('自由模式下不提供自动演示（请先退出自由模式）。'); return; }
+  autoPlaying = true;
+  autoSim = true;
+  $('#autoDemoBtn').disabled = true;
+  $('#resetBtn').disabled = true;
+  $('#freeBtn').disabled = true;
+
+  try{
+    resetAll(false);
+    await sleep(AUTO_GAP);
+
+    runOnce();
+    const totalMs = (dotsN-1)*DOT_INTERVAL_MS + 220;
+    await sleep(totalMs + AUTO_GAP);
+
+    selected = [];
+    const i0 = Math.max(0, Math.min(showCount - (GAP*4) - 1, Math.floor(showCount*0.18)));
+    for(let k=0;k<5;k++){
+      const idx = i0 + k*GAP;
+      if(idx >= showCount) break;
+      selected.push(idx);
+      selected.sort((a,b)=>a-b);
+      renderDataPanel(); drawTape(); updateConfirmSelBtn();
+      await sleep(AUTO_PICK_GAP);
+    }
+    showToast('自动演示：选点完成'); showCheck();
+    setStep(3);
+    await sleep(AUTO_GAP);
+
+    $('#confirmSelBtn').click();
+    await sleep(AUTO_GAP);
+
+    $('#vtBtn').click();
+    await sleep(AUTO_GAP);
+
+    $('#fitBtn').click();
+    await sleep(AUTO_GAP);
+
+    $('#doneMask').style.display = 'flex';
+  }finally{
+    autoSim = false;
+    autoPlaying = false;
+    $('#autoDemoBtn').disabled = false;
+    $('#resetBtn').disabled = false;
+    $('#freeBtn').disabled = false;
+  }
+}
+$('#autoDemoBtn').addEventListener('click', ()=>{ if(allowInput()) autoDemo(); });
+
+/* ========= 统计面板（✅ 真修复：次数/表格可正常累积） ========= */
+const stats = [];
+
+function buildMetaFallback(){
+  return {
+    massCount,
+    v0: +v0Slider.value,
+    aBase: +accSlider.value,
+    aEff: effectiveA(),
+    selectedIdx: [...selected],
+    time: Date.now()
+  };
+}
+
+function renderStats(){
+  /* ✅ 不怕未来重复 id */
+  setTextAll('#trialChip', `${stats.length} 次`);
+
+  const tb = $('#statsTbody');
+  if(stats.length===0){
+    tb.innerHTML = `<tr><td colspan="6" style="opacity:.7;">暂无记录</td></tr>`;
+    $('#avgA').textContent = '—';
+    $('#lastA').textContent = '—';
+    return;
+  }
+
+  tb.innerHTML = stats.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${r.massCount}</td>
+      <td>${r.v0.toFixed(2)}</td>
+      <td>${r.aBase.toFixed(2)}</td>
+      <td>${r.aEff.toFixed(2)}</td>
+      <td>${r.a.toFixed(2)}</td>
+    </tr>
+  `).join('');
+
+  const avg = stats.reduce((s,r)=>s+r.a,0)/stats.length;
+  $('#avgA').textContent = `${avg.toFixed(2)}`;
+  $('#lastA').textContent = `${stats[stats.length-1].a.toFixed(2)}`;
+}
+
+/* ✅ 用 click + stopPropagation，避免在某些设备上被“抽屉拖拽/滚动”抢事件 */
+$('#recordBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  if(!allowInput()) return;
+
+  if(lastAFit==null || !Number.isFinite(lastAFit)){
+    showToast('请先“拟合直线”（得到 a）再记录。');
+    return;
+  }
+
+  const meta = lastFitMeta ? {...lastFitMeta} : buildMetaFallback();
+
+  stats.push({
+    a: lastAFit,
+    massCount: meta.massCount,
+    v0: meta.v0,
+    aBase: meta.aBase,
+    aEff: meta.aEff,
+    selectedIdx: meta.selectedIdx,
+    time: Date.now()
+  });
+
+  renderStats();
+  statsCollapsed = false;
+  setStatsCollapsed(false);
+  $('#statsToggleBtn').textContent = '收起';
+  bringToFront('stats');
+
+  showToast(`已记录第 ${stats.length} 次 ✅`);
+  showCheck();
+});
+
+$('#clearStatsBtn').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  if(!allowInput()) return;
+  stats.length = 0;
+  renderStats();
+  showToast('已清空统计记录');
+});
+
+/* ========= 复位/布局 ========= */
+function defaultDockPositions(){
+  const s = getStageRect();
+  const pad = 10;
+
+  const panelDock = $('#panelDock');
+  const resultsDock = $('#resultsDock');
+  const statsDock = $('#statsDock');
+
+  if(!dockState.panel.userMoved){
+    const pr = panelDock.getBoundingClientRect();
+    setDockPos(panelDock, (s.width - pr.width - pad), pad);
+  }
+  if(!dockState.results.userMoved){
+    const rr = resultsDock.getBoundingClientRect();
+    const tapeR = $('#tapeWrap').getBoundingClientRect();
+    const y2 = (tapeR.top - s.top) - rr.height - 10;
+    const maxY = Math.min(y2, s.height-rr.height-pad);
+    setDockPos(resultsDock, pad, clamp(y2, 78, maxY));
+  }
+  if(!dockState.stats.userMoved){
+    const sr = statsDock.getBoundingClientRect();
+    const tapeR = $('#tapeWrap').getBoundingClientRect();
+    const y3 = (tapeR.top - s.top) - sr.height - 10;
+    const maxY = Math.min(y3, s.height-sr.height-pad);
+    setDockPos(statsDock, Math.max(pad, s.width - sr.width - pad), clamp(y3, 78, maxY));
+  }
+}
+
+function resetAll(keepFree=false){
+  running = false;
+  stopRAF();
+  runStartTs = 0;
+  elapsed = 0;
+
+  showCount = 0;
+  selected = [];
+  updateConfirmSelBtn();
+  clearFitState();
+
+  $('#dotter').classList.remove('running');
+  dotterT.textContent = 't=0.00s';
+  $('#runBtn').disabled = false;
+
+  setTab('data');
+  setResultsCollapsed(true);
+  resultsCollapsed = true;
+  $('#resultsToggleBtn').textContent = '展开';
+
+  genData();
+  resizeTape();
+  placeDotterFixed();
+  placeCartByProgress(0);
+  cart.style.transition='none';
+  renderDataPanel();
+  resizeGraph();
+  drawGraph();
+
+  if(!keepFree){
+    freeMode = false;
+	$('#freeBtn').textContent = '自由模式';
+    setDimWhenFree(false);
+    setModeChip();
+    massCount = 0;
+    updateMassUI();
+    setStep(1);
+  }else{
+    setModeChip();
+  }
+
+  renderStats();
+}
+
+function layout(){
+  placeDotterFixed();
+  resizeTape();
+  resizeGraph();
+  defaultDockPositions();
+
+  if(running){
+    const tPhys = (elapsed / DOT_INTERVAL_MS) * DT0;
+    placeCartByProgress(cartProgressFromPhysics(tPhys));
+  }else{
+    placeCartByProgress(0);
+  }
+}
+window.addEventListener('resize', ()=>{ if(allowInput()) layout(); });
+
+/* ========= 初始化 ========= */
+genData();
+placeDotterFixed();
+resetAll(false);
+renderStats();
+layout();
+</script>
+</body>
+</html>

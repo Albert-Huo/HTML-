@@ -1,0 +1,1396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1" />
+<title>高中物理必修1 实验1：测量瞬时速度</title>
+<style>
+  :root{
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+    --fg:#ffffffcc;
+
+    /* 参考《实验2》抽屉体系 */
+    --card-bg: rgba(255,255,255,0.06);
+    --panel-bg: rgba(15,15,15,0.55);
+    --line: rgba(255,255,255,0.12);
+    --dragShadow: 0 18px 48px rgba(0,0,0,0.55);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    background:#141518; color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    margin:0; padding:12px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+
+  /* 顶部彩带 */
+  #spectrum{
+    position:relative; width:100%; max-width:980px; height:40px;
+    border-radius:10px; overflow:hidden;
+    box-shadow:0 0 15px rgba(255,255,255,0.15);
+    margin:0 0 12px;
+    background:#000;
+  }
+  #spectrum::before{
+    content:""; position:absolute; inset:0; border-radius:inherit;
+    background: linear-gradient(90deg,
+      #ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,
+      #ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000
+    );
+    background-size:200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow{ 0%{background-position:0% 0} 100%{background-position:-100% 0} }
+
+  /* 步骤卡 */
+  .task-card{
+    width:100%; max-width:980px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:10px 12px;
+    backdrop-filter:blur(6px);
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:10px; align-items:center;
+    transition:opacity .2s, filter .2s;
+  }
+  .task-step{
+    background:rgba(255,255,255,0.15);
+    border-radius:8px;
+    padding:6px 10px;
+    font-weight:800;
+    white-space:nowrap;
+  }
+  .task-text{ line-height:1.6; color:var(--fg); }
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; }
+  .progress-dots{ display:flex; gap:6px; }
+  .dot{ width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.28); }
+  .dot.active{ background:var(--warn); }
+  .dot.done{ background:var(--accent); }
+
+  /* 选择区 */
+  .choice-bar{
+    width:100%; max-width:980px;
+    display:flex; gap:8px; margin:10px 0 4px; flex-wrap:wrap;
+  }
+  .choice{
+    flex:1 1 180px; text-align:center;
+    padding:10px 12px; border-radius:10px;
+    background:#2a2e39; border:1px solid #ffffff1f;
+    cursor:pointer; user-select:none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .choice.ok{ outline:3px solid var(--accent); background:#1b3a2b; }
+  .choice.bad{ outline:3px solid var(--error); background:#3a1b1b; }
+
+  .tip{ font-size:12px; color:#a0aec0; margin-top:4px; max-width:980px; width:100%; }
+
+  /* 画面容器 */
+  #stageWrap{ width:100%; max-width:980px; height:min(62vh,560px); }
+  #stage{
+    position:relative; width:100%; height:100%;
+    background:#0d0f13; border-radius:14px; overflow:hidden;
+    box-shadow:0 12px 30px rgba(0,0,0,.35);
+    touch-action:none;
+    border:1px solid rgba(255,255,255,0.08);
+    background-image:
+      radial-gradient(circle at 70% 25%, rgba(255,255,255,0.06), transparent 40%),
+      radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 45%);
+  }
+
+  /* ========== 参考《实验2》的问号帮助 ========== */
+  .helpBtn{
+    position:absolute; left:10px; top:10px; z-index:60;
+    width:38px; height:38px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(0,0,0,0.35);
+    color:#eaf2ff;
+    font-weight:900;
+    cursor:pointer;
+    backdrop-filter: blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    transition:.15s;
+    user-select:none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .helpBtn:hover{ background: rgba(255,255,255,0.10); }
+  .helpBtn:active{ transform: scale(.98); }
+  .helpMask{
+    position:absolute; inset:0; z-index:70;
+    background: rgba(0,0,0,0.52);
+    display:none;
+    align-items:flex-start;
+    justify-content:flex-start;
+    padding:10px;
+  }
+  .helpMask.show{ display:flex; }
+  .helpCard{
+    margin-top:54px;
+    width:min(560px, 92%);
+    background: rgba(15,15,15,0.80);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:14px;
+    padding:12px 12px;
+    backdrop-filter: blur(8px);
+    color:#dbe7ff;
+    line-height:1.55;
+    font-size:12.5px;
+    box-shadow:0 16px 50px rgba(0,0,0,0.45);
+  }
+  .helpCard b{ color:#fff; }
+  .helpCard .mini{ margin-top:8px; font-size:12px; opacity:.86; }
+  .helpCard .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .kbd{
+    display:inline-flex; align-items:center; gap:6px;
+    background: rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:999px;
+    padding:6px 10px;
+    color:#eaf2ff;
+    font-size:12px;
+    white-space:nowrap;
+  }
+
+  /* 纸带：白色 */
+  .tape{
+    position:absolute; left:50%; top:54%;
+    transform:translate(-50%,-50%);
+    width:min(92%,920px); height:170px;
+    border-radius:14px;
+    background:linear-gradient(180deg, #ffffff, #f3f6fb);
+    border:1px solid rgba(0,0,0,0.18);
+    box-shadow:
+      0 10px 18px rgba(0,0,0,0.25),
+      inset 0 0 0 1px rgba(255,255,255,0.65);
+    overflow:hidden;
+  }
+  .tape::before{
+    content:""; position:absolute; inset:0;
+    background:
+      repeating-linear-gradient(90deg, rgba(0,0,0,0.00) 0 18px, rgba(0,0,0,0.06) 18px 19px),
+      linear-gradient(90deg, rgba(0,0,0,0.06), transparent 18%, transparent 82%, rgba(0,0,0,0.06));
+    opacity:.55;
+    pointer-events:none;
+  }
+  .tapeLabel{
+    position:absolute; left:12px; top:10px;
+    background:rgba(0,0,0,0.55);
+    border:1px solid rgba(255,255,255,0.14);
+    padding:5px 8px; border-radius:10px;
+    font-size:12px; color:#eaf3ff;
+  }
+
+  /* 点列：黑色 + 小 */
+  .dotPoint{
+    position:absolute; top:54%;
+    transform:translate(-50%,-50%);
+    width:7px; height:7px; border-radius:50%;
+    background:#111;
+    box-shadow:0 1px 0 rgba(255,255,255,0.15);
+    cursor:pointer;
+  }
+  .dotPoint.selected{
+    outline:3px solid rgba(255,183,77,0.95);
+    box-shadow:0 0 0 6px rgba(255,183,77,0.14);
+  }
+  .dotPoint.snap{
+    outline:3px solid rgba(61,220,151,0.95);
+    box-shadow:0 0 0 6px rgba(61,220,151,0.14);
+  }
+
+  /* 卡尺 */
+  .caliper{
+    position:absolute; left:50%; top:54%;
+    transform:translate(-50%,-50%);
+    width:min(92%,920px); height:170px;
+    pointer-events:none;
+    z-index:5;
+  }
+  .jaw{
+    position:absolute; top:22px; bottom:22px; width:14px; border-radius:10px;
+    background:rgba(61,220,151,0.18);
+    border:1px solid rgba(61,220,151,0.55);
+    box-shadow:0 0 14px rgba(61,220,151,0.16);
+    pointer-events:auto; touch-action:none;
+    cursor:grab; user-select:none;
+  }
+  .jaw:active{ cursor:grabbing; }
+  .jaw::after{
+    content:""; position:absolute; left:50%; top:8px; transform:translateX(-50%);
+    width:6px; height:18px; border-radius:6px; background:rgba(61,220,151,0.75);
+  }
+  .line{
+    position:absolute; top:54%; height:2px;
+    background:rgba(61,220,151,0.72);
+    transform:translateY(-50%);
+    box-shadow:0 0 10px rgba(61,220,151,0.18);
+    pointer-events:none;
+  }
+
+  /* ========== 抽屉（Dock）系统：参考《实验2》 ========== */
+  .dock{
+    position:absolute;
+    z-index:80;
+    width:min(380px, 86%);
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    backdrop-filter: blur(8px);
+    user-select:none;
+  }
+  .dockHead{
+    background: var(--panel-bg);
+    padding:10px 10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    cursor:grab;
+    touch-action:none;
+  }
+  .dockHead:active{ cursor:grabbing; }
+  .dockTitle{
+    display:flex; align-items:center; gap:8px;
+    font-weight:800;
+    color:#eaf2ff;
+  }
+  .dockBadge{
+    font-size:11px;
+    color:#0b1220;
+    background: rgba(61,220,151,0.95);
+    border-radius:999px;
+    padding:3px 8px;
+    font-weight:900;
+  }
+  .dockBtns{ display:flex; gap:8px; align-items:center; }
+  .iconBtn{
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color:#eaf2ff;
+    cursor:pointer;
+    font-weight:800;
+    font-size:12px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .iconBtn:hover{ background: rgba(255,255,255,0.10); }
+  .dockBody{
+    background: var(--panel-bg);
+    padding:10px;
+    border-top:1px solid rgba(255,255,255,0.10);
+  }
+  .dockBody.collapsed{ display:none; }
+  .dockSectionTitle{
+    font-size:12px;
+    color:#cfe2ff;
+    opacity:.95;
+    font-weight:900;
+    margin:0 0 8px;
+  }
+  .btnRow{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .btnRow button{
+    flex:1 1 110px;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color:#fff;
+    cursor:pointer;
+    font-weight:800;
+    transition:.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btnRow button:hover{ background: rgba(255,255,255,0.12); }
+  .btnRow button:disabled{ opacity:.55; cursor:not-allowed; }
+  .btnRow .primary{
+    background: linear-gradient(180deg, rgba(61,220,151,0.95), rgba(26,125,88,0.95));
+    border-color: rgba(61,220,151,0.22);
+    color:#062018;
+  }
+  .btnRow .ghost{
+    background: rgba(0,0,0,0.08);
+  }
+
+  /* 读数面板 */
+  .readout{
+    margin-top:10px;
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  }
+  .pill{
+    display:inline-flex; gap:8px; align-items:center;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:999px; padding:6px 10px;
+    white-space:nowrap;
+    color:#e9f2ff;
+    font-size:12.5px;
+  }
+  .pill b{ color:#fff; }
+  .mini{ font-size:12px; color:#cfe3ff; opacity:.95; }
+
+  /* 结果抽屉 */
+  #resultsDock{ width:min(520px, 92%); }
+  .resultGrid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+    color:#dce9ff;
+    font-size:13px;
+  }
+  .resultCard{
+    background: rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:10px 10px;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .resultCard .k{ opacity:.9; font-weight:800; }
+  .resultCard .v{
+    font-weight:900;
+    color:#fff;
+    letter-spacing:.2px;
+  }
+  .resultCard .v small{ opacity:.78; font-weight:800; margin-left:6px; color:#cfe2ff; }
+
+  .tableWrap{
+    margin-top:8px;
+    background: rgba(0,0,0,0.14);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:12px;
+    overflow:hidden;
+  }
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:12px;
+  }
+  th,td{
+    padding:8px 8px;
+    border-bottom:1px dashed rgba(255,255,255,0.14);
+    text-align:center;
+    color:#eaf2ff;
+  }
+  th{
+    background: rgba(255,255,255,0.06);
+    font-weight:900;
+  }
+  tr:last-child td{ border-bottom:none; }
+  .muted{ opacity:.72; }
+
+  /* 三按钮：缩小、靠左（对齐实验2风格） */
+  .toolbar{
+    width:100%; max-width:980px;
+    display:flex; gap:8px;
+    margin:10px 0 12px;
+    justify-content:flex-start;
+    align-items:center;
+  }
+  .toolbar button{
+    flex:0 0 auto;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color:#fff;
+    cursor:pointer;
+    font-weight:900;
+    font-size:13px;
+    min-width:110px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .toolbar button:hover{ background: rgba(255,255,255,0.12); }
+  .toolbar button:disabled{ opacity:.55; cursor:not-allowed; }
+
+  /* 原理说明 */
+  .explain{
+    width:100%; max-width:980px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:12px 14px;
+    color:#e9f2ffcc;
+    line-height:1.7;
+  }
+  .explain h3{ margin:0 0 8px; color:#fff; }
+  .explain ul{ margin:0; padding-left:18px; }
+  .explain li{ margin:6px 0; }
+
+  /* 完成提示 */
+  .mask{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.55);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:999;
+  }
+  .modal{
+    width:min(460px, 92%);
+    background:rgba(15,15,15,0.88);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:16px;
+    padding:14px 14px;
+    box-shadow:0 24px 80px rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px);
+  }
+  .modal h3{ margin:0 0 8px; }
+  .modal button{
+    width:100%;
+    margin-top:12px;
+    padding:12px 10px;
+    border-radius:12px;
+    border:0;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .modal button.ok{ background:linear-gradient(180deg, rgba(61,220,151,0.95), rgba(26,125,88,0.95)); color:#062018; }
+
+  /* toast */
+  .toast{
+    position:fixed;
+    left:50%; bottom:22px;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.75);
+    border:1px solid rgba(255,255,255,0.14);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:999px;
+    font-weight:800;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .2s, transform .2s;
+    z-index:9999;
+  }
+  .toast.show{
+    opacity:1;
+    transform:translateX(-50%) translateY(-4px);
+  }
+
+  /* 对号 */
+  .checkmark{
+    position:absolute;
+    right:10px; top:10px;
+    width:42px; height:42px;
+    border-radius:14px;
+    background:rgba(61,220,151,0.18);
+    border:1px solid rgba(61,220,151,0.45);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:90;
+    backdrop-filter: blur(8px);
+  }
+  .checkmark div{
+    width:18px; height:10px;
+    border-left:4px solid rgba(61,220,151,1);
+    border-bottom:4px solid rgba(61,220,151,1);
+    transform:rotate(-45deg);
+    margin-top:-2px;
+  }
+
+  /* 拖动状态 */
+  .dock.dragging{
+    outline:2px solid rgba(61,220,151,0.35);
+  }
+
+  @media (max-width:520px){
+    .task-card{ grid-template-columns: 1fr; gap:6px; }
+    .task-step{ width:fit-content; }
+    .progress-dots{ justify-content:flex-start; }
+    .toolbar{ flex-wrap:wrap; }
+    .toolbar button{ min-width: 104px; }
+    .choice{ flex: 1 1 46%; }
+    #resultsDock{ width:min(560px, 96%); }
+  }
+</style>
+</head>
+
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 5</div>
+    <div>
+      <div class="task-text" id="taskText">在纸带上点击一个点，作为测速点 <b>P（第 i 点）</b>。</div>
+      <div class="task-hint" id="taskHint">提示：尽量选中间点（要保证 i−2 与 i+2 都存在）。</div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </div>
+
+  <div class="choice-bar" id="choiceBar" style="display:none;"></div>
+  <div class="tip" id="choiceTip"></div>
+
+  <div id="stageWrap">
+    <div id="stage">
+      <div class="helpBtn" id="helpBtn">?</div>
+
+      <div class="helpMask" id="helpMask">
+        <div class="helpCard">
+          <div><b>提示</b>（随步骤变化）</div>
+          <div class="mini" id="helpText"></div>
+          <div class="row">
+            <span class="kbd">步骤模式：严格守卫</span>
+            <span class="kbd">自由模式：无限制</span>
+            <span class="kbd">抽屉可拖动/吸附</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="tape" id="tape">
+        <div class="tapeLabel">纸带（白底黑点）</div>
+      </div>
+
+      <div class="caliper">
+        <div class="jaw" id="jawL" style="left:22%;"></div>
+        <div class="jaw" id="jawR" style="left:70%;"></div>
+        <div class="line" id="line"></div>
+      </div>
+
+      <!-- 抽屉：实验控制（默认展开） -->
+      <div class="dock" id="panelDock" style="left:10px; bottom:10px;">
+        <div class="dockHead" id="panelHead">
+          <div class="dockTitle">
+            实验控制
+            <span class="dockBadge" id="modeBadge">步骤</span>
+          </div>
+          <div class="dockBtns">
+            <button class="iconBtn" id="panelToggleBtn">收起</button>
+          </div>
+        </div>
+        <div class="dockBody" id="panelBody">
+          <div class="dockSectionTitle">操作</div>
+          <div class="btnRow">
+            <button class="ghost" id="regenBtn">换纸带</button>
+            <button class="primary" id="calcBtn">计算</button>
+            <button class="ghost" id="hintBtn">提示</button>
+          </div>
+
+          <div class="readout">
+            <span class="pill">纸带：<b id="tapeId">1</b></span>
+            <span class="pill">P 点：<b id="pIdx">—</b></span>
+            <span class="pill">目标对准：<b id="pairTarget">—</b></span>
+            <span class="pill">当前对准：<b id="pairNow">—</b></span>
+            <span class="pill">Δx：<b id="dxOut">—</b><span class="mini">mm</span></span>
+            <span class="pill">v(P)：<b id="vOut">—</b><span class="mini">m/s</span></span>
+          </div>
+
+          <div style="margin-top:10px" class="mini">
+            点数：<b id="nDots">—</b>（点距已稀疏，便于测量）
+          </div>
+        </div>
+      </div>
+
+      <!-- 抽屉：结果与记录（默认收起） -->
+      <div class="dock" id="resultsDock" style="right:10px; bottom:10px; left:auto;">
+        <div class="dockHead" id="resultsHead">
+          <div class="dockTitle">结果与记录</div>
+          <div class="dockBtns">
+            <button class="iconBtn" id="clearLogBtn" title="清空记录">清空</button>
+            <button class="iconBtn" id="resultsToggleBtn">展开</button>
+          </div>
+        </div>
+        <div class="dockBody collapsed" id="resultsBody">
+          <div class="dockSectionTitle">本次测量</div>
+          <div class="resultGrid">
+            <div class="resultCard">
+              <div class="k">v(P)</div>
+              <div class="v"><span id="vOnce">—</span> <small>m/s</small></div>
+            </div>
+            <div class="mini">
+              自由模式下：<b>换纸带前后的计算数据都会保留</b>，方便你对比。
+            </div>
+
+            <div class="dockSectionTitle" style="margin-top:8px;">记录表</div>
+            <div class="tableWrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>序号</th>
+                    <th>纸带</th>
+                    <th>P 点</th>
+                    <th>Δx(mm)</th>
+                    <th>v(m/s)</th>
+                  </tr>
+                </thead>
+                <tbody id="logBody">
+                  <tr><td class="muted" colspan="5">暂无记录</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="checkmark" id="check"><div></div></div>
+    </div>
+  </div>
+
+  <!-- 三按钮：缩小靠左（对齐实验2） -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="explain">
+    <h3>原理说明</h3>
+    <ul>
+      <li>打点计时器以恒定时间间隔 <b>Δt</b> 打点（本模拟设定：<b>Δt = 0.02 s</b>）。</li>
+      <li>测某一点 <b>P（第 i 点）</b> 的瞬时速度：用 P 附近的平均速度近似。常用 <b>5点法</b>：取第 <b>i−2</b> 与 <b>i+2</b> 之间距离 <b>Δx</b>，则 <b>v(P) ≈ Δx / (4Δt)</b>。</li>
+      <li>5点法跨越 4 个等时段，能减小偶然误差，同时保持在 P 附近，符合“局部近似瞬时”的思想。</li>
+    </ul>
+  </div>
+
+  <div class="mask" id="doneMask">
+    <div class="modal">
+      <h3>完成一次瞬时速度测量 ✅</h3>
+      <p style="margin:8px 0 0; line-height:1.6;">
+        你已用 <b>5点法</b> 测得一次 <b>v(P)</b>。<br/>
+        想更像真实实验：请点击 <b>自由模式</b>，再换不同的 P 点测 <b>3 次</b>（并对比记录表）。
+      </p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+<script>
+/* ========== 小工具 ========== */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+function toast(msg){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 1400);
+}
+function showCheck(){
+  const c = $('#check');
+  c.style.display = 'flex';
+  clearTimeout(showCheck._t);
+  showCheck._t = setTimeout(()=>c.style.display='none', 520);
+}
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+/* ========== 自动演示内部输入白名单（关键修复） ========== */
+let autoPlaying = false;     // 锁用户交互
+let autoSim = false;         // 自动演示期间允许“内部动作”绕过守卫
+function allowInput(){ return !autoPlaying || autoSim; }
+
+/* ========== 抽屉系统：拖动 + 智能吸附 + 点谁谁上层（参考实验2） ========== */
+let zTop = 80;
+const panelDock = $('#panelDock');
+const resultsDock = $('#resultsDock');
+function bringToFront(which){
+  zTop += 1;
+  if(which==='panel') panelDock.style.zIndex = zTop;
+  if(which==='results') resultsDock.style.zIndex = zTop;
+}
+function setDockPos(el, x, y){
+  const s = $('#stage').getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const pad = 10;
+  x = clamp(x, pad, s.width - r.width - pad);
+  y = clamp(y, pad, s.height - r.height - pad);
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  el.style.right = 'auto';
+  el.style.bottom = 'auto';
+}
+function snapDockToEdges(el){
+  const s = $('#stage').getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  const pad = 10;
+  const x = parseFloat(el.style.left||'0');
+  const y = parseFloat(el.style.top||'0');
+  const snap = 16;
+
+  let nx = x, ny = y;
+  if(Math.abs(x - pad) < snap) nx = pad;
+  if(Math.abs((x + r.width) - (s.width - pad)) < snap) nx = s.width - pad - r.width;
+  if(Math.abs(y - pad) < snap) ny = pad;
+  if(Math.abs((y + r.height) - (s.height - pad)) < snap) ny = s.height - pad - r.height;
+
+  setDockPos(el, nx, ny);
+}
+function makeDockDraggable(el, head, kind){
+  let dragging = false;
+  let offX = 0, offY = 0;
+
+  head.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('button')) return;
+    bringToFront(kind);
+    dragging = true;
+    el.classList.add('dragging');
+    el.style.boxShadow = getComputedStyle(document.documentElement).getPropertyValue('--dragShadow');
+    const r = el.getBoundingClientRect();
+    offX = (e.clientX - r.left);
+    offY = (e.clientY - r.top);
+    head.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  head.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    const stageRect = $('#stage').getBoundingClientRect();
+    const x = e.clientX - stageRect.left - offX;
+    const y = e.clientY - stageRect.top - offY;
+    setDockPos(el, x, y);
+    e.preventDefault();
+  });
+
+  head.addEventListener('pointerup', ()=>{
+    if(!dragging) return;
+    dragging = false;
+    el.classList.remove('dragging');
+    el.style.boxShadow = '';
+    snapDockToEdges(el);
+  });
+
+  head.addEventListener('pointercancel', ()=>{
+    dragging = false;
+    el.classList.remove('dragging');
+    el.style.boxShadow = '';
+    snapDockToEdges(el);
+  });
+}
+function initDockPositions(){
+  const stage = $('#stage');
+  const s = stage.getBoundingClientRect();
+  const pad = 10;
+  const pR = panelDock.getBoundingClientRect();
+  const rR = resultsDock.getBoundingClientRect();
+  setDockPos(panelDock, pad, s.height - pad - pR.height);
+  setDockPos(resultsDock, s.width - pad - rR.width, s.height - pad - rR.height);
+  bringToFront('panel');
+}
+makeDockDraggable(panelDock, $('#panelHead'), 'panel');
+makeDockDraggable(resultsDock, $('#resultsHead'), 'results');
+
+const panelBody = $('#panelBody');
+const panelToggleBtn = $('#panelToggleBtn');
+let panelCollapsed = false;
+function setPanelCollapsed(on){
+  panelCollapsed = on;
+  panelBody.classList.toggle('collapsed', panelCollapsed);
+  panelToggleBtn.textContent = panelCollapsed ? '展开' : '收起';
+  bringToFront('panel');
+}
+panelToggleBtn.addEventListener('click', ()=> setPanelCollapsed(!panelCollapsed));
+
+const resultsBody = $('#resultsBody');
+const resultsToggleBtn = $('#resultsToggleBtn');
+let resultsCollapsed = true;
+function setResultsCollapsed(on){
+  resultsCollapsed = on;
+  resultsBody.classList.toggle('collapsed', resultsCollapsed);
+  resultsToggleBtn.textContent = resultsCollapsed ? '展开' : '收起';
+  bringToFront('results');
+}
+resultsToggleBtn.addEventListener('click', ()=> setResultsCollapsed(!resultsCollapsed));
+
+/* ========== 记录系统：自由模式下换纸带也保留 ========== */
+let records = [];
+function renderLog(){
+  const tbody = $('#logBody');
+  if(!records.length){
+    tbody.innerHTML = `<tr><td class="muted" colspan="5">暂无记录</td></tr>`;
+    return;
+  }
+  const rows = records.slice().reverse().map((r, k)=>`
+    <tr>
+      <td>${records.length-k}</td>
+      <td>${r.tapeId}</td>
+      <td>${r.p}</td>
+      <td>${r.dxMm.toFixed(1)}</td>
+      <td>${r.v.toFixed(3)}</td>
+    </tr>
+  `).join('');
+  tbody.innerHTML = rows;
+}
+$('#clearLogBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  records = [];
+  renderLog();
+  toast('已清空记录');
+});
+
+/* ========== 问号帮助 ========== */
+const helpBtn = $('#helpBtn');
+const helpMask = $('#helpMask');
+const helpText = $('#helpText');
+helpBtn.addEventListener('click', ()=>{
+  helpMask.classList.toggle('show');
+  bringToFront('panel');
+  bringToFront('results');
+});
+helpMask.addEventListener('click', (e)=>{
+  if(e.target === helpMask) helpMask.classList.remove('show');
+});
+
+/* ========== 状态 ========== */
+const tape = $('#tape');
+const jawL = $('#jawL'), jawR = $('#jawR'), line = $('#line');
+const choiceBar = $('#choiceBar'), choiceTip = $('#choiceTip');
+const taskStep = $('#taskStep'), taskText = $('#taskText'), taskHint = $('#taskHint');
+const pIdxEl = $('#pIdx'), pairTargetEl = $('#pairTarget'), pairNowEl = $('#pairNow');
+const dxOut = $('#dxOut'), vOut = $('#vOut');
+const vOnceEl = $('#vOnce');
+const nDotsEl = $('#nDots');
+const modeBadge = $('#modeBadge');
+
+const resetBtn = $('#resetBtn'), autoBtn = $('#autoBtn'), freeBtn = $('#freeBtn');
+const regenBtn = $('#regenBtn'), calcBtn = $('#calcBtn'), hintBtn = $('#hintBtn');
+
+const doneMask = $('#doneMask');
+$('#okBtn').onclick = ()=> doneMask.style.display='none';
+
+let freeMode = false;
+let step = 0;
+let dots = [];
+let selectedP = null;
+let snapped = {L:null, R:null};
+const dt = 0.02;
+
+const PX_PER_MM = 4.8;
+const MIN_GAP_PX = 20;
+
+let tapeId = 1;
+const tapeIdEl = $('#tapeId');
+function setTapeId(v){ tapeId = v; tapeIdEl.textContent = String(tapeId); }
+
+/* 进度点 */
+function buildDots(){
+  const wrap = $('#dots');
+  wrap.innerHTML = '';
+  for(let i=0;i<5;i++){
+    const d = document.createElement('span');
+    d.className = 'dot' + (i===0?' active':'');
+    wrap.appendChild(d);
+  }
+}
+function setDotsState(i){
+  const ds = $$('#dots .dot');
+  ds.forEach((d,idx)=>{
+    d.className = 'dot';
+    if(idx<i) d.classList.add('done');
+    else if(idx===i) d.classList.add('active');
+  });
+}
+function goNext(){
+  const next = Math.min(4, step + 1);
+  setStepUI(next);
+}
+
+/* 步骤 UI */
+function addChoice(text, type){
+  const btn = document.createElement('button');
+  btn.className = 'choice';
+  btn.textContent = text;
+  btn.onclick = ()=>{
+    if(!allowInput()) return;
+    if(freeMode) return;
+    $$('#choiceBar .choice').forEach(b=>b.classList.remove('ok','bad'));
+    if(type==='ok'){
+      btn.classList.add('ok');
+      showCheck();
+      setTimeout(()=>goNext(), 380);
+    }else{
+      btn.classList.add('bad');
+      toast('不对：再想想“局部近似瞬时”与“稳定测量”的平衡');
+    }
+  };
+  choiceBar.appendChild(btn);
+}
+
+function setHelpText(){
+  if(freeMode){
+    helpText.innerHTML = `
+      你正在 <b>自由模式</b>：<br>
+      ① 点一个点 = 设为测速点 <b>P</b>（会高亮 i−2 与 i+2）。<br>
+      ② 再点任意点 = 吸附最近的卡尺端。<br>
+      ③ 对准后点 <b>计算</b>，并自动写入记录表（换纸带也保留）。`;
+    return;
+  }
+  if(step===0){
+    helpText.innerHTML = `步骤1：先在纸带上点一个<b>中间点</b>作为 P（要保证 i−2 与 i+2 都存在）。`;
+  }else if(step===1){
+    helpText.innerHTML = `步骤2：选择“<b>5点法</b>”。它用 i−2 到 i+2 的距离求 v(P)，更稳。`;
+  }else if(step===2){
+    helpText.innerHTML = `步骤3：把两端卡尺分别对准绿色高亮的两个点（i−2 与 i+2）。<br>你可以<b>拖动卡尺</b>，也可以<b>点击点</b>让卡尺吸附。`;
+  }else if(step===3){
+    helpText.innerHTML = `步骤4：确认卡尺已对准后，点<b>计算</b>：v(P)=Δx/(4Δt)。`;
+  }else{
+    helpText.innerHTML = `步骤5：本关已完成。进入自由模式，换不同 P 点再测 3 次，并比较记录表。`;
+  }
+}
+
+function setStepUI(i){
+  step = i;
+  setDotsState(i);
+  taskStep.textContent = `步骤 ${i+1} / 5`;
+
+  choiceBar.style.display = 'none';
+  choiceTip.textContent = '';
+  choiceBar.innerHTML = '';
+
+  if(i===0){
+    taskText.innerHTML = '在纸带上点击一个点，作为测速点 <b>P（第 i 点）</b>。';
+    taskHint.textContent = '提示：尽量选中间点（要保证 i−2 与 i+2 都存在）。';
+  }else if(i===1){
+    taskText.innerHTML = '选择方法：你准备用哪种方法近似 <b>瞬时速度</b>？';
+    taskHint.textContent = '提示：高中实验常用“5点法”。';
+    choiceBar.style.display = 'flex';
+    choiceTip.textContent = '步骤二必须选对才可继续。';
+    addChoice('5点法（推荐）', 'ok');
+    addChoice('只用相邻两点（太不稳）', 'bad');
+    addChoice('随便猜一个速度', 'bad');
+  }else if(i===2){
+    taskText.innerHTML = '对准：拖动两端卡爪，让它们分别吸附到 <b>i−2</b> 与 <b>i+2</b> 两个点。';
+    taskHint.textContent = '提示：也可以直接点击目标点，让卡爪自动吸附。';
+  }else if(i===3){
+    taskText.innerHTML = '计算：点击 <b>计算</b> 得到 v(P)=Δx/(4Δt)。';
+    taskHint.textContent = '提示：本任务只要求测一次。';
+  }else{
+    taskText.innerHTML = '拓展：请进入 <b>自由模式</b>，自行更换不同的 P 点再测 <b>3 次</b>，并比较结果。';
+    taskHint.textContent = '提示：自由模式下不做步骤限制，但计算公式不变。';
+  }
+
+  updateTargetsText();
+  updateLineAndReadout();
+  setHelpText();
+}
+
+/* 纸带生成 */
+function genTape({keepRecords=false} = {}){
+  [...tape.querySelectorAll('.dotPoint')].forEach(n=>n.remove());
+  dots = [];
+  selectedP = null;
+  snapped.L = null; snapped.R = null;
+
+  pIdxEl.textContent = '—';
+  vOut.textContent = '—';
+  dxOut.textContent = '—';
+  pairTargetEl.textContent = '—';
+  pairNowEl.textContent = '—';
+  vOnceEl.textContent = '—';
+
+  if(!keepRecords && !freeMode){
+    records = [];
+    renderLog();
+  }
+
+  const W = tape.clientWidth;
+  const xStart = 28;
+
+  const v0 = 45 + Math.random()*25;
+  const a  = 160 + Math.random()*140;
+
+  let lastX = -1e9;
+  for(let i=0;i<30;i++){
+    const t = i*dt;
+    const s_mm = v0*t + 0.5*a*t*t;
+    const x = xStart + s_mm*PX_PER_MM;
+    if(x > W-24) break;
+    if(x - lastX < MIN_GAP_PX) continue;
+
+    const el = document.createElement('div');
+    el.className = 'dotPoint';
+    el.style.left = x+'px';
+    el.dataset.i = i;
+    tape.appendChild(el);
+    dots.push({el, x});
+    lastX = x;
+  }
+
+  nDotsEl.textContent = String(dots.length);
+
+  placeJawPx(jawL, Math.min(W*0.38, W-40));
+  placeJawPx(jawR, Math.min(W*0.64, W-24));
+  updateLineAndReadout();
+
+  bindDots();
+}
+function placeJawPx(el, x){
+  const W = tape.clientWidth;
+  x = Math.max(10, Math.min(W-10, x));
+  el.style.left = (x - 7) + 'px';
+  el.dataset.x = x;
+}
+function jawX(el){ return parseFloat(el.dataset.x||'0'); }
+
+/* 点选/吸附 */
+function clearDotStyles(){ dots.forEach(d=>d.el.classList.remove('selected','snap')); }
+function highlightTargets(on){
+  clearDotStyles();
+  if(selectedP==null) return;
+  dots[selectedP]?.el.classList.add('selected');
+  if(on){
+    const a=selectedP-2, b=selectedP+2;
+    if(dots[a]) dots[a].el.classList.add('snap');
+    if(dots[b]) dots[b].el.classList.add('snap');
+  }
+}
+function updateTargetsText(){
+  if(selectedP==null){
+    pairTargetEl.textContent = '—';
+  }else{
+    const a=selectedP-2, b=selectedP+2;
+    pairTargetEl.textContent = (a>=0 && b<dots.length) ? `${a} ↔ ${b}` : '（P太靠边）';
+  }
+}
+function nearestDotIndex(x){
+  let best=-1, bd=1e9;
+  for(let i=0;i<dots.length;i++){
+    const d = Math.abs(dots[i].x - x);
+    if(d<bd){ bd=d; best=i; }
+  }
+  return best;
+}
+function snapJaw(which, idx){
+  if(idx==null || idx<0 || idx>=dots.length) return;
+  if(which==='L'){ snapped.L = idx; placeJawPx(jawL, dots[idx].x); }
+  if(which==='R'){ snapped.R = idx; placeJawPx(jawR, dots[idx].x); }
+  updateLineAndReadout();
+
+  if(!freeMode && step===2 && canAlign()){
+    showCheck();
+    setTimeout(()=>setStepUI(3), 360);
+  }
+}
+
+/* 读数/计算 */
+function updateLineAndReadout(){
+  const xL = jawX(jawL), xR = jawX(jawR);
+  const left = Math.min(xL,xR), right = Math.max(xL,xR);
+  line.style.left = left + 'px';
+  line.style.width = Math.max(0, right-left) + 'px';
+
+  if(snapped.L!=null && snapped.R!=null){
+    pairNowEl.textContent = `${snapped.L} ↔ ${snapped.R}`;
+  }else{
+    pairNowEl.textContent = '—';
+  }
+}
+function canAlign(){
+  if(selectedP==null) return false;
+  const a=selectedP-2, b=selectedP+2;
+  if(a<0 || b>=dots.length) return false;
+  if(snapped.L==null || snapped.R==null) return false;
+  return (snapped.L===a && snapped.R===b) || (snapped.L===b && snapped.R===a);
+}
+function computeV(){
+  const a=selectedP-2, b=selectedP+2;
+  const dxPx = Math.abs(dots[b].x - dots[a].x);
+  const dxMm = dxPx / PX_PER_MM;
+  const v = (dxMm/1000) / (4*dt);
+
+  dxOut.textContent = dxMm.toFixed(1);
+  vOut.textContent = v.toFixed(3);
+  vOnceEl.textContent = v.toFixed(3);
+
+  records.push({ tapeId, p:selectedP, dxMm, v });
+  renderLog();
+
+  return v;
+}
+
+/* 点击点：步骤/自由 */
+function handleDotClick(idx){
+  if(!allowInput()) return;
+
+  if(freeMode){
+    if(selectedP===null || idx !== selectedP){
+      selectedP = idx;
+      pIdxEl.textContent = String(idx);
+      snapped.L = null; snapped.R = null;
+      vOut.textContent = '—'; dxOut.textContent = '—';
+      highlightTargets(true);
+      updateTargetsText();
+      setHelpText();
+      toast('自由模式：已选择P点，可继续对准并计算');
+      return;
+    }
+    const x = dots[idx].x;
+    const dL = Math.abs(jawX(jawL)-x);
+    const dR = Math.abs(jawX(jawR)-x);
+    snapJaw(dL<=dR?'L':'R', idx);
+    return;
+  }
+
+  if(step===0){
+    selectedP = idx;
+    pIdxEl.textContent = String(idx);
+    snapped.L=null; snapped.R=null;
+    vOut.textContent='—'; dxOut.textContent='—';
+    highlightTargets(true);
+    updateTargetsText();
+    setHelpText();
+    showCheck();
+    setTimeout(()=>setStepUI(1), 360);
+    return;
+  }
+
+  if(selectedP==null){ toast('先选测速点P'); return; }
+
+  const x = dots[idx].x;
+  const dL = Math.abs(jawX(jawL)-x);
+  const dR = Math.abs(jawX(jawR)-x);
+  snapJaw(dL<=dR?'L':'R', idx);
+}
+function bindDots(){
+  dots.forEach(({el}, idx)=> el.onclick = ()=> handleDotClick(idx));
+}
+
+/* 拖拽卡尺 */
+let dragging=null, dragOff=0;
+function startDrag(which, e){
+  if(!allowInput()) return;
+  dragging = which;
+  const rect = tape.getBoundingClientRect();
+  const clientX = (e.touches?.[0]?.clientX ?? e.clientX);
+  const x = clientX - rect.left;
+  const cur = which==='L' ? jawX(jawL) : jawX(jawR);
+  dragOff = x - cur;
+  e.preventDefault();
+}
+function moveDrag(e){
+  if(!dragging || !allowInput()) return;
+  const rect = tape.getBoundingClientRect();
+  const clientX = (e.touches?.[0]?.clientX ?? e.clientX);
+  let x = clientX - rect.left - dragOff;
+
+  if(dragging==='L'){ snapped.L=null; placeJawPx(jawL, x); }
+  else{ snapped.R=null; placeJawPx(jawR, x); }
+
+  updateLineAndReadout();
+  e.preventDefault();
+}
+function endDrag(){
+  if(!dragging) return;
+  const el = dragging==='L' ? jawL : jawR;
+  const x = jawX(el);
+  const idx = nearestDotIndex(x);
+  if(idx>=0 && Math.abs(dots[idx].x - x) <= 20){
+    snapJaw(dragging, idx);
+  }else{
+    updateLineAndReadout();
+  }
+
+  if(!freeMode && step===2 && canAlign()){
+    showCheck();
+    setTimeout(()=>setStepUI(3), 360);
+  }else if(!freeMode && step===2){
+    toast('还差一点：需要对准 i−2 与 i+2（绿色高亮的两个点）');
+  }
+  dragging = null;
+}
+
+/* 三按钮 */
+function setFreeMode(on){
+  freeMode = on;
+  const card = $('#taskCard');
+  modeBadge.textContent = on ? '自由' : '步骤';
+
+  if(on){
+    card.style.opacity = .28;
+    card.style.filter = 'grayscale(.7)';
+    freeBtn.textContent = '退出自由模式';
+    autoBtn.disabled = true;
+    choiceBar.style.display = 'none';
+    choiceTip.textContent = '';
+    toast('自由模式：换纸带前后数据都会记录，便于对比');
+  }else{
+    card.style.opacity = 1;
+    card.style.filter = 'none';
+    freeBtn.textContent = '自由模式';
+    autoBtn.disabled = false;
+    setStepUI(step);
+  }
+  setHelpText();
+}
+
+resetBtn.onclick = ()=>{
+  if(!allowInput()) return;
+  setTapeId(1);
+  records = [];
+  renderLog();
+  genTape({keepRecords:false});
+  setStepUI(0);
+  setResultsCollapsed(true);
+  toast('已重置');
+};
+regenBtn.onclick = ()=>{
+  if(!allowInput()) return;
+  setTapeId(tapeId + 1);
+  genTape({keepRecords:true});
+  toast(freeMode ? '已换纸带（记录已保留）' : '已换一条纸带');
+};
+hintBtn.onclick = ()=>{
+  if(step===0) toast('先点一个中间点当P');
+  else if(step===1) toast('选“5点法”继续');
+  else if(step===2) toast('把卡尺吸到绿色高亮的两个点');
+  else if(step===3) toast('点“计算”得到 v(P)');
+  else toast('进入自由模式：自行换P点再测3次并对比记录');
+};
+
+function doCalc(){  // 自动/手动统一走这里
+  if(!freeMode){
+    if(step<3){ toast('还没到计算步骤：先完成方法选择与对准'); return false; }
+    if(!canAlign()){ toast('卡尺还未对准 i−2 与 i+2'); return false; }
+  }else{
+    if(selectedP==null){ toast('自由模式：请先点选P点'); return false; }
+    const a=selectedP-2, b=selectedP+2;
+    if(a<0 || b>=dots.length){ toast('这个P点太靠边，换一个中间点'); return false; }
+    if(!canAlign()){ toast('自由模式：建议先对准 i−2 与 i+2 再计算'); return false; }
+  }
+
+  computeV();
+  showCheck();
+  setResultsCollapsed(false);
+
+  if(!freeMode && step===3){
+    setStepUI(4); // ← 最后一步
+    setTimeout(()=>{ doneMask.style.display='flex'; }, 420);
+  }
+  return true;
+}
+calcBtn.onclick = ()=>{
+  if(!allowInput()) return;
+  doCalc();
+};
+
+freeBtn.onclick = ()=> {
+  if(!allowInput()) return;
+  setFreeMode(!freeMode);
+};
+
+/* 自动演示：减慢 + 真正走到最后一步（关键修复） */
+autoBtn.onclick = async ()=>{
+  if(autoPlaying) return;
+  autoPlaying = true;
+  autoSim = true; // ← 允许自动内部动作
+
+  // 禁用用户按钮（但内部可动）
+  resetBtn.disabled = true;
+  regenBtn.disabled = true;
+  calcBtn.disabled  = true;
+  hintBtn.disabled  = true;
+  freeBtn.disabled  = true;
+  autoBtn.disabled  = true;
+
+  const SLOW = 2.2; // 更慢一点
+
+  try{
+    setFreeMode(false);
+    setTapeId(1);
+    records = [];
+    renderLog();
+
+    genTape({keepRecords:false});
+    setStepUI(0);
+    setResultsCollapsed(true);
+    await sleep(700*SLOW);
+
+    if(dots.length < 6){
+      toast('纸带点数过少，已自动换一条');
+      setTapeId(2);
+      genTape({keepRecords:false});
+      await sleep(520*SLOW);
+    }
+
+    const clampP = i => Math.max(2, Math.min(dots.length-3, i));
+    const p = clampP(Math.floor(dots.length*0.55));
+
+    toast('自动演示：先选测速点 P');
+    await sleep(520*SLOW);
+    handleDotClick(p);         // Step0 -> Step1
+    await sleep(1000*SLOW);
+
+    setStepUI(1);
+    toast('自动演示：选择 5点法');
+    await sleep(760*SLOW);
+    showCheck();
+    await sleep(720*SLOW);
+    setStepUI(2);
+    await sleep(820*SLOW);
+
+    toast('自动演示：对准 i−2 与 i+2');
+    await sleep(650*SLOW);
+    snapJaw('L', p-2);
+    await sleep(760*SLOW);
+    snapJaw('R', p+2);
+    await sleep(1000*SLOW);
+
+    setStepUI(3);
+    toast('自动演示：点击计算');
+    await sleep(800*SLOW);
+
+    // 关键：直接调用 doCalc()，不走 onclick 守卫
+    doCalc();
+    await sleep(900*SLOW);
+
+    // 确保最终停在“步骤5/5”
+    setStepUI(4);
+    await sleep(520*SLOW);
+    doneMask.style.display = 'flex';
+
+  }finally{
+    autoSim = false;
+    autoPlaying = false;
+
+    resetBtn.disabled = false;
+    regenBtn.disabled = false;
+    calcBtn.disabled  = false;
+    hintBtn.disabled  = false;
+    freeBtn.disabled  = false;
+    autoBtn.disabled  = false;
+  }
+};
+
+/* 拖拽事件 */
+jawL.addEventListener('pointerdown', e=>{ jawL.setPointerCapture(e.pointerId); startDrag('L', e); });
+jawR.addEventListener('pointerdown', e=>{ jawR.setPointerCapture(e.pointerId); startDrag('R', e); });
+jawL.addEventListener('pointermove', moveDrag);
+jawR.addEventListener('pointermove', moveDrag);
+jawL.addEventListener('pointerup', endDrag);
+jawR.addEventListener('pointerup', endDrag);
+jawL.addEventListener('pointercancel', endDrag);
+jawR.addEventListener('pointercancel', endDrag);
+
+/* 初始化 */
+function init(){
+  buildDots();
+  setTapeId(1);
+  renderLog();
+  genTape({keepRecords:false});
+  setStepUI(0);
+  setHelpText();
+  initDockPositions();
+  bringToFront('panel');
+
+  document.addEventListener('gesturestart', e=>e.preventDefault(), {passive:false});
+}
+window.addEventListener('resize', ()=>{
+  if(autoPlaying) return;
+  const wasFree = freeMode;
+  genTape({keepRecords:true});
+  if(wasFree) setFreeMode(true);
+  initDockPositions();
+});
+init();
+</script>
+</body>
+</html>

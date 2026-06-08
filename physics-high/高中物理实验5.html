@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>测量自由落体加速度</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97; --warn:#ffb74d; --error:#ff6b6b; --ink:#e9f2ff;
+    --ruler-color: rgba(255,255,255,0.4);
+  }
+  body{ background:#141518; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:12px; display:flex; flex-direction:column; align-items:center;}
+
+  /* 顶部彩带 */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    margin: 0 0 12px; flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 
+    0% { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* 任务卡 */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s;}
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; color: var(--ink); } 
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; margin-top: 4px;}
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* 实验区域 */
+  #canvasWrap{ width:100%; max-width:900px; height:62vh; max-height:580px; margin-top:10px; position:relative;}
+  #stage{ 
+    width:100%; height:100%; background:#0d1117; border-radius:14px; box-shadow:0 12px 30px rgba(0,0,0,.35); 
+    position:relative; overflow:hidden; touch-action:none;
+    /* 标尺背景 */
+    background-image: linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 100% 20px; /* 每格0.1米(20px) */
+  }
+  
+  /* 左侧大标尺 */
+  .ruler-container { position: absolute; left: 0; top: 0; bottom: 0; width: 60px; border-right: 1px solid rgba(255,255,255,0.2); pointer-events: none;}
+  .ruler-mark { position: absolute; right: 0; width: 10px; height: 1px; background: rgba(255,255,255,0.3); }
+  .ruler-mark.big { width: 20px; background: rgba(255,255,255,0.6); }
+  .ruler-text { position: absolute; right: 26px; font-size: 10px; color: rgba(255,255,255,0.5); transform: translateY(-50%); font-family: monospace;}
+
+  .ball {
+    position: absolute; left: 50%; width: 28px; height: 28px; 
+    border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #4dabf7, #1864ab);
+    transform: translate(-50%, -50%); box-shadow: 0 4px 12px rgba(0,0,0,0.6); z-index: 10;
+  }
+
+  /* 频闪轨迹点 */
+  .trace-dot {
+    position: absolute; left: 50%; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--warn); transform: translate(-50%, -50%); 
+    z-index: 5; cursor: pointer; transition: transform 0.2s;
+  }
+  .trace-dot:hover { transform: translate(-50%, -50%) scale(1.5); background: #fff; }
+  
+  /* 验证模式下的高亮圈 */
+  .verify-ring {
+    position: absolute; left: 50%; width: 40px; height: 40px; border-radius: 50%;
+    border: 2px dashed var(--accent); transform: translate(-50%, -50%);
+    z-index: 6; animation: spin 4s linear infinite; pointer-events: none;
+  }
+  @keyframes spin { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+
+  /* 数据标签气泡 */
+  .data-bubble {
+    position: absolute; left: 50%; margin-left: 25px;
+    background: rgba(30,30,30,0.9); border: 1px solid var(--accent);
+    padding: 8px 12px; border-radius: 6px; font-size: 12px; color: #fff;
+    transform: translateY(-50%); white-space: nowrap; z-index: 20;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  .data-bubble.show { opacity: 1; pointer-events: auto; }
+  .data-bubble strong { color: var(--accent); font-size: 14px; }
+
+  /* 实验控制面板 */
+  .panel {
+    position: absolute; left: 20px; bottom: 20px; z-index: 20;
+    background: rgba(15,19,26,0.85); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;
+    backdrop-filter: blur(8px); width: 180px;
+  }
+  .panel-title { font-size: 12px; color: #8b9bb4; font-weight: 700; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px;}
+  .switch-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
+  .release-btn { width: 100%; background: var(--accent); color: #00351f; font-weight: 700; padding: 10px; border-radius: 8px; border:none; cursor:pointer; margin-top: 4px; transition: 0.2s;}
+  .release-btn:hover { filter: brightness(1.1); }
+  .release-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+  
+  /* 工具栏 */
+  .toolbar{ width:100%; max-width:900px; margin: 12px 0; display:flex; gap:10px; flex-wrap:wrap; justify-content: flex-start; }
+  button.tool-btn{ padding:9px 14px; background:#3a3d45; color:#fff; border:none; border-radius:10px; cursor:pointer; transition:.15s;}
+  button.tool-btn:hover{ background:#4b4f59;} button.tool-btn:disabled{opacity:.55;cursor:not-allowed;}
+
+  /* 弹窗/反馈 */
+  .checkmark{ position:absolute; z-index:50; left:50%; top:40%; transform:translate(-50%,-50%) scale(.6); width:110px; height:110px; border-radius:50%; background:rgba(61,220,151,.15);
+    border:4px solid var(--accent); display:none; align-items:center; justify-content:center; animation:pop .55s ease-out;}
+  .checkmark.active{ display:flex;} .checkmark>div{ width:56px; height:28px; border-left:7px solid var(--accent); border-bottom:7px solid var(--accent); transform:rotate(-45deg) translateY(-6px); }
+  @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2}60%{transform:translate(-50%,-50%) scale(1.08);opacity:1}100%{transform:translate(-50%,-50%) scale(1)} }
+
+  .toast{ position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:rgba(0,0,0,0.85); color:#fff; padding:10px 16px; border-radius:10px; box-shadow:0 6px 20px rgba(0,0,0,.4);
+    font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; z-index:200;}
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .modal-mask{ position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:300; backdrop-filter: blur(2px);}
+  .modal{ width:min(90vw,380px); background:#151921; color:#fff; border:1px solid rgba(255,255,255,.15); border-radius:16px; padding:24px 20px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.6);}
+  .modal h3{ margin:0 0 12px; font-size:22px; color:#a2e3a9;} .modal p{ color:#cfd8dc; margin-top:0; line-height: 1.6;} .modal .ok{ margin-top:16px; background:var(--accent); color:#081a12; font-weight:700; padding: 10px 24px; border-radius: 8px; border:none; cursor: pointer;}
+
+  .explain{ width:100%; max-width:900px; margin:10px 0 20px; background:rgba(255,255,255,0.05); border-radius:12px; padding:14px 18px; line-height:1.65; font-size:.95em; color:var(--ink); border: 1px solid rgba(255,255,255,0.1);}
+  .explain h3{ margin:0 0 10px; color:#9bd3ff; font-size:1.1em; display:flex; align-items:center; gap:8px;} 
+  .explain h3::before { content:""; display:block; width:4px; height:16px; background:#9bd3ff; border-radius:2px;}
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">观察：点击“释放小球”，观察自由落体运动。</div>
+      <div class="task-hint" id="taskHint">提示：注意小球在垂直方向上速度越来越快。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="stage">
+      <div class="ruler-container" id="ruler"></div>
+
+      <div class="ball" id="ball"></div>
+      
+      <div class="panel">
+        <div class="panel-title">CONTROL</div>
+        <div class="switch-row">
+          <input type="checkbox" id="strobeSwitch" disabled>
+          <label for="strobeSwitch">开启频闪 (0.1s)</label>
+        </div>
+        <div class="switch-row" id="planetRow" style="display:none">
+          <label>环境：</label>
+          <select id="planetSelect" style="background:#333;color:white;border:none;border-radius:4px;padding:2px;">
+            <option value="9.8">地球 (g=9.8)</option>
+            <option value="1.6">月球 (g=1.6)</option>
+            <option value="3.7">火星 (g=3.7)</option>
+          </select>
+        </div>
+        <button class="release-btn" id="releaseBtn">释放小球</button>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+      <div id="bubble" class="data-bubble"></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="resetBtn">步骤重置</button>
+    <button class="tool-btn" id="autoDemoBtn">自动演示</button>
+    <button class="tool-btn" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">请按提示操作</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>实验完成！🎉</h3>
+      <p>通过频闪轨迹验证，自由落体的位移与时间符合 $h=\frac{1}{2}gt^2$ 的规律，证明它是匀加速直线运动。</p>
+      <button class="ok" id="okBtn">明白了</button>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h3>原理说明 · 自由落体与频闪照相</h3>
+    <ul>
+      <li><b>自由落体</b>：物体仅受重力作用，从静止开始下落。其加速度 $g \approx 9.8 m/s^2$。</li>
+      <li><b>频闪法</b>：利用每隔固定时间（如0.1秒）闪光一次的设备记录物体位置。</li>
+      <li><b>数据验证</b>：在 $t=0.4s$ 时，理论下落高度 $h = 0.5 \times 9.8 \times 0.4^2 = 0.784$ 米。通过测量照片上的距离，可以验证这一物理规律。</li>
+    </ul>
+  </div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+// UI Objects
+const ball = $('#ball');
+const stage = $('#stage');
+const releaseBtn = $('#releaseBtn');
+const strobeSwitch = $('#strobeSwitch');
+const rulerContainer = $('#ruler');
+const bubble = $('#bubble');
+const taskStepEl = $('#taskStep');
+const taskTextEl = $('#taskText');
+const taskHintEl = $('#taskHint');
+const dots = [$('#dot1'), $('#dot2'), $('#dot3')];
+const checkmark = $('#checkmark');
+const toast = $('#toast');
+const doneMask = $('#doneMask'); $('#okBtn').onclick = () => doneMask.style.display='none';
+
+// Constants
+const PIXELS_PER_METER = 200; // 1m = 200px
+const INITIAL_Y = 30; // 顶部留白
+let G = 9.8; 
+let isFalling = false;
+let timer = null;
+let currentStep = 0;
+let freeMode = false;
+let autoPlaying = false;
+let traceData = []; // 存储频闪点数据
+
+// Steps Config
+const steps = [
+  {
+    text: "观察：点击“释放小球”，观察纯粹的自由落体运动。",
+    hint: "提示：注意观察速度的变化，不要眨眼。",
+    setup: () => { strobeSwitch.checked = false; strobeSwitch.disabled = true; resetScene(); },
+    check: () => { if(!strobeSwitch.checked) finishStep(); }
+  },
+  {
+    text: "记录：系统已自动开启“频闪”，再次点击释放，记录运动轨迹。",
+    hint: "提示：每隔 0.1s 屏幕上会留下一个小点。",
+    setup: () => { strobeSwitch.checked = true; strobeSwitch.disabled = true; resetScene(); },
+    check: () => { if(strobeSwitch.checked && traceData.length > 0) finishStep(); }
+  },
+  {
+    text: "验证：轨迹已保留。请点击轨迹上 t=0.4s 的点（带有光圈），验证下落高度。",
+    hint: "提示：无需再次下落，直接分析屏幕上的数据点。",
+    setup: () => { 
+      strobeSwitch.disabled = true; 
+      // 关键优化：不重置场景，而是直接高亮现有数据的某一点
+      if(traceData.length === 0) {
+        showToast("轨迹丢失，请重新进行第二步");
+        setStep(1);
+      } else {
+        highlightTargetDot(0.4);
+      }
+    },
+    check: () => { /* 点击事件触发完成 */ }
+  }
+];
+
+// Init Ruler
+function initRuler(){
+  const h = stage.clientHeight;
+  for(let i=0; i<h; i+=20){ // 每0.1米(20px)一个刻度
+    const m = document.createElement('div');
+    const isMeter = i % 200 === 0;
+    const isHalf = i % 100 === 0;
+    m.className = `ruler-mark ${isMeter ? 'big' : ''}`;
+    m.style.top = (INITIAL_Y + i) + 'px';
+    rulerContainer.appendChild(m);
+    
+    if(isMeter || isHalf){
+      const t = document.createElement('div');
+      t.className = 'ruler-text';
+      t.textContent = (i / 200).toFixed(1) + 'm';
+      t.style.top = (INITIAL_Y + i) + 'px';
+      rulerContainer.appendChild(t);
+    }
+  }
+}
+
+// Core Physics
+function startDrop(){
+  if(isFalling) return;
+  
+  // 如果不是自由模式且处于第3步，不允许重新释放，防止破坏数据
+  if(!freeMode && currentStep === 2){
+    showToast("请直接点击光圈所在的点进行验证");
+    return;
+  }
+
+  isFalling = true;
+  releaseBtn.disabled = true;
+  releaseBtn.textContent = "下落中...";
+  
+  // 清理旧痕迹 (Step 2 开始时才清理，Step 3 不会进这里)
+  $$('.trace-dot, .verify-ring').forEach(el=>el.remove());
+  bubble.classList.remove('show');
+  traceData = [];
+
+  // Reset Ball
+  ball.style.top = INITIAL_Y + 'px';
+  ball.style.transition = 'none';
+
+  const startTime = performance.now();
+  let lastStrobeTime = 0;
+  
+  // 记录起点 t=0
+  if(strobeSwitch.checked) recordDot(0, 0);
+
+  function loop(now){
+    const t = (now - startTime) / 1000;
+    const h = 0.5 * G * t * t;
+    const pixelY = INITIAL_Y + h * PIXELS_PER_METER;
+
+    ball.style.top = pixelY + 'px';
+
+    // 频闪逻辑 (0.1s)
+    if(strobeSwitch.checked && t - lastStrobeTime >= 0.1){
+      lastStrobeTime = Number((lastStrobeTime + 0.1).toFixed(1)); // 避免浮点误差
+      const theoryH = 0.5 * G * lastStrobeTime * lastStrobeTime;
+      const theoryY = INITIAL_Y + theoryH * PIXELS_PER_METER;
+      recordDot(theoryY, lastStrobeTime);
+    }
+
+    if(pixelY < stage.clientHeight - 30){
+      timer = requestAnimationFrame(loop);
+    } else {
+      endDrop();
+    }
+  }
+  timer = requestAnimationFrame(loop);
+}
+
+function recordDot(y, t){
+  const dot = document.createElement('div');
+  dot.className = 'trace-dot';
+  dot.style.top = y + 'px';
+  dot.dataset.t = t;
+  dot.dataset.h = (0.5 * G * t * t).toFixed(3);
+  
+  // 自由模式下的交互
+  dot.onclick = (e) => showBubble(dot, t, dot.dataset.h);
+  
+  stage.appendChild(dot);
+  traceData.push({el: dot, t: t, h: dot.dataset.h});
+}
+
+function endDrop(){
+  isFalling = false;
+  releaseBtn.disabled = false;
+  releaseBtn.textContent = "释放小球";
+  
+  if(freeMode) return;
+  if(autoPlaying) return; // 自动演示单独处理
+
+  // 正常流程检查
+  steps[currentStep].check();
+}
+
+function finishStep(){
+  checkmark.style.display = 'flex';
+  setTimeout(() => {
+    checkmark.style.display = 'none';
+    if(currentStep < 2) {
+      setStep(currentStep + 1);
+    } else {
+      doneMask.style.display = 'flex';
+    }
+  }, 800);
+}
+
+function setStep(idx){
+  currentStep = idx;
+  
+  // UI Update
+  dots.forEach((d, i) => {
+    d.className = 'dot';
+    if(i < idx) d.classList.add('done');
+    else if(i === idx) d.classList.add('active');
+  });
+  
+  taskStepEl.textContent = `步骤 ${idx+1} / 3`;
+  taskTextEl.textContent = steps[idx].text;
+  taskHintEl.textContent = steps[idx].hint;
+
+  steps[idx].setup();
+}
+
+function resetScene(){
+  if(isFalling) cancelAnimationFrame(timer);
+  isFalling = false;
+  releaseBtn.disabled = false;
+  releaseBtn.textContent = "释放小球";
+  ball.style.top = INITIAL_Y + 'px';
+  $$('.trace-dot, .verify-ring').forEach(el=>el.remove());
+  bubble.classList.remove('show');
+  traceData = [];
+}
+
+// Step 3 专用逻辑：高亮并验证
+function highlightTargetDot(targetTime){
+  // 找到最接近 0.4s 的点
+  const target = traceData.find(d => Math.abs(d.t - targetTime) < 0.05);
+  if(!target) return;
+
+  // 添加光圈
+  const ring = document.createElement('div');
+  ring.className = 'verify-ring';
+  ring.style.top = target.el.style.top;
+  stage.appendChild(ring);
+
+  // 覆盖点击事件
+  target.el.onclick = (e) => {
+    e.stopPropagation();
+    const hTheory = (0.5 * 9.8 * 0.4 * 0.4).toFixed(3);
+    const html = `
+      <div style="text-align:left">
+        <div>时间 $t = ${targetTime}s$</div>
+        <div>公式 $h = \\frac{1}{2}gt^2$</div>
+        <div>计算 $h = 0.5 \\times 9.8 \\times ${targetTime}^2$</div>
+        <div style="margin-top:4px; border-top:1px solid #555; padding-top:4px;">
+          <strong>验证结果 h ≈ ${hTheory}m</strong>
+        </div>
+      </div>
+    `;
+    showBubbleRaw(target.el, html);
+    ring.remove(); // 移除光圈
+    setTimeout(finishStep, 1500); // 延迟一点让用户看清数据
+  };
+  
+  // 自动弹出简单提示
+  showBubbleRaw(target.el, "👈 点击这个点验证");
+}
+
+function showBubble(el, t, h){
+  bubble.innerHTML = `t = ${t}s<br><strong>h = ${h}m</strong>`;
+  const top = parseFloat(el.style.top);
+  bubble.style.top = (top - 15) + 'px';
+  bubble.classList.add('show');
+}
+
+function showBubbleRaw(el, html){
+  bubble.innerHTML = html;
+  const top = parseFloat(el.style.top);
+  bubble.style.top = (top - 15) + 'px';
+  bubble.classList.add('show');
+}
+
+// 绑定按钮事件
+releaseBtn.onclick = startDrop;
+
+// 自由模式
+$('#freeBtn').onclick = () => {
+  freeMode = !freeMode;
+  const btn = $('#freeBtn');
+  const card = $('#taskCard');
+  
+  if(freeMode){
+    btn.textContent = "退出自由模式";
+    card.style.opacity = 0.3; card.style.filter = "grayscale(1)";
+    strobeSwitch.disabled = false;
+    $('#planetRow').style.display = 'flex';
+    resetScene();
+  } else {
+    btn.textContent = "自由模式";
+    card.style.opacity = 1; card.style.filter = "none";
+    strobeSwitch.disabled = true;
+    $('#planetRow').style.display = 'none';
+    G = 9.8; $('#planetSelect').value = "9.8";
+    setStep(0);
+  }
+};
+
+$('#planetSelect').onchange = (e) => {
+  G = parseFloat(e.target.value);
+  resetScene();
+};
+
+$('#resetBtn').onclick = () => {
+  if(autoPlaying) return;
+  if(freeMode) $('#freeBtn').click(); // 退出自由模式
+  setStep(0);
+  showToast("已重置到第一步");
+};
+
+// 自动演示
+$('#autoDemoBtn').onclick = async () => {
+  if(freeMode || autoPlaying) return;
+  autoPlaying = true;
+  
+  // Step 1
+  setStep(0);
+  await sleep(800);
+  startDrop();
+  await waitForFall();
+  finishStep();
+  
+  // Step 2
+  await sleep(1500);
+  // setStep(1) 会自动调用 setup，开启频闪
+  await sleep(500);
+  startDrop();
+  await waitForFall();
+  finishStep();
+
+  // Step 3
+  await sleep(1500);
+  // Step 3 setup 会自动高亮
+  const target = traceData.find(d => Math.abs(d.t - 0.4) < 0.05);
+  if(target){
+    // 模拟点击
+    target.el.click();
+  }
+  
+  autoPlaying = false;
+};
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function waitForFall(){
+  return new Promise(resolve => {
+    const check = setInterval(()=>{
+      if(!isFalling){
+        clearInterval(check);
+        resolve();
+      }
+    }, 100);
+  });
+}
+
+// Init
+initRuler();
+setStep(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>凸透镜成像规律 — 交互实验</title>
+<style>
+  /* ====== 1. Design Tokens ====== */
+  :root {
+    --accent:   #3ddc97;
+    --warn:     #ffb74d;
+    --error:    #ff6b6b;
+    --fg:       #ffffffcc;
+    --ink:      #e9f2ff;
+    --card-bg:  rgba(255,255,255,0.08);
+    --panel-bg: rgba(15,15,15,0.55);
+    --line:     rgba(255,255,255,0.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: #1a1a1a;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+    margin: 0;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ====== 2. 彩虹光谱条 ====== */
+  #spectrum {
+    position: relative;
+    width: 100%; max-width: 900px; height: 40px;
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15);
+    background: #000;
+    margin: 0 0 12px;
+    flex-shrink: 0;
+  }
+  #spectrum::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(90deg,
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow {
+    0%   { background-position: 0% 0; }
+    100% { background-position: -100% 0; }
+  }
+
+  /* ====== 3. 步骤任务卡 ====== */
+  .task-card {
+    width: 100%; max-width: 900px;
+    background: var(--card-bg);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 14px;
+    backdrop-filter: blur(6px);
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+    transition: opacity .2s, filter .2s;
+  }
+  .task-step {
+    background: rgba(255,255,255,0.15);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .task-text { line-height: 1.55; color: var(--fg); }
+  .task-hint { color: #ffd54f; font-size: 12px; opacity: .92; margin-top: 2px; }
+  .progress-dots { display: flex; gap: 6px; align-items: center; }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    outline: 2px solid rgba(255,255,255,0.12);
+    transition: background .2s, outline-color .2s;
+  }
+  .dot.active { background: var(--warn); outline-color: rgba(255,183,77,0.4); }
+  .dot.done   { background: var(--accent); outline-color: rgba(61,220,151,0.5); }
+
+  /* ====== 4. 交互画布 ====== */
+  #canvas {
+    width: 100%; max-width: 900px;
+    height: 60vh; max-height: 520px; min-height: 300px;
+    position: relative; overflow: hidden;
+    border-radius: 12px;
+    background: #0b0e14;
+    margin-top: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    touch-action: none;
+    border: 1px solid rgba(255,255,255,0.08);
+    background-image:
+      radial-gradient(circle at 70% 25%, rgba(255,255,255,0.06), transparent 40%),
+      radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 45%);
+  }
+
+  /* ====== 5. 三按钮工具栏 ====== */
+  .toolbar {
+    width: 100%; max-width: 900px;
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-top: 12px;
+    justify-content: flex-start;
+  }
+  .toolbar button {
+    padding: 10px 16px;
+    background: #444;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background .2s, transform .05s, opacity .2s;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
+  }
+  .toolbar button:hover   { background: #5a5a5a; }
+  .toolbar button:active  { transform: scale(.98); }
+  .toolbar button:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* ====== 6. Toast 通知 ====== */
+  .toast {
+    position: fixed;
+    left: 50%; bottom: 24px;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0,0,0,0.82);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s, transform .25s;
+    z-index: 200;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+    max-width: 90vw;
+    text-align: center;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ====== 7. 完成对号 ====== */
+  .checkmark {
+    position: absolute; z-index: 50;
+    left: 50%; top: 22%;
+    transform: translate(-50%,-50%) scale(0.6);
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(61,220,151,0.15);
+    border: 3px solid var(--accent);
+    display: none;
+    align-items: center; justify-content: center;
+    box-shadow: 0 0 40px rgba(61,220,151,0.35), inset 0 0 18px rgba(61,220,151,0.18);
+    animation: pop .55s ease-out;
+    pointer-events: none;
+  }
+  .checkmark.active { display: flex; }
+  .checkmark > div {
+    width: 60px; height: 30px;
+    border-left: 8px solid var(--accent);
+    border-bottom: 8px solid var(--accent);
+    transform: rotate(-45deg) translateY(-6px);
+  }
+  @keyframes pop {
+    0%   { transform: translate(-50%,-50%) scale(.4); opacity: .2; }
+    60%  { transform: translate(-50%,-50%) scale(1.08); opacity: 1; }
+    100% { transform: translate(-50%,-50%) scale(1); }
+  }
+
+  /* ====== 8. 完成弹窗 ====== */
+  .modal-mask {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.55);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 300;
+  }
+  .modal {
+    width: min(90vw, 380px);
+    background: rgba(15,15,15,0.90);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 14px;
+    padding: 18px 16px;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px);
+  }
+  .modal h3 { margin: 8px 0 6px; font-size: 20px; }
+  .modal p  { color: #cfd8dc; margin-top: 0; line-height: 1.6; }
+  .modal .ok {
+    margin-top: 12px;
+    width: 100%;
+    padding: 12px 18px;
+    background: linear-gradient(180deg, rgba(61,220,151,0.95), rgba(26,125,88,0.95));
+    color: #062018;
+    font-weight: 800;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    min-height: 44px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ====== 9. 原理说明区 ====== */
+  .explanation {
+    width: 100%; max-width: 900px;
+    margin: 14px 0 20px;
+    line-height: 1.65;
+    font-size: 0.95em;
+    color: var(--ink);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }
+  .explanation h2 { margin: .2em 0 .4em; color: #9bd3ff; font-size: 1.15em; }
+  .explanation ul { margin: .2em 0 .2em 1.1em; }
+  .explanation li { margin: 6px 0; }
+
+  /* ====== 10. HUD 状态标签 ====== */
+  .hud {
+    position: absolute; left: 12px; top: 12px; z-index: 5;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+  }
+  .hud-row { white-space: nowrap; }
+  .hud-label { color: rgba(255,255,255,0.55); }
+  .hud-val { color: #fff; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* ====== 11. 画布内 Canvas ====== */
+  #lensCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ====== 12. 拖拽手柄提示 ====== */
+  .drag-hint {
+    position: absolute;
+    bottom: 12px; right: 14px;
+    z-index: 5;
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    pointer-events: none;
+  }
+
+  /* ====== 13. 区域图例 ====== */
+  .zone-legend {
+    position: absolute;
+    right: 12px; top: 12px; z-index: 5;
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.6;
+    backdrop-filter: blur(6px);
+    pointer-events: none;
+  }
+  .zone-legend-item { display: flex; align-items: center; gap: 6px; }
+  .zone-legend-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ====== 14. 响应式 ====== */
+  @media (max-width: 600px) {
+    .task-card { grid-template-columns: 1fr; gap: 6px; }
+    .task-step { width: fit-content; }
+    .progress-dots { justify-content: flex-start; }
+    .toolbar { flex-wrap: wrap; }
+    .toolbar button { flex: 1 1 120px; }
+    .explanation { font-size: .88em; }
+    .hud { font-size: 11px; padding: 6px 8px; }
+    .zone-legend { font-size: 10px; padding: 6px 8px; }
+  }
+</style>
+</head>
+
+<body>
+  <!-- 1. 彩虹光谱条 -->
+  <div id="spectrum"></div>
+
+  <!-- 2. 步骤任务卡 -->
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div>
+      <div class="task-text" id="taskText"></div>
+      <div class="task-hint" id="taskHint"></div>
+    </div>
+    <div class="progress-dots" id="progressDots"></div>
+  </div>
+
+  <!-- 3. 交互画布 -->
+  <div id="canvas">
+    <canvas id="lensCanvas"></canvas>
+
+    <!-- HUD -->
+    <div class="hud" id="hud">
+      <div class="hud-row"><span class="hud-label">物距 u = </span><span class="hud-val" id="hudU">—</span></div>
+      <div class="hud-row"><span class="hud-label">像距 v = </span><span class="hud-val" id="hudV">—</span></div>
+      <div class="hud-row"><span class="hud-label">放大率 |m| = </span><span class="hud-val" id="hudM">—</span></div>
+      <div class="hud-row"><span class="hud-label">像的性质：</span><span class="hud-val" id="hudType">—</span></div>
+    </div>
+
+    <!-- 区域图例 -->
+    <div class="zone-legend" id="zoneLegend">
+      <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#ff6b6b"></div> u &gt; 2f 缩小实像</div>
+      <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#ffb74d"></div> f &lt; u &lt; 2f 放大实像</div>
+      <div class="zone-legend-item"><div class="zone-legend-dot" style="background:#80cbc4"></div> u &lt; f 放大虚像</div>
+    </div>
+
+    <div class="drag-hint">← 拖拽物体箭头 →</div>
+
+    <div class="checkmark" id="checkmark"><div></div></div>
+  </div>
+
+  <!-- 4. 三按钮工具栏 -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoDemoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <!-- 5. Toast 通知 -->
+  <div class="toast" id="toast">提示</div>
+
+  <!-- 6. 完成弹窗 -->
+  <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h3>🎉 实验完成！</h3>
+      <p>你已掌握凸透镜成像的三种情况：<br>
+        u &gt; 2f → 倒立缩小实像<br>
+        f &lt; u &lt; 2f → 倒立放大实像<br>
+        u &lt; f → 正立放大虚像</p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <!-- 7. 原理说明区 -->
+  <div class="explanation">
+    <h2>凸透镜成像规律</h2>
+    <ul>
+      <li><b>薄透镜公式</b>：1/v − 1/u = 1/f，其中 u 为物距（取负值表示物在透镜左侧），v 为像距，f 为焦距。</li>
+      <li><b>u &gt; 2f</b>：成<b>倒立、缩小</b>的实像，像在 f 与 2f 之间。应用：照相机。</li>
+      <li><b>u = 2f</b>：成<b>倒立、等大</b>的实像，像距也为 2f。</li>
+      <li><b>f &lt; u &lt; 2f</b>：成<b>倒立、放大</b>的实像，像在 2f 之外。应用：投影仪、幻灯机。</li>
+      <li><b>u = f</b>：不成像（平行光出射）。</li>
+      <li><b>u &lt; f</b>：成<b>正立、放大</b>的虚像，像在物体同侧。应用：放大镜。</li>
+      <li><b>三条特殊光线</b>：过光心不偏折、平行主轴折射后过焦点、过焦点折射后平行主轴。</li>
+    </ul>
+  </div>
+
+<script>
+/* ================================================================
+   凸透镜成像规律 — 交互实验
+   ================================================================ */
+
+/* ====== 工具函数 ====== */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function showToast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), 1400);
+}
+
+function showCheck() {
+  const c = $('#checkmark');
+  c.classList.add('active');
+  clearTimeout(showCheck._t);
+  showCheck._t = setTimeout(() => c.classList.remove('active'), 520);
+}
+
+function showDone() {
+  $('#doneMask').style.display = 'flex';
+}
+
+$('#okBtn').onclick = () => { $('#doneMask').style.display = 'none'; };
+
+/* ====== 状态 ====== */
+let freeMode    = false;
+let autoPlaying = false;
+let completed   = false;
+let currentTask = 0;
+let successCooldown = false;
+
+/* ====== 物理参数（像素坐标系） ====== */
+const F_RATIO = 0.15;   // 焦距占画布宽度的比例
+let W, H, cx, cy;       // 画布尺寸、光心坐标
+let f;                   // 焦距（像素）
+let objX;                // 物体 x 坐标（光心左侧，故 objX < cx）
+const OBJ_H_RATIO = 0.18; // 物体箭头高度占画布高度比例
+let objH;                // 物体箭头高度（像素）
+
+/* 拖拽 */
+let dragging = false;
+
+/* ====== Canvas ====== */
+const canvasEl = $('#lensCanvas');
+const ctx = canvasEl.getContext('2d');
+
+function resizeCanvas() {
+  const rect = $('#canvas').getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvasEl.width  = Math.floor(rect.width * dpr);
+  canvasEl.height = Math.floor(rect.height * dpr);
+  canvasEl.style.width  = rect.width + 'px';
+  canvasEl.style.height = rect.height + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  W = rect.width;
+  H = rect.height;
+  cx = W / 2;
+  cy = H / 2;
+  f = W * F_RATIO;
+  objH = H * OBJ_H_RATIO;
+}
+
+/* ====== 成像计算 ====== */
+function calcImage() {
+  // 物距 u（正值，表示物在透镜左侧的距离）
+  const u = cx - objX;
+  if (u < 1) return null;
+
+  // 薄透镜公式：1/v = 1/f + 1/u （教学简化，u、v、f 均取正值处理）
+  // 实际：1/v = 1/f - 1/(-u) = 1/f + 1/u  ... 不对
+  // 用高中常见的正值公式：1/u + 1/v = ... 不对
+  // 标准：1/v - 1/u = 1/f，其中 u < 0（物在左），v > 0 实像在右，v < 0 虚像在左
+  // 简化为正数处理：
+  // 当 u > f:  v = u*f / (u - f) > 0 → 实像，在右侧
+  // 当 u < f:  v = u*f / (u - f) < 0 → 虚像，取绝对值在左侧
+  // 当 u = f:  不成像
+
+  const denom = u - f;
+  if (Math.abs(denom) < 0.5) {
+    // u ≈ f，不成像
+    return { type: 'none', u: u };
+  }
+
+  const v = (u * f) / denom;
+  const m = v / u;  // 放大率（绝对值）
+
+  if (v > 0) {
+    // 实像：在透镜右侧，倒立
+    return {
+      type: 'real',
+      u: u,
+      v: v,
+      m: Math.abs(m),
+      imgX: cx + v,
+      imgH: objH * Math.abs(m),
+      inverted: true
+    };
+  } else {
+    // 虚像：在透镜左侧（与物同侧），正立
+    const absV = Math.abs(v);
+    return {
+      type: 'virtual',
+      u: u,
+      v: absV,
+      m: Math.abs(m),
+      imgX: cx - absV,
+      imgH: objH * Math.abs(m),
+      inverted: false
+    };
+  }
+}
+
+/* ====== 绘制 ====== */
+function draw() {
+  ctx.clearRect(0, 0, W, H);
+
+  // ---- 区域着色 ----
+  // u > 2f 区域
+  ctx.fillStyle = 'rgba(255,107,107,0.06)';
+  ctx.fillRect(0, 0, cx - 2 * f, H);
+  // f < u < 2f 区域
+  ctx.fillStyle = 'rgba(255,183,77,0.06)';
+  ctx.fillRect(cx - 2 * f, 0, f, H);
+  // u < f 区域
+  ctx.fillStyle = 'rgba(128,203,196,0.06)';
+  ctx.fillRect(cx - f, 0, f, H);
+
+  // ---- 主光轴 ----
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  ctx.moveTo(0, cy);
+  ctx.lineTo(W, cy);
+  ctx.stroke();
+
+  // ---- 透镜（双凸形状）----
+  ctx.strokeStyle = 'rgba(120,180,255,0.7)';
+  ctx.fillStyle = 'rgba(120,180,255,0.08)';
+  ctx.lineWidth = 2;
+  const lensH = H * 0.6;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, 8, lensH / 2, 0, -Math.PI / 2, Math.PI / 2);
+  ctx.ellipse(cx, cy, 8, lensH / 2, 0, Math.PI / 2, Math.PI * 1.5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  // 透镜上下箭头
+  const arrowSize = 8;
+  ctx.fillStyle = 'rgba(120,180,255,0.7)';
+  // 上箭头
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - lensH / 2 - arrowSize);
+  ctx.lineTo(cx - arrowSize, cy - lensH / 2 + 2);
+  ctx.lineTo(cx + arrowSize, cy - lensH / 2 + 2);
+  ctx.closePath();
+  ctx.fill();
+  // 下箭头
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + lensH / 2 + arrowSize);
+  ctx.lineTo(cx - arrowSize, cy + lensH / 2 - 2);
+  ctx.lineTo(cx + arrowSize, cy + lensH / 2 - 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // ---- 标记点 F、F'、2F、2F'、O ----
+  const marks = [
+    { x: cx - f,     label: 'F',  color: '#ffb74d' },
+    { x: cx + f,     label: "F'", color: '#ffb74d' },
+    { x: cx - 2 * f, label: '2F', color: '#ff6b6b' },
+    { x: cx + 2 * f, label: "2F'",color: '#ff6b6b' },
+    { x: cx,         label: 'O',  color: '#80cbc4' }
+  ];
+  ctx.font = '600 12px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  marks.forEach(mk => {
+    // 刻度线
+    ctx.strokeStyle = mk.color;
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(mk.x, cy - 6);
+    ctx.lineTo(mk.x, cy + 6);
+    ctx.stroke();
+    // 标签
+    ctx.fillStyle = mk.color;
+    ctx.fillText(mk.label, mk.x, cy + 22);
+  });
+
+  // ---- 物体箭头（橙色） ----
+  drawArrow(objX, cy, objX, cy - objH, '#ff9800', 3, false);
+
+  // ---- 成像计算 & 绘制 ----
+  const img = calcImage();
+  if (img && img.type !== 'none') {
+    // 像箭头
+    const imgColor = img.type === 'real' ? '#3ddc97' : '#4dd0e1';
+    const imgTop = img.inverted ? cy + img.imgH : cy - img.imgH;
+    // 限制像高不超出画布
+    const clampedImgH = Math.min(img.imgH, H * 0.45);
+    const clampedTop = img.inverted ? cy + clampedImgH : cy - clampedImgH;
+
+    if (img.type === 'real') {
+      // 实像：实线箭头
+      drawArrow(img.imgX, cy, img.imgX, clampedTop, imgColor, 2.5, false);
+    } else {
+      // 虚像：虚线箭头
+      drawArrow(img.imgX, cy, img.imgX, clampedTop, imgColor, 2.5, true);
+    }
+
+    // ---- 三条特殊光线 ----
+    const objTop = cy - objH;
+
+    // 光线1：平行于主轴 → 折射后过焦点F'
+    // 入射：物顶 → 透镜面（y = objTop, x: objX → cx）
+    ctx.strokeStyle = 'rgba(255,235,59,0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(objX, objTop);
+    ctx.lineTo(cx, objTop);
+    ctx.stroke();
+    // 折射线：透镜面 → 过 F'(cx+f, cy)
+    if (img.type === 'real') {
+      ctx.beginPath();
+      ctx.moveTo(cx, objTop);
+      // 延长到画布右侧
+      const slope1 = (cy - objTop) / (cx + f - cx);
+      const endX1 = W;
+      const endY1 = objTop + slope1 * (endX1 - cx);
+      ctx.lineTo(endX1, endY1);
+      ctx.stroke();
+    } else {
+      // 虚像：折射线方向反向延长
+      const slope1 = (cy - objTop) / f;
+      // 实际折射线向右上方
+      ctx.beginPath();
+      ctx.moveTo(cx, objTop);
+      const endX1 = W;
+      const endY1 = objTop + slope1 * (endX1 - cx);
+      ctx.lineTo(endX1, endY1);
+      ctx.stroke();
+      // 反向延长（虚线）
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(255,235,59,0.35)';
+      ctx.beginPath();
+      ctx.moveTo(cx, objTop);
+      const bkX1 = cx - f;
+      const bkY1 = objTop - slope1 * f;
+      ctx.lineTo(bkX1, bkY1);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 光线2：过光心不偏折
+    ctx.strokeStyle = 'rgba(76,175,80,0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    if (Math.abs(cx - objX) > 1) {
+      const slope2 = (cy - objTop) / (cx - objX);
+      const extL = 0;
+      const extR = W;
+      const yL = objTop + slope2 * (extL - objX);
+      const yR = objTop + slope2 * (extR - objX);
+      ctx.beginPath();
+      if (img.type === 'real') {
+        ctx.moveTo(objX, objTop);
+        ctx.lineTo(extR, yR);
+        ctx.stroke();
+      } else {
+        ctx.moveTo(objX, objTop);
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+        // 折射后继续（实线向右）
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(extR, yR);
+        ctx.stroke();
+        // 反向延长（虚线）
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(76,175,80,0.35)';
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(extL, yL);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // 光线3：过焦点F → 折射后平行于主轴
+    ctx.strokeStyle = 'rgba(233,30,99,0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    const fLeftX = cx - f;
+    // 入射光线从物顶通过F到透镜
+    if (Math.abs(fLeftX - objX) > 1) {
+      const slope3 = (cy - objTop) / (fLeftX - objX);
+      const yAtLens = objTop + slope3 * (cx - objX);
+      ctx.beginPath();
+      ctx.moveTo(objX, objTop);
+      ctx.lineTo(cx, yAtLens);
+      ctx.stroke();
+      // 折射后平行于主轴
+      if (img.type === 'real') {
+        ctx.beginPath();
+        ctx.moveTo(cx, yAtLens);
+        ctx.lineTo(W, yAtLens);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(cx, yAtLens);
+        ctx.lineTo(W, yAtLens);
+        ctx.stroke();
+        // 反向延长（虚线）
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = 'rgba(233,30,99,0.30)';
+        ctx.beginPath();
+        ctx.moveTo(cx, yAtLens);
+        ctx.lineTo(0, yAtLens);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+
+    // ---- HUD 更新 ----
+    const uCm = (img.u / f * 10).toFixed(1);
+    const vCm = (img.v / f * 10).toFixed(1);
+    const mVal = img.m.toFixed(2);
+    $('#hudU').textContent = uCm + ' cm';
+    $('#hudV').textContent = vCm + ' cm';
+    $('#hudM').textContent = mVal;
+    if (img.type === 'real') {
+      $('#hudType').textContent = img.m < 0.98 ? '倒立缩小实像' : img.m > 1.02 ? '倒立放大实像' : '倒立等大实像';
+    } else {
+      $('#hudType').textContent = '正立放大虚像';
+    }
+  } else if (img && img.type === 'none') {
+    // u ≈ f
+    $('#hudU').textContent = (img.u / f * 10).toFixed(1) + ' cm';
+    $('#hudV').textContent = '∞';
+    $('#hudM').textContent = '∞';
+    $('#hudType').textContent = '不成像（平行光）';
+
+    // 画平行出射光线
+    const objTop = cy - objH;
+    ctx.strokeStyle = 'rgba(255,235,59,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    // 平行光1
+    ctx.beginPath();
+    ctx.moveTo(objX, objTop);
+    ctx.lineTo(cx, objTop);
+    ctx.lineTo(W, objTop);
+    ctx.stroke();
+    // 过光心
+    ctx.strokeStyle = 'rgba(76,175,80,0.5)';
+    const slope = (cy - objTop) / (cx - objX);
+    ctx.beginPath();
+    ctx.moveTo(objX, objTop);
+    ctx.lineTo(W, objTop + slope * (W - objX));
+    ctx.stroke();
+  } else {
+    $('#hudU').textContent = '—';
+    $('#hudV').textContent = '—';
+    $('#hudM').textContent = '—';
+    $('#hudType').textContent = '—';
+  }
+
+  // ---- 物体底部标注 ----
+  ctx.fillStyle = '#ff9800';
+  ctx.font = '700 13px -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('物', objX, cy + 18);
+}
+
+function drawArrow(x1, y1, x2, y2, color, lineW, dashed) {
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = lineW;
+  ctx.setLineDash(dashed ? [6, 4] : []);
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // 箭头头部
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const headLen = 10;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - headLen * Math.cos(angle - 0.4), y2 - headLen * Math.sin(angle - 0.4));
+  ctx.lineTo(x2 - headLen * Math.cos(angle + 0.4), y2 - headLen * Math.sin(angle + 0.4));
+  ctx.closePath();
+  ctx.fill();
+}
+
+/* ====== 步骤定义 ====== */
+let stepPassed = [false, false, false];
+
+const tasks = [
+  {
+    text: '将物体拖到 <b>u &gt; 2f</b> 区域，观察成<b>倒立缩小实像</b>',
+    hint: '把橙色箭头拖到 2F 左侧',
+    check: () => {
+      const u = cx - objX;
+      return u > 2 * f + 5;
+    }
+  },
+  {
+    text: '将物体拖到 <b>f &lt; u &lt; 2f</b> 区域，观察成<b>倒立放大实像</b>',
+    hint: '把物体拖到 F 和 2F 之间',
+    check: () => {
+      const u = cx - objX;
+      return u > f + 5 && u < 2 * f - 5;
+    }
+  },
+  {
+    text: '将物体拖到 <b>u &lt; f</b> 区域，观察成<b>正立放大虚像</b>',
+    hint: '把物体拖到 F 右侧（靠近透镜）',
+    check: () => {
+      const u = cx - objX;
+      return u > 5 && u < f - 3;
+    }
+  }
+];
+
+/* ====== 进度圆点 ====== */
+function buildDots() {
+  const wrap = $('#progressDots');
+  wrap.innerHTML = '';
+  for (let i = 0; i < tasks.length; i++) {
+    const d = document.createElement('span');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.id = 'dot' + (i + 1);
+    wrap.appendChild(d);
+  }
+}
+
+/* ====== 步骤 UI ====== */
+function setStepUI(index) {
+  currentTask = clamp(index, 0, tasks.length - 1);
+  const dots = $$('#progressDots .dot');
+  dots.forEach((d, i) => {
+    d.className = 'dot';
+    if (i < currentTask) d.classList.add('done');
+    else if (i === currentTask) d.classList.add('active');
+  });
+  $('#taskStep').textContent = `步骤 ${currentTask + 1} / ${tasks.length}`;
+  $('#taskText').innerHTML = tasks[currentTask].text;
+  $('#taskHint').textContent = tasks[currentTask].hint;
+}
+
+/* ====== 步骤守卫 ====== */
+function lockSuccess() {
+  successCooldown = true;
+  setTimeout(() => { successCooldown = false; }, 450);
+}
+
+function tryPassStep() {
+  if (freeMode || autoPlaying || completed || successCooldown) return;
+  const ok = tasks[currentTask].check();
+  if (ok) {
+    showCheck();
+    lockSuccess();
+    setTimeout(() => {
+      if (currentTask >= tasks.length - 1) {
+        completed = true;
+        showDone();
+      } else {
+        setStepUI(currentTask + 1);
+      }
+    }, 520);
+  }
+}
+
+/* ====== 三模式 ====== */
+function setFreeMode(on) {
+  freeMode = on;
+  const card = $('#taskCard');
+  if (on) {
+    card.style.opacity = '.25';
+    card.style.filter = 'grayscale(.6)';
+    $('#freeBtn').textContent = '退出自由模式';
+    $('#autoDemoBtn').disabled = true;
+  } else {
+    card.style.opacity = '1';
+    card.style.filter = 'none';
+    $('#freeBtn').textContent = '自由模式';
+    $('#autoDemoBtn').disabled = false;
+  }
+}
+
+function resetFlow() {
+  completed = false;
+  successCooldown = false;
+  currentTask = 0;
+  stepPassed = [false, false, false];
+  setStepUI(0);
+  $('#doneMask').style.display = 'none';
+  // 重置物体到默认位置 u = 2.5f
+  objX = cx - 2.5 * f;
+  draw();
+}
+
+/* ====== 自动演示 ====== */
+async function autoDemo() {
+  if (autoPlaying || freeMode) return;
+  autoPlaying = true;
+  $('#autoDemoBtn').disabled = true;
+  $('#freeBtn').disabled = true;
+  $('#resetBtn').disabled = true;
+
+  const SLOW = 2.2;
+
+  try {
+    resetFlow();
+    await sleep(400 * SLOW);
+
+    // 步骤1：拖到 u > 2f
+    await animateObjTo(cx - 2.8 * f, 1200 * SLOW);
+    showToast('u > 2f → 倒立缩小实像');
+    await sleep(300 * SLOW);
+    showCheck();
+    await sleep(520 * SLOW);
+    setStepUI(1);
+    await sleep(400 * SLOW);
+
+    // 步骤2：拖到 f < u < 2f
+    await animateObjTo(cx - 1.4 * f, 1200 * SLOW);
+    showToast('f < u < 2f → 倒立放大实像');
+    await sleep(300 * SLOW);
+    showCheck();
+    await sleep(520 * SLOW);
+    setStepUI(2);
+    await sleep(400 * SLOW);
+
+    // 步骤3：拖到 u < f
+    await animateObjTo(cx - 0.5 * f, 1200 * SLOW);
+    showToast('u < f → 正立放大虚像');
+    await sleep(300 * SLOW);
+    showCheck();
+    await sleep(520 * SLOW);
+
+    completed = true;
+    showDone();
+  } finally {
+    autoPlaying = false;
+    $('#autoDemoBtn').disabled = false;
+    $('#freeBtn').disabled = false;
+    $('#resetBtn').disabled = false;
+  }
+}
+
+function animateObjTo(targetX, duration) {
+  return new Promise(resolve => {
+    const startX = objX;
+    const startTime = performance.now();
+    function frame(now) {
+      const t = Math.min((now - startTime) / duration, 1);
+      const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+      objX = startX + (targetX - startX) * ease;
+      draw();
+      if (t < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        resolve();
+      }
+    }
+    requestAnimationFrame(frame);
+  });
+}
+
+/* ====== 拖拽交互（Pointer Events） ====== */
+const stage = $('#canvas');
+
+stage.addEventListener('pointerdown', (e) => {
+  if (autoPlaying) return;
+  const rect = stage.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+
+  // 检查是否点击在物体箭头附近
+  const hitDist = Math.abs(px - objX);
+  const hitY = py > cy - objH - 20 && py < cy + 10;
+  if (hitDist < 28 && hitY) {
+    dragging = true;
+    stage.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+});
+
+stage.addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  const rect = stage.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  // 限制物体在透镜左侧，且不超出画布
+  const minX = 20;
+  const maxX = cx - 8;
+  objX = clamp(px, minX, maxX);
+  draw();
+  tryPassStep();
+  e.preventDefault();
+});
+
+stage.addEventListener('pointerup', (e) => {
+  if (!dragging) return;
+  dragging = false;
+});
+
+stage.addEventListener('pointercancel', () => {
+  dragging = false;
+});
+
+/* ====== 按钮绑定 ====== */
+$('#resetBtn').onclick = () => {
+  if (autoPlaying) return;
+  if (freeMode) setFreeMode(false);
+  resetFlow();
+  showToast('已重置');
+};
+
+$('#autoDemoBtn').onclick = () => autoDemo();
+
+$('#freeBtn').onclick = () => {
+  if (autoPlaying) return;
+  setFreeMode(!freeMode);
+};
+
+/* ====== 移动端安全 ====== */
+document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
+$('#canvas').addEventListener('touchstart', e => {
+  if (e.touches && e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+/* ====== 自适应 ====== */
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const oldW = W;
+    const oldObjRatio = (cx - objX) / (oldW * F_RATIO);
+    resizeCanvas();
+    // 保持物距与焦距的比例
+    objX = cx - oldObjRatio * f;
+    objX = clamp(objX, 20, cx - 8);
+    draw();
+  }, 120);
+});
+window.addEventListener('orientationchange', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    const oldW = W;
+    const oldObjRatio = (cx - objX) / (oldW * F_RATIO);
+    resizeCanvas();
+    objX = cx - oldObjRatio * f;
+    objX = clamp(objX, 20, cx - 8);
+    draw();
+  }, 200);
+});
+
+/* ====== 初始化 ====== */
+function init() {
+  resizeCanvas();
+  objX = cx - 2.5 * f;
+  buildDots();
+  setStepUI(0);
+  draw();
+}
+init();
+</script>
+</body>
+</html>

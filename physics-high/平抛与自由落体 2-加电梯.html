@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>自由落体电梯演示（最终修正版）</title>
+    <style>
+        #container {
+            width: 800px;
+            margin: 20px auto;
+            font-family: Arial, sans-serif;
+        }
+        #animation {
+            border: 1px solid #ddd;
+            position: relative;
+            height: 400px;
+            overflow: hidden;
+            background: #f9f9f9;
+        }
+        .ball {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+        #freeFall {
+            background: #e74c3c;
+            left: 100px;
+        }
+        #projectile {
+            background: #3498db;
+            left: 400px;
+        }
+        .controls {
+            margin: 15px 0;
+            text-align: center;
+        }
+        button {
+            padding: 8px 15px;
+            margin: 0 5px;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1a252f;
+        }
+        .explanation {
+            padding: 20px;
+            background: #ecf0f1;
+            margin-top: 20px;
+            border-radius: 5px;
+            line-height: 1.6;
+        }
+        #elevator {
+            position: absolute;
+            width: 600px;
+            height: 300px;
+            left: 100px;
+            top: -240px; /* 初始只露出60px(1/5) */
+            border: 2px solid #7f8c8d;
+            background-color: rgba(210, 218, 226, 0.3);
+            z-index: 1;
+        }
+        #elevatorFloor {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #7f8c8d;
+        }
+        .hidden {
+            display: none !important;
+        }
+        .trail {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            z-index: 1;
+        }
+        .red-trail {
+            background-color: rgba(231, 76, 60, 0.6);
+        }
+        .blue-trail {
+            background-color: rgba(52, 152, 219, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h2 style="text-align: center;">自由落体电梯演示（最终修正版）</h2>
+        <div class="controls">
+            <button onclick="startAnimation()">开始演示</button>
+            <button onclick="reset()">重置</button>
+            <button onclick="toggleElevator()">去掉电梯</button>
+        </div>
+        <div id="animation">
+            <!-- 电梯 -->
+            <div id="elevator">
+                <div id="elevatorFloor"></div>
+            </div>
+            
+            <!-- 小球 -->
+            <div id="freeFall" class="ball"></div>
+            <div id="projectile" class="ball"></div>
+        </div>
+        <div class="explanation">
+            <h3>物理原理说明：</h3>
+            <p>该演示展示了爱因斯坦等效原理的直观示例：</p>
+            <ul>
+                <li><strong>电梯内部视角</strong>：
+                    <ul>
+                        <li>电梯自由下落时，内部形成局部的惯性参考系</li>
+                        <li>红球相对电梯静止（不受支持力）</li>
+                        <li>蓝球在电梯内做匀速直线运动（惯性运动）</li>
+                    </ul>
+                </li>
+                <li><strong>外部视角</strong>：
+                    <ul>
+                        <li>电梯和红球以相同加速度自由下落</li>
+                        <li>蓝球做平抛运动（水平匀速+竖直加速）</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 物理参数
+        const g = 9.8;       // 重力加速度 (m/s²)
+        const scale = 40;    // 1米 = 40像素
+        const h = 6;         // 初始高度 (米)
+        const v0 = 4;        // 平抛初速度 (m/s)
+        
+        // 初始位置调整
+        const initialElevatorTop = -240; // 初始只露出60px(300px的1/5)
+        const initialBallY = 60 - 20;    // 露出部分60px - 小球高度20px = 40px
+
+        // DOM元素
+        const freeFall = document.getElementById('freeFall');
+        const projectile = document.getElementById('projectile');
+        const elevator = document.getElementById('elevator');
+        const animationContainer = document.getElementById('animation');
+        
+        // 动画控制
+        let animationId;
+        let startTime;
+        let isAnimating = false;
+        let trailInterval;
+        let trailElements = [];
+        let elevatorHiddenByButton = false; // 新增：跟踪是否通过按钮隐藏了电梯
+
+        // 初始化
+        function init() {
+            reset();
+            positionBalls();
+        }
+
+        function positionBalls() {
+            // 设置小球初始位置（电梯内部地板）
+            freeFall.style.top = initialBallY + 'px';
+            freeFall.style.left = "100px";
+            
+            projectile.style.top = initialBallY + 'px';
+            projectile.style.left = "400px";
+        }
+
+        function reset() {
+            if (isAnimating) {
+                cancelAnimationFrame(animationId);
+                clearInterval(trailInterval);
+                isAnimating = false;
+            }
+            
+            // 清除所有轨迹点
+            trailElements.forEach(el => el.remove());
+            trailElements = [];
+            
+            // 重置电梯状态
+            elevatorHiddenByButton = false;
+            elevator.classList.remove("hidden");
+            elevator.style.top = initialElevatorTop + 'px';
+            
+            // 重置小球位置
+            positionBalls();
+        }
+
+        function toggleElevator() {
+            elevatorHiddenByButton = !elevatorHiddenByButton;
+            if (elevatorHiddenByButton) {
+                elevator.classList.add("hidden");
+            } else {
+                elevator.classList.remove("hidden");
+            }
+        }
+
+        function startAnimation() {
+            if (isAnimating) return;
+            
+            // 重置但不改变电梯的隐藏状态
+            if (isAnimating) {
+                cancelAnimationFrame(animationId);
+                clearInterval(trailInterval);
+                isAnimating = false;
+            }
+            
+            // 清除所有轨迹点
+            trailElements.forEach(el => el.remove());
+            trailElements = [];
+            
+            // 重置电梯位置（但不改变隐藏状态）
+            if (!elevatorHiddenByButton) {
+                elevator.style.top = initialElevatorTop + 'px';
+            }
+            
+            // 重置小球位置
+            positionBalls();
+            
+            startTime = Date.now();
+            isAnimating = true;
+            
+            // 开始绘制轨迹
+            startTrailDrawing();
+            
+            animate();
+        }
+
+        function startTrailDrawing() {
+            trailInterval = setInterval(() => {
+                if (!isAnimating) return;
+                
+                // 记录红球轨迹
+                const redTrail = document.createElement("div");
+                redTrail.className = "trail red-trail";
+                redTrail.style.left = freeFall.style.left;
+                redTrail.style.top = freeFall.style.top;
+                animationContainer.appendChild(redTrail);
+                trailElements.push(redTrail);
+                
+                // 记录蓝球轨迹
+                const blueTrail = document.createElement("div");
+                blueTrail.className = "trail blue-trail";
+                blueTrail.style.left = projectile.style.left;
+                blueTrail.style.top = projectile.style.top;
+                animationContainer.appendChild(blueTrail);
+                trailElements.push(blueTrail);
+            }, 50);
+        }
+
+        function animate() {
+            const currentTime = (Date.now() - startTime) / 1000;
+            
+            // 计算下落高度
+            let y = Math.min(0.5 * g * currentTime * currentTime, h);
+            
+            // 更新电梯位置
+            const elevatorY = initialElevatorTop + y * scale;
+            if (!elevatorHiddenByButton) {
+                elevator.style.top = elevatorY + 'px';
+            }
+            
+            // 更新小球位置（保持在电梯内部地板上）
+            const ballY = initialBallY + y * scale;
+            freeFall.style.top = ballY + 'px';
+            projectile.style.top = ballY + 'px';
+            
+            // 更新蓝球水平位置
+            let x = v0 * currentTime * scale;
+            projectile.style.left = (400 + x) + 'px';
+            
+            // 继续动画直到落地
+            if (y * scale < h * scale) {
+                animationId = requestAnimationFrame(animate);
+            } else {
+                isAnimating = false;
+                clearInterval(trailInterval);
+            }
+        }
+
+        // 页面加载时初始化
+        window.onload = init;
+    </script>
+</body>
+</html>

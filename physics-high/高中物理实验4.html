@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>研究自由落体运动（打点计时器）</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+    --ink:#e9f2ff;
+  }
+  body{ background:#1a1a1a; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif; margin:0; padding:10px; display:flex; flex-direction:column; align-items:center;}
+
+  /* --- 顶部彩带 --- */
+  #spectrum{
+    position: relative; width: 100%; max-width: 900px; height: 40px; border-radius: 10px; overflow: hidden;
+    box-shadow: 0 0 15px rgba(255,255,255,0.15); background: #000; 
+    margin: 0 0 12px; flex-shrink: 0;
+  }
+  #spectrum::before{
+    content: ""; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(90deg, 
+      #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000,
+      #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000
+    );
+    background-size: 200% 100%; animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow { 0% { background-position: 0% 0; } 100% { background-position: -100% 0; } }
+
+  /* --- 任务卡片 --- */
+  .task-card{ width:100%; max-width:900px; background:var(--card-bg); border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px 14px; backdrop-filter:blur(6px);
+    display:grid; grid-template-columns:auto 1fr auto; gap:10px; align-items:center; transition:opacity .2s, filter .2s;}
+  .task-step{ background:rgba(255,255,255,0.15); border-radius:8px; padding:6px 10px; font-weight:600; white-space:nowrap; }
+  .task-text{ line-height:1.55; } .task-hint{ color:#ffd54f; font-size:12px; opacity:.9; }
+  .progress-dots{ display:flex; gap:6px; align-items:center; }
+  .dot{ width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,0.25); outline:2px solid rgba(255,255,255,0.15); }
+  .dot.active{ background:var(--warn);} .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5);}
+
+  /* --- 舞台区域 --- */
+  #stageWrap{ width:100%; max-width:900px; height:68vh; max-height:620px; margin-top:10px; position: relative;}
+  #stage{ 
+    width:100%; height:100%; background:#161b22; border-radius:12px; 
+    box-shadow:0 8px 24px rgba(0,0,0,.5); position:relative; overflow:hidden; touch-action:none;
+    display: flex; border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  /* --- 左侧：实验装置 --- */
+  .lab-setup {
+    flex: 2.5; position: relative; border-right: 1px solid rgba(255,255,255,0.1);
+    background: radial-gradient(circle at 50% 100%, #20252e, #161b22);
+    overflow: hidden;
+  }
+
+  /* 铁架台与装置 */
+  .stand-base { position: absolute; top: 40px; left: 80px; width: 60px; height: 10px; background: #555; border-radius: 2px; transform: rotate(90deg); }
+  .stand-pole { position: absolute; top: 40px; left: 60px; width: 8px; height: 400px; background: #777; border-radius: 2px; }
+  .stand-clamp { position: absolute; top: 60px; left: 55px; width: 40px; height: 10px; background: #555; }
+  
+  .ticker-timer {
+    position: absolute; top: 45px; left: 80px; width: 50px; height: 40px;
+    background: #333; border: 2px solid #666; border-radius: 4px; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+  }
+  .timer-needle {
+    width: 4px; height: 4px; background: #ff4757; border-radius: 50%;
+    position: absolute; bottom: 5px;
+  }
+  .timer-needle.active { animation: tickTock 0.04s infinite alternate; }
+  @keyframes tickTock { from{ transform: translateY(0); } to{ transform: translateY(3px); } }
+
+  /* 动态纸带 */
+  .tape-segment {
+    position: absolute; top: 85px; left: 100px; width: 12px; height: 0px; 
+    background: rgba(255,255,255,0.9);
+    transform-origin: top center;
+    z-index: 5;
+  }
+  
+  /* 重物 */
+  .weight {
+    position: absolute; top: 85px; left: 91px; width: 30px; height: 40px;
+    background: linear-gradient(to right, #ccc, #fff, #ccc);
+    border-radius: 4px; box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    z-index: 20; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: #333; font-weight: bold;
+    transition: background 0.3s;
+  }
+  .weight.heavy { background: linear-gradient(to right, #444, #777, #444); color: #fff; }
+
+  /* --- 右侧：控制面板 --- */
+  .control-panel {
+    flex: 1; 
+    padding: 20px; 
+    background: rgba(0,0,0,0.2);
+    display: flex; 
+    flex-direction: column; 
+    gap: 15px; 
+    /* 关键：底部留出空间给绝对定位的纸带对比区，并允许滚动防止遮挡 */
+    padding-bottom: 140px; 
+    overflow-y: auto;
+  }
+  
+  .ctrl-group { display:flex; flex-direction:column; gap:8px; margin-bottom: 10px;}
+  .ctrl-label { font-size:12px; color:#aaa; font-weight:bold; letter-spacing:1px;}
+  
+  .ctrl-btn {
+    width: 100%; padding: 14px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+    transition: all 0.2s; background: #2d333b; color: #c9d1d9; border: 1px solid rgba(255,255,255,0.1);
+  }
+  .ctrl-btn:hover { background: #3c444d; }
+  .ctrl-btn.primary { background: #238636; color: white; border-color:rgba(255,255,255,0.1); }
+  .ctrl-btn.primary:hover { background: #2ea043; }
+  .ctrl-btn.warn { background: #d29922; color: #222; }
+  .ctrl-btn:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+  .ctrl-btn:active { transform: scale(0.98); }
+
+  .status-dot { width:10px; height:10px; background:#444; border-radius:50%; box-shadow:inset 0 1px 3px rgba(0,0,0,0.5); transition:0.3s;}
+  .status-dot.on { background: #3fb950; box-shadow: 0 0 8px #3fb950; }
+
+  /* --- 底部：纸带对比区 (绝对定位) --- */
+  .tape-compare-view {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 120px;
+    background: #fff; border-top: 4px solid #333; z-index: 50;
+    display: flex; flex-direction: column; padding: 10px 20px;
+    box-sizing: border-box; overflow: hidden;
+  }
+  .compare-row {
+    flex: 1; display: flex; align-items: center; position: relative; border-bottom: 1px dashed #ccc;
+  }
+  .compare-label {
+    width: 60px; font-size: 10px; color: #333; font-weight: bold; flex-shrink: 0;
+  }
+  .tape-strip {
+    flex: 1; height: 20px; background: rgba(0,0,0,0.05); position: relative; margin-left: 10px;
+    overflow: hidden;
+  }
+  /* 结果点：保证黑色、清晰 */
+  .result-dot {
+    position: absolute; width: 4px; height: 4px; background: #000; border-radius: 50%; top: 50%; transform: translateY(-50%);
+  }
+  .tape-strip::after {
+    content:''; position: absolute; bottom: 0; left: 0; right: 0; height: 5px;
+    background-image: linear-gradient(to right, #333 1px, transparent 1px);
+    background-size: 10px 100%; opacity: 0.3;
+  }
+
+  /* --- 底部工具栏 --- */
+  .toolbar{ width:100%; max-width:900px; margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-start; }
+  button.tool-btn{ padding:10px 16px; background:#444; color:#fff; border:none; border-radius:8px; cursor:pointer; transition:background .25s; }
+  button.tool-btn:hover{ background:#5a5a5a;} 
+
+  /* --- 弹窗与提示 --- */
+  .checkmark{ position:absolute; z-index: 100; left: 50%; top: 35%; transform: translate(-50%,-50%) scale(0.6);
+      width:120px; height:120px; border-radius:50%; background: rgba(61,220,151,0.15);
+      border: 3px solid var(--accent); display: none; align-items:center; justify-content:center; }
+  .checkmark.active{ display:flex; animation:pop .5s ease-out forwards;}
+  .checkmark > div{ width: 60px; height: 30px; border-left: 8px solid var(--accent);
+      border-bottom: 8px solid var(--accent); transform: rotate(-45deg) translateY(-6px); }
+  @keyframes pop{ 0%{transform:translate(-50%,-50%) scale(.4);opacity:.2} 60%{transform:translate(-50%,-50%) scale(1.1);opacity:1} 100%{transform:translate(-50%,-50%) scale(1)} }
+
+  .toast{ position: fixed; left:50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+      background: rgba(0,0,0,0.8); color: #fff; padding: 10px 14px; border-radius: 10px;
+      font-size: 14px; opacity: 0; pointer-events:none; transition: opacity .25s, transform .25s; z-index: 200; }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+  .modal-mask{ position: fixed; inset:0; background: rgba(0,0,0,0.7); display:none;
+      align-items:center; justify-content:center; z-index: 300; }
+  .modal{ width:min(90vw, 400px); background:#161b22; color:#fff; border: 1px solid rgba(255,255,255,0.15);
+      border-radius:14px; padding:24px; text-align:center; box-shadow: 0 12px 40px rgba(0,0,0,0.8);}
+  .modal h3{ margin: 0 0 15px; font-size: 22px; color: var(--accent); }
+  .modal p{ color: #c9d1d9; margin-bottom: 20px; line-height: 1.6; text-align: left; font-size: 15px;}
+  .modal .ok{ width: 100%; padding:12px; background: var(--accent); color:#081a12; font-weight:700; border:none; border-radius:8px; cursor:pointer; font-size:16px;}
+  
+  .explanation { width: 100%; max-width: 900px; margin: 14px 0 20px; line-height: 1.65; font-size: 0.95em; color: var(--ink); }
+  .explanation h2{ margin:.2em 0 .4em; color:#9bd3ff; font-size: 1.15em; }
+
+</style>
+</head>
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">保持50g重物，接通电源，松开纸带。</div>
+      <div class="task-hint" id="taskHint">提示：先点击“接通打点计时器”，再点击“释放纸带”。</div>
+    </div>
+    <div class="progress-dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="stageWrap">
+    <div id="stage">
+      <div class="lab-setup">
+        <div class="stand-base"></div>
+        <div class="stand-pole"></div>
+        <div class="stand-clamp"></div>
+        
+        <div class="ticker-timer">
+          <div style="font-size:8px; color:#aaa; position:absolute; top:2px;">50Hz</div>
+          <div class="timer-needle" id="needle"></div>
+        </div>
+
+        <div class="tape-segment" id="tapeAnim"></div>
+        <div class="weight" id="weightObj">50g</div>
+      </div>
+
+      <div class="control-panel">
+        <div class="ctrl-group">
+          <div class="ctrl-label">电源控制</div>
+          <button class="ctrl-btn" id="powerBtn">
+            <span>⚡ 接通打点计时器</span>
+            <span class="status-dot" id="powerStatus"></span>
+          </button>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-label">运动控制</div>
+          <button class="ctrl-btn primary" id="dropBtn" disabled>
+            <span>⬇️ 释放纸带</span>
+          </button>
+        </div>
+
+        <div class="ctrl-group">
+          <div class="ctrl-label">实验配置</div>
+          <button class="ctrl-btn" id="resetObjBtn" disabled>
+            <span>🔄 复位装置 (准备下次)</span>
+          </button>
+          <button class="ctrl-btn" id="changeMassBtn" style="margin-top:8px;">
+            <span>⚖️ 更换重物 (50g -> 300g)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="tape-compare-view">
+        <div class="compare-row">
+          <div class="compare-label">纸带A (50g)</div>
+          <div class="tape-strip" id="tapeResult50"></div>
+        </div>
+        <div class="compare-row">
+          <div class="compare-label">纸带B (300g)</div>
+          <div class="tape-strip" id="tapeResult300"></div>
+        </div>
+      </div>
+
+      <div class="checkmark" id="checkmark"><div></div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="resetBtn">全流程重置</button>
+    <button class="tool-btn" id="autoDemoBtn">自动演示</button>
+    <button class="tool-btn" id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">请按步骤操作</div>
+
+  <div class="modal-mask" id="choiceMask">
+    <div class="modal">
+      <h3>实验观察</h3>
+      <p style="text-align: center; margin-bottom: 20px;">
+        请仔细对比底部的两条纸带（50g 与 300g），<br>
+        它们的点迹分布有什么关系？
+      </p>
+      <div style="display:flex; gap:10px; justify-content:center;">
+          <button class="ctrl-btn warn" id="btnDiff" style="width:auto; padding:10px 20px; flex:1; justify-content:center;">不一致</button>
+          <button class="ctrl-btn primary" id="btnSame" style="width:auto; padding:10px 20px; flex:1; justify-content:center;">完全一致</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>实验验证成功！🎉</h3>
+      <p>
+        你的观察非常敏锐！<br>
+        尽管质量相差6倍，但两条纸带的点迹<strong>完全重合</strong>。这有力地验证了：<strong>自由落体的加速度与物体质量无关。</strong><br><br>
+        <strong>思考题：</strong>请根据纸带上点与点的间距 $\Delta x$，结合打点周期 $T=0.02s$，利用公式 $\Delta x = aT^2$ 自行计算加速度 $g$ 的大小。
+      </p>
+      <button class="ok" id="okBtn">好的，我去计算</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>打点计时器实验原理</h2>
+    <ul>
+      <li><b>实验操作顺序</b>：为了有效利用纸带，必须<b>先接通电源</b>（使打点针开始振动），等待工作稳定后再<b>释放纸带</b>。</li>
+      <li><b>数据分析</b>：纸带记录了物体在不同时刻的位置。相邻两点的时间间隔恒为 $0.02s$（50Hz交流电）。通过测量点间距，可以分析速度变化和加速度。</li>
+      <li><b>实验结论</b>：在忽略空气阻力的情况下，所有物体自由下落的加速度（$g$）都相同，与质量无关。</li>
+    </ul>
+  </div>
+
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+  const el = (id) => document.getElementById(id);
+
+  // 元素
+  const tapeAnim = el('tapeAnim');
+  const weightObj = el('weightObj');
+  const needle = el('needle');
+  const tapeResult50 = el('tapeResult50');
+  const tapeResult300 = el('tapeResult300');
+
+  // 按钮
+  const btnResetObj = el('resetObjBtn');
+  const btnPower = el('powerBtn');
+  const btnDrop = el('dropBtn');
+  const btnChangeMass = el('changeMassBtn');
+  const powerStatus = el('powerStatus');
+
+  // 底部工具
+  const btnMainReset = el('resetBtn');
+  const btnAuto = el('autoDemoBtn');
+  const btnFree = el('freeBtn');
+  
+  // 弹窗与交互
+  const choiceMask = el('choiceMask');
+  const btnDiff = el('btnDiff');
+  const btnSame = el('btnSame');
+  const checkmark = el('checkmark');
+  const doneMask = el('doneMask');
+  const okBtn = el('okBtn');
+  const toast = el('toast');
+  const taskCard = el('taskCard');
+
+  // UI 文本
+  const taskStepEl = el('taskStep');
+  const taskTextEl = el('taskText');
+  const taskHintEl = el('taskHint');
+  const dots = [el('dot1'), el('dot2'), el('dot3')];
+
+  /* --- 状态变量 --- */
+  let currentStep = 0;
+  let isPowerOn = false;
+  let isDropping = false;
+  let hasDropped = false; 
+  let currentMass = 50;   // g
+  let freeMode = false;
+  let autoPlaying = false;
+  
+  let animationId = null;
+
+  // 物理常量
+  const G = 9.8; 
+  const PIXEL_SCALE = 300; // 1米 = 300px
+  const T_INTERVAL = 0.02; // 50Hz
+
+  // 记录数据
+  let runData = {
+    50: [],  // 存储50g时的点位置 (px)
+    300: []  // 存储300g时的点位置
+  };
+
+  /* --- 任务定义 --- */
+  const tasks = [
+    {
+      text: '步骤 1：小质量实验。保持50g重物，接通电源，释放纸带。',
+      hint: '操作顺序：先点“接通打点计时器”，再点“释放纸带”。',
+      check: () => hasDropped && currentMass === 50
+    },
+    {
+      text: '步骤 2：大质量实验。复位装置，更换300g重物，重复实验。',
+      hint: '请先点击“复位装置”，然后“更换重物”，最后按流程操作。',
+      check: () => hasDropped && currentMass === 300
+    },
+    {
+      text: '步骤 3：数据对比。观察底部两条纸带的点迹分布。',
+      hint: '系统正在为您对比两条纸带...',
+      check: () => true 
+    }
+  ];
+
+  /* --- 初始化 --- */
+  function init() {
+    resetExperimentState();
+    updateUI();
+    
+    // 操作按钮
+    btnPower.onclick = togglePower;
+    btnDrop.onclick = startDrop;
+    btnResetObj.onclick = handleResetObj;
+    btnChangeMass.onclick = changeMass;
+    
+    // 工具按钮
+    btnMainReset.onclick = () => { if(!autoPlaying) resetAll(); };
+    btnFree.onclick = toggleFreeMode;
+    btnAuto.onclick = startAutoDemo;
+    
+    // 弹窗逻辑
+    okBtn.onclick = () => doneMask.style.display = 'none';
+    btnDiff.onclick = () => showToast("不对哦，请再仔细观察底部纸带，特别是点的垂直位置。");
+    btnSame.onclick = handleCorrectChoice;
+  }
+
+  /* --- 核心交互逻辑 --- */
+  
+  function togglePower() {
+    if(hasDropped || isDropping) return; 
+    
+    isPowerOn = !isPowerOn;
+    if(isPowerOn) {
+      powerStatus.classList.add('on');
+      needle.classList.add('active');
+      btnDrop.disabled = false; 
+      btnResetObj.disabled = true; // 通电中不能复位
+      btnChangeMass.disabled = true;
+    } else {
+      powerStatus.classList.remove('on');
+      needle.classList.remove('active');
+      btnDrop.disabled = true;
+      if(!hasDropped) btnChangeMass.disabled = false;
+    }
+  }
+
+  function handleResetObj() {
+    if(isDropping) return;
+    resetExperimentState();
+    
+    // 如果在做任务2，复位后提示更换重物
+    if(!freeMode && currentStep === 1 && currentMass === 50) {
+      showToast("装置已复位，请更换重物");
+    }
+  }
+
+  function changeMass() {
+    if(hasDropped || isDropping) return;
+    
+    if(currentMass === 50) {
+      currentMass = 300;
+      weightObj.innerText = "300g";
+      weightObj.classList.add('heavy');
+      btnChangeMass.querySelector('span').innerText = "⚖️ 更换重物 (300g -> 50g)";
+    } else {
+      currentMass = 50;
+      weightObj.innerText = "50g";
+      weightObj.classList.remove('heavy');
+      btnChangeMass.querySelector('span').innerText = "⚖️ 更换重物 (50g -> 300g)";
+    }
+  }
+
+  /* --- 物理动画引擎 --- */
+  function startDrop() {
+    if(!isPowerOn || isDropping || hasDropped) return;
+    
+    isDropping = true;
+    btnDrop.disabled = true;
+    btnPower.disabled = true;
+    
+    let startTime = performance.now();
+    let dropDuration = 0.5; // 秒
+    
+    // 记录本次打点数据
+    const currentDots = [];
+    let nextTickTime = 0; 
+
+    function animate(now) {
+      let t = (now - startTime) / 1000; // seconds
+      if(t > dropDuration) t = dropDuration; 
+
+      // 物理公式：h = 0.5 * g * t^2
+      // 严格使用相同的公式，没有任何随机变量，保证点迹一致
+      let distM = 0.5 * G * t * t;
+      let distPx = distM * PIXEL_SCALE;
+      
+      // 更新视图
+      tapeAnim.style.height = distPx + 'px';
+      weightObj.style.top = (85 + distPx) + 'px';
+
+      // 记录打点逻辑 (每0.02s记录一次当前的位移)
+      // 使用循环补齐中间错过的点（防止帧率抖动导致漏点）
+      while (t >= nextTickTime) {
+         // 使用精确公式计算理论位置，避免误差积累
+         let perfectDistM = 0.5 * G * nextTickTime * nextTickTime;
+         let perfectDistPx = perfectDistM * PIXEL_SCALE;
+         
+         currentDots.push(perfectDistPx);
+         nextTickTime += T_INTERVAL;
+      }
+
+      if (t < dropDuration) {
+        animationId = requestAnimationFrame(animate);
+      } else {
+        finishDrop(currentDots);
+      }
+    }
+    animationId = requestAnimationFrame(animate);
+  }
+
+  function finishDrop(dotsData) {
+    isDropping = false;
+    hasDropped = true;
+    
+    // 自动断电
+    isPowerOn = false;
+    powerStatus.classList.remove('on');
+    needle.classList.remove('active');
+    
+    // 按钮状态
+    btnResetObj.disabled = false;
+    btnResetObj.classList.add('warn'); // 高亮提示复位
+    
+    // 保存并显示结果
+    runData[currentMass] = dotsData;
+    renderResultTape(currentMass, dotsData);
+
+    if(!freeMode && !autoPlaying) checkTaskLogic();
+  }
+
+  function renderResultTape(mass, dotsData) {
+    const container = mass === 50 ? tapeResult50 : tapeResult300;
+    container.innerHTML = ''; // 清空
+    
+    dotsData.forEach(posPx => {
+        // 横向缩放显示，避免太长
+        let leftPos = posPx * 0.5; 
+        if(leftPos < container.clientWidth) {
+            const d = document.createElement('div');
+            d.className = 'result-dot';
+            d.style.left = leftPos + 'px';
+            container.appendChild(d);
+        }
+    });
+  }
+
+  function resetExperimentState() {
+    cancelAnimationFrame(animationId);
+    isDropping = false;
+    hasDropped = false;
+    isPowerOn = false;
+    
+    // 视觉复位
+    tapeAnim.style.height = '0px';
+    weightObj.style.top = '85px';
+    powerStatus.classList.remove('on');
+    needle.classList.remove('active');
+    
+    // 按钮复位
+    btnResetObj.disabled = true;
+    btnResetObj.classList.remove('warn');
+    btnPower.disabled = false;
+    btnDrop.disabled = true;
+    btnChangeMass.disabled = false;
+  }
+
+  /* --- 任务控制 --- */
+  function checkTaskLogic() {
+    const task = tasks[currentStep];
+    if(task.check()) {
+        showCheck();
+        setTimeout(nextStep, 1000);
+    }
+  }
+
+  function handleCorrectChoice() {
+    choiceMask.style.display = 'none';
+    // 标记步骤3完成
+    dots[2].classList.remove('active');
+    dots[2].classList.add('done');
+    showCheck();
+    setTimeout(() => {
+        showDone();
+    }, 1000);
+  }
+
+  function nextStep() {
+    dots[currentStep].classList.remove('active');
+    dots[currentStep].classList.add('done');
+    currentStep++;
+    
+    if (currentStep >= tasks.length) {
+      // 这里的逻辑通常不会直接到达，因为步骤2之后会进入步骤3状态，等待自动触发弹窗
+    } else {
+      dots[currentStep].classList.add('active');
+      updateUI();
+      
+      // 核心修改：如果是进入步骤3（currentStep==2），则2秒后自动弹出选择题
+      if(currentStep === 2) {
+          // 此时刚完成300g下落，进入“分析数据”环节
+          // 禁用所有操作防止干扰
+          btnResetObj.disabled = true;
+          btnChangeMass.disabled = true;
+          setTimeout(() => {
+              choiceMask.style.display = 'flex';
+          }, 2000);
+      }
+    }
+  }
+
+  function updateUI() {
+    if (currentStep < tasks.length) {
+      taskStepEl.textContent = `步骤 ${currentStep + 1} / 3`;
+      taskTextEl.innerHTML = tasks[currentStep].text;
+      taskHintEl.textContent = tasks[currentStep].hint;
+    }
+  }
+
+  function resetAll() {
+    currentStep = 0;
+    currentMass = 50;
+    freeMode = false;
+    runData = {50:[], 300:[]};
+    tapeResult50.innerHTML = '';
+    tapeResult300.innerHTML = '';
+    weightObj.innerText = "50g";
+    weightObj.classList.remove('heavy');
+    btnChangeMass.querySelector('span').innerText = "⚖️ 更换重物 (50g -> 300g)";
+    
+    resetExperimentState();
+    
+    dots.forEach(d => d.className = 'dot');
+    dots[0].classList.add('active');
+    updateUI();
+    
+    taskCard.style.opacity = 1;
+    taskCard.style.filter = 'none';
+    btnFree.textContent = '自由模式';
+    doneMask.style.display = 'none';
+    choiceMask.style.display = 'none';
+  }
+
+  function toggleFreeMode() {
+    freeMode = !freeMode;
+    if(freeMode) {
+      btnFree.textContent = "退出自由模式";
+      taskCard.style.opacity = 0.3;
+      taskCard.style.filter = 'grayscale(1)';
+      showToast("自由探索模式");
+    } else {
+      btnFree.textContent = "自由模式";
+      resetAll();
+    }
+  }
+
+  /* --- 自动演示 --- */
+  async function startAutoDemo() {
+    if (autoPlaying || isDropping) return;
+    autoPlaying = true;
+    resetAll();
+    taskCard.style.opacity = 0.5;
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+    // Step 1: 50g
+    await wait(800);
+    togglePower();
+    await wait(600);
+    startDrop();
+    await wait(1500);
+    if(dots[0]) { dots[0].classList.remove('active'); dots[0].classList.add('done'); }
+    currentStep = 1; if(dots[1]) dots[1].classList.add('active'); updateUI();
+
+    // Step 2: Change to 300g
+    await wait(1000);
+    handleResetObj();
+    await wait(500);
+    changeMass();
+    await wait(500);
+    togglePower();
+    await wait(600);
+    startDrop();
+    await wait(1500);
+    if(dots[1]) { dots[1].classList.remove('active'); dots[1].classList.add('done'); }
+    
+    // Step 3: Auto triggering logic simulation
+    currentStep = 2; if(dots[2]) dots[2].classList.add('active'); updateUI();
+    await wait(2000);
+    choiceMask.style.display = 'flex';
+    await wait(1500);
+    choiceMask.style.display = 'none';
+    
+    if(dots[2]) { dots[2].classList.remove('active'); dots[2].classList.add('done'); }
+    showDone();
+    
+    autoPlaying = false;
+    taskCard.style.opacity = 1;
+  }
+
+  function showCheck() {
+    checkmark.classList.add('active');
+    setTimeout(() => checkmark.classList.remove('active'), 1500);
+  }
+
+  function showDone() {
+    doneMask.style.display = 'flex';
+  }
+  
+  function showToast(msg) {
+    toast.innerText = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  init();
+});
+</script>
+</body>
+</html>

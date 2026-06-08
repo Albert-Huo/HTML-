@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>高中物理实验7：探究两个互成角度的力的合成规律</title>
+<style>
+  :root{
+    --card-bg: rgba(255,255,255,0.08);
+    --accent:#3ddc97;
+    --warn:#ffb74d;
+    --error:#ff6b6b;
+    --ink:#e9f2ff;
+    --panel-bg: rgba(15,15,15,0.55);
+    --line: rgba(255,255,255,0.12);
+    --dragShadow: 0 18px 48px rgba(0,0,0,0.55);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    background:#141518; color:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    margin:0; padding:12px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+
+  /* 顶部彩带（复用框架） */
+  #spectrum{
+    position:relative; width:100%; max-width:980px; height:40px;
+    border-radius:10px; overflow:hidden;
+    box-shadow:0 0 15px rgba(255,255,255,0.15);
+    margin:0 0 12px; background:#000;
+  }
+  #spectrum::before{
+    content:""; position:absolute; inset:0; border-radius:inherit;
+    background: linear-gradient(90deg,
+      #ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,
+      #ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000
+    );
+    background-size:200% 100%;
+    animation: flowRainbow 6s linear infinite;
+  }
+  @keyframes flowRainbow{ 0%{background-position:0% 0} 100%{background-position:-100% 0} }
+
+  /* 步骤卡（复用框架） */
+  .task-card{
+    width:100%; max-width:980px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:10px 12px;
+    backdrop-filter:blur(6px);
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    gap:10px; align-items:center;
+    transition:opacity .2s, filter .2s;
+  }
+  .task-step{
+    background:rgba(255,255,255,0.15);
+    border-radius:8px;
+    padding:6px 10px;
+    font-weight:900;
+    white-space:nowrap;
+  }
+  .task-text{ line-height:1.6; color:rgba(255,255,255,0.85); }
+  .task-hint{ color:#ffd54f; font-size:12px; opacity:.95; margin-top:2px; }
+  .progress-dots{ display:flex; gap:6px; }
+  .dot{ width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.28); outline:2px solid rgba(255,255,255,0.12); }
+  .dot.active{ background:var(--warn); }
+  .dot.done{ background:var(--accent); outline-color: rgba(61,220,151,0.5); }
+
+  /* 画面容器 */
+  #stageWrap{ width:100%; max-width:980px; height:min(62vh,560px); margin-top:10px; }
+  #stage{
+    position:relative; width:100%; height:100%;
+    background:#0d0f13; border-radius:14px; overflow:hidden;
+    box-shadow:0 12px 30px rgba(0,0,0,.35);
+    border:1px solid rgba(255,255,255,0.08);
+    touch-action:none;
+    background-image:
+      radial-gradient(circle at 70% 25%, rgba(255,255,255,0.06), transparent 40%),
+      radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 45%);
+  }
+  canvas{ position:absolute; inset:0; width:100%; height:100%; }
+
+  /* ? 帮助（可选但沿用你常用样式） */
+  .helpBtn{
+    position:absolute; left:10px; top:10px; z-index:60;
+    width:38px; height:38px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(0,0,0,0.35);
+    color:#eaf2ff;
+    font-weight:900;
+    cursor:pointer;
+    backdrop-filter: blur(6px);
+    display:flex; align-items:center; justify-content:center;
+    user-select:none; -webkit-tap-highlight-color: transparent;
+    transition:.15s;
+  }
+  .helpBtn:hover{ background: rgba(255,255,255,0.10); }
+  .helpBtn:active{ transform: scale(.98); }
+  .helpMask{
+    position:absolute; inset:0; z-index:70;
+    background: rgba(0,0,0,0.52);
+    display:none;
+    align-items:flex-start;
+    justify-content:flex-start;
+    padding:10px;
+  }
+  .helpMask.show{ display:flex; }
+  .helpCard{
+    margin-top:54px;
+    width:min(620px, 92%);
+    background: rgba(15,15,15,0.82);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:14px;
+    padding:12px 12px;
+    backdrop-filter: blur(8px);
+    color:#dbe7ff;
+    line-height:1.6;
+    font-size:12.5px;
+    box-shadow:0 16px 50px rgba(0,0,0,0.45);
+  }
+  .helpCard b{ color:#fff; }
+  .helpCard .mini{ margin-top:8px; font-size:12px; opacity:.86; }
+  .kbd{
+    display:inline-flex; align-items:center; gap:6px;
+    background: rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:999px;
+    padding:6px 10px;
+    color:#eaf2ff;
+    font-size:12px;
+    white-space:nowrap;
+  }
+
+  /* 抽屉（可拖动） */
+  .dock{
+    position:absolute;
+    z-index:80;
+    width:min(380px, 88%);
+    border-radius:14px;
+    overflow:hidden;
+    border:1px solid var(--line);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.35);
+    backdrop-filter: blur(8px);
+    user-select:none;
+  }
+  .dock.dragging{ box-shadow: var(--dragShadow); outline:2px solid rgba(61,220,151,0.35); }
+  .dockHead{
+    background: var(--panel-bg);
+    padding:10px 10px;
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    cursor:grab; touch-action:none;
+  }
+  .dockHead:active{ cursor:grabbing; }
+  .dockTitle{
+    display:flex; align-items:center; gap:8px;
+    font-weight:900; color:#eaf2ff;
+  }
+  .dockBadge{
+    font-size:11px; color:#0b1220;
+    background: rgba(61,220,151,0.95);
+    border-radius:999px;
+    padding:3px 8px;
+    font-weight:900;
+  }
+  .dockBtns{ display:flex; gap:8px; align-items:center; }
+  .iconBtn{
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color:#eaf2ff;
+    cursor:pointer;
+    font-weight:900;
+    font-size:12px;
+    -webkit-tap-highlight-color: transparent;
+    white-space:nowrap;
+  }
+  .iconBtn:hover{ background: rgba(255,255,255,0.10); }
+  .dockBody{
+    background: var(--panel-bg);
+    padding:10px;
+    border-top:1px solid rgba(255,255,255,0.10);
+  }
+  .dockBody.collapsed{ display:none; }
+
+  .row{
+    display:grid; grid-template-columns: 90px 1fr 66px;
+    gap:8px; align-items:center;
+    margin:10px 0;
+  }
+  .row label{ font-size:12px; color:#cfe2ff; opacity:.92; font-weight:800; }
+  input[type="range"]{ width:100%; }
+  .val{
+    text-align:right; font-size:12px; color:#eaf2ff;
+    opacity:.95; font-variant-numeric: tabular-nums;
+    font-weight:900;
+  }
+  .btnRow{
+    display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;
+  }
+  .btnRow button{
+    flex:1 1 120px;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color:#fff; cursor:pointer;
+    font-weight:900;
+    transition:.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btnRow button:hover{ background: rgba(255,255,255,0.12); }
+  .btnRow button:disabled{ opacity:.55; cursor:not-allowed; }
+  .btnRow .primary{
+    background: linear-gradient(180deg, rgba(61,220,151,0.95), rgba(26,125,88,0.95));
+    border-color: rgba(61,220,151,0.22);
+    color:#062018;
+  }
+  .pillLine{
+    margin-top:10px;
+    display:flex; gap:8px; flex-wrap:wrap; align-items:center;
+  }
+  .pill{
+    display:inline-flex; gap:8px; align-items:center;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:999px; padding:6px 10px;
+    white-space:nowrap;
+    color:#e9f2ff;
+    font-size:12.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill b{ color:#fff; }
+
+  /* 三按钮：步骤重置 / 自动演示 / 自由模式（复用框架，缩小靠左） */
+  .toolbar{
+    width:100%; max-width:980px;
+    display:flex; gap:8px;
+    margin:10px 0 12px;
+    justify-content:flex-start;
+    align-items:center;
+  }
+  .toolbar button{
+    flex:0 0 auto;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.06);
+    color:#fff;
+    cursor:pointer;
+    font-weight:900;
+    font-size:13px;
+    min-width:110px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .toolbar button:hover{ background: rgba(255,255,255,0.12); }
+  .toolbar button:disabled{ opacity:.55; cursor:not-allowed; }
+
+  /* toast / 对号 / 完成弹窗（复用套路） */
+  .toast{
+    position:fixed;
+    left:50%; bottom:22px;
+    transform:translateX(-50%) translateY(10px);
+    background:rgba(0,0,0,0.78);
+    border:1px solid rgba(255,255,255,0.14);
+    color:#fff;
+    padding:10px 14px;
+    border-radius:999px;
+    font-weight:900;
+    opacity:0; pointer-events:none;
+    transition:opacity .2s, transform .2s;
+    z-index:9999;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(-2px); }
+
+  .checkmark{
+    position:absolute; right:10px; top:10px;
+    width:42px; height:42px;
+    border-radius:14px;
+    background:rgba(61,220,151,0.18);
+    border:1px solid rgba(61,220,151,0.45);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:90;
+    backdrop-filter: blur(8px);
+  }
+  .checkmark div{
+    width:18px; height:10px;
+    border-left:4px solid rgba(61,220,151,1);
+    border-bottom:4px solid rgba(61,220,151,1);
+    transform:rotate(-45deg);
+    margin-top:-2px;
+  }
+
+  .mask{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.55);
+    display:none;
+    align-items:center; justify-content:center;
+    z-index:10000;
+  }
+  .modal{
+    width:min(520px, 92%);
+    background:rgba(15,15,15,0.88);
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:16px;
+    padding:14px 14px;
+    box-shadow:0 24px 80px rgba(0,0,0,0.55);
+    backdrop-filter: blur(10px);
+  }
+  .modal h3{ margin:0 0 8px; }
+  .modal p{ margin:8px 0 0; line-height:1.65; color:#dbe7ff; }
+  .modal button{
+    width:100%;
+    margin-top:12px;
+    padding:12px 10px;
+    border-radius:12px;
+    border:0;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .modal button.ok{
+    background:linear-gradient(180deg, rgba(61,220,151,0.95), rgba(26,125,88,0.95));
+    color:#062018;
+  }
+
+  /* 说明框（项目要求） */
+  .explain{
+    width:100%; max-width:980px;
+    background:var(--card-bg);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    padding:12px 14px;
+    color:#e9f2ffcc;
+    line-height:1.75;
+    margin-bottom:18px;
+  }
+  .explain h3{ margin:0 0 8px; color:#fff; }
+  .explain ul{ margin:0; padding-left:18px; }
+  .explain li{ margin:6px 0; }
+  .miniNote{ font-size:12px; opacity:.9; color:#cfe3ff; margin-top:8px; }
+
+  @media (max-width:520px){
+    .task-card{ grid-template-columns: 1fr; gap:6px; }
+    .task-step{ width:fit-content; }
+    .progress-dots{ justify-content:flex-start; }
+    .toolbar{ flex-wrap:wrap; }
+    .toolbar button{ min-width: 104px; }
+    .row{ grid-template-columns: 84px 1fr 58px; }
+  }
+</style>
+</head>
+
+<body>
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">步骤 1 / 3</div>
+    <div>
+      <div class="task-text" id="taskText">拖动两支力矢量 <b>F₁</b> 与 <b>F₂</b> 的“箭头”，把它们调到：<b>F₁≈6N</b>、<b>F₂≈8N</b>、夹角 <b>θ≈60°</b>。</div>
+      <div class="task-hint" id="taskHint">提示：也可以用右下抽屉的滑块微调；调整好后点击「生成平行四边形」。</div>
+    </div>
+    <div class="progress-dots" id="dots">
+      <span class="dot active" id="dot1"></span>
+      <span class="dot" id="dot2"></span>
+      <span class="dot" id="dot3"></span>
+    </div>
+  </div>
+
+  <div id="stageWrap">
+    <div id="stage">
+      <canvas id="cv"></canvas>
+
+      <div class="helpBtn" id="helpBtn">?</div>
+      <div class="helpMask" id="helpMask">
+        <div class="helpCard">
+          <div><b>怎么玩：</b>拖动箭头改变大小与方向；或用滑块设置 F₁、F₂、θ。</div>
+          <div class="mini">
+            目标：用“平行四边形定则”得到合力 <b>R</b>，并用余弦定理验证：<b>R²=F₁²+F₂²+2F₁F₂cosθ</b>。
+          </div>
+          <div class="mini" style="margin-top:8px;">
+            <span class="kbd">步骤模式：严格守卫</span>
+            <span class="kbd">自由模式：随便玩</span>
+            <span class="kbd">抽屉可拖动/吸附</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 控制抽屉 -->
+      <div class="dock" id="panelDock" style="left:10px; bottom:10px;">
+        <div class="dockHead" id="panelHead">
+          <div class="dockTitle">
+            实验控制
+            <span class="dockBadge" id="modeBadge">步骤</span>
+          </div>
+          <div class="dockBtns">
+            <button class="iconBtn" id="panelToggleBtn">收起</button>
+          </div>
+        </div>
+        <div class="dockBody" id="panelBody">
+          <div class="row">
+            <label>F₁ 大小</label>
+            <input id="f1" type="range" min="1" max="12" step="0.1" value="6">
+            <div class="val" id="f1Val">6.0 N</div>
+          </div>
+          <div class="row">
+            <label>F₂ 大小</label>
+            <input id="f2" type="range" min="1" max="12" step="0.1" value="8">
+            <div class="val" id="f2Val">8.0 N</div>
+          </div>
+          <div class="row">
+            <label>夹角 θ</label>
+            <input id="theta" type="range" min="0" max="180" step="1" value="60">
+            <div class="val" id="thetaVal">60°</div>
+          </div>
+
+          <div class="btnRow">
+            <button class="ghost" id="resetVecBtn">复位矢量</button>
+            <button class="primary" id="paraBtn">生成平行四边形</button>
+            <button class="ghost" id="measureBtn">测量合力</button>
+          </div>
+
+          <div class="pillLine">
+            <span class="pill">R（图形）=<b id="rDraw">—</b> N</span>
+            <span class="pill">R（公式）=<b id="rLaw">—</b> N</span>
+            <span class="pill">差值=<b id="rDiff">—</b> N</span>
+          </div>
+          <div class="miniNote">提示：如果你拖动箭头，抽屉里的数值也会同步更新。</div>
+        </div>
+      </div>
+
+      <div class="checkmark" id="check"><div></div></div>
+    </div>
+  </div>
+
+  <!-- 三按钮（复用框架） -->
+  <div class="toolbar">
+    <button id="resetBtn">步骤重置</button>
+    <button id="autoBtn">自动演示</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="mask" id="doneMask">
+    <div class="modal">
+      <h3>完成：你验证了平行四边形定则 ✅</h3>
+      <p>
+        你通过图形法得到合力 <b>R</b>，并用余弦定理进行对比验证。<br/>
+        进一步探索：在自由模式下把 θ 从 0° 调到 180°，观察 <b>R</b> 如何从最大变到最小。
+      </p>
+      <button class="ok" id="okBtn">OK</button>
+    </div>
+  </div>
+
+  <div class="explain">
+    <h3>原理说明</h3>
+    <ul>
+      <li><b>平行四边形定则：</b>两个力 <b>F₁</b>、<b>F₂</b> 共同作用时，合力 <b>R</b> 等于以它们为邻边作平行四边形的对角线。</li>
+      <li><b>定量关系（余弦定理）：</b>若夹角为 <b>θ</b>，则 <b>R² = F₁² + F₂² + 2F₁F₂cosθ</b>。</li>
+      <li><b>关键结论：</b>在 <b>F₁、F₂</b> 不变时，θ 越大，cosθ 越小，合力 <b>R</b> 通常越小（θ=0° 最大，θ=180° 最小）。</li>
+    </ul>
+    <div class="miniNote">操作提示：拖动箭头改变大小/方向；点击「生成平行四边形」显示图形法；点击「测量合力」给出图形值与公式值对比。</div>
+  </div>
+
+<script>
+/* ================= 小工具 ================= */
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r=>setTimeout(r, ms));
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+const toastEl = $('#toast');
+function toast(msg){
+  toastEl.textContent = msg || '提示';
+  toastEl.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>toastEl.classList.remove('show'), 1400);
+}
+const checkEl = $('#check');
+function showCheck(){
+  checkEl.style.display='flex';
+  clearTimeout(showCheck._t);
+  showCheck._t = setTimeout(()=>checkEl.style.display='none', 520);
+}
+
+/* ================= 步骤系统（复用：步骤卡 + 三按钮） ================= */
+let freeMode = false;
+let autoPlaying = false;
+let autoSim = false; // 自动演示期间允许内部改值
+function allowInput(){ return freeMode || (!autoPlaying && !autoSim); }
+
+const taskCard = $('#taskCard');
+const taskStep = $('#taskStep');
+const taskText = $('#taskText');
+const taskHint = $('#taskHint');
+const dots = [$('#dot1'),$('#dot2'),$('#dot3')];
+let step = 1;
+
+const tasks = [
+  {
+    text: '拖动两支力矢量 <b>F₁</b> 与 <b>F₂</b> 的“箭头”，把它们调到：<b>F₁≈6N</b>、<b>F₂≈8N</b>、夹角 <b>θ≈60°</b>。',
+    hint: '提示：也可以用滑块微调；调整好后点击「生成平行四边形」。'
+  },
+  {
+    text: '点击「<b>测量合力</b>」，比较 <b>R（图形）</b> 与 <b>R（公式）</b> 是否一致（误差越小越好）。',
+    hint: '提示：公式用的是余弦定理：R²=F₁²+F₂²+2F₁F₂cosθ。'
+  },
+  {
+    text: '把夹角 θ 调到 <b>120°</b> 左右，再测一次：观察合力 <b>R</b> 是否比 θ=60° 时更小。',
+    hint: '提示：F₁、F₂ 不变时，θ 变大通常会让 R 变小。'
+  }
+];
+
+function setStepUI(n){
+  step = n;
+  taskStep.textContent = `步骤 ${n} / 3`;
+  taskText.innerHTML = tasks[n-1].text;
+  taskHint.textContent = tasks[n-1].hint;
+
+  dots.forEach((d,i)=>{
+    d.classList.remove('active','done');
+    if(i < n-1) d.classList.add('done');
+    if(i === n-1) d.classList.add('active');
+  });
+}
+function setFreeMode(on){
+  freeMode = on;
+  $('#modeBadge').textContent = on ? '自由' : '步骤';
+  $('#freeBtn').textContent = on ? '退出自由模式' : '自由模式';
+  $('#autoBtn').disabled = on;
+
+  if(on){
+    taskCard.style.opacity = .28;
+    taskCard.style.filter = 'grayscale(.7)';
+    toast('自由模式：可随意拖拽/改参数验证更多情况');
+  }else{
+    taskCard.style.opacity = 1;
+    taskCard.style.filter = 'none';
+    setStepUI(step);
+  }
+}
+function resetAll(){
+  $('#doneMask').style.display='none';
+  autoPlaying = false; autoSim = false;
+  setFreeMode(false);
+  setStepUI(1);
+  paraVisible = false;
+  measuredOnce = false;
+  baseR60 = null;
+  setBySliders(6,8,60,true);
+  updateReadouts(true);
+  toast('已重置：从步骤1开始');
+}
+
+/* ================= 画布 / 矢量模型 ================= */
+const stage = $('#stage');
+const cv = $('#cv');
+const ctx = cv.getContext('2d');
+
+function resize(){
+  const r = stage.getBoundingClientRect();
+  cv.width = Math.floor(r.width * devicePixelRatio);
+  cv.height= Math.floor(r.height * devicePixelRatio);
+}
+window.addEventListener('resize', ()=>{ resize(); draw(); });
+resize();
+
+/* 坐标系：原点在画布中心略偏左，便于画平行四边形 */
+function getOrigin(){
+  const W = cv.width / devicePixelRatio;
+  const H = cv.height / devicePixelRatio;
+  return { x: W*0.35, y: H*0.55 };
+}
+
+/* N -> px 比例 */
+const PX_PER_N = 22;
+
+/* 两个矢量：用“大小+方向角”表示。F1 方向固定为 0°（向右），F2 相对夹角 theta */
+let F1 = { mag: 6, ang: 0 };
+let F2 = { mag: 8, ang: 60 }; // 相对 F1 的夹角
+let paraVisible = false;
+let measuredOnce = false;
+let baseR60 = null;
+
+function vecFrom(mag, deg){
+  const rad = deg * Math.PI/180;
+  return { x: mag*Math.cos(rad), y: -mag*Math.sin(rad) }; // y 轴向下，故取负
+}
+function add(a,b){ return { x:a.x+b.x, y:a.y+b.y }; }
+function len(v){ return Math.hypot(v.x, v.y); }
+
+function endpoints(){
+  const o = getOrigin();
+  const v1 = vecFrom(F1.mag, F1.ang);
+  const v2 = vecFrom(F2.mag, F2.ang);
+  const p1 = { x: o.x + v1.x*PX_PER_N, y: o.y + v1.y*PX_PER_N };
+  const p2 = { x: o.x + v2.x*PX_PER_N, y: o.y + v2.y*PX_PER_N };
+  const r  = add(v1,v2);
+  const pr = { x: o.x + r.x*PX_PER_N, y: o.y + r.y*PX_PER_N };
+  return { o, v1, v2, r, p1, p2, pr };
+}
+
+/* ================= 绘制 ================= */
+function drawArrow(from, to, color, label){
+  const dx = to.x-from.x, dy = to.y-from.y;
+  const ang = Math.atan2(dy, dx);
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 3;
+  ctx.lineCap='round';
+
+  ctx.beginPath();
+  ctx.moveTo(from.x, from.y);
+  ctx.lineTo(to.x, to.y);
+  ctx.stroke();
+
+  // arrow head
+  const head = 11;
+  ctx.beginPath();
+  ctx.moveTo(to.x, to.y);
+  ctx.lineTo(to.x - head*Math.cos(ang-0.4), to.y - head*Math.sin(ang-0.4));
+  ctx.lineTo(to.x - head*Math.cos(ang+0.4), to.y - head*Math.sin(ang+0.4));
+  ctx.closePath();
+  ctx.fill();
+
+  // label
+  ctx.font = '700 13px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial';
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.fillText(label, to.x + 10, to.y - 10);
+
+  // handle hint circle
+  ctx.beginPath();
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 2;
+  ctx.arc(to.x, to.y, 11, 0, Math.PI*2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function draw(){
+  const W = cv.width / devicePixelRatio;
+  const H = cv.height / devicePixelRatio;
+  ctx.save();
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+  ctx.clearRect(0,0,W,H);
+
+  // subtle grid
+  ctx.globalAlpha = 0.18;
+  ctx.strokeStyle = 'rgba(255,255,255,0.10)';
+  ctx.lineWidth = 1;
+  for(let x=0;x<=W;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+  for(let y=0;y<=H;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+
+  const {o,p1,p2,pr,v1,v2,r} = endpoints();
+
+  // origin point
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.beginPath(); ctx.arc(o.x,o.y,4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
+  ctx.font = '700 12px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial';
+  ctx.fillText('O', o.x-14, o.y+16);
+
+  // angle arc
+  const theta = getThetaDeg();
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,183,77,0.85)';
+  ctx.lineWidth = 2;
+  const arcR = 34;
+  const a0 = 0; // F1 along +x
+  const a1 = -theta*Math.PI/180;
+  ctx.beginPath();
+  ctx.arc(o.x,o.y,arcR,a0,a1, a1>a0);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(255,183,77,0.92)';
+  ctx.fillText(`θ=${Math.round(theta)}°`, o.x+arcR+6, o.y-6);
+  ctx.restore();
+
+  // vectors
+  drawArrow(o, p1, 'rgba(122,170,255,0.95)', `F₁=${F1.mag.toFixed(1)}N`);
+  drawArrow(o, p2, 'rgba(255,107,107,0.95)', `F₂=${F2.mag.toFixed(1)}N`);
+
+  // parallelogram
+  if(paraVisible){
+    const p1p = { x: p2.x + (p1.x-o.x), y: p2.y + (p1.y-o.y) };
+    const p2p = { x: p1.x + (p2.x-o.x), y: p1.y + (p2.y-o.y) };
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(61,220,151,0.55)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6,5]);
+    ctx.beginPath();
+    ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2p.x,p2p.y);
+    ctx.moveTo(p2.x,p2.y); ctx.lineTo(p1p.x,p1p.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // resultant
+    ctx.globalAlpha = 0.95;
+    drawArrow(o, pr, 'rgba(61,220,151,0.95)', `R=${len(r).toFixed(2)}N`);
+    ctx.restore();
+  }else{
+    // subtle hint
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = '700 12px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial';
+    ctx.fillText('点击「生成平行四边形」显示合力 R', o.x-10, o.y+70);
+    ctx.restore();
+  }
+
+  // stage labels
+  ctx.save();
+  ctx.fillStyle = 'rgba(233,242,255,0.85)';
+  ctx.font = '800 12px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial';
+  ctx.fillText('拖动箭头调整力（也可用滑块）', 12, 22);
+  ctx.restore();
+
+  ctx.restore();
+}
+
+/* ================= 交互：拖动箭头端点 ================= */
+let dragging = null; // 'p1' | 'p2'
+function hitHandle(x,y,px,py){
+  return Math.hypot(x-px, y-py) <= 16;
+}
+function canvasPoint(e){
+  const rect = cv.getBoundingClientRect();
+  const cx = (e.touches?.[0]?.clientX ?? e.clientX) - rect.left;
+  const cy = (e.touches?.[0]?.clientY ?? e.clientY) - rect.top;
+  return { x: cx, y: cy };
+}
+
+cv.addEventListener('pointerdown', (e)=>{
+  if(!allowInput()) return;
+  const p = canvasPoint(e);
+  const {p1,p2} = endpoints();
+  if(hitHandle(p.x,p.y,p1.x,p1.y)) dragging='p1';
+  else if(hitHandle(p.x,p.y,p2.x,p2.y)) dragging='p2';
+  else dragging=null;
+  if(dragging){
+    cv.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }
+});
+
+cv.addEventListener('pointermove', (e)=>{
+  if(!dragging || !allowInput()) return;
+  const p = canvasPoint(e);
+  const {o} = endpoints();
+  const dx = p.x - o.x;
+  const dy = p.y - o.y;
+
+  const mag = clamp(Math.hypot(dx,dy)/PX_PER_N, 1, 12);
+  let ang = Math.atan2(-dy, dx) * 180/Math.PI; // 转回数学角（y向上）
+  ang = (ang+360)%360;
+
+  if(dragging==='p1'){
+    F1.mag = mag;
+    F1.ang = 0; // 强制 F1 沿 +x，保持“夹角”定义清晰
+  }else{
+    F2.mag = mag;
+    // F2 角度就等于夹角（相对F1=0°），限定 0-180 更符合“夹角”语义
+    let th = clamp(ang, 0, 180);
+    F2.ang = th;
+  }
+
+  syncSlidersFromState();
+  updateReadouts(false);
+  draw();
+  e.preventDefault();
+});
+
+cv.addEventListener('pointerup', ()=>{ dragging=null; });
+cv.addEventListener('pointercancel', ()=>{ dragging=null; });
+
+/* ================= 抽屉拖动 + 吸附 ================= */
+let zTop = 80;
+const panelDock = $('#panelDock');
+function bringToFront(){
+  zTop += 1;
+  panelDock.style.zIndex = zTop;
+}
+function getStageRect(){ return stage.getBoundingClientRect(); }
+function setDockPos(el, x, y){
+  const s = getStageRect();
+  const r = el.getBoundingClientRect();
+  const pad = 10;
+  x = clamp(x, pad, s.width - r.width - pad);
+  y = clamp(y, pad, s.height - r.height - pad);
+  el.style.left = x + 'px';
+  el.style.top  = y + 'px';
+  el.style.right='auto';
+  el.style.bottom='auto';
+}
+function snapDock(el){
+  const s = getStageRect();
+  const r = el.getBoundingClientRect();
+  const pad = 10;
+  const x = parseFloat(el.style.left||'0');
+  const y = parseFloat(el.style.top||'0');
+  const snap = 16;
+  let nx=x, ny=y;
+  if(Math.abs(x - pad) < snap) nx = pad;
+  if(Math.abs((x + r.width) - (s.width - pad)) < snap) nx = s.width - pad - r.width;
+  if(Math.abs(y - pad) < snap) ny = pad;
+  if(Math.abs((y + r.height) - (s.height - pad)) < snap) ny = s.height - pad - r.height;
+  setDockPos(el, nx, ny);
+}
+(function makeDockDraggable(){
+  const head = $('#panelHead');
+  let dragging=false, offX=0, offY=0;
+
+  head.addEventListener('pointerdown', (e)=>{
+    if(e.target.closest('button')) return;
+    bringToFront();
+    dragging = true;
+    panelDock.classList.add('dragging');
+    const r = panelDock.getBoundingClientRect();
+    offX = e.clientX - r.left;
+    offY = e.clientY - r.top;
+    head.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  head.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    const s = getStageRect();
+    const x = e.clientX - s.left - offX;
+    const y = e.clientY - s.top  - offY;
+    setDockPos(panelDock, x, y);
+    e.preventDefault();
+  });
+
+  head.addEventListener('pointerup', ()=>{
+    if(!dragging) return;
+    dragging=false;
+    panelDock.classList.remove('dragging');
+    snapDock(panelDock);
+  });
+  head.addEventListener('pointercancel', ()=>{
+    dragging=false;
+    panelDock.classList.remove('dragging');
+  });
+
+  // 初始位置吸附到左下
+  const s = getStageRect();
+  setDockPos(panelDock, 10, s.height - panelDock.getBoundingClientRect().height - 10);
+})();
+
+/* ================= 控制抽屉逻辑 ================= */
+const panelBody = $('#panelBody');
+const panelToggleBtn = $('#panelToggleBtn');
+let panelCollapsed = false;
+panelToggleBtn.addEventListener('click', ()=>{
+  panelCollapsed = !panelCollapsed;
+  panelBody.classList.toggle('collapsed', panelCollapsed);
+  panelToggleBtn.textContent = panelCollapsed ? '展开' : '收起';
+  bringToFront();
+});
+
+const f1 = $('#f1'), f2 = $('#f2'), theta = $('#theta');
+const f1Val = $('#f1Val'), f2Val = $('#f2Val'), thetaVal = $('#thetaVal');
+const rDraw = $('#rDraw'), rLaw = $('#rLaw'), rDiff = $('#rDiff');
+
+function getThetaDeg(){ return clamp(F2.ang, 0, 180); }
+
+function syncSlidersFromState(){
+  f1.value = F1.mag.toFixed(1);
+  f2.value = F2.mag.toFixed(1);
+  theta.value = Math.round(getThetaDeg());
+  f1Val.textContent = `${F1.mag.toFixed(1)} N`;
+  f2Val.textContent = `${F2.mag.toFixed(1)} N`;
+  thetaVal.textContent = `${Math.round(getThetaDeg())}°`;
+}
+
+function setBySliders(v1,v2,th, silent=false){
+  F1.mag = clamp(v1,1,12);
+  F1.ang = 0;
+  F2.mag = clamp(v2,1,12);
+  F2.ang = clamp(th,0,180);
+  syncSlidersFromState();
+  if(!silent){ updateReadouts(false); draw(); }
+}
+
+[f1,f2,theta].forEach(inp=>{
+  inp.addEventListener('input', ()=>{
+    if(!allowInput()) return;
+    setBySliders(parseFloat(f1.value), parseFloat(f2.value), parseFloat(theta.value));
+  });
+});
+
+function lawResultant(){
+  const th = getThetaDeg() * Math.PI/180;
+  const R2 = F1.mag*F1.mag + F2.mag*F2.mag + 2*F1.mag*F2.mag*Math.cos(th);
+  return Math.sqrt(Math.max(0,R2));
+}
+
+function updateReadouts(showToastMaybe){
+  const {r} = endpoints();
+  const Rd = len(r);
+  const Rl = lawResultant();
+  rDraw.textContent = paraVisible ? Rd.toFixed(2) : '—';
+  rLaw.textContent  = (paraVisible && measuredOnce) ? Rl.toFixed(2) : '—';
+  rDiff.textContent = (paraVisible && measuredOnce) ? Math.abs(Rd-Rl).toFixed(2) : '—';
+
+  // 步骤守卫判定
+  if(freeMode) return;
+
+  if(step===1){
+    const ok = Math.abs(F1.mag-6) <= 0.6 && Math.abs(F2.mag-8) <= 0.6 && Math.abs(getThetaDeg()-60) <= 5;
+    if(ok && paraVisible){
+      showCheck();
+      setTimeout(()=>setStepUI(2), 360);
+    }else if(showToastMaybe){
+      toast('步骤1：先调到目标参数，再点击「生成平行四边形」');
+    }
+  }
+
+  if(step===2){
+    if(paraVisible && measuredOnce){
+      const diff = Math.abs(Rd - Rl);
+      if(diff <= 0.25){
+        showCheck();
+        baseR60 = Rl; // 记录基准
+        setTimeout(()=>setStepUI(3), 420);
+      }else if(showToastMaybe){
+        toast('再试：先生成平行四边形，再测量；让图形值更接近公式值');
+      }
+    }
+  }
+
+  if(step===3){
+    if(paraVisible && measuredOnce && baseR60!=null){
+      const th = getThetaDeg();
+      const cur = lawResultant();
+      if(th >= 110 && th <= 130 && cur < baseR60 - 0.4){
+        showCheck();
+        $('#doneMask').style.display='flex';
+      }else if(showToastMaybe){
+        toast('步骤3：把 θ 调到 120°左右，再测一次，看 R 是否变小');
+      }
+    }
+  }
+}
+
+/* 按钮：复位矢量/平行四边形/测量 */
+$('#resetVecBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  setBySliders(6,8,60);
+  paraVisible = false;
+  measuredOnce = false;
+  updateReadouts(false);
+  draw();
+  toast('已复位：F₁=6N，F₂=8N，θ=60°');
+});
+
+$('#paraBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  paraVisible = true;
+  measuredOnce = false;
+  updateReadouts(true);
+  draw();
+});
+
+$('#measureBtn').addEventListener('click', ()=>{
+  if(!allowInput()) return;
+  if(!paraVisible){
+    toast('先点击「生成平行四边形」再测量合力');
+    return;
+  }
+  measuredOnce = true;
+  updateReadouts(true);
+  draw();
+});
+
+/* 初始读数 */
+syncSlidersFromState();
+draw();
+
+/* ================= 帮助面板 ================= */
+$('#helpBtn').addEventListener('click', ()=> $('#helpMask').classList.toggle('show'));
+$('#helpMask').addEventListener('click', (e)=>{
+  if(e.target.id==='helpMask') $('#helpMask').classList.remove('show');
+});
+
+/* ================= 三按钮：步骤重置 / 自动演示 / 自由模式 ================= */
+$('#resetBtn').addEventListener('click', ()=> resetAll());
+$('#freeBtn').addEventListener('click', ()=>{
+  if(autoPlaying) return;
+  setFreeMode(!freeMode);
+});
+$('#okBtn').addEventListener('click', ()=> $('#doneMask').style.display='none');
+
+async function autoDemo(){
+  if(autoPlaying) return;
+  autoPlaying = true;
+  autoSim = true;
+  setFreeMode(false);
+  setStepUI(1);
+  paraVisible = false; measuredOnce=false; baseR60=null;
+  updateReadouts(false);
+  draw();
+
+  const slow = (ms)=> sleep(ms*1.9);
+
+  toast('自动演示：先设置 F₁、F₂、θ');
+  await slow(800);
+
+  setBySliders(6,8,60, true);
+  syncSlidersFromState(); draw();
+  await slow(700);
+
+  paraVisible = true; measuredOnce=false;
+  updateReadouts(false); draw();
+  toast('生成平行四边形：对角线就是合力 R');
+  await slow(1200);
+
+  measuredOnce = true;
+  updateReadouts(false); draw();
+  toast('测量：对比图形法与余弦定理');
+  await slow(1400);
+
+  // 确保进入步骤3
+  baseR60 = lawResultant();
+  setStepUI(3);
+  await slow(700);
+
+  toast('改变夹角到 120°，再测一次');
+  await slow(900);
+  setBySliders(F1.mag, F2.mag, 120, true);
+  syncSlidersFromState();
+  await slow(700);
+
+  measuredOnce = true;
+  updateReadouts(false); draw();
+  await slow(1100);
+
+  $('#doneMask').style.display='flex';
+  autoSim = false;
+  autoPlaying = false;
+}
+$('#autoBtn').addEventListener('click', ()=> autoDemo());
+
+/* ================= 步骤守卫：当用户做关键动作时触发判定 ================= */
+function updateReadouts(forceToast){
+  const {r} = endpoints();
+  const Rd = len(r);
+  const Rl = lawResultant();
+
+  rDraw.textContent = paraVisible ? Rd.toFixed(2) : '—';
+  rLaw.textContent  = (paraVisible && measuredOnce) ? Rl.toFixed(2) : '—';
+  rDiff.textContent = (paraVisible && measuredOnce) ? Math.abs(Rd-Rl).toFixed(2) : '—';
+
+  if(freeMode) return;
+
+  // Step 1
+  if(step===1){
+    const ok = Math.abs(F1.mag-6) <= 0.6 && Math.abs(F2.mag-8) <= 0.6 && Math.abs(getThetaDeg()-60) <= 5;
+    if(ok && paraVisible){
+      showCheck();
+      setTimeout(()=>setStepUI(2), 360);
+      return;
+    }
+    if(forceToast) toast('步骤1：先调到目标参数，再点击「生成平行四边形」');
+  }
+
+  // Step 2
+  if(step===2){
+    if(paraVisible && measuredOnce){
+      const diff = Math.abs(Rd - Rl);
+      if(diff <= 0.25){
+        showCheck();
+        baseR60 = Rl;
+        setTimeout(()=>setStepUI(3), 420);
+        return;
+      }
+      if(forceToast) toast('步骤2：差值偏大？检查：是否已生成平行四边形并测量');
+    }else if(forceToast){
+      toast('步骤2：点击「测量合力」完成图形法与公式法对比');
+    }
+  }
+
+  // Step 3
+  if(step===3){
+    if(paraVisible && measuredOnce && baseR60!=null){
+      const th = getThetaDeg();
+      const cur = lawResultant();
+      if(th >= 110 && th <= 130 && cur < baseR60 - 0.4){
+        showCheck();
+        $('#doneMask').style.display='flex';
+        return;
+      }
+      if(forceToast) toast('步骤3：把 θ 调到 120°左右，再测一次，确认 R 变小');
+    }else if(forceToast){
+      toast('步骤3：先生成平行四边形，再测量');
+    }
+  }
+}
+
+/* ================= 初始状态 ================= */
+setStepUI(1);
+setFreeMode(false);
+updateReadouts(false);
+
+/* ================= 防止抽屉遮挡时的初始绘制错位 ================= */
+setTimeout(()=>{ resize(); draw(); }, 60);
+</script>
+</body>
+</html>

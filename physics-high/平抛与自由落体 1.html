@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>平抛与自由落体演示（优化版）</title>
+    <style>
+        #container {
+            width: 800px;
+            margin: 20px auto;
+            font-family: Arial, sans-serif;
+        }
+        #animation {
+            border: 1px solid #ddd;
+            position: relative;
+            height: 400px;
+            overflow: hidden;
+            background: #f9f9f9;
+        }
+        .ball {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        #freeFall {
+            background: #e74c3c;
+            left: 100px;
+        }
+        #projectile {
+            background: #3498db;
+            left: 400px;
+        }
+        .controls {
+            margin: 15px 0;
+            text-align: center;
+        }
+        button {
+            padding: 8px 15px;
+            margin: 0 5px;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1a252f;
+        }
+        .explanation {
+            padding: 20px;
+            background: #ecf0f1;
+            margin-top: 20px;
+            border-radius: 5px;
+            line-height: 1.6;
+        }
+        .path {
+            position: absolute;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h2 style="text-align: center;">自由落体与平抛运动演示</h2>
+        <div class="controls">
+            <button onclick="startAnimation()">开始演示</button>
+            <button onclick="reset()">重置</button>
+        </div>
+        <div id="animation">
+            <!-- 自由落体路径 -->
+            <svg id="freeFallPath" class="path" width="800" height="400"></svg>
+            <!-- 平抛运动路径 -->
+            <svg id="projectilePath" class="path" width="800" height="400"></svg>
+            
+            <div id="freeFall" class="ball"></div>
+            <div id="projectile" class="ball"></div>
+        </div>
+        <div class="explanation">
+            <h3>物理原理说明：</h3>
+            <p>该演示验证了伽利略的运动独立性原理：</p>
+            <ul>
+                <li><strong>自由落体</strong>：仅受重力作用，竖直方向做匀加速运动 (v = gt, h = ½gt²)</li>
+                <li><strong>平抛运动</strong>：可分解为：
+                    <ul>
+                        <li>水平方向：匀速直线运动 (x = v₀t)</li>
+                        <li>竖直方向：与自由落体完全相同的匀加速运动</li>
+                    </ul>
+                </li>
+            </ul>
+            <p><strong>关键结论</strong>：两物体同时落地，因为它们的竖直运动完全一致，水平运动不影响竖直运动。</p>
+        </div>
+    </div>
+
+    <script>
+        // 物理参数
+        const g = 9.8;       // 重力加速度 (m/s²)
+        const scale = 40;    // 1米 = 40像素
+        const h = 8;         // 初始高度 (米)
+        const v0 = 5;        // 平抛初速度 (m/s)
+        
+        // DOM元素
+        const freeFall = document.getElementById('freeFall');
+        const projectile = document.getElementById('projectile');
+        const freeFallPath = document.getElementById('freeFallPath');
+        const projectilePath = document.getElementById('projectilePath');
+        
+        // 动画控制
+        let animationId;
+        let startTime;
+        let isAnimating = false;
+        let pathPoints = [];
+
+        // 初始化
+        function init() {
+            reset();
+            
+            // 绘制初始路径（虚线）
+            const freeFallLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            freeFallLine.setAttribute("x1", 110);
+            freeFallLine.setAttribute("y1", 0);
+            freeFallLine.setAttribute("x2", 110);
+            freeFallLine.setAttribute("y2", h * scale);
+            freeFallLine.setAttribute("stroke", "#e74c3c");
+            freeFallLine.setAttribute("stroke-width", "2");
+            freeFallLine.setAttribute("stroke-dasharray", "5,5");
+            freeFallPath.appendChild(freeFallLine);
+            
+            // 预计算平抛轨迹
+            const totalTime = Math.sqrt(2 * h / g);
+            const steps = 30;
+            for (let i = 0; i <= steps; i++) {
+                const t = (i / steps) * totalTime;
+                const x = v0 * t * scale;
+                const y = 0.5 * g * t * t * scale;
+                pathPoints.push({x, y});
+            }
+            
+            // 绘制平抛轨迹（虚线）
+            const projectileTrail = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+            let points = pathPoints.map(p => `${400 + p.x},${p.y}`).join(" ");
+            projectileTrail.setAttribute("points", points);
+            projectileTrail.setAttribute("fill", "none");
+            projectileTrail.setAttribute("stroke", "#3498db");
+            projectileTrail.setAttribute("stroke-width", "2");
+            projectileTrail.setAttribute("stroke-dasharray", "5,5");
+            projectilePath.appendChild(projectileTrail);
+        }
+
+        function reset() {
+            if (isAnimating) {
+                cancelAnimationFrame(animationId);
+                isAnimating = false;
+            }
+            
+            freeFall.style.top = "0px";
+            freeFall.style.left = "100px";
+            projectile.style.top = "0px";
+            projectile.style.left = "400px";
+            
+            // 清除动态轨迹
+            while (freeFallPath.firstChild) freeFallPath.removeChild(freeFallPath.firstChild);
+            while (projectilePath.firstChild) projectilePath.removeChild(projectilePath.firstChild);
+            
+            pathPoints = [];
+        }
+
+        function startAnimation() {
+            if (isAnimating) return;
+            
+            reset();
+            init();
+            
+            startTime = Date.now();
+            isAnimating = true;
+            animate();
+        }
+
+        function animate() {
+            const currentTime = (Date.now() - startTime) / 1000; // 转换为秒
+            
+            // 计算下落高度（限制最大高度）
+            let y = Math.min(0.5 * g * currentTime * currentTime, h);
+            let vy = g * currentTime; // 当前速度
+            
+            // 更新自由落体位置
+            freeFall.style.top = (y * scale) + 'px';
+            
+            // 更新平抛运动位置
+            let x = v0 * currentTime;
+            projectile.style.top = (y * scale) + 'px';
+            projectile.style.left = (400 + x * scale) + 'px';
+            
+            // 绘制实时的平抛轨迹（实线）
+            if (y < h) {
+                const currentPoint = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                currentPoint.setAttribute("cx", 400 + x * scale);
+                currentPoint.setAttribute("cy", y * scale);
+                currentPoint.setAttribute("r", "1.5");
+                currentPoint.setAttribute("fill", "#3498db");
+                projectilePath.appendChild(currentPoint);
+            }
+            
+            // 继续动画直到落地
+            if (y * scale < h * scale - 20) {
+                animationId = requestAnimationFrame(animate);
+            } else {
+                isAnimating = false;
+                
+                // 落地时显示速度矢量
+                showVelocityVectors(vy);
+            }
+        }
+
+        function showVelocityVectors(vy) {
+            // 自由落体速度矢量
+            const freeFallVector = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            freeFallVector.setAttribute("x1", 110);
+            freeFallVector.setAttribute("y1", h * scale + 5);
+            freeFallVector.setAttribute("x2", 110);
+            freeFallVector.setAttribute("y2", h * scale + 5 + vy * 5);
+            freeFallVector.setAttribute("stroke", "#e74c3c");
+            freeFallVector.setAttribute("stroke-width", "2");
+            freeFallVector.setAttribute("marker-end", "url(#arrowhead)");
+            freeFallPath.appendChild(freeFallVector);
+            
+            // 平抛运动速度矢量（合成）
+            const projectileVector = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            const endX = 400 + v0 * Math.sqrt(2*h/g) * scale;
+            projectileVector.setAttribute("x1", endX);
+            projectileVector.setAttribute("y1", h * scale + 5);
+            projectileVector.setAttribute("x2", endX + v0 * 5);
+            projectileVector.setAttribute("y2", h * scale + 5 + vy * 5);
+            projectileVector.setAttribute("stroke", "#3498db");
+            projectileVector.setAttribute("stroke-width", "2");
+            projectileVector.setAttribute("marker-end", "url(#arrowhead)");
+            projectilePath.appendChild(projectileVector);
+            
+            // 添加箭头标记定义
+            const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+            const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+            marker.setAttribute("id", "arrowhead");
+            marker.setAttribute("markerWidth", "10");
+            marker.setAttribute("markerHeight", "7");
+            marker.setAttribute("refX", "9");
+            marker.setAttribute("refY", "3.5");
+            marker.setAttribute("orient", "auto");
+            const arrow = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            arrow.setAttribute("points", "0 0, 10 3.5, 0 7");
+            marker.appendChild(arrow);
+            defs.appendChild(marker);
+            projectilePath.appendChild(defs);
+        }
+
+        // 页面加载时初始化
+        window.onload = init;
+    </script>
+</body>
+</html>
