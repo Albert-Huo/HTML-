@@ -329,6 +329,7 @@
     }
     .readout b{ display:block; font-size:12px; color:#bfd2e5; margin-bottom:3px; }
     .readout span{ font-size:14px; color:#fff; }
+    .control .readout-grid{ display:none; }
     .control-row{
       display:flex;
       flex-wrap:wrap;
@@ -345,6 +346,8 @@
       font-size:13px;
       line-height:1.5;
     }
+    .analysis:not(.ok):empty{ display:none; }
+    .analysis.ok{ border-color:rgba(61,220,151,.55); background:rgba(61,220,151,.12); color:#e7fff3; }
     table.record{
       width:100%;
       border-collapse:collapse;
@@ -490,7 +493,7 @@
       .task-card{ grid-template-columns:1fr; gap:7px; }
       .task-step{ width:fit-content; }
       .progress-dots{ justify-content:flex-start; }
-      #stage{ height:78vh; min-height:680px; }
+      #stage{ height:72vh; min-height:600px; max-height:640px; }
       .lab-area{ inset:96px 8px 10px; }
       .hud{ max-width:calc(100% - 20px); }
       .hint-lamp{ top:56px; }
@@ -549,7 +552,7 @@
           <button class="main" id="recordBtn" type="button">记录观察</button>
           <button class="sub" id="analyzeBtn" type="button">分析结论</button>
         </div>
-        <div class="analysis" id="analysisText">先完成钢尺、音叉和乐器波形三组体验，再归纳音调、响度和音色。</div>
+        <div class="analysis" id="analysisText"></div>
       </div>
     </section>
 
@@ -1488,6 +1491,7 @@
         return false;
       }
       state.analysisDone = true;
+      analysisText.classList.add("ok");
       analysisText.innerHTML = "结论成立：钢尺伸出越短，振动越快，音调越高；音叉振幅越大，响度越大；不同乐器即使音调和响度相近，波形形状仍不同，说明音色与发声体材料、结构有关。";
       updateReadouts();
       showToast("已归纳声音的三个特性");
@@ -1521,7 +1525,8 @@
       state.analysisDone = false;
       if (!keepMode) state.freeMode = false;
       doneMask.style.display = "none";
-      analysisText.textContent = "先完成钢尺、音叉和乐器波形三组体验，再归纳音调、响度和音色。";
+      analysisText.classList.remove("ok");
+      analysisText.textContent = "";
       renderRecords();
       updateBadge();
       setModeLabel();
@@ -1544,6 +1549,7 @@
     }
 
     function setDrawerCollapsed(drawer, collapsed) {
+      bringDrawerToFront(drawer);
       drawer.classList.toggle("collapsed", collapsed);
       const toggle = drawer === controlDrawer ? controlToggle : dataToggle;
       toggle.textContent = collapsed ? "展开" : "收起";
@@ -1553,6 +1559,12 @@
       }
       fitDrawers();
       if (drawer === dataDrawer && !collapsed) drawRecordChart();
+    }
+
+    function bringDrawerToFront(drawer) {
+      const other = drawer === controlDrawer ? dataDrawer : controlDrawer;
+      drawer.style.zIndex = "36";
+      other.style.zIndex = "30";
     }
 
     function fitDrawers() {
@@ -1575,23 +1587,29 @@
             left = index === 0 ? areaWidth - (targetWidth * 2) - 18 : areaWidth - targetWidth - 8;
           } else if (isMobile) {
             left = 12;
-            if (index === 0) {
-              top = 104;
-            } else if (!controlDrawer.classList.contains("collapsed")) {
-              top = controlDrawer.offsetTop + controlDrawer.offsetHeight + 8;
-            } else {
-              top = 104;
-            }
+            top = Math.max(56, areaHeight - rect.height - 8);
           } else {
             const bothCollapsed = controlDrawer.classList.contains("collapsed") && dataDrawer.classList.contains("collapsed");
+            const bothExpanded = !controlDrawer.classList.contains("collapsed") && !dataDrawer.classList.contains("collapsed");
             if (bothCollapsed && collapsed) {
+              top = 10;
+              left = index === 0
+                ? Math.max(12, areaWidth - rect.width - 12)
+                : Math.max(12, areaWidth - rect.width * 2 - 22);
+            } else if (bothExpanded) {
               top = 10;
               left = index === 0
                 ? Math.max(12, areaWidth - rect.width - 12)
                 : Math.max(12, areaWidth - rect.width * 2 - 22);
             } else {
               left = Math.max(12, areaWidth - rect.width - 12);
-              top = index === 0 ? 10 : 94;
+              if (index === 0) {
+                top = 10;
+              } else if (!controlDrawer.classList.contains("collapsed")) {
+                top = controlDrawer.offsetTop + controlDrawer.offsetHeight + 8;
+              } else {
+                top = 94;
+              }
             }
           }
         }
@@ -2189,6 +2207,7 @@
 
     function bindDrawer(drawer) {
       const header = drawer.querySelector("[data-drag-handle]");
+      drawer.addEventListener("pointerdown", () => bringDrawerToFront(drawer));
       header.addEventListener("pointerdown", (event) => {
         if (event.target.tagName === "BUTTON") return;
         const rect = drawer.getBoundingClientRect();
@@ -2243,12 +2262,31 @@
       demoCursor.classList.add("click");
     }
 
+    function moveCursorToElement(element, visible = true) {
+      const stageRect = stage.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
+      demoCursor.style.opacity = visible ? "1" : "0";
+      demoCursor.style.transform = `translate(${rect.left - stageRect.left + rect.width / 2 - 10}px, ${rect.top - stageRect.top + rect.height / 2 - 10}px)`;
+    }
+
+    async function clickPanelButton(button) {
+      setDrawerCollapsed(controlDrawer, false);
+      bringDrawerToFront(controlDrawer);
+      await sleep(180);
+      moveCursorToElement(button);
+      clickCursor();
+      await sleep(360);
+    }
+
     async function animateCursorPath(points, duration = 500) {
       if (points.length === 1) {
         moveCursorTo(points[0].x, points[0].y);
         await sleep(duration);
         return;
       }
+      moveCursorTo(points[0].x, points[0].y);
+      clickCursor();
+      await sleep(220);
       const start = performance.now();
       while (performance.now() - start < duration) {
         if (state.autoCancel) throw new Error("AUTO_CANCELLED");
@@ -2270,19 +2308,19 @@
       const s = boxes.ruler.scale || 1;
       const from = { x: boxes.ruler.clampX + start * s, y: boxes.ruler.y };
       const to = { x: boxes.ruler.clampX + targetLength * s, y: boxes.ruler.y };
-      await animateCursorPath([from, to], 520);
+      await animateCursorPath([from, to], 820);
       for (let i = 0; i <= 20; i += 1) {
         if (state.autoCancel) throw new Error("AUTO_CANCELLED");
         state.rulerLength = lerp(start, targetLength, i / 20);
         state.rulerFreq = pitchFromRuler(state.rulerLength);
         updateReadouts();
         draw();
-        await sleep(20);
+        await sleep(32);
       }
       clickCursor();
     }
 
-    async function animateHammerStrike(strength, duration = 500) {
+    async function animateHammerStrike(strength, duration = 760) {
       const boxes = layout();
       const fork = boxes.fork;
       const s = fork.scale || 1;
@@ -2295,17 +2333,23 @@
       state.hammerPull = strength;
       draw();
       clickCursor();
-      await sleep(260);
+      await sleep(420);
       strikeFork(strength);
     }
 
     async function autoRecord(expectedKey) {
       const before = state.records.length;
+      await clickPanelButton(recordBtn);
       const ok = recordLastObservation({ auto:true });
-      await sleep(260);
+      await sleep(420);
       if (!ok || !hasRecord(expectedKey) || state.records.length <= before) {
         throw new Error(`AUTO_RECORD_NOT_PERSISTED:${expectedKey}`);
       }
+    }
+
+    async function autoAnalyze() {
+      await clickPanelButton(analyzeBtn);
+      return analyzeConclusion();
     }
 
     async function runAutoDemo() {
@@ -2319,50 +2363,52 @@
       autoDemoBtn.textContent = "退出自动演示";
       freeBtn.disabled = true;
       setDrawerCollapsed(controlDrawer, false);
-      setDrawerCollapsed(dataDrawer, false);
+      setDrawerCollapsed(dataDrawer, true);
       setModeLabel();
       resetScene({ keepMode:false });
       state.autoPlaying = true;
       autoDemoBtn.textContent = "退出自动演示";
+      setDrawerCollapsed(controlDrawer, false);
+      setDrawerCollapsed(dataDrawer, true);
       setModeLabel();
       try {
         setStepUI(0);
         await animateRulerLength(218);
         pluckRuler();
-        await sleep(520);
+        await sleep(780);
         await autoRecord("pitch-low");
         await animateRulerLength(96);
         pluckRuler();
-        await sleep(520);
+        await sleep(780);
         await autoRecord("pitch-high");
         setStepUI(1);
-        await sleep(260);
+        await sleep(460);
 
-        await animateHammerStrike(30, 420);
-        await sleep(520);
+        await animateHammerStrike(30, 720);
+        await sleep(760);
         await autoRecord("loud-soft");
 
-        await animateHammerStrike(86, 520);
-        await sleep(520);
+        await animateHammerStrike(86, 820);
+        await sleep(760);
         await autoRecord("loud-loud");
         setStepUI(2);
-        await sleep(260);
+        await sleep(460);
 
         let cards = layout().instruments;
-        await animateCursorPath([{ x: cards[0].x + cards[0].w / 2, y: cards[0].y + 38 }], 120);
+        await animateCursorPath([{ x: cards[0].x + cards[0].w / 2, y: cards[0].y + 38 }], 320);
         clickCursor();
         selectInstrument(cards[0].id);
-        await sleep(430);
+        await sleep(700);
         await autoRecord(`timbre-${cards[0].id}`);
         cards = layout().instruments;
-        await animateCursorPath([{ x: cards[1].x + cards[1].w / 2, y: cards[1].y + 38 }], 360);
+        await animateCursorPath([{ x: cards[1].x + cards[1].w / 2, y: cards[1].y + 38 }], 560);
         clickCursor();
         selectInstrument(cards[1].id);
-        await sleep(430);
+        await sleep(700);
         await autoRecord(`timbre-${cards[1].id}`);
         setStepUI(3);
-        await sleep(320);
-        analyzeConclusion();
+        await sleep(620);
+        await autoAnalyze();
       } catch (error) {
         if (String(error.message || error) !== "AUTO_CANCELLED") {
           showToast(`自动演示中断：${error.message || error}`);

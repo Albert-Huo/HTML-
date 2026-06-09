@@ -264,6 +264,7 @@
     }
     .readout b{ display:block; color:#cfe4ff; font-size:12px; margin-bottom:5px; }
     .readout span{ color:#fff; font-size:13px; line-height:1.4; }
+    .control .readout-grid{ display:none; }
     .control-row{ display:flex; gap:8px; flex-wrap:wrap; }
     .control-row button{ flex:1 1 98px; }
     .analysis{
@@ -276,6 +277,7 @@
       font-size:13px;
       line-height:1.55;
     }
+    .analysis:not(.ok):empty{ display:none; }
     .analysis.ok{ border-color:rgba(61,220,151,.55); background:rgba(61,220,151,.12); color:#e7fff3; }
     .badge{
       display:none;
@@ -414,7 +416,7 @@
       transition:opacity .15s;
     }
     .demo-cursor.click{ animation:cursorClick .28s ease; }
-    @keyframes cursorClick{ 50%{ transform:scale(1.8); opacity:.55; } }
+    @keyframes cursorClick{ 50%{ opacity:.55; box-shadow:0 0 0 14px rgba(255,255,255,.18), 0 0 14px rgba(91,188,255,.8); } }
     .explanation{
       width:100%;
       max-width:980px;
@@ -431,7 +433,7 @@
       .task-card{ grid-template-columns:1fr; gap:7px; }
       .task-step{ width:fit-content; }
       .progress-dots{ justify-content:flex-start; }
-      #stage{ height:78vh; min-height:680px; }
+      #stage{ height:72vh; min-height:600px; max-height:640px; }
       .lab-area{ inset:96px 8px 10px; }
       .hud{ max-width:calc(100% - 20px); }
       .hint-lamp{ top:56px; }
@@ -487,7 +489,7 @@
           <button class="sub" id="foldBtn" type="button">折起纸板</button>
           <button class="sub" id="analyzeBtn" type="button">分析结论</button>
         </div>
-        <div class="analysis" id="analysisText">先改变入射角并记录两组角度，再折起右侧纸板观察反射光是否仍显示。</div>
+        <div class="analysis" id="analysisText"></div>
       </div>
     </section>
 
@@ -973,7 +975,7 @@
       if (!keepMode) state.freeMode = false;
       doneMask.style.display = "none";
       analysisText.classList.remove("ok");
-      analysisText.textContent = "先改变入射角并记录两组角度，再折起右侧纸板观察反射光是否仍显示。";
+      analysisText.textContent = "";
       renderRecords();
       updateBadge();
       setModeLabel();
@@ -992,6 +994,7 @@
     }
 
     function setDrawerCollapsed(drawer, collapsed) {
+      bringDrawerToFront(drawer);
       drawer.classList.toggle("collapsed", collapsed);
       const toggle = drawer === controlDrawer ? controlToggle : dataToggle;
       toggle.textContent = collapsed ? "展开" : "收起";
@@ -1001,6 +1004,12 @@
         drawRecordChart();
       }
       fitDrawers();
+    }
+
+    function bringDrawerToFront(drawer) {
+      const other = drawer === controlDrawer ? dataDrawer : controlDrawer;
+      drawer.style.zIndex = "36";
+      other.style.zIndex = "30";
     }
 
     function fitDrawers() {
@@ -1023,19 +1032,29 @@
             left = index === 0 ? areaWidth - (targetWidth * 2) - 18 : areaWidth - targetWidth - 8;
           } else if (isMobile) {
             left = 12;
-            if (index === 0) top = 104;
-            else if (!controlDrawer.classList.contains("collapsed")) top = controlDrawer.offsetTop + controlDrawer.offsetHeight + 8;
-            else top = 104;
+            top = Math.max(56, areaHeight - rect.height - 8);
           } else {
             const bothCollapsed = controlDrawer.classList.contains("collapsed") && dataDrawer.classList.contains("collapsed");
+            const bothExpanded = !controlDrawer.classList.contains("collapsed") && !dataDrawer.classList.contains("collapsed");
             if (bothCollapsed && collapsed) {
+              top = 10;
+              left = index === 0
+                ? Math.max(12, areaWidth - rect.width - 12)
+                : Math.max(12, areaWidth - rect.width * 2 - 22);
+            } else if (bothExpanded) {
               top = 10;
               left = index === 0
                 ? Math.max(12, areaWidth - rect.width - 12)
                 : Math.max(12, areaWidth - rect.width * 2 - 22);
             } else {
               left = Math.max(12, areaWidth - rect.width - 12);
-              top = index === 0 ? 10 : 94;
+              if (index === 0) {
+                top = 10;
+              } else if (!controlDrawer.classList.contains("collapsed")) {
+                top = controlDrawer.offsetTop + controlDrawer.offsetHeight + 8;
+              } else {
+                top = 94;
+              }
             }
           }
         }
@@ -1373,6 +1392,7 @@
 
     function bindDrawer(drawer) {
       const header = drawer.querySelector("[data-drag-handle]");
+      drawer.addEventListener("pointerdown", () => bringDrawerToFront(drawer));
       header.addEventListener("pointerdown", (event) => {
         if (event.target.tagName === "BUTTON") return;
         const rect = drawer.getBoundingClientRect();
@@ -1427,12 +1447,31 @@
       demoCursor.classList.add("click");
     }
 
+    function moveCursorToElement(element, visible = true) {
+      const stageRect = stage.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
+      demoCursor.style.opacity = visible ? "1" : "0";
+      demoCursor.style.transform = `translate(${rect.left - stageRect.left + rect.width / 2 - 10}px, ${rect.top - stageRect.top + rect.height / 2 - 10}px)`;
+    }
+
+    async function clickPanelButton(button) {
+      setDrawerCollapsed(controlDrawer, false);
+      bringDrawerToFront(controlDrawer);
+      await sleep(180);
+      moveCursorToElement(button);
+      clickCursor();
+      await sleep(360);
+    }
+
     async function animateCursorPath(points, duration = 500) {
       if (points.length === 1) {
         moveCursorTo(points[0].x, points[0].y);
         await sleep(duration);
         return;
       }
+      moveCursorTo(points[0].x, points[0].y);
+      clickCursor();
+      await sleep(220);
       const start = performance.now();
       while (performance.now() - start < duration) {
         if (state.autoCancel) throw new Error("AUTO_CANCELLED");
@@ -1460,39 +1499,45 @@
     async function animateAngle(targetAngle) {
       const from = pointForAngle(state.angle);
       const to = pointForAngle(targetAngle);
-      await animateCursorPath([from, to], 560);
+      await animateCursorPath([from, to], 860);
       for (let i = 0; i <= 20; i += 1) {
         if (state.autoCancel) throw new Error("AUTO_CANCELLED");
         setAngle(lerp(state.angle, targetAngle, .18), i === 0);
-        await sleep(18);
+        await sleep(28);
       }
       setAngle(targetAngle, true);
       clickCursor();
-      await sleep(220);
+      await sleep(420);
     }
 
     async function animateFold(targetFold) {
       const boxes = layout();
       const from = { x:boxes.foldTab.x + boxes.foldTab.w / 2, y:boxes.foldTab.y + boxes.foldTab.h / 2 };
       const to = { x:boxes.origin.x + boxes.board.w * .48, y:from.y };
-      await animateCursorPath([from, to], 520);
+      await animateCursorPath([from, to], 820);
       for (let i = 0; i <= 18; i += 1) {
         if (state.autoCancel) throw new Error("AUTO_CANCELLED");
         setBoardFold(lerp(state.boardFold, targetFold, .2), i === 0);
-        await sleep(18);
+        await sleep(28);
       }
       setBoardFold(targetFold, true);
       clickCursor();
-      await sleep(240);
+      await sleep(440);
     }
 
     async function autoRecord(expectedKey) {
       const before = state.records.length;
+      await clickPanelButton(recordBtn);
       const ok = recordLastObservation({ auto:true });
-      await sleep(260);
+      await sleep(440);
       if (!ok || !hasRecord(expectedKey) || state.records.length <= before) {
         throw new Error(`AUTO_RECORD_NOT_PERSISTED:${expectedKey}`);
       }
+    }
+
+    async function autoAnalyze() {
+      await clickPanelButton(analyzeBtn);
+      return analyzeConclusion();
     }
 
     async function runAutoDemo() {
@@ -1505,27 +1550,29 @@
       autoDemoBtn.textContent = "退出自动演示";
       freeBtn.disabled = true;
       setDrawerCollapsed(controlDrawer, false);
-      setDrawerCollapsed(dataDrawer, false);
+      setDrawerCollapsed(dataDrawer, true);
       setModeLabel();
       resetScene({ keepMode:false });
       state.autoPlaying = true;
       autoDemoBtn.textContent = "退出自动演示";
+      setDrawerCollapsed(controlDrawer, false);
+      setDrawerCollapsed(dataDrawer, true);
       setModeLabel();
       try {
         setStepUI(0);
         await animateAngle(30);
         await autoRecord("angle-small");
         setStepUI(1);
-        await sleep(260);
+        await sleep(460);
         await animateAngle(60);
         await autoRecord("angle-large");
         setStepUI(2);
-        await sleep(260);
+        await sleep(460);
         await animateFold(72);
         await autoRecord("folded-plane");
         setStepUI(3);
-        await sleep(320);
-        analyzeConclusion();
+        await sleep(620);
+        await autoAnalyze();
       } catch (error) {
         if (String(error.message || error) !== "AUTO_CANCELLED") {
           showToast(`自动演示中断：${error.message || error}`);
