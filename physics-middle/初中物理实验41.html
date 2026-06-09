@@ -52,7 +52,7 @@
   <script>
   (() => {
     "use strict";
-    const SPEC = {"id":41,"title":"模拟近视眼和远视眼的矫正","scene":"eyeCorrection","family":"光学","textbook":"八年级上册 第五章 透镜及其应用；PDF 搜索命中“近视眼/远视眼”第134-136页","apparatus":"眼球模型、凸透镜、凹透镜、视网膜屏、平行光源、镜片插槽","keyPoint":"改变眼球模型等效焦距，观察像落在视网膜前后，再插入矫正透镜。","conclusion":"近视眼用凹透镜矫正，远视眼用凸透镜矫正，使像重新落在视网膜上。","scenarios":[{"key":"myopiaRaw","label":"近视眼成像","action":"把眼模型下方滑杆从正常拖到近视，取下镜片。","note":"近视眼会聚能力偏强，像落在视网膜前。","defect":"myopia","correction":null,"image":"视网膜前"},{"key":"myopiaCorrect","label":"凹透镜矫正","action":"把凹透镜拖入眼前插槽。","note":"凹透镜先发散光线，使像后移到视网膜上。","defect":"myopia","correction":"concave","image":"视网膜上"},{"key":"hyperopiaRaw","label":"远视眼成像","action":"把眼模型下方滑杆从正常拖到远视，取下镜片。","note":"远视眼会聚能力偏弱，像落在视网膜后。","defect":"hyperopia","correction":null,"image":"视网膜后"},{"key":"hyperopiaCorrect","label":"凸透镜矫正","action":"把凸透镜拖入眼前插槽。","note":"凸透镜增强会聚，使像提前回到视网膜上。","defect":"hyperopia","correction":"convex","image":"视网膜上"}]};
+    const SPEC = {"id":41,"title":"模拟近视眼和远视眼的矫正","scene":"eyeCorrection","family":"光学","textbook":"八年级上册 第五章 透镜及其应用；PDF 搜索命中“近视眼/远视眼”第134-136页","apparatus":"眼球模型、凸透镜、凹透镜、视网膜屏、平行光源、镜片插槽","keyPoint":"改变眼球模型等效焦距，观察像落在视网膜前后，再插入矫正透镜。","conclusion":"近视眼用凹透镜矫正，远视眼用凸透镜矫正，使像重新落在视网膜上。","scenarios":[{"key":"myopiaRaw","label":"近视眼成像","action":"把眼模型下方滑杆从正常拖到近视，保持镜片未插入。","note":"近视眼会聚能力偏强，像落在视网膜前。","defect":"myopia","correction":null,"image":"视网膜前"},{"key":"myopiaCorrect","label":"凹透镜矫正","action":"把凹透镜拖入眼前插槽。","note":"凹透镜先发散光线，使像后移到视网膜上。","defect":"myopia","correction":"concave","image":"视网膜上"},{"key":"hyperopiaRaw","label":"远视眼成像","action":"把眼模型下方滑杆从正常拖到远视，保持镜片未插入。","note":"远视眼会聚能力偏弱，像落在视网膜后。","defect":"hyperopia","correction":null,"image":"视网膜后"},{"key":"hyperopiaCorrect","label":"凸透镜矫正","action":"把凸透镜拖入眼前插槽。","note":"凸透镜增强会聚，使像提前回到视网膜上。","defect":"hyperopia","correction":"convex","image":"视网膜上"}]};
     const $ = s => document.querySelector(s);
     const stage = $("#stage"), labArea = $("#labArea"), canvas = $("#labCanvas"), ctx = canvas.getContext("2d");
     const taskStep = $("#taskStep"), taskText = $("#taskText"), taskHint = $("#taskHint"), dots = $("#dots"), modeTag = $("#modeTag"), statusTag = $("#statusTag");
@@ -149,9 +149,18 @@
     function sceneCamera(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.52; fillRound(cx-260*s,cy-88*s,520*s,216*s,16*s,"#2f3942"); strokeRound(cx-260*s,cy-88*s,520*s,216*s,16*s,"#dcecff",2*s); fillRound(cx-230*s,cy-60*s,430*s,156*s,8*s,"rgba(0,0,0,.24)"); drawLens(cx-218*s,cy+10*s,145*s,"镜头"); const screenX=cx+(n===2?184:n===1?132:98)*s; drawScreen(screenX,cy+10*s,150*s,true); fillRound(screenX-48*s,cy-58*s,96*s,136*s,6*s,"rgba(255,255,255,.06)"); drawCandle(cx-350*s,cy+55*s,.78*s,false,"景物"); drawRays([[[cx-350*s,cy-4*s],[cx-218*s,cy+10*s],[screenX,cy+55*s]],[[cx-350*s,cy+40*s],[cx-218*s,cy+10*s],[screenX,cy-42*s]]]); label(n===0?"装好暗箱":n===1?"远景调焦":"近景后移屏",cx,cy+176*s,"#ffd54f"); }
     function eyeGeom(r){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.51,eyeX=cx+142*s,eyeY=cy,eyeW=335*s,eyeH=206*s; return {s,cx,cy,sourceX:cx-365*s,slotX:cx-154*s,eyeX,eyeY,eyeW,eyeH,lensX:cx+50*s,retinaX:cx+258*s,trackX:eyeX-76*s,trackY:eyeY+138*s,trackW:152*s,concaveX:cx-330*s,convexX:cx-255*s,lensHomeY:cy+76*s}; }
     function modelStopX(g,type){ return type === "myopia" ? g.trackX : type === "hyperopia" ? g.trackX + g.trackW : g.trackX + g.trackW / 2; }
-    function focusX(g){ if (state.model === "normal") return g.retinaX; if (state.model === "myopia") return state.correction === "concave" ? g.retinaX : g.retinaX-58*g.s; return state.correction === "convex" ? g.retinaX : g.retinaX+58*g.s; }
+    function focusX(g){
+      let offset = state.model === "myopia" ? -58 : state.model === "hyperopia" ? 58 : 0;
+      if (state.correction === "concave") offset += 58;
+      if (state.correction === "convex") offset -= 58;
+      return g.retinaX + offset * g.s;
+    }
     function actualFocusText(g){ const f = focusX(g); return f < g.retinaX - 4*g.s ? "视网膜前" : f > g.retinaX + 4*g.s ? "视网膜后" : "视网膜上"; }
-    function actualStateLabel(){ if (state.model === "normal") return "正常眼"; if (state.model === "myopia") return state.correction === "concave" ? "凹透镜矫正" : "近视眼成像"; return state.correction === "convex" ? "凸透镜矫正" : "远视眼成像"; }
+    function actualStateLabel(){
+      if (state.model === "normal") return state.correction ? "正常眼 + " + lensName(state.correction) : "正常眼";
+      if (state.model === "myopia") return state.correction === "concave" ? "凹透镜矫正" : state.correction ? "近视眼 + " + lensName(state.correction) : "近视眼成像";
+      return state.correction === "convex" ? "凸透镜矫正" : state.correction ? "远视眼 + " + lensName(state.correction) : "远视眼成像";
+    }
     function drawEyeLightSource(g){ const s=g.s; ctx.save(); fillRound(g.sourceX-46*s,g.cy-42*s,92*s,84*s,12*s,"#39424d"); fillRound(g.sourceX-31*s,g.cy-22*s,38*s,44*s,8*s,"#f4efe2"); ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.arc(g.sourceX-12*s,g.cy,22*s,0,Math.PI*2); ctx.fill(); fillRound(g.sourceX+4*s,g.cy-10*s,42*s,20*s,5*s,"#202830"); tagLabel("平行光源",g.sourceX-2*s,g.cy-66*s,"#f4efe2"); ctx.restore(); }
     function beamPath(points){ ctx.beginPath(); points.forEach((p,i)=>{ if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]); }); }
     function drawSoftBeam(topPath, midPath, bottomPath, color){ ctx.save(); ctx.lineCap="round"; ctx.lineJoin="round"; ctx.globalCompositeOperation="lighter"; ctx.shadowColor="rgba(255,216,92,.28)"; ctx.shadowBlur=18; ctx.fillStyle=color || "rgba(255,225,116,.16)"; ctx.beginPath(); topPath.forEach((p,i)=>{ if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]); }); [...bottomPath].reverse().forEach(p=>ctx.lineTo(p[0],p[1])); ctx.closePath(); ctx.fill(); ctx.strokeStyle="rgba(255,235,150,.14)"; ctx.lineWidth=10; beamPath(midPath); ctx.stroke(); ctx.shadowBlur=0; ctx.globalCompositeOperation="source-over"; ctx.strokeStyle="rgba(255,244,184,.18)"; ctx.lineWidth=1.1; beamPath(topPath); ctx.stroke(); beamPath(bottomPath); ctx.stroke(); ctx.strokeStyle="rgba(255,213,79,.56)"; ctx.lineWidth=1.4; beamPath(midPath); ctx.stroke(); ctx.restore(); }
@@ -189,16 +198,16 @@
     function drawCorrectionLensObject(x,y,type,g,inserted){
       const s=g.s, isConcave=type==="concave";
       ctx.save();
-      fillRound(x-34*s,y+86*s,68*s,25*s,7*s,inserted?"#3f4d59":"#5c4632");
+      fillRound(x-34*s,y+86*s,68*s,25*s,7*s,inserted?"#3f4d59":"#43596c");
       cable([[x,y+82*s],[x,y+52*s]],"#98a6b3",5*s);
       ctx.lineJoin = "round";
       ctx.lineCap = "round";
       const glass = ctx.createLinearGradient(x-35*s,y-58*s,x+35*s,y+58*s);
       glass.addColorStop(0,"rgba(255,255,255,.22)");
-      glass.addColorStop(.28,isConcave?"rgba(255,183,77,.18)":"rgba(91,188,255,.18)");
+      glass.addColorStop(.28,isConcave?"rgba(105,199,255,.18)":"rgba(91,188,255,.18)");
       glass.addColorStop(.62,"rgba(255,255,255,.06)");
-      glass.addColorStop(1,isConcave?"rgba(255,183,77,.26)":"rgba(91,188,255,.28)");
-      ctx.strokeStyle=isConcave?"#ffb74d":"#5bbcff";
+      glass.addColorStop(1,isConcave?"rgba(105,199,255,.28)":"rgba(91,188,255,.28)");
+      ctx.strokeStyle=isConcave?"#69c7ff":"#5bbcff";
       ctx.lineWidth=4*s;
       ctx.fillStyle=glass;
       ctx.beginPath();
@@ -224,7 +233,7 @@
       ctx.moveTo(x+11*s,y-40*s);
       ctx.quadraticCurveTo(x+19*s,y,x+11*s,y+40*s);
       ctx.stroke();
-      ctx.strokeStyle=isConcave?"rgba(255,230,190,.72)":"rgba(220,244,255,.72)";
+      ctx.strokeStyle=isConcave?"rgba(220,244,255,.72)":"rgba(220,244,255,.72)";
       ctx.lineWidth=1.6*s;
       ctx.beginPath();
       if (isConcave) {
@@ -240,14 +249,14 @@
       }
       ctx.stroke();
       if (isConcave) {
-        fillRound(x-33*s,y-61*s,66*s,8*s,4*s,"rgba(255,183,77,.26)");
-        fillRound(x-33*s,y+53*s,66*s,8*s,4*s,"rgba(255,183,77,.26)");
+        fillRound(x-33*s,y-61*s,66*s,8*s,4*s,"rgba(105,199,255,.26)");
+        fillRound(x-33*s,y+53*s,66*s,8*s,4*s,"rgba(105,199,255,.26)");
       }
       ctx.restore();
     }
     function drawLensSlot(g){ const s=g.s; ctx.save(); strokeRound(g.slotX-34*s,g.cy-76*s,68*s,152*s,12*s,state.correction?"#3ddc97":"rgba(255,255,255,.35)",2.5*s); fillRound(g.slotX-46*s,g.cy+82*s,92*s,24*s,7*s,"#45515c"); label("镜片插槽",g.slotX,g.cy-102*s,state.correction?"#3ddc97":"#cfe4ff"); if(state.correction) drawCorrectionLensObject(g.slotX,g.cy,state.correction,g,true); ctx.restore(); }
     function drawEyeCutaway(g){ const s=g.s, focus=focusX(g), onRetina=Math.abs(focus-g.retinaX)<4*s; ctx.save(); drawLabTable(g.cx,g.cy+172*s,690*s,s); fillRound(g.eyeX-g.eyeW/2,g.eyeY-g.eyeH/2,g.eyeW,g.eyeH,32*s,"rgba(232,245,255,.05)"); const shell=ctx.createLinearGradient(g.eyeX-g.eyeW/2,g.eyeY-g.eyeH/2,g.eyeX+g.eyeW/2,g.eyeY+g.eyeH/2); shell.addColorStop(0,"rgba(222,243,255,.20)"); shell.addColorStop(.42,"rgba(68,139,205,.18)"); shell.addColorStop(1,"rgba(8,32,58,.12)"); ctx.fillStyle=shell; ctx.beginPath(); ctx.ellipse(g.eyeX,g.eyeY,g.eyeW/2,g.eyeH/2,0,0,Math.PI*2); ctx.fill(); ctx.strokeStyle="rgba(218,238,255,.82)"; ctx.lineWidth=3.4*s; ctx.stroke(); const vitreous=ctx.createRadialGradient(g.eyeX+32*s,g.eyeY-16*s,18*s,g.eyeX,g.eyeY,150*s); vitreous.addColorStop(0,"rgba(112,184,238,.22)"); vitreous.addColorStop(.58,"rgba(51,108,165,.15)"); vitreous.addColorStop(1,"rgba(11,35,64,.05)"); ctx.fillStyle=vitreous; ctx.beginPath(); ctx.ellipse(g.eyeX+18*s,g.eyeY,g.eyeW*.41,g.eyeH*.36,0,0,Math.PI*2); ctx.fill(); drawAnteriorEye(g); drawCrystallineLens(g); ctx.save(); ctx.shadowColor="rgba(61,220,151,.48)"; ctx.shadowBlur=10*s; ctx.strokeStyle="#3ddc97"; ctx.lineWidth=7*s; ctx.lineCap="round"; ctx.beginPath(); ctx.moveTo(g.retinaX,g.eyeY-g.eyeH*.34); ctx.quadraticCurveTo(g.retinaX+23*s,g.eyeY,g.retinaX,g.eyeY+g.eyeH*.34); ctx.stroke(); ctx.restore(); ctx.strokeStyle="rgba(183,255,216,.58)"; ctx.lineWidth=2*s; ctx.beginPath(); ctx.moveTo(g.retinaX+7*s,g.eyeY-g.eyeH*.30); ctx.quadraticCurveTo(g.retinaX+18*s,g.eyeY,g.retinaX+7*s,g.eyeY+g.eyeH*.30); ctx.stroke(); tagLabel("视网膜",g.retinaX,g.eyeY+g.eyeH*.49,"#b7ffd8"); ctx.save(); ctx.shadowColor=onRetina?"rgba(61,220,151,.75)":"rgba(255,91,110,.70)"; ctx.shadowBlur=12*s; ctx.fillStyle=onRetina?"#3ddc97":"#ff5b6e"; ctx.beginPath(); ctx.arc(focus,g.eyeY,8*s,0,Math.PI*2); ctx.fill(); ctx.restore(); tagLabel(onRetina?"像在视网膜上":focus<g.retinaX?"像在视网膜前":"像在视网膜后",focus,g.eyeY-58*s,onRetina?"#b7ffd8":"#ffb0b0"); ctx.restore(); }
-    function drawEyeRays(g){ const s=g.s, focus=focusX(g); const slotActive=!!state.correction; const preLensX=slotActive?g.slotX:g.lensX; const bendTop=slotActive && state.correction==="concave" ? g.cy-56*s : slotActive && state.correction==="convex" ? g.cy-28*s : g.cy-42*s; const bendBottom=slotActive && state.correction==="concave" ? g.cy+56*s : slotActive && state.correction==="convex" ? g.cy+28*s : g.cy+42*s; const sx=g.sourceX+44*s; drawSoftBeam([[sx,g.cy-42*s],[preLensX,g.cy-42*s],[g.lensX,g.cy-40*s],[focus,g.cy]],[[sx,g.cy],[preLensX,g.cy],[g.lensX,g.cy],[focus,g.cy]],[[sx,g.cy+42*s],[preLensX,g.cy+42*s],[g.lensX,g.cy+40*s],[focus,g.cy]],"rgba(255,224,118,.18)"); if(slotActive){ ctx.save(); ctx.strokeStyle=state.correction==="concave"?"rgba(255,183,77,.24)":"rgba(91,188,255,.24)"; ctx.lineWidth=7*s; ctx.shadowColor=ctx.strokeStyle; ctx.shadowBlur=9*s; ctx.lineCap="round"; beamPath([[g.slotX,bendTop],[g.lensX,g.cy-40*s]]); ctx.stroke(); beamPath([[g.slotX,bendBottom],[g.lensX,g.cy+40*s]]); ctx.stroke(); ctx.restore(); } if(focus>g.retinaX+8*s){ ctx.save(); ctx.setLineDash([6*s,7*s]); ctx.strokeStyle="rgba(255,91,110,.34)"; ctx.lineWidth=1.2*s; beamPath([[g.retinaX,g.cy],[focus,g.cy]]); ctx.stroke(); ctx.restore(); } }
+    function drawEyeRays(g){ const s=g.s, focus=focusX(g); const slotActive=!!state.correction; const preLensX=slotActive?g.slotX:g.lensX; const bendTop=slotActive && state.correction==="concave" ? g.cy-56*s : slotActive && state.correction==="convex" ? g.cy-28*s : g.cy-42*s; const bendBottom=slotActive && state.correction==="concave" ? g.cy+56*s : slotActive && state.correction==="convex" ? g.cy+28*s : g.cy+42*s; const sx=g.sourceX+44*s; drawSoftBeam([[sx,g.cy-42*s],[preLensX,g.cy-42*s],[g.lensX,g.cy-40*s],[focus,g.cy]],[[sx,g.cy],[preLensX,g.cy],[g.lensX,g.cy],[focus,g.cy]],[[sx,g.cy+42*s],[preLensX,g.cy+42*s],[g.lensX,g.cy+40*s],[focus,g.cy]],"rgba(255,224,118,.18)"); if(slotActive){ ctx.save(); ctx.strokeStyle=state.correction==="concave"?"rgba(105,199,255,.24)":"rgba(91,188,255,.24)"; ctx.lineWidth=7*s; ctx.shadowColor=ctx.strokeStyle; ctx.shadowBlur=9*s; ctx.lineCap="round"; beamPath([[g.slotX,bendTop],[g.lensX,g.cy-40*s]]); ctx.stroke(); beamPath([[g.slotX,bendBottom],[g.lensX,g.cy+40*s]]); ctx.stroke(); ctx.restore(); } if(focus>g.retinaX+8*s){ ctx.save(); ctx.setLineDash([6*s,7*s]); ctx.strokeStyle="rgba(255,91,110,.34)"; ctx.lineWidth=1.2*s; beamPath([[g.retinaX,g.cy],[focus,g.cy]]); ctx.stroke(); ctx.restore(); } }
     function sceneEyeCorrection(r,n){
       const g=eyeGeom(r);
       drawEyeLightSource(g);
@@ -287,7 +296,7 @@
     function sceneFallback(r,n){ label(SPEC.apparatus,r.x+r.w/2,r.y+r.h*.52); }
     function drawPaper(x,y,w,h){ fillRound(x,y,w,h,10,"rgba(245,245,230,.9)"); ctx.strokeStyle="rgba(50,70,80,.35)"; ctx.lineWidth=1; for(let i=0;i<8;i++){ ctx.beginPath(); ctx.moveTo(x+20,y+20+i*h/9); ctx.lineTo(x+w-20,y+20+i*h/9); ctx.stroke(); } }
     function drawLamp(x,y,name){ fillRound(x-34,y-28,68,56,10,"#3b4650"); ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.arc(x,y,19,0,Math.PI*2); ctx.fill(); if(name)label(name,x,y+48); }
-    function drawCorrectionLens(x,y,t,s){ ctx.save(); ctx.strokeStyle=t==="凹透镜"?"#ffb74d":"#5bbcff"; ctx.lineWidth=4*s; ctx.beginPath(); ctx.ellipse(x,y,t==="凹透镜"?13*s:25*s,82*s,0,0,Math.PI*2); ctx.stroke(); label(t,x,y+112*s); ctx.restore(); }
+    function drawCorrectionLens(x,y,t,s){ ctx.save(); ctx.strokeStyle=t==="凹透镜"?"#69c7ff":"#5bbcff"; ctx.lineWidth=4*s; ctx.beginPath(); ctx.ellipse(x,y,t==="凹透镜"?13*s:25*s,82*s,0,0,Math.PI*2); ctx.stroke(); label(t,x,y+112*s); ctx.restore(); }
     function drawEyeModel(x,y,n,s){ ctx.save(); ctx.strokeStyle="#dcecff"; ctx.lineWidth=3*s; ctx.beginPath(); ctx.ellipse(x,y,140*s,82*s,0,0,Math.PI*2); ctx.stroke(); drawLens(x-45*s,y,110*s,"晶状体"); strokeRound(x+92*s,y-64*s,12*s,128*s,6*s,"#3ddc97",5*s); fillRound(x+96*s,y-52*s,7*s,104*s,4*s,"rgba(61,220,151,.22)"); label("视网膜",x+100*s,y+90*s); ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.arc(x+92*s,y,7*s,0,Math.PI*2); ctx.fill(); label(n===0?"像在视网膜上":n===1?"凹透镜矫正近视":n===2?"凸透镜矫正远视":"",x,y+125*s,"#ffd54f"); ctx.restore(); }
     function drawPrism(cx,cy,n,s){ ctx.save(); ctx.fillStyle="rgba(155,211,255,.18)"; ctx.strokeStyle="#9bd3ff"; ctx.lineWidth=3*s; ctx.beginPath(); ctx.moveTo(cx-62*s,cy+82*s); ctx.lineTo(cx,cy-80*s); ctx.lineTo(cx+82*s,cy+82*s); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
     function drawColorLamp(x,y,color,name,on,s){ fillRound(x-38*s,y-26*s,76*s,52*s,10*s,on?color:"#444"); strokeRound(x-38*s,y-26*s,76*s,52*s,10*s,"rgba(255,255,255,.28)",1.5*s); label(name,x,y+48*s); }
