@@ -163,7 +163,7 @@
       background:rgba(0,0,0,.48);
       border:1px solid var(--line);
       border-radius:10px;
-      padding:7px 10px;
+      padding:6px 8px;
       font-size:12px;
     }
     .tag{
@@ -173,6 +173,42 @@
       font-weight:700;
       color:#dce9ff;
       background:rgba(255,255,255,.06);
+    }
+    .mode-strip{
+      position:relative;
+      isolation:isolate;
+      min-width:158px;
+      border:2px solid transparent;
+      border-radius:999px;
+      padding:4px 12px;
+      font-weight:900;
+      color:#fff;
+      background:
+        linear-gradient(rgba(6,10,14,.94), rgba(6,10,14,.94)) padding-box,
+        linear-gradient(90deg,#35ff73,#4bd8ff,#6c5cff,#ff4fc3,#ffd166,#35ff73,#4bd8ff) border-box;
+      background-size:100% 100%,240% 100%;
+      box-shadow:0 0 16px rgba(75,216,255,.18), inset 0 0 10px rgba(255,255,255,.06);
+      white-space:nowrap;
+      text-align:center;
+      animation:modeRibbonFlow 5s linear infinite;
+    }
+    .mode-strip:after{
+      content:"";
+      position:absolute;
+      left:16px;
+      right:16px;
+      bottom:3px;
+      height:2px;
+      border-radius:999px;
+      background:linear-gradient(90deg, transparent, #70ffcc, #ffd166, transparent);
+      opacity:.72;
+    }
+    @keyframes modeRibbonFlow{
+      0%{ background-position:0 0, 0 0; }
+      100%{ background-position:0 0, -240% 0; }
+    }
+    @media (prefers-reduced-motion: reduce){
+      .mode-strip{ animation:none; }
     }
     .hint-lamp{
       position:absolute;
@@ -540,7 +576,7 @@
     <div id="spectrum"></div>
 
     <section class="task-card" id="taskCard">
-      <div class="task-step" id="taskStep">步骤 1 / 4</div>
+      <div class="task-step" id="taskStep">关卡 1 / 4</div>
       <div class="task-text">
         <div id="taskText"></div>
         <div id="taskHint"></div>
@@ -550,7 +586,7 @@
 
     <main id="stage" aria-label="观察光的折射现象及其特点实验台">
       <div class="hud">
-        <span class="tag" id="modeTag">模式：引导</span>
+        <span class="mode-strip" id="modeTag">闯关模式 · 关卡 1/4</span>
         <span class="tag" id="statusTag">状态：待操作</span>
       </div>
       <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
@@ -592,7 +628,7 @@
             <thead><tr><th>类别</th><th>操作</th><th>现象</th></tr></thead>
             <tbody></tbody>
           </table>
-          <div class="empty" id="emptyRecords">还没有记录。按步骤操作后点击“记录观察”。</div>
+          <div class="empty" id="emptyRecords">还没有记录。按关卡操作后点击“记录观察”。</div>
           <div class="chartWrap"><canvas id="recordChart"></canvas></div>
         </div>
       </section>
@@ -610,8 +646,8 @@
     </main>
 
     <div class="toolbar">
-      <button class="sub" id="resetBtn" type="button">步骤重置</button>
-      <button class="sub" id="autoDemoBtn" type="button">自动演示</button>
+      <button class="sub" id="resetBtn" type="button">重置关卡</button>
+      <button class="sub" id="autoDemoBtn" type="button">演示模式</button>
       <button class="sub" id="freeBtn" type="button">自由模式</button>
     </div>
 
@@ -702,6 +738,7 @@
       const state = {
         currentTask:0,
         completed:false,
+        demoCompleted:false,
         freeMode:false,
         autoPlaying:false,
         autoCancel:false,
@@ -800,11 +837,12 @@
         const next = clamp(index, 0, tasks.length - 1);
         state.currentTask = next;
         state.stepWarning = false;
-        taskStepEl.textContent = `步骤 ${next + 1} / ${tasks.length}`;
+        taskStepEl.textContent = `关卡 ${next + 1} / ${tasks.length}`;
         taskTextEl.textContent = tasks[next].text;
         taskHintEl.textContent = tasks[next].hint;
         hintPop.textContent = tasks[next].detail;
-        updateDots();
+        setModeLabel();
+updateDots();
         updateStatus();
         draw();
       }
@@ -815,14 +853,17 @@
           return;
         }
         if (state.completed) statusTag.textContent = "状态：已完成";
-        else if (state.autoPlaying) statusTag.textContent = "状态：自动演示";
+        else if (state.autoPlaying) statusTag.textContent = "状态：演示中";
         else if (state.lastObservation) statusTag.textContent = `状态：${state.lastObservation.short}`;
         else statusTag.textContent = "状态：待操作";
       }
 
       function setModeLabel() {
-        if (state.autoPlaying) modeTag.textContent = "模式：自动演示";
-        else modeTag.textContent = state.freeMode ? "模式：自由" : "模式：引导";
+
+
+        modeTag.textContent = state.autoPlaying ? "演示模式 · 自动运行" : (state.freeMode ? "自由模式 · 自主探索" : (state.completed ? (state.demoCompleted ? "演示模式 · 演示完成" : "闯关模式 · 已通关") : "闯关模式 · 关卡 " + (state.currentTask + 1) + "/" + tasks.length));
+
+
       }
 
       function showToast(message) {
@@ -862,7 +903,7 @@
       function passStepIfReady({ quiet = false } = {}) {
         if (state.freeMode || state.completed || state.successCooldown) return false;
         if (!tasks[state.currentTask].check()) {
-          if (!quiet) warnCurrentStep("当前步骤的证据还不完整。");
+          if (!quiet) warnCurrentStep("当前关卡的证据还不完整。");
           return false;
         }
         state.successCooldown = true;
@@ -883,7 +924,7 @@
       function prepareCompletionView() {
         delete controlDrawer.dataset.moved;
         delete dataDrawer.dataset.moved;
-        setDrawerCollapsed(controlDrawer, true);
+        setDrawerCollapsed(controlDrawer, false);
         setDrawerCollapsed(dataDrawer, false);
       }
 
@@ -933,15 +974,15 @@
         }
         const obs = state.lastObservation;
         if (!state.freeMode && state.currentTask === 0 && obs.key !== "angle-small") {
-          warnCurrentStep("步骤1需要先记录 20°~40° 的较小入射角。");
+          warnCurrentStep("关卡1需要先记录 20°~40° 的较小入射角。");
           return false;
         }
         if (!state.freeMode && state.currentTask === 1 && obs.key !== "angle-large") {
-          warnCurrentStep("步骤2需要记录 50°~70° 的较大入射角。");
+          warnCurrentStep("关卡2需要记录 50°~70° 的较大入射角。");
           return false;
         }
         if (!state.freeMode && state.currentTask === 2 && obs.key !== "vertical") {
-          warnCurrentStep("步骤3需要调到垂直入射后再记录。");
+          warnCurrentStep("关卡3需要调到垂直入射后再记录。");
           return false;
         }
         if (!state.records.some((record) => record.key === obs.key)) {
@@ -1078,6 +1119,7 @@
       function resetScene({ keepMode = true } = {}) {
         clearAllTimers();
         state.completed = false;
+        state.demoCompleted = false;
         state.autoCancel = false;
         state.draggingId = null;
         state.stepWarning = false;
@@ -1106,7 +1148,7 @@
         freeBtn.textContent = state.freeMode ? "退出自由模式" : "自由模式";
         autoDemoBtn.disabled = state.freeMode;
         setModeLabel();
-        showToast(state.freeMode ? "自由模式可探索更大角度，并可比较水/玻璃折射。" : "已回到引导模式。");
+        showToast(state.freeMode ? "自由模式可探索更大角度，并可比较水/玻璃折射。" : "已回到闯关模式。");
         if (!state.freeMode) {
           state.medium = "water";
           setAngle(35, false);
@@ -1638,14 +1680,14 @@
         }
         state.autoPlaying = true;
         state.autoCancel = false;
-        autoDemoBtn.textContent = "退出自动演示";
+        autoDemoBtn.textContent = "退出演示";
         freeBtn.disabled = true;
         setDrawerCollapsed(controlDrawer, false);
         setDrawerCollapsed(dataDrawer, true);
         setModeLabel();
         resetScene({ keepMode:false });
         state.autoPlaying = true;
-        autoDemoBtn.textContent = "退出自动演示";
+        autoDemoBtn.textContent = "退出演示";
         setDrawerCollapsed(controlDrawer, false);
         setDrawerCollapsed(dataDrawer, true);
         setModeLabel();
@@ -1663,17 +1705,17 @@
           await autoRecord("vertical");
           setStepUI(3);
         await sleep(620);
-          await autoAnalyze();
+          await autoAnalyze(); state.demoCompleted=true; state.autoPlaying=false; autoDemoBtn.textContent="演示模式"; freeBtn.disabled=false; setModeLabel(); updateStatus();
         } catch (error) {
           if (String(error.message || error) !== "AUTO_CANCELLED") {
-            showToast(`自动演示中断：${error.message || error}`);
+            showToast(`演示中断：${error.message || error}`);
           } else {
-            showToast("已退出自动演示");
+            showToast("已退出演示");
           }
         } finally {
           state.autoPlaying = false;
           state.autoCancel = false;
-          autoDemoBtn.textContent = "自动演示";
+          autoDemoBtn.textContent = "演示模式";
           freeBtn.disabled = false;
           demoCursor.style.opacity = "0";
           setModeLabel();
