@@ -2796,21 +2796,32 @@ init();
 <script id="exp35-ui-completion-drawer-fit">
 (function(){
   "use strict";
-  var $ = function(selector){ return document.querySelector(selector); };
+  var $ = function(selector, root){ return (root || document).querySelector(selector); };
   var stage = $("#stage");
   var controlDock = $("#controlDock");
   var dataDock = $("#dataDock");
-  var controlBody = $("#controlBody");
-  var dataBody = $("#dataBody");
-  var controlToggle = $("#controlToggleBtn");
-  var dataToggle = $("#dataToggleBtn");
+  var controlBody = $("#controlBody") || $("#panelBody") || (controlDock && ($(".panelBody", controlDock) || $(".dockBody", controlDock) || $(".dock-body", controlDock) || $(".drawer-body", controlDock)));
+  var dataBody = $("#dataBody") || $("#resultsBody") || (dataDock && ($(".resultsBody", dataDock) || $(".dockBody", dataDock) || $(".dock-body", dataDock) || $(".drawer-body", dataDock)));
+  var controlToggle = $("#controlToggleBtn") || $('[data-toggle="controlDock"]');
+  var dataToggle = $("#dataToggleBtn") || $('[data-toggle="dataDock"]');
   var doneMask = $("#doneMask");
+  var mobileCompletionOpened = false;
 
   function isDone(){
     var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
     var stateDone = false;
     try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
     return modalDone || stateDone;
+  }
+
+  function isMobile(){
+    return window.innerWidth <= 720 || (stage && stage.clientWidth <= 720);
+  }
+
+  function syncMobileShell(){
+    if (typeof window.codexLabMobileSync === "function") window.codexLabMobileSync();
+    if (typeof window.codexExp11MobileSync === "function") window.codexExp11MobileSync();
+    if (typeof window.codexExp11GraphRelayout === "function") window.codexExp11GraphRelayout();
   }
 
   function setPanelCollapsed(dock, body, toggle, collapsed){
@@ -2832,10 +2843,43 @@ init();
     dock.style.right = "auto";
   }
 
-  function fitCompletionDrawers(){
-    if (!stage || !controlDock || !dataDock || !isDone()) return;
+  function keepNarrowDrawersExclusive(){
+    if (!stage || !controlDock || !dataDock || !isMobile()) return;
+    var dataOpen = dataBody && !dataBody.classList.contains("collapsed");
+    var controlOpen = controlBody && !controlBody.classList.contains("collapsed");
+    if (!dataOpen || !controlOpen) return;
     setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-    setPanelCollapsed(dataDock, dataBody, dataToggle, true);
+    syncMobileShell();
+  }
+
+  function fitCompletionDrawers(){
+    if (!stage || !controlDock || !dataDock) return;
+    if (!isDone()) {
+      mobileCompletionOpened = false;
+      keepNarrowDrawersExclusive();
+      return;
+    }
+
+    if (isMobile()) {
+      if (!mobileCompletionOpened) {
+        setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+        setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+        syncMobileShell();
+        mobileCompletionOpened = true;
+      }
+      return;
+    }
+
+    mobileCompletionOpened = false;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    var sw = stage.clientWidth;
+    var controlW = controlDock.offsetWidth || 160;
+    var dataW = dataDock.offsetWidth || 260;
+    var controlX = sw - controlW - 10;
+    var dataX = sw - dataW - 10;
+    placeDock(controlDock, controlX, 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
   }
 
   if (!stage || !controlDock || !dataDock) return;
@@ -3115,6 +3159,7 @@ init();
     setTimeout(syncMobileShell, 0);
     setTimeout(syncMobileShell, 80);
   }
+  window.codexLabMobileSync = syncMobileShell;
   function setInitialMobileState(){
     if (!isMobile()) return;
     forceClassState('data', false);
