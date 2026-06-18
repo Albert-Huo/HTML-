@@ -174,6 +174,8 @@
     .lab-hint{ color:#dce9ff; line-height:1.55; }
     .status-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
     .pill{ border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:4px 8px; font-size:11px; color:#e8f1ff; background:rgba(0,0,0,.28); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    #controlDock .lab-hint,
+    #controlDock .status-grid{ display:none; }
 
     .field{ border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px; background:rgba(0,0,0,.2); margin-bottom:8px; }
     .field .name{ display:flex; justify-content:space-between; font-size:12px; color:#dce9ff; margin-bottom:6px; gap:8px; }
@@ -575,8 +577,8 @@
   </div>
 
   <div class="toolbar">
-    <button class="sub" id="resetBtn">步骤重置</button>
-    <button class="sub" id="autoDemoBtn">自动演示</button>
+    <button class="sub" id="resetBtn">重置关卡</button>
+    <button class="sub" id="autoDemoBtn">演示模式</button>
     <button class="sub" id="freeBtn">自由模式</button>
   </div>
 
@@ -1394,15 +1396,24 @@
         setVar('pullN', def ? def.def : 3);
       }
       const t = LAB.tasks[idx];
-      taskStepEl.textContent = `步骤 ${idx+1} / ${LAB.tasks.length}`;
+      taskStepEl.textContent = `关卡 ${idx+1} / ${LAB.tasks.length}`;
       taskTextEl.innerHTML = t.text;
       taskHintEl.textContent = t.hint;
       renderStepDots();
+      updateModeTag();
+    }
+
+    function updateModeTag(){
+      if(!modeTag) return;
+      if(state.autoPlaying){ modeTag.textContent = '模式：演示模式 · 自动运行'; return; }
+      if(state.freeMode){ modeTag.textContent = '模式：自由模式 · 自主探索'; return; }
+      if(state.completed){ modeTag.textContent = '模式：闯关模式 · 已通关'; return; }
+      modeTag.textContent = `模式：闯关模式 · 关卡 ${state.currentTask+1}/${LAB.tasks.length}`;
     }
 
     function setFreeMode(on){
       state.freeMode = !!on;
-      modeTag.textContent = `模式：${state.freeMode ? '自由' : '引导'}`;
+      updateModeTag();
       freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
       refreshAutoDemoButton();
       if(state.freeMode){
@@ -1438,11 +1449,11 @@
     function refreshAutoDemoButton(){
       if(!autoDemoBtn) return;
       if(state.autoPlaying){
-        autoDemoBtn.textContent = '退出自动演示';
+        autoDemoBtn.textContent = '退出演示';
         autoDemoBtn.disabled = false;
         return;
       }
-      autoDemoBtn.textContent = '自动演示';
+      autoDemoBtn.textContent = '演示模式';
       autoDemoBtn.disabled = state.freeMode;
     }
 
@@ -1451,8 +1462,8 @@
       state.autoStopRequested = true;
       autoDemoBtn.textContent = '正在退出...';
       autoDemoBtn.disabled = true;
-      setStatus('正在退出自动演示');
-      showToast('正在退出自动演示');
+      setStatus('正在退出演示');
+      showToast('正在退出演示');
     }
 
     function initControls(){
@@ -4705,8 +4716,8 @@
           setDockPos(controlDock, Math.max(10, stage.width - cr.width - 10), 10);
           avoidControlDockOccludingLab15Meter();
         }
-        modeTag.textContent = '模式：自动演示';
-        setStatus('自动演示中');
+        updateModeTag();
+        setStatus('演示中');
         showDemoCursor(true);
 
         if(LAB_ID===14){
@@ -4932,7 +4943,7 @@
       }catch(err){
         if(err && err.message !== 'auto-cancelled'){
           console.error('[autoDemo] failed:', err);
-          showToast('自动演示失败，请重试');
+          showToast('演示失败，请重试');
         }
       }finally{
         if(runId === state.autoRunId){
@@ -4940,13 +4951,13 @@
           state.autoPlaying = false;
           state.autoStopRequested = false;
           showDemoCursor(false);
-          modeTag.textContent = `模式：${state.freeMode ? '自由' : '引导'}`;
+          updateModeTag();
           refreshAutoDemoButton();
           recordBtn.disabled = false;
           analyzeBtn.disabled = false;
           resetBtn.disabled = false;
           freeBtn.disabled = false;
-          if(stopped) setStatus('已退出自动演示');
+          if(stopped) setStatus('已退出演示');
         }
       }
     }
@@ -5138,12 +5149,19 @@
   var controlToggle = $("#controlToggleBtn");
   var dataToggle = $("#dataToggleBtn");
   var doneMask = $("#doneMask");
+  var completionOpened = false;
+  var userPanelOverride = false;
+  var lastDone = false;
 
   function isDone(){
     var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
     var stateDone = false;
     try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
     return modalDone || stateDone;
+  }
+
+  function signalPanelState(){
+    try { window.dispatchEvent(new CustomEvent("exp35:panel-state-changed")); } catch (_) {}
   }
 
   function setPanelCollapsed(dock, body, toggle, collapsed){
@@ -5165,8 +5183,25 @@
     dock.style.right = "auto";
   }
 
+  function updateDoneState(){
+    var done = isDone();
+    if (!done) {
+      completionOpened = false;
+      userPanelOverride = false;
+      lastDone = false;
+      return false;
+    }
+    if (!lastDone) {
+      completionOpened = false;
+      userPanelOverride = false;
+    }
+    lastDone = true;
+    return true;
+  }
+
   function fitCompletionDrawers(){
-    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    if (!stage || !controlDock || !dataDock || !updateDoneState()) return;
+    if (completionOpened || userPanelOverride) return;
     setPanelCollapsed(controlDock, controlBody, controlToggle, true);
     setPanelCollapsed(dataDock, dataBody, dataToggle, false);
     var sw = stage.clientWidth;
@@ -5176,9 +5211,20 @@
     var dataX = sw - dataW - 10;
     placeDock(controlDock, controlX, 10);
     placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+    completionOpened = true;
+    signalPanelState();
+  }
+
+  function markUserPanelOverride(evt){
+    if (!isDone() || !evt || !evt.target || !evt.target.closest) return;
+    if (evt.target.closest("#controlToggleBtn,#dataToggleBtn,#experimentTab,#dataTab,#controlSheetCloseBtn,#dataSheetCloseBtn")) {
+      userPanelOverride = true;
+      setTimeout(signalPanelState, 0);
+    }
   }
 
   if (!stage || !controlDock || !dataDock) return;
+  document.addEventListener("click", markUserPanelOverride, true);
   window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
   setInterval(fitCompletionDrawers, 450);
 })();
@@ -5296,6 +5342,7 @@
     dock.classList.toggle('collapsed', !open);
     if (body) body.classList.toggle('collapsed', !open);
     if (toggle && /^(展开|收起)$/.test((toggle.textContent || '').trim())) toggle.textContent = open ? '收起' : '展开';
+    if (which === 'data' && open) clearDataNotice();
   }
   function clickToOpen(which){
     const targetDock = which === 'control' ? controlDock : dataDock;
@@ -5309,6 +5356,20 @@
     }
     syncMobileShell();
     setTimeout(syncMobileShell, 80);
+  }
+  function clearDataNotice(){
+    if (dataNotice) {
+      dataNotice.textContent = '0';
+      dataNotice.classList.remove('show');
+      dataNotice.classList.add('hidden');
+    }
+    if (dataBadge) {
+      dataBadge.textContent = '0';
+      dataBadge.classList.remove('show');
+    }
+    try {
+      if (window.state && typeof window.state === 'object' && 'unseenRecordCount' in window.state) window.state.unseenRecordCount = 0;
+    } catch (_) {}
   }
   function dataNoticeCount(){
     const raw = (dataNotice?.textContent || dataBadge?.textContent || '').trim();
@@ -5351,6 +5412,7 @@
     const dataClosed = mirrorCollapsed(dataDock, dataBody);
     const experimentOpen = !controlClosed;
     const dataOpen = !dataClosed;
+    if (dataOpen) clearDataNotice();
     tabs.classList.toggle('attached', experimentOpen || dataOpen);
     tabs.classList.toggle('experiment-open', experimentOpen);
     tabs.classList.toggle('data-open', dataOpen);
@@ -5366,6 +5428,7 @@
   controlClose?.addEventListener('click', () => { forceClassState('control', false); syncMobileShell(); });
   dataClose?.addEventListener('click', () => { forceClassState('data', false); syncMobileShell(); });
   [controlToggle, dataToggle, resetBtn].forEach(btn => btn?.addEventListener('click', () => setTimeout(syncMobileShell, 80), true));
+  window.addEventListener('exp35:panel-state-changed', syncMobileShell);
   setInterval(() => { normalizeLabels(); applyDataLabels(); syncBadge(); }, 700);
   window.addEventListener('resize', syncMobileShell);
   window.addEventListener('orientationchange', syncMobileShell);

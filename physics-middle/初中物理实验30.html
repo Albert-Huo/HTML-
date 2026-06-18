@@ -563,6 +563,7 @@
       line-height:1.7;
       color:#dce7f7;
     }
+    .analysisBox.is-empty{ display:none; }
     .chartCard{
       margin-top:10px;
       padding:8px;
@@ -572,6 +573,10 @@
     }
     .chartCanvasWrap{ height:170px; }
     #chart{ width:100%; height:100%; display:block; }
+    #controlDock .secTitle,
+    #controlDock .readout,
+    #controlDock .chartCard{ display:none; }
+    #controlDock .liquidBtns{ margin-top:0; }
     .dataNotice{
       min-width:20px;
       height:20px;
@@ -931,6 +936,10 @@
     #stage .lab-area{position:absolute !important;left:8px !important;right:8px !important;top:96px !important;bottom:74px !important;height:auto !important;min-height:0 !important;max-height:none !important;padding:0 !important;overflow:hidden !important}
     #stage .lab14-note,#stage .labNote,#stage .beaker-note,#stage .solid-note{display:none !important}
     #stage .bench{min-height:0 !important;height:100% !important}
+    #stage .lab-area .bench{top:auto !important;bottom:0 !important;height:68px !important}
+    #stage .lab-area .beaker-wrap{top:auto !important;bottom:64px !important}
+    #stage .lab-area .probe-rail{top:auto !important;bottom:68px !important}
+    #stage .lab-area .manometer-wrap{top:auto !important;bottom:58px !important}
     #stage .graphCard{display:none !important}
     #stage .apparatusCard{height:100% !important;overflow:hidden !important}
     #stage .balancePanel .mini{display:none !important}
@@ -980,7 +989,7 @@
   <div class="task-card" id="taskCard">
       <div class="task-step" id="taskStep">关卡 1 / 4</div>
     <div>
-      <div class="task-text" id="taskText">选择“清水”，把探头拖到 <b>20 cm</b> 深度，再点击探头头部，依次切换成“侧向、向下、向上”并记录压强，再点“确认观察”。</div>
+      <div class="task-text" id="taskText">选择“清水”，把探头拖到 <b>20 cm</b> 深度，再点击探头头部，依次切换成“侧向、向下、向上”并记录压强。</div>
       <div class="task-hint" id="taskHint">提示：点击探头头部可切换朝向；同一深度改变探头方向时，U 形管液柱高度差应基本不变。</div>
     </div>
     <div class="progress-dots" id="dots"></div>
@@ -1059,7 +1068,7 @@
 
     <div class="dock drawer control" id="controlDock" style="right:10px; top:10px; left:auto;">
       <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
-        <div class="dockTitle drawer-title">控制面板</div>
+        <div class="dockTitle drawer-title">实验面板</div>
         <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
       </div>
       <div class="dockBody collapsed drawer-body" id="controlBody">
@@ -1071,13 +1080,13 @@
         </div>
         <div class="btnRow">
           <button class="primary" id="measureBtn">读取压强并记录</button>
-          <button id="checkBtn">确认观察 ✅</button>
+          <button id="checkBtn" hidden></button>
         </div>
         <div class="btnRow">
           <button id="analyzeBtn">分析结论</button>
           <button id="probeResetBtn">探头回到 0</button>
         </div>
-        <div class="analysisBox" id="analysisText">分析：暂无。请按步骤完成记录后，再点击“分析结论”，最后点“确认观察”。</div>
+        <div class="analysisBox is-empty" id="analysisText">分析：暂无。请按关卡完成记录后，再点击“分析结论”。</div>
         <div class="chartCard">
           <div class="legendRow" style="margin-bottom:8px;">
             <span class="legendPill water">清水</span>
@@ -1125,8 +1134,8 @@
   </div>
 
   <div class="toolbar">
-    <button id="resetBtn">步骤重置</button>
-    <button id="autoDemoBtn">自动演示</button>
+    <button id="resetBtn">重置关卡</button>
+    <button id="autoDemoBtn">演示模式</button>
     <button id="freeBtn">自由模式</button>
   </div>
 
@@ -1164,22 +1173,22 @@
 
     const TASKS = [
       {
-        text:'选择“清水”，把探头拖到 <b>20.0 cm</b> 深度，再点击探头头部，依次切换成 <b>侧向、向下、向上</b> 并记录，再点“确认观察”。',
+        text:'选择“清水”，把探头拖到 <b>20.0 cm</b> 深度，再点击探头头部，依次切换成 <b>侧向、向下、向上</b> 并记录。',
         hint:'提示：点击探头头部可切换朝向；同一深度下，各个方向的液体压强应相等。',
         check:()=>state.sameDepthCompared === true
       },
       {
-        text:'保持“清水”和“侧向”，把探头调到 <b>35 cm 及以上</b>，读取并记录，然后点“确认观察”。',
+        text:'保持“清水”和“侧向”，把探头调到 <b>35 cm 及以上</b>，读取并记录。',
         hint:'提示：此步只改变深度，不改变液体和探头方向。',
         check:()=>state.depthCompared === true
       },
       {
-        text:'保持 <b>20.0 cm</b> 和“侧向”，切换到 <b>酒精、盐水</b> 分别记录，并结合已得到的清水数据比较，然后点“确认观察”。',
+        text:'保持 <b>20.0 cm</b> 和“侧向”，切换到 <b>酒精、盐水</b> 分别记录，并结合已得到的清水数据比较。',
         hint:'提示：在相同深度和相同方向时，液体密度越大，压强越大。',
         check:()=>state.densityCompared === true
       },
       {
-        text:'点击“分析结论”，汇总方向、深度、密度三条规律，再点“确认观察”。',
+        text:'点击“分析结论”，汇总方向、深度、密度三条规律，完成本实验。',
         hint:'提示：结论需要同时满足“同深度各方向”“同液体不同深度”“同深度不同液体”三个条件。',
         check:()=>state.analysisOk === true
       }
@@ -1348,8 +1357,10 @@
     function setStatus(text){ statusTag.textContent = `状态：${text || '待操作'}`; }
     function updateModeHud(){
       modeTag.classList.remove('mode-auto');
-      if(state.autoPlaying){ modeTag.textContent = '模式：自动演示'; modeTag.classList.add('mode-auto'); return; }
-      modeTag.textContent = state.freeMode ? '模式：自由' : '模式：引导';
+      if(state.autoPlaying){ modeTag.textContent = '模式：演示模式 · 自动运行'; modeTag.classList.add('mode-auto'); return; }
+      if(state.freeMode){ modeTag.textContent = '模式：自由模式 · 自主探索'; return; }
+      if(state.completed){ modeTag.textContent = '模式：闯关模式 · 已通关'; return; }
+      modeTag.textContent = `模式：闯关模式 · 关卡 ${state.currentTask + 1}/${TASKS.length}`;
     }
     function renderStepDots(){
       [...dotsEl.children].forEach((d, i)=>{
@@ -1362,10 +1373,11 @@
       const idx = clamp(i, 0, TASKS.length - 1);
       state.currentTask = idx;
       if(state.warningStep !== state.currentTask) state.warningStep = -1;
-      taskStepEl.textContent = `步骤 ${idx + 1} / ${TASKS.length}`;
+      taskStepEl.textContent = `关卡 ${idx + 1} / ${TASKS.length}`;
       taskTextEl.innerHTML = TASKS[idx].text;
       taskHintEl.textContent = TASKS[idx].hint;
       renderStepDots();
+      updateModeHud();
     }
     function warnCurrentStep(msg){
       if(state.completed) return;
@@ -1543,6 +1555,11 @@
       renderRecords();
       scheduleChart();
     }
+    function autoAdvanceIfReady(fromAuto = false){
+      if(state.freeMode || state.completed) return false;
+      if(!TASKS[state.currentTask].check()) return false;
+      return passCurrentTask(fromAuto);
+    }
     function markLastMeasured(){
       effectText.textContent = `观察：${currentCfg().name}、${currentDirCfg().name}、${state.probeDepthCm.toFixed(1)} cm，压强 ${state.currentPressureKPa.toFixed(2)} kPa。`;
       labNote.textContent = state.freeMode ? '实验状态：自由探索中，可点击探头头部改方向。' : `实验状态：${currentStageNote()}`;
@@ -1640,12 +1657,14 @@
       };
       state.lastMeasuredId = row.id;
       addRecord(row);
-      setStatus(state.freeMode ? '自由探索' : '已记录，等待确认');
+      setStatus(state.freeMode ? '自由探索' : '已记录，继续补齐观察');
       showToast('已记录一组压强数据');
+      autoAdvanceIfReady(fromAuto);
       return true;
     }
     function analyzeConclusion(fromAuto = false){
       if(state.autoPlaying && !fromAuto) return false;
+      analysisText.classList.remove('is-empty');
       const w20Side = findMeasure('water', 'side', (r)=>isExactDepth(r.depth, STRICT_TARGET_DEPTH_CM));
       const w20Down = findMeasure('water', 'down', (r)=>isExactDepth(r.depth, STRICT_TARGET_DEPTH_CM));
       const w20Up = findMeasure('water', 'up', (r)=>isExactDepth(r.depth, STRICT_TARGET_DEPTH_CM));
@@ -1665,24 +1684,25 @@
       analysisText.textContent = state.analysisOk
         ? `分析：在清水 20.0 cm 处，侧向/向下/向上读数分别为 ${w20Side.pressure.toFixed(2)}、${w20Down.pressure.toFixed(2)}、${w20Up.pressure.toFixed(2)} kPa，最大差仅 ${dirRange.toFixed(2)} kPa，可认为同一深度各方向压强相等；在清水中，${w35Side.depth.toFixed(1)} cm 处压强 ${w35Side.pressure.toFixed(2)} kPa，大于 20.0 cm 处的 ${w20Side.pressure.toFixed(2)} kPa；在 20.0 cm 侧向条件下，盐水/清水/酒精读数依次为 ${s20Side.pressure.toFixed(2)}、${w20Side.pressure.toFixed(2)}、${a20Side.pressure.toFixed(2)} kPa。`
         : '分析：当前数据趋势不完整，建议重新读取对应深度的数据。';
-      setStatus(state.analysisOk ? '分析完成，等待确认' : '分析未通过');
+      setStatus(state.analysisOk ? '分析完成' : '分析未通过');
       showToast(state.analysisOk ? '分析完成' : '分析未通过');
+      if(state.analysisOk) autoAdvanceIfReady(fromAuto);
       return state.analysisOk;
     }
     function passCurrentTask(fromAuto = false){
       if(state.freeMode || state.completed) return false;
       if(!TASKS[state.currentTask].check()){
-        if(state.currentTask === 0) warnCurrentStep('请先在清水 20.0 cm 处完成侧向、向下、向上三次记录，再点“确认观察”。');
-        else if(state.currentTask === 1) warnCurrentStep('请先完成清水侧向深处的记录，再点“确认观察”。');
-        else if(state.currentTask === 2) warnCurrentStep('请先完成酒精和盐水在 20.0 cm 侧向的记录，再点“确认观察”。');
-        else warnCurrentStep('请先分析出正确结论，再点“确认观察”。');
+        if(state.currentTask === 0) warnCurrentStep('请先在清水 20.0 cm 处完成侧向、向下、向上三次记录。');
+        else if(state.currentTask === 1) warnCurrentStep('请先完成清水侧向深处的记录。');
+        else if(state.currentTask === 2) warnCurrentStep('请先完成酒精和盐水在 20.0 cm 侧向的记录。');
+        else warnCurrentStep('请先分析出正确结论。');
         return false;
       }
       showCheck();
       state.successCooldown = true;
       trackTimeout(()=>{ state.successCooldown = false; }, 340);
       if(state.currentTask === 3){
-        addRecord({ id:`ana_${Date.now()}`, kind:'analysis', liquid:null, depth:null, pressure:null, note:'已完成结论分析并确认' });
+        addRecord({ id:`ana_${Date.now()}`, kind:'analysis', liquid:null, depth:null, pressure:null, note:'已完成结论分析' });
         state.warningStep = -1;
         state.completed = true;
         if(fromAuto){
@@ -1725,6 +1745,7 @@
       updateBadge();
       renderRecords();
       analysisText.textContent = '分析：暂无。请补齐同深度各方向、同液体不同深度、同深度不同液体三组证据后，再点击“分析结论”。';
+      analysisText.classList.add('is-empty');
       scheduleChart();
     }
     function resetExperiment(showTip = true){
@@ -2113,7 +2134,7 @@
       probeResetBtn.disabled = autoLocked;
       resetBtn.disabled = autoLocked;
       freeBtn.disabled = autoLocked;
-      autoDemoBtn.textContent = state.autoPlaying ? '退出自动演示' : '自动演示';
+      autoDemoBtn.textContent = state.autoPlaying ? '退出演示' : '演示模式';
     }
     function stopAutoDemo(manual = false){
       if(!state.autoPlaying) return;
@@ -2122,8 +2143,8 @@
       setDemoCursorVisible(false);
       updateModeHud();
       updateControlsState();
-      setStatus(manual ? '已退出自动演示' : (state.completed ? '挑战完成' : '待操作'));
-      if(manual) showToast('已退出自动演示');
+      setStatus(manual ? '已退出演示' : (state.completed ? '挑战完成' : '待操作'));
+      if(manual) showToast('已退出演示');
     }
     async function startAutoDemo(){
       if(state.freeMode) return;
@@ -2132,7 +2153,7 @@
       const runId = state.autoRunId;
       updateModeHud();
       updateControlsState();
-      setStatus('自动演示中');
+      setStatus('演示中');
       setDemoCursorVisible(true);
       setControlCollapsed(false);
       setDataCollapsed(true);
@@ -2158,7 +2179,6 @@
         await animateProbeDirection('up', runId);
         await demoClickElement(measureBtn, runId, ()=>measureCurrent(true));
         assertAutoRecorded(before);
-        await demoClickElement(checkBtn, runId, ()=>passCurrentTask(true));
         await sleep(380);
 
         setStepUI(1);
@@ -2167,7 +2187,6 @@
         before = state.records.length;
         await demoClickElement(measureBtn, runId, ()=>measureCurrent(true));
         assertAutoRecorded(before);
-        await demoClickElement(checkBtn, runId, ()=>passCurrentTask(true));
         await sleep(380);
 
         setStepUI(2);
@@ -2181,21 +2200,19 @@
         before = state.records.length;
         await demoClickElement(measureBtn, runId, ()=>measureCurrent(true));
         assertAutoRecorded(before);
-        await demoClickElement(checkBtn, runId, ()=>passCurrentTask(true));
         await sleep(380);
 
         setStepUI(3);
-        await demoClickElement(analyzeBtn, runId, ()=>analyzeConclusion(true));
         before = state.records.length;
-        await demoClickElement(checkBtn, runId, ()=>passCurrentTask(true));
+        await demoClickElement(analyzeBtn, runId, ()=>analyzeConclusion(true));
         assertAutoRecorded(before);
       }catch(err){
         if(err && err.message === 'AUTO_DEMO_STOPPED'){
-          setStatus('已退出自动演示');
+          setStatus('已退出演示');
         }else{
           console.error('[autoDemo] failed', err);
-          showToast(err && err.code ? err.code : '自动演示失败，请重试');
-          setStatus('自动演示失败');
+          showToast(err && err.code ? err.code : '演示失败，请重试');
+          setStatus('演示失败');
         }
       }finally{
         if(runId === state.autoRunId){
@@ -2205,7 +2222,7 @@
           setDemoCursorVisible(false);
           if(state.completed) setStatus('挑战完成');
           else if(state.freeMode) setStatus('自由探索');
-          else if(statusTag.textContent === '状态：自动演示中') setStatus('待操作');
+          else if(statusTag.textContent === '状态：演示中') setStatus('待操作');
         }
       }
     }
@@ -2409,12 +2426,19 @@
   var controlToggle = $("#controlToggleBtn");
   var dataToggle = $("#dataToggleBtn");
   var doneMask = $("#doneMask");
+  var completionOpened = false;
+  var userPanelOverride = false;
+  var lastDone = false;
 
   function isDone(){
     var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
     var stateDone = false;
     try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
     return modalDone || stateDone;
+  }
+
+  function signalPanelState(){
+    try { window.dispatchEvent(new CustomEvent("exp35:panel-state-changed")); } catch (_) {}
   }
 
   function setPanelCollapsed(dock, body, toggle, collapsed){
@@ -2436,8 +2460,25 @@
     dock.style.right = "auto";
   }
 
+  function updateDoneState(){
+    var done = isDone();
+    if (!done) {
+      completionOpened = false;
+      userPanelOverride = false;
+      lastDone = false;
+      return false;
+    }
+    if (!lastDone) {
+      completionOpened = false;
+      userPanelOverride = false;
+    }
+    lastDone = true;
+    return true;
+  }
+
   function fitCompletionDrawers(){
-    if (!stage || !controlDock || !dataDock || !isDone()) return;
+    if (!stage || !controlDock || !dataDock || !updateDoneState()) return;
+    if (completionOpened || userPanelOverride) return;
     setPanelCollapsed(controlDock, controlBody, controlToggle, true);
     setPanelCollapsed(dataDock, dataBody, dataToggle, false);
     var sw = stage.clientWidth;
@@ -2447,9 +2488,20 @@
     var dataX = sw - dataW - 10;
     placeDock(controlDock, controlX, 10);
     placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+    completionOpened = true;
+    signalPanelState();
+  }
+
+  function markUserPanelOverride(evt){
+    if (!isDone() || !evt || !evt.target || !evt.target.closest) return;
+    if (evt.target.closest("#controlToggleBtn,#dataToggleBtn,#experimentTab,#dataTab,#controlSheetCloseBtn,#dataSheetCloseBtn")) {
+      userPanelOverride = true;
+      setTimeout(signalPanelState, 0);
+    }
   }
 
   if (!stage || !controlDock || !dataDock) return;
+  document.addEventListener("click", markUserPanelOverride, true);
   window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
   setInterval(fitCompletionDrawers, 450);
 })();
@@ -2567,6 +2619,7 @@
     dock.classList.toggle('collapsed', !open);
     if (body) body.classList.toggle('collapsed', !open);
     if (toggle && /^(展开|收起)$/.test((toggle.textContent || '').trim())) toggle.textContent = open ? '收起' : '展开';
+    if (which === 'data' && open) clearDataNotice();
   }
   function clickToOpen(which){
     const targetDock = which === 'control' ? controlDock : dataDock;
@@ -2580,6 +2633,20 @@
     }
     syncMobileShell();
     setTimeout(syncMobileShell, 80);
+  }
+  function clearDataNotice(){
+    if (dataNotice) {
+      dataNotice.textContent = '0';
+      dataNotice.classList.remove('show');
+      dataNotice.classList.add('hidden');
+    }
+    if (dataBadge) {
+      dataBadge.textContent = '0';
+      dataBadge.classList.remove('show');
+    }
+    try {
+      if (window.state && typeof window.state === 'object' && 'unseenRecordCount' in window.state) window.state.unseenRecordCount = 0;
+    } catch (_) {}
   }
   function dataNoticeCount(){
     const raw = (dataNotice?.textContent || dataBadge?.textContent || '').trim();
@@ -2622,6 +2689,7 @@
     const dataClosed = mirrorCollapsed(dataDock, dataBody);
     const experimentOpen = !controlClosed;
     const dataOpen = !dataClosed;
+    if (dataOpen) clearDataNotice();
     tabs.classList.toggle('attached', experimentOpen || dataOpen);
     tabs.classList.toggle('experiment-open', experimentOpen);
     tabs.classList.toggle('data-open', dataOpen);
@@ -2637,6 +2705,7 @@
   controlClose?.addEventListener('click', () => { forceClassState('control', false); syncMobileShell(); });
   dataClose?.addEventListener('click', () => { forceClassState('data', false); syncMobileShell(); });
   [controlToggle, dataToggle, resetBtn].forEach(btn => btn?.addEventListener('click', () => setTimeout(syncMobileShell, 80), true));
+  window.addEventListener('exp35:panel-state-changed', syncMobileShell);
   setInterval(() => { normalizeLabels(); applyDataLabels(); syncBadge(); }, 700);
   window.addEventListener('resize', syncMobileShell);
   window.addEventListener('orientationchange', syncMobileShell);
