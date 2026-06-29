@@ -1,0 +1,1465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验49｜制作简易直流电动机</title>
+  <style>
+    :root{--bg:#1a1a1a;--ink:#fff;--card-bg:rgba(255,255,255,.08);--panel-bg:rgba(15,15,15,.54);--line:rgba(255,255,255,.12);--accent:#3ddc97;--warn:#ffb74d;--danger:#ff5b6e;--dockShadow:0 14px 36px rgba(0,0,0,.42)}
+    *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;padding:10px;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;letter-spacing:0}
+    #app{width:100%;max-width:980px;margin:0 auto 34px}button{font:inherit;touch-action:manipulation}
+    button.main,button.sub{border:none;border-radius:8px;padding:8px 12px;color:#fff;cursor:pointer;transition:background .2s,transform .05s,opacity .2s;user-select:none;-webkit-tap-highlight-color:transparent;font-size:13px;background:#444}
+    button.main{background:#2e7d32}button.main:hover,button.sub:hover{background:#5a5a5a}button:active{transform:scale(.98)}button:disabled{opacity:.5;cursor:not-allowed}
+    #spectrum{position:relative;width:100%;max-width:980px;height:40px;border-radius:10px;overflow:hidden;box-shadow:0 0 15px rgba(255,255,255,.15);margin:0 0 12px;background:#000;flex-shrink:0}
+    #spectrum:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000);background-size:200% 100%;animation:flowRainbow 6s linear infinite}@keyframes flowRainbow{0%{background-position:0 0}100%{background-position:-100% 0}}
+    .task-card{width:100%;max-width:980px;background:var(--card-bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;backdrop-filter:blur(6px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}
+    .task-step{background:rgba(255,255,255,.16);border-radius:8px;padding:6px 10px;font-weight:700;white-space:nowrap}.task-text{min-width:0;line-height:1.55}#taskHint{color:#ffd54f;font-size:12px;opacity:.95;margin-top:2px}.progress-dots{display:flex;gap:6px;align-items:center}
+    .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.26);outline:2px solid rgba(255,255,255,.12)}.dot.active{background:var(--warn)}.dot.done{background:var(--accent);outline-color:rgba(61,220,151,.45)}.dot.warn{background:var(--danger);box-shadow:0 0 10px rgba(255,91,110,.62)}
+    #stage{width:100%;max-width:980px;height:66vh;max-height:660px;min-height:520px;margin-top:10px;border-radius:12px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0b0f14;box-shadow:0 10px 26px rgba(0,0,0,.35);touch-action:pan-y pinch-zoom;background-image:radial-gradient(circle at 78% 18%,rgba(255,255,255,.05),transparent 38%),radial-gradient(circle at 22% 80%,rgba(0,255,255,.045),transparent 42%)}
+    .lab-area{position:absolute;inset:54px 10px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(#071018,#0d141c);overflow:hidden}#labCanvas{width:100%;height:100%;display:block;touch-action:pan-y pinch-zoom;cursor:crosshair}
+    .hud{position:absolute;left:10px;top:10px;z-index:20;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:rgba(0,0,0,.48);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12px}.tag{border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:2px 8px;font-weight:700;color:#dce9ff;background:rgba(255,255,255,.06)}
+    .hint-lamp{position:absolute;left:10px;top:56px;z-index:22;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#ffd54f;font-size:16px;cursor:pointer;padding:0}.hint-lamp.flash{animation:lampFlash .6s ease}@keyframes lampFlash{50%{box-shadow:0 0 22px rgba(255,91,110,.86);border-color:var(--danger);color:#ffb0b0}}
+    .hint-pop{position:absolute;left:10px;top:96px;z-index:23;width:min(330px,calc(100% - 24px));display:none;padding:10px 12px;border:1px solid rgba(255,209,102,.36);border-radius:10px;background:rgba(16,18,20,.9);color:#f4efe2;font-size:13px;line-height:1.55}.hint-pop.open{display:block}
+    .dock{position:absolute;width:min(94%,330px);border-radius:12px;border:1px solid var(--line);background:var(--panel-bg);backdrop-filter:blur(6px);box-shadow:var(--dockShadow);overflow:hidden;touch-action:none;z-index:30}.dock-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);cursor:grab;user-select:none;touch-action:none}.dockTitle{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#e7f0ff;white-space:nowrap}.iconBtn{border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8f1ff;border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;white-space:nowrap}.dock-body{padding:10px;max-height:310px;overflow:auto;-webkit-overflow-scrolling:touch}.collapsed .dock-body{display:none}
+    .readout{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);border-radius:8px;padding:8px;margin-bottom:8px;min-height:44px}.readout b{display:block;color:#cfe4ff;font-size:12px;margin-bottom:4px}.readout span{color:#fff;font-size:13px;line-height:1.42}.controls{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.controls button{flex:1 1 86px}.analysis{margin-top:8px;border:1px solid rgba(91,188,255,.28);background:rgba(91,188,255,.07);color:#d9ecff;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.5}.analysis.ok{border-color:rgba(61,220,151,.55);background:rgba(61,220,151,.12);color:#e7fff3}
+    .source-line{margin:0 0 8px;color:#bcd0e4;font-size:12px;line-height:1.4}.badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef476f;color:#fff;font-size:12px;transform:scale(0);opacity:0;transition:.15s}.badge.show{transform:scale(1);opacity:1;animation:badgePulse .9s ease-in-out infinite}@keyframes badgePulse{50%{transform:scale(1.14)}}
+    table.record{width:100%;border-collapse:collapse;font-size:12px;color:#e8f1ff}table.record th,table.record td{border:1px solid rgba(255,255,255,.1);padding:6px;vertical-align:top;line-height:1.45;text-align:left}table.record th{background:rgba(255,255,255,.08);color:#cfe4ff}.empty{margin:8px 2px;color:#aebbd0;font-size:12px}
+    .toolbar{width:100%;max-width:980px;display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%) translateY(18px);opacity:0;pointer-events:none;padding:10px 16px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.12);color:#fff;font-weight:800;transition:.18s ease;z-index:80}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .checkmark{position:absolute;left:50%;top:50%;width:64px;height:64px;border-radius:50%;transform:translate(-50%,-50%) scale(.7);opacity:0;pointer-events:none;background:rgba(37,194,119,.96);box-shadow:0 0 24px rgba(37,194,119,.55);z-index:82;transition:.18s ease}.checkmark:before{content:"";position:absolute;left:19px;top:16px;width:24px;height:13px;border-left:5px solid #fff;border-bottom:5px solid #fff;transform:rotate(-45deg)}.checkmark.active{opacity:1;transform:translate(-50%,-50%) scale(1)}
+    .modal-mask{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.58);z-index:90;padding:16px}.modal{width:min(430px,92vw);padding:18px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#101317;text-align:center;box-shadow:0 18px 44px rgba(0,0,0,.42)}.modal h3{margin:4px 0 8px;font-size:21px}.modal p{margin:0;color:#cdd7e0;line-height:1.55}.modal .ok{margin-top:14px;border:none;border-radius:8px;padding:8px 18px;background:var(--accent);color:#07170f;font-weight:800;cursor:pointer}.demo-cursor{position:absolute;left:0;top:0;width:20px;height:20px;border-radius:50%;border:2px solid #fff;background:rgba(91,188,255,.8);box-shadow:0 0 14px rgba(91,188,255,.8);opacity:0;z-index:72;pointer-events:none;transition:opacity .15s}.demo-cursor.click{animation:cursorClick .34s ease}@keyframes cursorClick{50%{opacity:.62;box-shadow:0 0 0 12px rgba(91,188,255,.24),0 0 18px rgba(91,188,255,.9)}}
+    .explanation{width:100%;max-width:980px;margin:14px 0 22px;color:#e8f4ff;line-height:1.66;font-size:15px}.explanation h2{margin:0 0 8px;color:#9bd3ff;font-size:20px}.explanation p{margin:6px 0}
+    @media(max-width:720px){body{padding:8px}#app,#spectrum,.task-card,#stage,.toolbar,.explanation{max-width:100%}.task-card{grid-template-columns:1fr;gap:7px}.task-step{width:fit-content}#stage{height:78vh;min-height:700px}.lab-area{inset:96px 8px 10px}.dock{width:calc(100% - 24px)}.dock.collapsed{width:148px}.toolbar button{flex:1 1 132px}}
+  </style>
+  <style id="codex-exp46-50-ui-standard">
+    #spectrum{height:24px !important;box-shadow:0 0 15px rgba(255,255,255,.12) !important}
+    #spectrum:before{background-image:linear-gradient(90deg,#ff4c4c 0%,#ff9a3d 5.5%,#f7e94c 11%,#54e86d 17%,#40e0d0 24%,#4aa3ff 31%,#8757ff 38%,#ec5cff 44%,#ff4c4c 50%,#ff9a3d 55.5%,#f7e94c 61%,#54e86d 67%,#40e0d0 74%,#4aa3ff 81%,#8757ff 88%,#ec5cff 94%,#ff4c4c 100%) !important;filter:saturate(1.18) brightness(1.04) !important;animation:flowRainbow 8s linear infinite !important}
+    #stage .hint-lamp{left:14px !important;top:56px !important;width:30px !important;height:30px !important;border:0 !important;border-radius:0 !important;background:transparent !important;color:#ffd96a !important;font-size:22px !important;line-height:1 !important;box-shadow:none !important;filter:drop-shadow(0 2px 5px rgba(0,0,0,.35)) !important}
+    #stage .hint-lamp.flash{animation:codexLampFlash .28s ease-in-out 3 !important}@keyframes codexLampFlash{50%{transform:scale(1.14);color:#fff7bc;filter:drop-shadow(0 2px 5px rgba(0,0,0,.35)) drop-shadow(0 0 18px rgba(255,225,120,.9)) !important}}
+    #stage .hint-pop{left:14px !important;top:94px !important;width:min(330px, calc(100vw - 36px)) !important;max-width:calc(100vw - 36px) !important;white-space:normal !important;overflow-wrap:break-word !important;word-break:normal !important;text-align:left !important;z-index:70 !important}
+    #stage .analysis.codex-placeholder-hidden{display:none !important}#stage .mobile-tabs,#stage .sheet-close{display:none}
+    @media(max-width:720px){#spectrum{height:20px !important;margin-bottom:10px !important}#stage{height:58vh !important;min-height:500px !important;max-height:560px !important}#stage .lab-area{inset:96px 8px 74px !important}#stage .mobile-tabs{position:absolute;left:12px;right:12px;bottom:8px;z-index:64;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;border:1px solid rgba(91,188,255,.24);border-radius:11px;background:rgba(9,12,16,.9);backdrop-filter:blur(10px);box-shadow:0 12px 30px rgba(0,0,0,.42)}#stage .mobile-tabs.attached{border-top:0;border-radius:0 0 12px 12px;background:linear-gradient(180deg,rgba(9,21,33,.96),rgba(6,14,23,.96))}#stage .mobile-tab{position:relative;border:0;border-radius:8px;padding:9px 10px;background:rgba(255,255,255,.04);color:#cfe4ff;font-weight:900;font-size:13px;cursor:pointer;overflow:visible}#stage .mobile-tab.active{background:rgba(61,220,151,.16);color:#effff7;box-shadow:inset 0 0 0 1px rgba(61,220,151,.56)}#stage .tab-label{position:relative;display:inline-block}#stage .mobile-badge{position:absolute;top:-9px;right:-17px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ff3b30;color:#fff;font-size:11px;font-weight:900;line-height:1;border:2px solid rgba(9,12,16,.96);box-shadow:0 3px 10px rgba(255,59,48,.45);opacity:0;transform:scale(.55);pointer-events:none;transition:opacity .16s,transform .16s}#stage .mobile-badge.show{opacity:1;transform:scale(1)}#stage .dock.mobile-sheet{left:12px !important;right:12px !important;top:auto !important;bottom:56px !important;width:auto !important;max-width:none !important;min-width:0 !important;border-radius:12px 12px 0 0 !important;border:1px solid rgba(91,188,255,.32) !important;border-bottom-color:rgba(91,188,255,.18) !important;background:linear-gradient(180deg,rgba(22,44,64,.96),rgba(9,21,33,.96)) !important;box-shadow:0 18px 36px rgba(0,0,0,.5) !important;touch-action:auto !important;z-index:62 !important;overflow:hidden !important}#stage .dock.mobile-sheet.collapsed{display:none !important}#stage .dock.mobile-sheet .dock-header{display:none !important}#stage .dock.mobile-sheet .dock-body{display:grid !important;max-height:188px !important;padding:8px !important;overflow:auto !important;-webkit-overflow-scrolling:touch !important;background:rgba(3,10,16,.26) !important}#stage .dock.mobile-sheet .sheet-close{display:inline-flex;align-items:center;justify-content:center;width:36px;min-width:36px;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:50%;background:rgba(255,255,255,.055);color:#e3f0ff;font-weight:900;font-size:17px;line-height:1;padding:0}#stage .control.mobile-sheet .dock-body{grid-template-columns:minmax(0,1fr) 36px;gap:8px;align-items:center}#stage .control.mobile-sheet .controls{grid-column:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px;margin:0;padding:8px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.055)}#stage .control.mobile-sheet .sheet-close{grid-column:2;grid-row:1}#stage .control.mobile-sheet .analysis{grid-column:1/-1;margin-top:0}#stage .data.mobile-sheet .dock-body{grid-template-columns:minmax(0,1fr) 36px;gap:8px;align-items:start}#stage .data.mobile-sheet .sheet-close{grid-column:2;grid-row:1}#stage .data.mobile-sheet table.record{grid-column:1/-1;display:block;width:100%;border-collapse:separate;border-spacing:0;background:transparent}#stage .data.mobile-sheet table.record thead{display:none}#stage .data.mobile-sheet table.record tbody{display:grid;gap:8px}#stage .data.mobile-sheet table.record tr{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.045)}#stage .data.mobile-sheet table.record td{display:grid;gap:2px;border:0;padding:0;font-size:12px;line-height:1.35;min-width:0;word-break:break-word;text-align:left;white-space:normal}#stage .data.mobile-sheet table.record td::before{content:attr(data-label);color:#8fb4d8;font-size:10px;font-weight:800}#stage .data.mobile-sheet table.record td:first-child{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:5px}#stage .data.mobile-sheet .empty{grid-column:1;grid-row:1;min-height:36px;display:flex;align-items:center;margin:0;padding:9px 10px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.045)}.toolbar{max-width:100% !important;display:grid !important;grid-template-columns:repeat(3,1fr) !important;gap:7px !important;margin-top:8px !important;padding:6px !important;border:1px solid rgba(255,255,255,.08) !important;border-radius:11px !important;background:rgba(255,255,255,.035) !important}.toolbar button{min-width:0 !important;padding:8px 6px !important;border-radius:8px !important;background:rgba(255,255,255,.075) !important;color:#d9e8f8 !important;font-size:12px !important;font-weight:800 !important;border:0 !important;box-shadow:none !important}}
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="spectrum"></div>
+    <section class="task-card"><div class="task-step" id="taskStep">步骤 1 / 5</div><div class="task-text"><div id="taskText"></div><div id="taskHint"></div></div><div class="progress-dots" id="dots"></div></section>
+    <main id="stage" aria-label="制作简易直流电动机实验台">
+      <div class="hud"><span class="tag" id="modeTag">模式：引导</span><span class="tag" id="statusTag">状态：待操作</span></div>
+      <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button><div class="hint-pop" id="hintPop"></div>
+      <div class="lab-area" id="labArea"><canvas id="labCanvas"></canvas></div>
+      <section class="dock drawer control collapsed" id="controlDock"><div class="dock-header" data-drag-handle><span class="dockTitle">实验面板</span><button class="iconBtn" id="controlToggleBtn" type="button">展开</button></div><div class="dock-body">
+        <div class="controls"><button class="main" id="recordBtn" type="button">记录</button><button class="sub" id="analyzeBtn" type="button">分析</button></div>
+        <div class="analysis" id="analysisText">完成四次记录后分析。</div>
+      </div></section>
+      <section class="dock drawer data collapsed" id="dataDock"><div class="dock-header" data-drag-handle><span class="dockTitle">数据面板 <span class="badge" id="dataNotice">0</span></span><button class="iconBtn" id="dataToggleBtn" type="button">展开</button></div><div class="dock-body"><table class="record"><thead><tr><th>步骤</th><th>记录</th></tr></thead><tbody id="recordBody"></tbody></table><div class="empty" id="emptyRecords">暂无记录。</div></div></section>
+      <div class="toast" id="toast">提示</div><div class="checkmark" id="checkmark"></div><div class="demo-cursor" id="demoCursor"></div><div class="modal-mask" id="doneMask"><div class="modal"><h3>实验完成</h3><p>一端全刮漆、一端半刮漆，让线圈半周通电、半周断电，线圈能靠惯性持续同向转动。</p><button class="ok" id="okBtn" type="button">OK</button></div></div>
+    </main>
+    <div class="toolbar"><button class="sub" id="resetBtn" type="button">步骤重置</button><button class="sub" id="autoDemoBtn" type="button">自动演示</button><button class="sub" id="freeBtn" type="button">自由模式</button></div>
+    <section class="explanation"><h2>实验名：制作简易直流电动机</h2><p><b>关键过程：</b>把线圈放入磁极间隙，左端引线全刮漆，右端引线只刮下半周，再接通电路并轻拨线圈。</p><p><b>结论：</b>一端全刮、一端半刮能让线圈每转一周只有半周通电，断电半周靠惯性越过平衡位置，从而持续同向转动。</p></section>
+  </div>
+  <script>
+  (() => {
+    "use strict";
+    const SPEC = {"id":49,"title":"制作简易直流电动机","scene":"simpleMotor","family":"电磁","textbook":"九年级全一册 第二十章 第5节 电动机","apparatus":"漆包线线圈、U形磁铁、电池盒、支架、导线、刮刀","keyPoint":"把线圈架在磁极间隙中，左端全刮漆，右端只刮下半周，让线圈周期性通断电。","conclusion":"一端全刮、一端半刮能让线圈每转一周只有半周通电，断电半周靠惯性越过平衡位置，线圈可以持续同向转动。","scenarios":[{"key":"mount","label":"架上线圈","action":"点击线圈，把线圈架到两根支架上，并放入U形磁铁的磁极间隙。","note":"线圈已经位于磁场中，但两端漆层未处理，电路还不能稳定导通。","value":0},{"key":"leftScrape","label":"左端全刮漆","action":"点击左端引线，刮去整圈漆层，让这一端始终可以导电。","note":"左端引线全周导电，作为持续接触的一端。","value":1},{"key":"rightHalf","label":"右端半周刮漆","action":"点击右端引线，只刮去下半周漆层，让线圈每转一周只有半周通电。","note":"右端只在半周内导电，另一半周断电，避免线圈被反向力矩拉回。","value":2},{"key":"spin","label":"轻拨转动","action":"点击线圈，接通电路并轻拨线圈，观察持续转动。","note":"通电半周受到磁场力矩，断电半周靠惯性越过平衡位置，线圈持续同向转动。","value":3}]};
+    const $ = s => document.querySelector(s);
+    const stage = $("#stage"), labArea = $("#labArea"), canvas = $("#labCanvas"), ctx = canvas.getContext("2d");
+    const taskStep = $("#taskStep"), taskText = $("#taskText"), taskHint = $("#taskHint"), dots = $("#dots"), modeTag = $("#modeTag"), statusTag = $("#statusTag");
+    const hintLamp = $("#hintLamp"), hintPop = $("#hintPop"), controlDock = $("#controlDock"), dataDock = $("#dataDock"), controlToggleBtn = $("#controlToggleBtn"), dataToggleBtn = $("#dataToggleBtn");
+    const recordBtn = $("#recordBtn"), analyzeBtn = $("#analyzeBtn"), analysisText = $("#analysisText"), recordBody = $("#recordBody"), emptyRecords = $("#emptyRecords"), dataNotice = $("#dataNotice");
+    const resetBtn = $("#resetBtn"), autoDemoBtn = $("#autoDemoBtn"), freeBtn = $("#freeBtn"), toast = $("#toast"), checkmark = $("#checkmark"), doneMask = $("#doneMask"), okBtn = $("#okBtn"), demoCursor = $("#demoCursor");
+    const state = { currentTask:0, completed:false, freeMode:false, autoPlaying:false, autoCancel:false, drawerDrag:null, stepWarning:false, successCooldown:false, timers:new Set(), scenarioIndex:0, operationCount:0, records:[], unseenRecords:0, analysisDone:false, width:0, height:0, stageWidth:0, stageHeight:0, drag:false, phase:0, moved:false, currentReversed:false, rheostatPos:.5, motorAngleOffset:0, dcSwitchClosed:false, dcMotorKicked:false, dcRestAngle:.02, dcCoilMounted:false, dcWireScraped:false, leftScraped:false, rightHalfScraped:false };
+    const tasks = [
+      { text:"操作并记录：架上线圈", hint:"点击线圈，把它放入 U 形磁铁的磁极间隙，并架在两根支架上。", detail:"先把线圈架好，让线圈位于红蓝磁极之间；此时两端漆层还没有处理。", expected:"mount", check:() => hasRecord("mount") },
+      { text:"操作并记录：左端全刮漆", hint:"点击左端引线，刮去整圈漆层，使左端始终导电。", detail:"左端漆层全部刮去，金属铜线能在整个转动过程中接触导电。", expected:"leftScrape", check:() => hasRecord("leftScrape") },
+      { text:"操作并记录：右端半周刮漆", hint:"点击右端引线，只刮下半周漆层。", detail:"右端只刮去下半周漆层，让线圈每转一周只有半周通电，另一半周断电。", expected:"rightHalf", check:() => hasRecord("rightHalf") },
+      { text:"操作并记录：轻拨转动", hint:"点击线圈，接通电路并轻拨，观察线圈持续同向转动。", detail:"半周通电时线圈受磁场力矩转动，断电半周靠惯性越过平衡位置。", expected:"spin", check:() => hasRecord("spin") },
+      { text:"分析实验结论", hint:"四组记录完成后点击分析。", detail:SPEC.conclusion, check:() => state.analysisDone }
+    ];
+    function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+    function schedule(fn, ms){ const id = setTimeout(() => { state.timers.delete(id); fn(); }, ms); state.timers.add(id); return id; }
+    function clearTimers(){ for (const id of state.timers) clearTimeout(id); state.timers.clear(); }
+    function currentScenario(){ return SPEC.scenarios[state.scenarioIndex]; }
+    function hasRecord(key){ return state.records.some(r => r.key === key); }
+    function initDots(){ dots.innerHTML = ""; tasks.forEach(() => { const d = document.createElement("span"); d.className = "dot"; dots.appendChild(d); }); }
+    function updateDots(){ Array.from(dots.children).forEach((dot, i) => { dot.classList.toggle("done", state.completed || i < state.currentTask); dot.classList.toggle("active", !state.completed && i === state.currentTask && !state.stepWarning); dot.classList.toggle("warn", !state.completed && i === state.currentTask && state.stepWarning); }); }
+    function setStepUI(i){ state.currentTask = clamp(i, 0, tasks.length - 1); state.stepWarning = false; const t = tasks[state.currentTask]; taskStep.textContent = "步骤 " + (state.currentTask + 1) + " / " + tasks.length; taskText.textContent = t.text; taskHint.textContent = t.hint; hintPop.textContent = t.detail; updateDots(); updateReadouts(); draw(); }
+    function setModeLabel(){ modeTag.textContent = state.autoPlaying ? "模式：自动演示" : (state.freeMode ? "模式：自由" : "模式：引导"); }
+    function updateStatus(text){ statusTag.textContent = "状态：" + (text || (state.completed ? "已完成" : state.autoPlaying ? "自动演示" : currentScenario().label)); }
+    function showToast(msg){ toast.textContent = msg; toast.classList.add("show"); clearTimeout(showToast.t); showToast.t = setTimeout(() => toast.classList.remove("show"), 1500); }
+    function showCheck(){ checkmark.classList.add("active"); clearTimeout(showCheck.t); showCheck.t = setTimeout(() => checkmark.classList.remove("active"), 560); }
+    function warnStep(msg){ state.stepWarning = true; updateDots(); hintLamp.classList.remove("flash"); void hintLamp.offsetWidth; hintLamp.classList.add("flash"); showToast(msg); schedule(() => { state.stepWarning = false; updateDots(); }, 1200); }
+    function setScenario(i, mark){
+      state.scenarioIndex = clamp(i, 0, SPEC.scenarios.length - 1);
+      if(SPEC.scene === "dcMotor" && !state.freeMode){
+        state.dcCoilMounted = true;
+        state.dcWireScraped = true;
+        state.dcSwitchClosed = state.scenarioIndex > 0;
+        state.dcMotorKicked = state.scenarioIndex > 0;
+        state.currentReversed = state.scenarioIndex === 2;
+      }
+      if (mark) state.operationCount += 1;
+      state.phase = 1;
+      updateReadouts();
+      updateStatus(currentScenario().label);
+      draw();
+    }
+    function updateReadouts(){ currentScenario(); }
+    function passStepIfReady(opts){ if (state.freeMode || state.completed || state.successCooldown) return false; if (!tasks[state.currentTask].check()) { if (!opts || !opts.quiet) warnStep("当前步骤证据还不完整。"); return false; } state.successCooldown = true; schedule(() => { state.successCooldown = false; }, 400); showCheck(); if (state.currentTask >= tasks.length - 1) { state.completed = true; setDrawerCollapsed(controlDock, false); setDrawerCollapsed(dataDock, true); doneMask.style.display = "flex"; updateStatus(); updateDots(); } else setStepUI(state.currentTask + 1); return true; }
+    function recordObservation(opts){ if (!state.operationCount && !(opts && opts.auto)) { warnStep("先操作实验台上的器材。"); return false; } const s = currentScenario(); const task = tasks[state.currentTask]; if (!state.freeMode && task.expected && task.expected !== s.key) { warnStep("当前步骤应记录：" + task.text.replace("操作并记录：","")); return false; } if (!state.freeMode && SPEC.scene === "simpleMotor") { if (task.expected === "mount" && !state.dcCoilMounted) { warnStep("先点击线圈，把它架到磁铁间隙中。"); return false; } if (task.expected === "leftScrape" && !state.leftScraped) { warnStep("先点击左端引线，完成全刮漆。"); return false; } if (task.expected === "rightHalf" && !state.rightHalfScraped) { warnStep("先点击右端引线，完成半周刮漆。"); return false; } if (task.expected === "spin" && !(state.dcSwitchClosed && state.dcMotorKicked)) { warnStep("先点击线圈，接通并轻拨转动。"); return false; } } if (!state.freeMode && SPEC.scene === "dcMotor") { if (task.expected === "assemble" && !state.dcCoilMounted) { warnStep("先点击线圈，把它放入磁铁间隙。"); return false; } if (task.expected === "closed" && !(state.dcSwitchClosed && state.dcMotorKicked)) { warnStep("先点击开关，闭合电路。"); return false; } if (task.expected === "reverse" && !state.currentReversed) { warnStep("先点击电池组，切换正负极。"); return false; } } if (!hasRecord(s.key)) { state.records.push({ key:s.key, step:s.label, note:s.note }); if (dataDock.classList.contains("collapsed")) { state.unseenRecords += 1; updateBadge(); } renderRecords(); showToast("已记录"); } else if (!opts || !opts.auto) showToast("这组已记录"); passStepIfReady({ quiet:true }); return true; }
+    function analyzeConclusion(){ if (!SPEC.scenarios.every(s => hasRecord(s.key))) { warnStep("请先补齐操作记录。"); return false; } state.analysisDone = true; analysisText.classList.add("ok"); analysisText.textContent = SPEC.conclusion; showToast("已分析"); passStepIfReady({ quiet:true }); return true; }
+    function renderRecords(){ recordBody.innerHTML = ""; state.records.forEach(r => { const tr = document.createElement("tr"); [r.step, r.note].forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); }); recordBody.appendChild(tr); }); emptyRecords.style.display = state.records.length ? "none" : "block"; }
+    function updateBadge(){ dataNotice.textContent = String(state.unseenRecords); dataNotice.classList.toggle("show", state.unseenRecords > 0 && dataDock.classList.contains("collapsed")); }
+    function resizeCanvas(){ const sr = stage.getBoundingClientRect(), r = labArea.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; state.width = r.width; state.height = r.height; state.stageWidth = sr.width; state.stageHeight = sr.height; canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr); canvas.style.width = r.width + "px"; canvas.style.height = r.height + "px"; ctx.setTransform(dpr,0,0,dpr,0,0); fitDrawers(); draw(); }
+    function setDrawerCollapsed(drawer, collapsed){ drawer.classList.toggle("collapsed", collapsed); (drawer === controlDock ? controlToggleBtn : dataToggleBtn).textContent = collapsed ? "展开" : "收起"; if (drawer === dataDock && !collapsed) { state.unseenRecords = 0; updateBadge(); } fitDrawers(); }
+    function fitDrawers(){ const sw = state.stageWidth || stage.clientWidth, mobile = sw <= 720; [controlDock, dataDock].forEach(d => { if (!d.dataset.moved) d.style.width = ""; }); if (mobile) { if (!controlDock.dataset.moved) { controlDock.style.left = "12px"; controlDock.style.top = "56px"; } if (!dataDock.dataset.moved) { const dw = dataDock.offsetWidth || 148; dataDock.style.left = Math.max(12, sw - dw - 12) + "px"; dataDock.style.top = dataDock.classList.contains("collapsed") ? "56px" : "104px"; } } else { if (!controlDock.dataset.moved) { const cw = controlDock.offsetWidth || 330; controlDock.style.left = Math.max(12, sw - cw - 12) + "px"; controlDock.style.top = "58px"; } if (!dataDock.dataset.moved) { const dw = dataDock.offsetWidth || 330; dataDock.style.left = Math.max(12, sw - dw - 12) + "px"; dataDock.style.top = (controlDock.offsetTop + controlDock.offsetHeight + 8) + "px"; } } }
+    function bindDrawer(drawer){ const header = drawer.querySelector("[data-drag-handle]"); header.addEventListener("pointerdown", e => { if (e.target.closest("button")) return; const r = drawer.getBoundingClientRect(), sr = stage.getBoundingClientRect(); state.drawerDrag = { drawer, dx:e.clientX-r.left, dy:e.clientY-r.top, sw:sr.width, sh:sr.height }; drawer.dataset.moved = "1"; header.setPointerCapture(e.pointerId); e.preventDefault(); }); header.addEventListener("pointermove", e => { if (!state.drawerDrag || state.drawerDrag.drawer !== drawer) return; const sr = stage.getBoundingClientRect(); const x = clamp(e.clientX - sr.left - state.drawerDrag.dx, 6, sr.width - drawer.offsetWidth - 6); const y = clamp(e.clientY - sr.top - state.drawerDrag.dy, 6, sr.height - drawer.offsetHeight - 6); drawer.style.left = x + "px"; drawer.style.top = y + "px"; e.preventDefault(); }); header.addEventListener("pointerup", e => { if (state.drawerDrag && state.drawerDrag.drawer === drawer) state.drawerDrag = null; try { header.releasePointerCapture(e.pointerId); } catch(err) { console.warn("release drawer pointer failed", err); } }); }
+    function draw(){ const w = state.width, h = state.height; if (!w || !h) return; state.phase *= .92; drawRoom(w,h); const area = benchArea(w,h); drawWoodBench(area); drawScene(area); if (SPEC.scene !== "dcMotor" && SPEC.scene !== "simpleMotor") drawStageReadout(area); }
+    function benchArea(w,h){
+      const mobile = w < 560;
+      const s = mobile ? Math.min(w / 760, h / 620) : Math.min(w / 900, h / 520);
+      const bw = (mobile ? 760 : 820) * s;
+      const bh = 430 * s;
+      const y = mobile ? Math.max(34, h * .18) : Math.max(48, (h - 470 * s) / 2);
+      return { s, x:(w - bw)/2, y, w:bw, h:bh };
+    }
+    function drawRoom(w,h){ const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,"#071018"); g.addColorStop(1,"#111922"); ctx.fillStyle = g; ctx.fillRect(0,0,w,h); ctx.fillStyle = "rgba(255,255,255,.06)"; for(let i=0;i<9;i++){ ctx.fillRect(28+i*w/9, h-72, 1, 50); } }
+    function drawWoodBench(r){ ctx.save(); ctx.fillStyle = "#5a3d2b"; roundRect(r.x+20*r.s,r.y+r.h-90*r.s,r.w-40*r.s,70*r.s,12*r.s); ctx.fill(); ctx.fillStyle = "#7b573c"; roundRect(r.x+36*r.s,r.y+r.h-104*r.s,r.w-72*r.s,38*r.s,10*r.s); ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 1.2*r.s; for(let i=0;i<8;i++){ const yy = r.y+r.h-96*r.s+i*8*r.s; ctx.beginPath(); ctx.moveTo(r.x+50*r.s,yy); ctx.lineTo(r.x+r.w-50*r.s,yy); ctx.stroke(); } ctx.restore(); }
+    function drawStageReadout(r){ const s = currentScenario(); ctx.save(); ctx.fillStyle = "rgba(0,0,0,.42)"; roundRect(r.x+18*r.s,r.y+8*r.s,Math.min(r.w-36*r.s,460*r.s),42*r.s,10*r.s); ctx.fill(); ctx.fillStyle = "#eaf5ff"; ctx.font = "700 " + Math.max(13,15*r.s) + "px Arial"; ctx.textAlign = "left"; ctx.fillText("当前：" + s.label, r.x+34*r.s, r.y+35*r.s); ctx.restore(); }
+    function drawScene(r){ const n = state.scenarioIndex; const map = { planeMirror:scenePlaneMirror, convexLens:sceneConvexLens, camera:sceneCamera, eyeCorrection:sceneEyeCorrection, dispersion:sceneDispersion, colorMix:sceneColorMix, static:sceneStatic, magneticField:sceneMagneticField, wireField:sceneWireField, solenoid:sceneSolenoid, motorForce:sceneMotorForce, dcMotor:sceneDcMotor, simpleMotor:sceneSimpleMotor, induction:sceneInduction, generator:sceneGenerator, steamPop:sceneSteam, frictionHeat:sceneFriction, motorEnergy:sceneMotorEnergy, electricHeat:sceneElectricHeat, energyTrack:sceneEnergyTrack, pulleyEfficiency:scenePulley, heatCapacity:sceneHeatCapacity, heatEngine:sceneHeatEngine, ammeter:sceneAmmeter, voltmeter:sceneVoltmeter, seriesParallel:sceneSeriesParallel, resistanceMeasure:sceneResistanceMeasure, circuitLaws:sceneCircuitLaws, jouleHeat:sceneJouleHeat, safetyCircuit:sceneSafety, renewable:sceneRenewable }; (map[SPEC.scene] || sceneFallback)(r,n); }
+    function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+    function fillRound(x,y,w,h,r,color){ ctx.fillStyle=color; roundRect(x,y,w,h,r); ctx.fill(); }
+    function strokeRound(x,y,w,h,r,color,lw){ ctx.strokeStyle=color; ctx.lineWidth=lw||2; roundRect(x,y,w,h,r); ctx.stroke(); }
+    function label(text,x,y,color){ ctx.save(); ctx.fillStyle=color || "#eaf5ff"; ctx.font = "700 13px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(text,x,y); ctx.restore(); }
+    function cable(points,color,lw){ ctx.save(); ctx.strokeStyle=color || "#dcecff"; ctx.lineWidth=lw||4; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.beginPath(); points.forEach((p,i)=>{ if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]); }); ctx.stroke(); ctx.restore(); }
+    function drawLabTable(cx,y,w,s){ ctx.save(); fillRound(cx-w/2,y,w,38*s,7*s,"#b97832"); fillRound(cx-w/2+14*s,y+8*s,w-28*s,12*s,4*s,"rgba(255,224,160,.32)"); fillRound(cx-w/2+44*s,y+34*s,18*s,105*s,3*s,"#7a4b21"); fillRound(cx+w/2-62*s,y+34*s,18*s,105*s,3*s,"#7a4b21"); ctx.strokeStyle="rgba(255,255,255,.22)"; ctx.lineWidth=1*s; for(let i=1;i<6;i++){ const x=cx-w/2+i*w/6; ctx.beginPath(); ctx.moveTo(x,y+6*s); ctx.lineTo(x,y+32*s); ctx.stroke(); } ctx.restore(); }
+    function drawRail(x,y,w){ ctx.save(); fillRound(x-36,y+28,w+72,22,7,"#38424c"); fillRound(x-30,y+33,w+60,10,5,"#65727f"); cable([[x,y-6],[x+w,y-6]],"#cfd7df",4); cable([[x,y+7],[x+w,y+7]],"#9aa8b5",4); fillRound(x-22,y-18,20,54,5,"#2b333b"); fillRound(x+w+2,y-18,20,54,5,"#2b333b"); ctx.strokeStyle="rgba(255,255,255,.58)"; ctx.lineWidth=1; for(let i=0;i<=20;i++){ const tx=x+w*i/20; ctx.beginPath(); ctx.moveTo(tx,y-17); ctx.lineTo(tx,y+(i%5?11:22)); ctx.stroke(); if(i%5===0) label(String(i*5),tx,y+42,"#d8e4ef"); } ctx.restore(); }
+    function drawSliderFoot(x,y,s,color,name){ fillRound(x-30*s,y-16*s,60*s,32*s,7*s,color||"#6b7480"); fillRound(x-14*s,y-32*s,28*s,28*s,6*s,"#98a6b3"); if(name) label(name,x,y+44*s); }
+    function drawCandle(x,y,scale,ghost,name){ const s=scale||1; ctx.save(); ctx.globalAlpha=ghost?.42:1; drawSliderFoot(x,y+16*s,s,ghost?"rgba(155,211,255,.35)":"#7a5138",""); fillRound(x-10*s,y-62*s,20*s,66*s,5*s,ghost?"#9bd3ff":"#ff7043"); fillRound(x-3*s,y-70*s,6*s,10*s,3*s,"#333"); ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.moveTo(x,y-91*s); ctx.quadraticCurveTo(x+15*s,y-69*s,x,y-61*s); ctx.quadraticCurveTo(x-15*s,y-69*s,x,y-91*s); ctx.fill(); ctx.globalAlpha=1; if(name) label(name,x,y+55*s); ctx.restore(); }
+    function drawLens(x,y,h,name){ ctx.save(); cable([[x,y+h/2+4],[x,y+h/2+60]],"#98a6b3",6); drawSliderFoot(x,y+h/2+70,1,"#65727f",""); ctx.strokeStyle="#9bd3ff"; ctx.lineWidth=4; ctx.beginPath(); ctx.ellipse(x,y,20,h/2,0,0,Math.PI*2); ctx.stroke(); ctx.fillStyle="rgba(155,211,255,.18)"; ctx.beginPath(); ctx.ellipse(x,y,15,h/2-6,0,0,Math.PI*2); ctx.fill(); fillRound(x-10,y-h/2-20,20,18,5,"#65727f"); fillRound(x-10,y+h/2+2,20,18,5,"#65727f"); if(name) label(name,x,y+h/2+102); ctx.restore(); }
+    function drawScreen(x,y,h,glow){ ctx.save(); cable([[x,y+h/2],[x,y+h/2+56]],"#98a6b3",6); drawSliderFoot(x,y+h/2+66,1,"#65727f",""); strokeRound(x-15,y-h/2,30,h,5,glow?"#3ddc97":"#e8f5ff",4); fillRound(x-9,y-h/2+8,18,h-16,3,glow?"rgba(61,220,151,.22)":"rgba(255,255,255,.12)"); label("光屏",x,y+h/2+100); ctx.restore(); }
+    function drawRays(points,color){ ctx.save(); ctx.strokeStyle=color||"#ffd54f"; ctx.lineWidth=2.4; ctx.setLineDash([]); points.forEach(line=>cable(line,color||"#ffd54f",2.4)); ctx.restore(); }
+    function scenePlaneMirror(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; drawPaper(r.x+112*s,cy-132*s,596*s,236*s); drawRail(r.x+145*s,cy+95*s,530*s); cable([[cx-20*s,cy+112*s],[cx-20*s,cy-145*s]],"#9aa8b5",5*s); cable([[cx+20*s,cy+112*s],[cx+20*s,cy-145*s]],"#9aa8b5",5*s); strokeRound(cx-12*s,cy-142*s,24*s,250*s,5*s,"#9bd3ff",5*s); fillRound(cx-8*s,cy-134*s,16*s,234*s,3*s,"rgba(155,211,255,.14)"); fillRound(cx-44*s,cy+105*s,88*s,20*s,6*s,"#65727f"); label("玻璃板",cx,cy-166*s); const d=(n===1?150:92)*s; drawCandle(cx-d,cy+44*s,s,false,"蜡烛A"); drawCandle(cx+d,cy+44*s,s,true,"替身B"); if(n===2) drawScreen(cx+d+86*s,cy+14*s,150*s,false); ctx.setLineDash([7*s,7*s]); cable([[cx-d,cy+44*s],[cx+d,cy+44*s]],"rgba(255,255,255,.5)",2*s); ctx.setLineDash([]); }
+    function sceneConvexLens(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.50; drawRail(r.x+88*s,cy+150*s,646*s); const lx=cx; const ox=n===2?cx-118*s:n===1?cx-220*s:cx-300*s; const ix=n===2?cx+220*s:n===1?cx+285*s:cx+190*s; drawCandle(ox,cy+98*s,s,false,"物"); drawLens(lx,cy+45*s,210*s,"凸透镜"); drawScreen(ix,cy+45*s,190*s,n!==2); drawRays([[[ox,cy+31*s],[lx,cy+45*s],[ix,cy+(n===2?-25:115)*s]],[[ox,cy+92*s],[lx,cy+45*s],[ix,cy+(n===2?25:-25)*s]]]); label(n===0?"u>2f":n===1?"f<u<2f":"u<f",ox,cy+192*s,"#ffd54f"); }
+    function sceneCamera(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.52; fillRound(cx-260*s,cy-88*s,520*s,216*s,16*s,"#2f3942"); strokeRound(cx-260*s,cy-88*s,520*s,216*s,16*s,"#dcecff",2*s); fillRound(cx-230*s,cy-60*s,430*s,156*s,8*s,"rgba(0,0,0,.24)"); drawLens(cx-218*s,cy+10*s,145*s,"镜头"); const screenX=cx+(n===2?184:n===1?132:98)*s; drawScreen(screenX,cy+10*s,150*s,true); fillRound(screenX-48*s,cy-58*s,96*s,136*s,6*s,"rgba(255,255,255,.06)"); drawCandle(cx-350*s,cy+55*s,.78*s,false,"景物"); drawRays([[[cx-350*s,cy-4*s],[cx-218*s,cy+10*s],[screenX,cy+55*s]],[[cx-350*s,cy+40*s],[cx-218*s,cy+10*s],[screenX,cy-42*s]]]); label(n===0?"装好暗箱":n===1?"远景调焦":"近景后移屏",cx,cy+176*s,"#ffd54f"); }
+    function sceneEyeCorrection(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; drawLamp(cx-340*s,cy,"平行光"); const correction=n===1?"凹透镜":n===2?"凸透镜":""; if(correction) drawCorrectionLens(cx-190*s,cy,correction,s); drawEyeModel(cx+95*s,cy,n,s); drawRays([[[cx-310*s,cy-45*s],[cx-190*s,cy-25*s],[cx+45*s,cy],[cx+160*s,cy+(n===0?0:n===1?0:0)]],[[cx-310*s,cy+45*s],[cx-190*s,cy+25*s],[cx+45*s,cy],[cx+160*s,cy]]],"#ffd54f"); }
+    function sceneDispersion(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.52; drawLamp(cx-330*s,cy,"白光源"); fillRound(cx-210*s,cy-70*s,16*s,140*s,3*s,"#222"); fillRound(cx-205*s,cy-18*s,6*s,36*s,2*s,"#fff"); drawPrism(cx-35*s,cy,n,s); drawScreen(cx+300*s,cy,220*s,true); cable([[cx-300*s,cy],[cx-40*s,cy-8*s]],"#fff",4*s); const colors=["#ff4d4f","#ffb74d","#ffd54f","#3ddc97","#26e3d1","#5bbcff","#b084ff"]; colors.forEach((c,i)=>cable([[cx+15*s,cy],[cx+292*s,cy-82*s+i*26*s+(n===0?20*s:0)]],c,3*s)); label("三棱镜",cx-35*s,cy+116*s); }
+    function sceneColorMix(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; drawScreen(cx+245*s,cy,250*s,true); const lights=[[cx-300*s,cy-90*s,"#ff3344","红"],[cx-300*s,cy+90*s,"#29e06f","绿"],[cx-205*s,cy,"#3388ff","蓝"]]; const on=n===0?[1,1,0]:n===1?[0,1,1]:[1,1,1]; lights.forEach((l,i)=>{ drawColorLamp(l[0],l[1],l[2],l[3],on[i],s); if(on[i]) cable([[l[0]+35*s,l[1]],[cx+236*s,cy]],l[2],5*s); }); ctx.save(); ctx.globalAlpha=.58; if(on[0]){ctx.fillStyle="#ff3344";ctx.beginPath();ctx.arc(cx+235*s,cy-32*s,60*s,0,Math.PI*2);ctx.fill();} if(on[1]){ctx.fillStyle="#29e06f";ctx.beginPath();ctx.arc(cx+235*s,cy+32*s,60*s,0,Math.PI*2);ctx.fill();} if(on[2]){ctx.fillStyle="#3388ff";ctx.beginPath();ctx.arc(cx+280*s,cy,60*s,0,Math.PI*2);ctx.fill();} ctx.restore(); label(n===2?"近白色":n===0?"黄色":"青色",cx+250*s,cy+118*s,"#fff"); }
+    function sceneStatic(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.56; fillRound(cx-355*s,cy-85*s,150*s,70*s,12*s,"#6d4c41"); label("毛皮",cx-280*s,cy-50*s); drawChargedRod(cx-210*s+(n>0?80*s:0),cy-85*s,n>0,s); drawPaperBits(cx+40*s,cy+55*s,n>0,s); drawElectroscope(cx+235*s,cy+10*s,n===1,s); if(n===2) cable([[cx+235*s,cy-80*s],[cx+320*s,cy-135*s]],"#3ddc97",4*s); label(n===0?"摩擦塑料棒":n===1?"金属箔张开":"放电复位",cx,cy+150*s,"#ffd54f"); }
+    function sceneMagneticField(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.53; fillRound(cx-335*s,cy-130*s,670*s,260*s,12*s,"rgba(210,240,255,.08)"); label("透明板 + 铁屑",cx,cy-150*s); drawFieldLines(cx,cy,n===2,s); drawBarMagnet(cx,cy,n===2,s); for(let i=0;i<7;i++){ const a=-1.2+i*.42; drawCompass(cx+Math.cos(a)*260*s,cy+Math.sin(a)*98*s,n===2,s*.78); } label(n===0?"轻敲铁屑":n===1?"移动小磁针":"翻转磁铁",cx,cy+160*s,"#ffd54f"); }
+    function sceneWireField(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.53; drawBatteryPack(cx-300*s,cy+120*s,s); drawKnifeSwitch(cx-135*s,cy+120*s,n>0,s); cable([[cx-250*s,cy+96*s],[cx-250*s,cy-120*s],[cx+210*s,cy-120*s],[cx+210*s,cy+120*s]],n>0?"#ffd54f":"#777",4*s); ctx.strokeStyle=n>0?"#ffd54f":"#777"; ctx.lineWidth=9*s; ctx.beginPath(); ctx.moveTo(cx,cy-160*s); ctx.lineTo(cx,cy+130*s); ctx.stroke(); for(let i=0;i<4;i++){ ctx.strokeStyle="rgba(255,213,79,.36)"; ctx.lineWidth=2*s; ctx.beginPath(); ctx.arc(cx,cy,(45+i*32)*s,0,Math.PI*2); ctx.stroke(); } drawCompass(cx+130*s,cy,n===2,s); label(n===2?"反接，偏转反向":n===1?"闭合开关，磁针偏转":"断电基准",cx,cy+160*s,"#ffd54f"); }
+    function sceneSolenoid(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; drawBatteryPack(cx-330*s,cy+118*s,s); drawKnifeSwitch(cx-165*s,cy+118*s,n!==0,s); drawSolenoidCoil(cx-45*s,cy,n,s); if(n===1) fillRound(cx-180*s,cy-17*s,270*s,34*s,17*s,"#7b8794"); drawCompass(cx+250*s,cy-60*s,n===2,s); drawCompass(cx-300*s,cy+35*s,!n===2,s*.8); label(n===1?"插入铁芯，磁场增强":n===2?"改变电流方向，磁极互换":"通电螺线管像条形磁铁",cx,cy+158*s,"#ffd54f"); }
+    function sceneMotorForce(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; drawUMagnet(cx,cy,s); drawRails(cx,cy,s); drawConductorBar(cx+(n===0?35:n===1?-35:35)*s,cy,n,s); drawBatteryPack(cx-310*s,cy+135*s,s); drawKnifeSwitch(cx-150*s,cy+135*s,true,s); label(n===0?"闭合后导体棒向右":n===1?"反接电源，受力反向":"调换磁极，受力也反向",cx,cy+165*s,"#ffd54f"); }
+    function sceneDcMotor(r,n){
+      const g=dcMotorGeom(r),s=g.s,nFree=state.freeMode;
+      const mounted=nFree || state.dcCoilMounted || n>0, scraped=true;
+      const powered=nFree ? state.dcSwitchClosed : (state.dcSwitchClosed && mounted);
+      const spinning=state.dcSwitchClosed && state.dcMotorKicked;
+      const angle=spinning ? dcMotorAngle() : (nFree ? state.dcRestAngle : (n===1?.72:.02));
+      drawDcRefWires(g.motor.x,g.motor.y,g.battery.x,g.battery.y,g.rheo.x,g.rheo.y,g.switch.x,g.switch.y,powered,state.currentReversed,s);
+      drawDcRefBattery(g.battery.x,g.battery.y,s,state.currentReversed);
+      drawDcRefRheostat(g.rheo.x,g.rheo.y,s);
+      drawDcRefSwitch(g.switch.x,g.switch.y,nFree ? state.dcSwitchClosed : powered,s);
+      drawDcRefMotor(g.motor.x,g.motor.y,angle,powered,spinning,s,{mounted,scraped});
+      if(!mounted) drawDcMountCue(g.motor.x,g.motor.y,s);
+    }
+    function dcMotorGeom(r){
+      const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.53, compact=state.width < 560;
+      return {
+        s,
+        motor:{x:cx-(compact?150:245)*s,y:cy-(compact?62:70)*s},
+        battery:{x:cx-(compact?145:250)*s,y:cy+150*s},
+        rheo:{x:cx+(compact?145:210)*s,y:cy-(compact?18:20)*s},
+        switch:{x:cx+(compact?150:230)*s,y:cy+150*s}
+      };
+    }
+    function dcMotorSpeedScale(){ return 1.45 - state.rheostatPos * .75; }
+    function dcMotorBaseAngle(){
+      const dir=state.currentReversed?-1:1;
+      return dir * performance.now() / (260 / dcMotorSpeedScale());
+    }
+    function dcMotorAngle(){ return state.motorAngleOffset + dcMotorBaseAngle(); }
+    function drawDcMotorBase(cx,y,w,s){
+      ctx.save();
+      fillRound(cx-w/2,y-20*s,w,62*s,12*s,"#35424d");
+      fillRound(cx-w/2+22*s,y-9*s,w-44*s,13*s,6*s,"rgba(255,255,255,.18)");
+      fillRound(cx-w/2+58*s,y+36*s,134*s,14*s,5*s,"#202b33");
+      fillRound(cx+w/2-198*s,y+36*s,134*s,14*s,5*s,"#202b33");
+      ctx.restore();
+    }
+    function drawDcMotorWires(mx,my,bx,by,sx,sy,powered,s){
+      const hot=powered?"#ff4f5f":"rgba(255,94,111,.42)", cold=powered?"#5bbcff":"rgba(91,188,255,.38)";
+      cable([[bx+48*s,by-20*s],[sx-36*s,sy],[sx+38*s,sy],[sx+38*s,my-112*s],[mx+154*s,my-74*s]],hot,4*s);
+      cable([[mx+154*s,my+74*s],[mx+154*s,by+48*s],[bx-62*s,by+48*s]],cold,4*s);
+      cable([[mx-132*s,my-74*s],[mx-198*s,my-74*s],[mx-198*s,by+48*s],[bx-62*s,by+48*s]],"rgba(91,188,255,.26)",3*s);
+    }
+    function drawDcMotorPower(bx,by,sx,sy,closed,s){
+      ctx.save();
+      fillRound(bx-72*s,by-40*s,144*s,80*s,12*s,"#384654");
+      fillRound(bx-54*s,by-28*s,34*s,56*s,8*s,"#647382");
+      fillRound(bx-10*s,by-28*s,34*s,56*s,8*s,"#1d242b");
+      fillRound(bx+34*s,by-28*s,26*s,56*s,7*s,"#475563");
+      fillRound(bx+58*s,by-15*s,16*s,22*s,4*s,"#ff6b7a");
+      fillRound(bx-80*s,by+12*s,16*s,22*s,4*s,"#8fc8ff");
+      label("+",bx+66*s,by-27*s,"#ffd3d8");
+      label("-",bx-72*s,by+3*s,"#d8efff");
+      label("电池组",bx,by-60*s);
+      fillRound(sx-62*s,sy-22*s,124*s,44*s,8*s,"#755a3d");
+      ctx.strokeStyle="#e8f3ff"; ctx.lineWidth=4*s;
+      ctx.beginPath(); ctx.arc(sx-35*s,sy,6*s,0,Math.PI*2); ctx.arc(sx+38*s,sy,6*s,0,Math.PI*2); ctx.stroke();
+      ctx.strokeStyle=closed?"#ffd86d":"#cfd7df"; ctx.lineWidth=5*s; ctx.lineCap="round";
+      ctx.beginPath(); ctx.moveTo(sx-35*s,sy); ctx.lineTo(sx+(closed?38:24)*s, sy+(closed?0:-31)*s); ctx.stroke();
+      label("开关",sx,sy+42*s);
+      ctx.restore();
+    }
+    function drawDcMotorMagnet(cx,cy,s){
+      ctx.save();
+      fillRound(cx-172*s,cy-116*s,344*s,226*s,18*s,"#223746");
+      fillRound(cx-144*s,cy-82*s,288*s,42*s,13*s,"#d8424c");
+      fillRound(cx-144*s,cy+42*s,288*s,42*s,13*s,"#2389d4");
+      fillRound(cx+132*s,cy-82*s,38*s,166*s,12*s,"#1d3140");
+      fillRound(cx-172*s,cy-112*s,42*s,222*s,14*s,"#243b4d");
+      fillRound(cx-132*s,cy-76*s,238*s,29*s,10*s,"rgba(255,255,255,.16)");
+      fillRound(cx-132*s,cy+47*s,238*s,29*s,10*s,"rgba(255,255,255,.16)");
+      label("N",cx-114*s,cy-61*s,"#fff");
+      label("S",cx-114*s,cy+63*s,"#fff");
+      label("永久磁铁",cx+68*s,cy-105*s);
+      ctx.restore();
+    }
+    function drawDcMotorField(cx,cy,on,s){
+      ctx.save();
+      ctx.strokeStyle=on?"rgba(255,216,109,.48)":"rgba(255,255,255,.16)";
+      ctx.lineWidth=2*s;
+      for(let i=-1;i<=1;i++){
+        const x=cx-50*s+i*42*s;
+        cable([[x,cy-38*s],[x,cy+38*s]],ctx.strokeStyle,2*s);
+        if(on){
+          ctx.fillStyle="rgba(255,216,109,.72)";
+          ctx.beginPath();
+          ctx.moveTo(x,cy+45*s);
+          ctx.lineTo(x-6*s,cy+31*s);
+          ctx.lineTo(x+6*s,cy+31*s);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+    function drawDcMotorFrame(cx,cy,s){
+      ctx.save();
+      fillRound(cx-196*s,cy+118*s,392*s,20*s,6*s,"#566574");
+      cable([[cx-148*s,cy+116*s],[cx-148*s,cy-132*s]],"#94a3af",8*s);
+      cable([[cx+148*s,cy+116*s],[cx+148*s,cy-132*s]],"#94a3af",8*s);
+      cable([[cx-170*s,cy-132*s],[cx+170*s,cy-132*s]],"#94a3af",8*s);
+      fillRound(cx-166*s,cy-142*s,40*s,20*s,5*s,"#657684");
+      fillRound(cx+126*s,cy-142*s,40*s,20*s,5*s,"#657684");
+      label("支架",cx-202*s,cy-150*s);
+      label("转轴",cx,cy-151*s);
+      ctx.restore();
+    }
+    function drawDcMotorRotor(cx,cy,angle,powered,spinning,s){
+      const w=132*s, h=(52+28*Math.abs(Math.cos(angle)))*s, skew=24*Math.sin(angle)*s;
+      ctx.save();
+      cable([[cx-160*s,cy],[cx+176*s,cy]],"#dce8f2",4*s);
+      fillRound(cx-168*s,cy-10*s,20*s,20*s,6*s,"#d7e2eb");
+      fillRound(cx+146*s,cy-10*s,20*s,20*s,6*s,"#d7e2eb");
+      ctx.translate(cx,cy);
+      ctx.lineCap="round";
+      ctx.strokeStyle=powered?"#ffd86d":"#d2a963";
+      ctx.lineWidth=5*s;
+      for(let i=0;i<4;i++){
+        const pad=i*8*s;
+        ctx.beginPath();
+        ctx.moveTo(-w/2+pad,-h/2+pad+skew);
+        ctx.lineTo(w/2-pad,-h/2+pad-skew);
+        ctx.lineTo(w/2-pad,h/2-pad-skew);
+        ctx.lineTo(-w/2+pad,h/2-pad+skew);
+        ctx.closePath();
+        ctx.stroke();
+      }
+      ctx.fillStyle="rgba(255,216,109,.1)";
+      ctx.beginPath();
+      ctx.moveTo(-w/2,-h/2+skew);
+      ctx.lineTo(w/2,-h/2-skew);
+      ctx.lineTo(w/2,h/2-skew);
+      ctx.lineTo(-w/2,h/2+skew);
+      ctx.closePath();
+      ctx.fill();
+      if(spinning){
+        ctx.strokeStyle="rgba(255,216,109,.24)";
+        ctx.lineWidth=11*s;
+        ctx.beginPath(); ctx.ellipse(0,0,112*s,64*s,0,0,Math.PI*2); ctx.stroke();
+      }
+      ctx.restore();
+      label("线圈",cx,cy+96*s,"#eaf5ff");
+    }
+    function drawDcMotorCommutator(cx,cy,angle,powered,s){
+      const x=cx+184*s;
+      ctx.save();
+      cable([[cx+72*s,cy-22*s],[x-18*s,cy-11*s]],"#d7a84a",3*s);
+      cable([[cx+72*s,cy+22*s],[x-18*s,cy+11*s]],"#d7a84a",3*s);
+      ctx.translate(x,cy);
+      ctx.rotate(angle);
+      ctx.strokeStyle="#d58d31"; ctx.lineWidth=9*s; ctx.lineCap="round";
+      ctx.beginPath(); ctx.arc(0,0,25*s,-Math.PI*.42,Math.PI*.42); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0,0,25*s,Math.PI*.58,Math.PI*1.42); ctx.stroke();
+      ctx.restore();
+      fillRound(x-9*s,cy-58*s,18*s,36*s,4*s,"#26313a");
+      fillRound(x-9*s,cy+22*s,18*s,36*s,4*s,"#26313a");
+      cable([[x,cy-22*s],[x,cy-58*s]],powered?"#ffd86d":"#9aa8b5",4*s);
+      cable([[x,cy+22*s],[x,cy+58*s]],powered?"#ffd86d":"#9aa8b5",4*s);
+      label("换向器",x+58*s,cy-14*s);
+      label("电刷",x+55*s,cy+52*s);
+    }
+    function drawDcScrapeCue(cx,cy,s,scraped){
+      ctx.save();
+      ctx.strokeStyle="#ffd86d"; ctx.lineWidth=3*s; ctx.setLineDash([6*s,5*s]);
+      ctx.beginPath(); ctx.ellipse(cx+185*s,cy,44*s,70*s,0,0,Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+      fillRound(cx+162*s,cy-44*s,45*s,13*s,5*s,scraped?"#ffd86d":"#7b2e42");
+      fillRound(cx+162*s,cy+32*s,45*s,13*s,5*s,scraped?"#ffd86d":"#24577b");
+      fillRound(cx+212*s,cy-7*s,34*s,14*s,5*s,scraped?"#ffd86d":"#8a929a");
+      label(scraped?"换向器接触良好":"换向器与电刷",cx+212*s,cy-88*s,"#ffd86d");
+      label("观察换向器",cx+218*s,cy+90*s,"#ffd86d");
+      ctx.restore();
+    }
+    function drawDcMotionCue(cx,cy,s){
+      ctx.save();
+      ctx.strokeStyle="rgba(61,220,151,.65)"; ctx.lineWidth=3*s; ctx.lineCap="round";
+      ctx.beginPath(); ctx.arc(cx,cy,114*s,-.85,.62); ctx.stroke();
+      ctx.fillStyle="rgba(61,220,151,.86)";
+      ctx.beginPath(); ctx.moveTo(cx+92*s,cy+66*s); ctx.lineTo(cx+74*s,cy+62*s); ctx.lineTo(cx+85*s,cy+48*s); ctx.closePath(); ctx.fill();
+      label("连续转动",cx,cy-112*s,"#b7ffe0");
+      ctx.restore();
+    }
+    function dcBatteryTerminals(x,y,s,reverse){
+      return {
+        pos:{x:x+(reverse?-57:44)*s,y:y+(reverse?18:-8)*s},
+        neg:{x:x+(reverse?44:-57)*s,y:y+(reverse?-8:18)*s}
+      };
+    }
+    function dcRheostatRange(x,y,s){ return {left:x-55*s,right:x+55*s}; }
+    function dcRheostatTerminals(x,y,s){
+      const range=dcRheostatRange(x,y,s), px=range.left+(range.right-range.left)*state.rheostatPos;
+      return {a:{x:x-92*s,y:y-10*s},b:{x:x+92*s,y:y-51*s},p:{x:px,y:y-66*s},railL:{x:x-80*s,y:y-51*s},railR:{x:x+80*s,y:y-51*s},slideL:{x:range.left,y:y-51*s},slideR:{x:range.right,y:y-51*s}};
+    }
+    function drawDcRefWires(mx,my,bx,by,rx,ry,sx,sy,on,reverse,s){
+      const wire=on?"#ff1f2d":"rgba(255,38,48,.58)";
+      const battery=dcBatteryTerminals(bx,by,s,reverse), rheo=dcRheostatTerminals(rx,ry,s);
+      cable([[mx-45*s,my+91*s],[mx-150*s,my+91*s],[mx-150*s,battery.neg.y],[battery.neg.x,battery.neg.y]],wire,3.4*s);
+      cable([[battery.pos.x,battery.pos.y],[sx-74*s,sy-2*s]],wire,3.4*s);
+      cable([[sx+74*s,sy-2*s],[rheo.b.x+48*s,rheo.b.y],[rheo.b.x,rheo.b.y]],wire,3.4*s);
+      cable([[rheo.a.x,rheo.a.y],[mx+45*s,my+91*s]],wire,3.4*s);
+      if(on){
+        ctx.save();
+        ctx.strokeStyle="rgba(255,83,92,.18)";
+        ctx.lineWidth=9*s;
+        ctx.lineCap="round";
+        ctx.lineJoin="round";
+        ctx.beginPath();
+        ctx.moveTo(mx-45*s,my+91*s);
+        ctx.lineTo(mx-150*s,my+91*s);
+        ctx.lineTo(mx-150*s,battery.neg.y);
+        ctx.lineTo(battery.neg.x,battery.neg.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+    function drawDcRefMotor(cx,cy,angle,powered,spinning,s,opts){
+      const mounted = !opts || opts.mounted !== false, scraped = !opts || opts.scraped !== false;
+      drawDcRefStand(cx,cy,s);
+      drawDcRefMagnet(cx,cy,s);
+      if(!mounted){
+        drawDcRefLooseCoil(cx,cy,s);
+        return;
+      }
+      drawDcRefMagnetFrontRim(cx,cy,s);
+      drawDcRefArmature(cx,cy,angle,powered,spinning,s);
+      if(powered) drawDcRefContactGlow(cx,cy,s);
+      drawDcRefCommutator(cx,cy,angle,powered,s,scraped);
+      if(spinning) drawDcRefSpinHalo(cx,cy,s);
+    }
+    function drawDcRefStand(cx,cy,s){
+      ctx.save();
+      fillRound(cx-86*s,cy+96*s,172*s,16*s,5*s,"#9aa3aa");
+      fillRound(cx-102*s,cy+106*s,204*s,14*s,5*s,"#606a73");
+      fillRound(cx-54*s,cy+82*s,18*s,18*s,4*s,"#27313a");
+      fillRound(cx+36*s,cy+82*s,18*s,18*s,4*s,"#9a2630");
+      strokeRound(cx-108*s,cy+103*s,216*s,20*s,6*s,"rgba(255,255,255,.2)",1.5*s);
+      label("电动机模型",cx,cy+141*s,"#d9ecff");
+      ctx.restore();
+    }
+    function drawDcRefMagnet(cx,cy,s){
+      ctx.save();
+      ctx.shadowColor="rgba(0,0,0,.38)";
+      ctx.shadowBlur=10*s;
+      ctx.shadowOffsetY=5*s;
+      fillRound(cx-104*s,cy-112*s,94*s,128*s,4*s,"#e63240");
+      fillRound(cx+10*s,cy-112*s,94*s,128*s,4*s,"#1689df");
+      ctx.shadowBlur=0;
+      fillRound(cx-100*s,cy-104*s,90*s,16*s,3*s,"rgba(255,255,255,.16)");
+      fillRound(cx+14*s,cy-104*s,86*s,16*s,3*s,"rgba(255,255,255,.15)");
+      ctx.globalCompositeOperation="destination-out";
+      ctx.beginPath();
+      ctx.arc(cx,cy-42*s,54*s,0,Math.PI*2);
+      ctx.fill();
+      ctx.globalCompositeOperation="source-over";
+      ctx.fillStyle="#071018";
+      ctx.beginPath();
+      ctx.arc(cx,cy-42*s,48*s,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle="#fff";
+      ctx.font="800 "+26*s+"px Arial";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText("N",cx-72*s,cy-42*s);
+      ctx.fillText("S",cx+72*s,cy-42*s);
+      label("永久磁铁",cx,cy-132*s,"#eaf5ff");
+      ctx.restore();
+    }
+    function drawDcRefLooseCoil(cx,cy,s){
+      ctx.save();
+      const x=cx-14*s,y=cy+34*s;
+      ctx.strokeStyle="#3d79a1";
+      ctx.lineWidth=4*s;
+      ctx.lineCap="round";
+      ctx.lineJoin="round";
+      ctx.beginPath();
+      ctx.moveTo(x-34*s,y-72*s);
+      ctx.lineTo(x+18*s,y-66*s);
+      ctx.lineTo(x+26*s,y-18*s);
+      ctx.lineTo(x+8*s,y-18*s);
+      ctx.lineTo(x+8*s,y+56*s);
+      ctx.lineTo(x-8*s,y+56*s);
+      ctx.lineTo(x-8*s,y-18*s);
+      ctx.lineTo(x-32*s,y-18*s);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.strokeStyle="#b23f4d";
+      ctx.lineWidth=2.4*s;
+      ctx.beginPath();
+      ctx.moveTo(x-28*s,y-66*s);
+      ctx.lineTo(x+14*s,y-60*s);
+      ctx.lineTo(x+20*s,y-24*s);
+      ctx.lineTo(x-26*s,y-24*s);
+      ctx.closePath();
+      ctx.stroke();
+      cable([[x,y+55*s],[x,y+84*s]],"#7f8b96",4*s);
+      fillRound(x-18*s,y+80*s,36*s,12*s,4*s,"#6b7480");
+      ctx.fillStyle="rgba(61,220,151,.16)";
+      ctx.beginPath();
+      ctx.arc(cx,cy-42*s,52*s,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+    function drawDcMountCue(cx,cy,s){
+      ctx.save();
+      ctx.setLineDash([6*s,5*s]);
+      ctx.strokeStyle="rgba(255,216,109,.72)";
+      ctx.lineWidth=2.5*s;
+      ctx.beginPath();
+      ctx.arc(cx,cy-42*s,58*s,0,Math.PI*2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle="rgba(255,216,109,.82)";
+      ctx.beginPath();
+      ctx.moveTo(cx-32*s,cy+8*s);
+      ctx.lineTo(cx-16*s,cy-3*s);
+      ctx.lineTo(cx-17*s,cy+16*s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    function dcRefRotorPoint(cx,cy,angle,s,x,y){
+      const coilY=cy-18*s;
+      const c=Math.cos(angle), q=Math.sin(angle);
+      const depth=clamp(1 + q*x*.005,.84,1.16);
+      const axisLean=(58-y)*.105;
+      const topDip=clamp((-y-24)/30,0,1) * 12;
+      const px=cx + (x*c*.92 + axisLean)*s;
+      const py=coilY + y*s + topDip*s;
+      return { p:[px,py], d:depth };
+    }
+    function drawDcRefArmature(cx,cy,angle,powered,spinning,s){
+      const leftEdge=[[-34,-54],[-34,-7],[-10,-7],[-10,58]];
+      const rightEdge=[[34,-54],[34,-7],[10,-7],[10,58]];
+      const topEdge=[[-34,-54],[34,-54]];
+      const bottomEdge=[[-10,58],[10,58]];
+      const stem=[[-7,56],[7,56],[7,83],[-7,83]];
+      const transform=(x,y)=>dcRefRotorPoint(cx,cy,angle,s,x,y);
+      const project=(x,y)=>transform(x,y).p;
+      const path=(pts,close)=>{ ctx.beginPath(); pts.forEach((p,i)=>{ const d=project(p[0],p[1]); if(i) ctx.lineTo(d[0],d[1]); else ctx.moveTo(d[0],d[1]); }); if(close) ctx.closePath(); };
+      const edgeStroke=pts=>{
+        const info=pts.map(p=>transform(p[0],p[1]));
+        const avg=info.reduce((sum,p)=>sum+p.d,0)/info.length;
+        const near=clamp((avg-.84)/.32,0,1);
+        const color=powered
+          ? `rgba(${Math.round(34+42*near)},${Math.round(79+66*near)},${Math.round(106+64*near)},${.54+.38*near})`
+          : `rgba(${Math.round(41+13*near)},${Math.round(63+18*near)},${Math.round(77+20*near)},.78)`;
+        cable(info.map(p=>p.p),color,(2+2.8*near)*s);
+      };
+      ctx.save();
+      ctx.lineCap="round";
+      ctx.lineJoin="round";
+      if(spinning){
+        ctx.strokeStyle="rgba(91,188,255,.18)";
+        ctx.lineWidth=12*s;
+        ctx.beginPath();
+        ctx.ellipse(cx,cy-42*s,62*s,48*s,0,0,Math.PI*2);
+        ctx.stroke();
+      }
+      path([leftEdge[0],topEdge[1],rightEdge[1],rightEdge[2],rightEdge[3],bottomEdge[1],bottomEdge[0],leftEdge[3],leftEdge[2],leftEdge[1]],true);
+      ctx.fillStyle=powered?"rgba(68,169,255,.08)":"rgba(80,120,145,.07)";
+      ctx.fill();
+      ctx.strokeStyle=powered?"rgba(47,100,127,.52)":"rgba(42,86,111,.62)";
+      ctx.lineWidth=1.6*s;
+      ctx.stroke();
+      [leftEdge,rightEdge,topEdge,bottomEdge]
+        .sort((a,b)=>{
+          const da=a.reduce((sum,p)=>sum+transform(p[0],p[1]).d,0)/a.length;
+          const db=b.reduce((sum,p)=>sum+transform(p[0],p[1]).d,0)/b.length;
+          return da-db;
+        })
+        .forEach(edgeStroke);
+      path(stem,true);
+      ctx.fillStyle=powered?"rgba(28,39,50,.82)":"rgba(43,51,58,.72)";
+      ctx.fill();
+      ctx.strokeStyle=powered?"#607180":"#7f8b96";
+      ctx.lineWidth=3.2*s;
+      ctx.stroke();
+      ctx.restore();
+    }
+    function drawDcRefMagnetFrontRim(cx,cy,s){
+      ctx.save();
+      ctx.lineCap="round";
+      ctx.lineWidth=9*s;
+      ctx.strokeStyle="rgba(229,49,64,.95)";
+      ctx.beginPath();
+      ctx.arc(cx,cy-42*s,54*s,Math.PI*.58,Math.PI*1.42);
+      ctx.stroke();
+      ctx.strokeStyle="rgba(22,137,223,.95)";
+      ctx.beginPath();
+      ctx.arc(cx,cy-42*s,54*s,-Math.PI*.42,Math.PI*.42);
+      ctx.stroke();
+      ctx.strokeStyle="rgba(5,13,22,.62)";
+      ctx.lineWidth=3*s;
+      ctx.beginPath();
+      ctx.arc(cx,cy-42*s,47*s,Math.PI*.56,Math.PI*1.44);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx,cy-42*s,47*s,-Math.PI*.44,Math.PI*.44);
+      ctx.stroke();
+      ctx.restore();
+    }
+    function drawDcRefCommutator(cx,cy,angle,powered,s,scraped){
+      const y=cy+77*s;
+      const project=(x,yy)=>dcRefRotorPoint(cx,cy,angle,s,x,yy).p;
+      const commAngle=-angle;
+      const rotate=(x,yy)=>[
+        cx+(x*Math.cos(commAngle)-yy*Math.sin(commAngle))*s,
+        y+(x*Math.sin(commAngle)+yy*Math.cos(commAngle))*s
+      ];
+      const rodA=project(-7,76), rodB=project(7,76);
+      const ringA=rotate(-11,-18), ringB=rotate(11,-18);
+      const metal=scraped ? (powered?"#ffd15c":"#a9b3bc") : "#5e2d3a";
+      const enamel=scraped ? (powered?"#ffd15c":"#a9b3bc") : "#24577b";
+      cable([rodA,ringA],metal,4*s);
+      cable([rodB,ringB],enamel,4*s);
+      ctx.save();
+      ctx.fillStyle=scraped?(powered?"#ffd15c":"#9aa2aa"):"#7b2e42";
+      [rodA,rodB,ringA,ringB].forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p[0],p[1],4.2*s,0,Math.PI*2);
+        ctx.fill();
+      });
+      ctx.restore();
+      ctx.save();
+      ctx.translate(cx,y);
+      ctx.rotate(commAngle);
+      ctx.strokeStyle=scraped?"#f2f5fa":"#7b2e42";
+      ctx.lineWidth=8*s;
+      ctx.beginPath();
+      ctx.arc(0,0,22*s,-Math.PI*.35,Math.PI*.35);
+      ctx.stroke();
+      ctx.strokeStyle=scraped?"#dc2f43":"#24577b";
+      ctx.beginPath();
+      ctx.arc(0,0,22*s,Math.PI*.65,Math.PI*1.35);
+      ctx.stroke();
+      ctx.restore();
+      fillRound(cx-38*s,y-8*s,24*s,9*s,3*s,"#26313a");
+      fillRound(cx+14*s,y-8*s,24*s,9*s,3*s,"#9a2630");
+      cable([[cx-16*s,y-4*s],[cx-38*s,y-4*s]],scraped?(powered?"#ffd86d":"#8c96a0"):"#7b2e42",3*s);
+      cable([[cx+16*s,y-4*s],[cx+38*s,y-4*s]],scraped?(powered?"#ffd86d":"#8c96a0"):"#24577b",3*s);
+      cable([[cx-34*s,y-4*s],[cx-45*s,cy+91*s]],powered?"#2b333c":"#606a73",2.5*s);
+      cable([[cx+34*s,y-4*s],[cx+45*s,cy+91*s]],powered?"#dc2f43":"#7c3b44",2.5*s);
+    }
+    function drawDcRefContactGlow(cx,cy,s){
+      ctx.save();
+      const g=ctx.createRadialGradient(cx,cy+77*s,4*s,cx,cy+77*s,42*s);
+      g.addColorStop(0,"rgba(255,216,109,.55)");
+      g.addColorStop(1,"rgba(255,216,109,0)");
+      ctx.fillStyle=g;
+      ctx.beginPath();
+      ctx.arc(cx,cy+77*s,42*s,0,Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+    function drawDcRefSpinHalo(cx,cy,s){
+      ctx.save();
+      ctx.strokeStyle="rgba(61,220,151,.62)";
+      ctx.lineWidth=3*s;
+      ctx.beginPath();
+      ctx.arc(cx,cy-42*s,70*s,-.8,Math.PI*.95);
+      ctx.stroke();
+      ctx.fillStyle="rgba(61,220,151,.82)";
+      ctx.beginPath();
+      ctx.moveTo(cx-47*s,cy+13*s);
+      ctx.lineTo(cx-30*s,cy+4*s);
+      ctx.lineTo(cx-31*s,cy+23*s);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+    function drawDcRefBattery(x,y,s,reverse){
+      ctx.save();
+      fillRound(x-58*s,y-34*s,116*s,68*s,10*s,"#39424d");
+      for(let i=0;i<3;i++) fillRound(x-43*s+i*31*s,y-23*s,22*s,46*s,5*s,i%2?"#222":"#4e5965");
+      const terminals=dcBatteryTerminals(x,y,s,reverse);
+      fillRound(terminals.pos.x-6.5*s,terminals.pos.y-8*s,13*s,16*s,3*s,"#ff6b6b");
+      fillRound(terminals.neg.x-6.5*s,terminals.neg.y-8*s,13*s,16*s,3*s,"#8fc8ff");
+      label("+",terminals.pos.x,terminals.pos.y-18*s,"#ffb0b0");
+      label("-",terminals.neg.x,terminals.neg.y+22*s,"#b8e2ff");
+      label("电池组",x,y-52*s);
+      ctx.restore();
+    }
+    function drawDcRefRheostat(x,y,s){
+      const t=dcRheostatTerminals(x,y,s);
+      ctx.save();
+      fillRound(x-105*s,y+31*s,210*s,28*s,8*s,"#28313a");
+      fillRound(x-78*s,y+56*s,36*s,9*s,3*s,"#171e25");
+      fillRound(x+42*s,y+56*s,36*s,9*s,3*s,"#171e25");
+      fillRound(x-93*s,y-17*s,18*s,50*s,6*s,"#626f7a");
+      fillRound(x+75*s,y-17*s,18*s,50*s,6*s,"#626f7a");
+      fillRound(x-86*s,y-28*s,172*s,48*s,20*s,"#26313b");
+      const ceramic=ctx.createLinearGradient(x-74*s,y-30*s,x+74*s,y+15*s);
+      ceramic.addColorStop(0,"#56636d");
+      ceramic.addColorStop(.18,"#edf1f3");
+      ceramic.addColorStop(.48,"#abb5be");
+      ceramic.addColorStop(.78,"#f8fafb");
+      ceramic.addColorStop(1,"#3d4852");
+      ctx.fillStyle=ceramic;
+      roundRect(x-73*s,y-25*s,146*s,36*s,18*s);
+      ctx.fill();
+      ctx.save();
+      roundRect(x-72*s,y-24*s,144*s,34*s,17*s);
+      ctx.clip();
+      ctx.strokeStyle="#c49145";
+      ctx.lineWidth=2.2*s;
+      for(let i=-70;i<=62;i+=7){
+        ctx.beginPath();
+        ctx.moveTo(x+i*s,y+12*s);
+        ctx.lineTo(x+(i+19)*s,y-24*s);
+        ctx.stroke();
+      }
+      ctx.restore();
+      cable([[t.railL.x,t.railL.y],[t.railR.x,t.railR.y]],"#d8e2ea",3.6*s);
+      fillRound(t.a.x-9*s,t.a.y-9*s,18*s,18*s,9*s,"#9fb0be");
+      fillRound(t.b.x-9*s,t.b.y-9*s,18*s,18*s,9*s,"#9fb0be");
+      fillRound(t.a.x-4*s,t.a.y-4*s,8*s,8*s,4*s,"#e3f0ff");
+      fillRound(t.b.x-4*s,t.b.y-4*s,8*s,8*s,4*s,"#e3f0ff");
+      fillRound(t.p.x-18*s,t.p.y-10*s,36*s,20*s,6*s,"#94a0aa");
+      fillRound(t.p.x-5*s,t.p.y+4*s,10*s,38*s,4*s,"#d8e1e8");
+      label("A",t.a.x,t.a.y-25*s,"#eaf5ff");
+      label("B",t.b.x,t.b.y-25*s,"#eaf5ff");
+      label("P",t.p.x,t.p.y-23*s,"#eaf5ff");
+      label("滑动变阻器 R1",x,y+82*s,"#cfe4ff");
+      ctx.restore();
+    }
+    function drawDcRefSwitch(x,y,closed,s){
+      ctx.save();
+      fillRound(x-78*s,y-20*s,156*s,34*s,7*s,"#7a8289");
+      fillRound(x-68*s,y-9*s,136*s,12*s,5*s,"#b9c1c7");
+      fillRound(x-80*s,y-7*s,16*s,14*s,4*s,"#222b32");
+      fillRound(x+64*s,y-7*s,16*s,14*s,4*s,"#c92d3d");
+      ctx.strokeStyle="#dce8f2";
+      ctx.lineWidth=5*s;
+      ctx.lineCap="round";
+      ctx.beginPath();
+      ctx.moveTo(x-48*s,y-2*s);
+      ctx.lineTo(x+(closed?50:32)*s,y+(closed?-2:-36)*s);
+      ctx.stroke();
+      fillRound(x-54*s,y-9*s,12*s,12*s,6*s,"#e5edf3");
+      fillRound(x+44*s,y-9*s,12*s,12*s,6*s,"#e5edf3");
+      label("开关",x,y+39*s);
+      ctx.restore();
+    }
+    function sceneSimpleMotor(r,n){
+      const g=simpleMotorGeom(r),s=g.s;
+      const mounted=state.dcCoilMounted || n>0;
+      const prepared=state.leftScraped && state.rightHalfScraped;
+      const spinning=mounted && prepared && state.dcSwitchClosed && state.dcMotorKicked;
+      const angle=spinning ? simpleMotorAngle() : (mounted ? -.28 : -.05);
+      const conducting=spinning && simpleMotorConducting(angle);
+      drawSimpleBoard(g);
+      drawSimpleBattery(g, mounted && prepared && state.dcSwitchClosed);
+      drawSimpleWires(g, mounted, mounted && prepared && state.dcSwitchClosed);
+      drawSimplePosts(g, mounted);
+      drawSimpleMagnet(g);
+      drawSimpleCoil(g, angle, mounted, conducting, spinning);
+      if(conducting) drawSimpleCurrentDots(g, angle);
+      drawScrapeCallouts(g, spinning ? angle : null);
+      if(!mounted) drawSimpleMountCue(g);
+      if(mounted && state.leftScraped && !state.rightHalfScraped) label("右端还需半周刮漆",g.coil.x,g.board.y+g.board.h+30*s,"#ffd54f");
+    }
+    function simpleMotorGeom(r){
+      const s=r.s, cx=r.x+r.w*.5, cy=r.y+r.h*.53, compact=state.width<560;
+      const bw=Math.min(r.w-78*s,(compact?500:610)*s), bh=(compact?246:258)*s;
+      const board={x:cx-bw*.5,y:cy-(compact?120:132)*s,w:bw,h:bh};
+      const magnet={x:board.x+board.w*.50,y:board.y+board.h*.64,w:168*s,h:128*s};
+      const coil={x:magnet.x,y:board.y+board.h*.58-magnet.h*.73,w:158*s,h:58*s};
+      const leftPost={x:coil.x-118*s,top:coil.y+10*s,base:board.y+board.h-48*s};
+      const rightPost={x:coil.x+118*s,top:coil.y+10*s,base:board.y+board.h-48*s};
+      leftPost.y = leftPost.base - 72*s;
+      rightPost.y = rightPost.base - 72*s;
+      const battery={x:board.x+board.w*.72,y:board.y+board.h+42*s,w:158*s,h:56*s};
+      const looseCoil={x:board.x+board.w*.22,y:board.y+board.h*.58,w:126*s,h:64*s};
+      const callL={x:board.x+(compact?92:132)*s,y:Math.max(r.y+38*s,board.y-58*s),r:56*s};
+      const callR={x:board.x+board.w-(compact?92:190)*s,y:Math.max(r.y+38*s,board.y-58*s),r:56*s};
+      return {s,board,magnet,coil,leftPost,rightPost,battery,looseCoil,callL,callR};
+    }
+    function simpleMotorPowered(){ return state.dcCoilMounted && state.leftScraped && state.rightHalfScraped && state.dcSwitchClosed; }
+    function simpleMotorAngle(){ return state.motorAngleOffset + performance.now()/330; }
+    function simpleMotorScrapePhase(angle){ return ((angle/(Math.PI*2)+.25)%1+1)%1; }
+    function simpleMotorConducting(angle){ return simpleMotorScrapePhase(angle) >= .5; }
+    function drawSimpleBoard(g){
+      const s=g.s,b=g.board;
+      ctx.save();
+      const y=b.y+b.h-42*s;
+      fillRound(b.x-34*s,y,b.w+68*s,70*s,13*s,"rgba(92,96,99,.86)");
+      fillRound(b.x-18*s,y+12*s,b.w+36*s,18*s,8*s,"rgba(134,139,141,.42)");
+      for(let i=0;i<7;i++){
+        cable([[b.x-10*s,y+22*s+i*7*s],[b.x+b.w+10*s,y+22*s+i*7*s]],"rgba(190,198,200,.16)",1*s);
+      }
+      ctx.restore();
+    }
+    function drawSimpleBattery(g,on){
+      const s=g.s,b=g.battery,x=b.x,y=b.y;
+      ctx.save();
+      fillRound(x-b.w/2,y-b.h/2,b.w,b.h,12*s,"#e8efe8");
+      fillRound(x-b.w/2+8*s,y-b.h/2+8*s,b.w-16*s,b.h-16*s,8*s,"#d7e1db");
+      for(let i=0;i<2;i++){
+        const cx=x-34*s+i*68*s;
+        fillRound(cx-22*s,y-16*s,44*s,32*s,16*s,"#1f6f5b");
+        fillRound(cx-15*s,y-13*s,30*s,26*s,13*s,"#55c46a");
+        fillRound(cx-10*s,y-16*s,20*s,32*s,6*s,"#d49a31");
+      }
+      fillRound(x-b.w/2-6*s,y-9*s,13*s,18*s,4*s,on?"#ff6b6b":"#bdc7c1");
+      fillRound(x+b.w/2-7*s,y-9*s,13*s,18*s,4*s,on?"#8fc8ff":"#bdc7c1");
+      label("电池盒",x,y+44*s,"#eaf5ff");
+      ctx.restore();
+    }
+    function drawSimpleWires(g,mounted,on){
+      const s=g.s,b=g.battery,l=g.leftPost,r=g.rightPost,hot=on?"#f2f3e8":"rgba(232,236,226,.78)";
+      ctx.save();
+      ctx.strokeStyle=hot;
+      ctx.lineWidth=4*s;
+      ctx.lineCap="round";
+      ctx.lineJoin="round";
+      ctx.beginPath();
+      ctx.moveTo(b.x-b.w/2-4*s,b.y-4*s);
+      ctx.bezierCurveTo(g.board.x+92*s,g.board.y+g.board.h+28*s,g.board.x+76*s,g.board.y+g.board.h-42*s,l.x,l.base-4*s);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(b.x+b.w/2+4*s,b.y-4*s);
+      ctx.bezierCurveTo(g.board.x+g.board.w-60*s,g.board.y+g.board.h+24*s,g.board.x+g.board.w-42*s,g.board.y+g.board.h-64*s,r.x,r.base-4*s);
+      ctx.stroke();
+      ctx.restore();
+    }
+    function drawSimplePosts(g,mounted){
+      const s=g.s;
+      [g.leftPost,g.rightPost].forEach((p,i)=>{
+        ctx.save();
+        fillRound(p.x-24*s,p.base+5*s,48*s,12*s,5*s,"#1e613e");
+        fillRound(p.x-15*s,p.base-1*s,30*s,8*s,4*s,"rgba(255,255,255,.16)");
+        cable([[p.x,p.base+5*s],[p.x,p.top+7*s]],"#9fb3b8",5*s);
+        cable([[p.x-20*s,p.top-20*s],[p.x,p.top],[p.x+20*s,p.top-20*s]],"#dbe5e7",5*s);
+        cable([[p.x-15*s,p.top-16*s],[p.x,p.top],[p.x+15*s,p.top-16*s]],"#8ea1aa",2*s);
+        ctx.fillStyle=mounted ? "#f4c27c" : "#f2f5ef";
+        ctx.beginPath();
+        ctx.arc(p.x,p.top,5.5*s,0,Math.PI*2);
+        ctx.fill();
+        label(i===0?"左V型支架":"右V型支架",p.x,p.base+31*s,"#dff7ef");
+        ctx.restore();
+      });
+      if(mounted){
+        fillRound(g.leftPost.x-6*g.s,g.leftPost.top-6*g.s,12*g.s,12*g.s,6*g.s,state.leftScraped?"#f2b765":"#c44b4f");
+        fillRound(g.rightPost.x-6*g.s,g.rightPost.top-6*g.s,12*g.s,12*g.s,6*g.s,state.rightHalfScraped?"#f2b765":"#c44b4f");
+      }
+    }
+    function drawSimpleMagnet(g){
+      const s=g.s,m=g.magnet;
+      ctx.save();
+      ctx.shadowColor="rgba(0,0,0,.32)";
+      ctx.shadowBlur=10*s;
+      ctx.shadowOffsetY=5*s;
+      fillRound(m.x-m.w*.44,m.y-m.h*.44,m.w*.88,m.h*.36,10*s,"#238edb");
+      fillRound(m.x-m.w*.44,m.y-m.h*.08,m.w*.88,m.h*.36,10*s,"#d33b43");
+      ctx.shadowBlur=0;
+      fillRound(m.x-m.w*.30,m.y-m.h*.26,m.w*.60,m.h*.44,10*s,"#071018");
+      fillRound(m.x-m.w*.39,m.y-m.h*.39,m.w*.78,12*s,6*s,"rgba(255,255,255,.16)");
+      fillRound(m.x-m.w*.39,m.y-m.h*.03,m.w*.78,10*s,5*s,"rgba(255,255,255,.10)");
+      label("S",m.x+m.w*.38,m.y-m.h*.25,"#eaf5ff");
+      label("N",m.x-m.w*.38,m.y+m.h*.09,"#fff4f4");
+      label("磁铁",m.x,m.y+m.h*.39,"#eaf5ff");
+      ctx.restore();
+    }
+    function drawSimpleCoil(g,angle,mounted,conducting,spinning){
+      const s=g.s,c=mounted?g.coil:g.looseCoil,cx=c.x,cy=c.y;
+      ctx.save();
+      if(!mounted){
+        ctx.translate(cx,cy);
+        ctx.rotate(-.08);
+        ctx.strokeStyle="#d78945";
+        ctx.lineWidth=5*s;
+        strokeRound(-c.w/2,-c.h/2,c.w,c.h,12*s,"#d78945",5*s);
+        ctx.strokeStyle="#8bd1ff";
+        ctx.lineWidth=2*s;
+        strokeRound(-c.w/2+8*s,-c.h/2+8*s,c.w-16*s,c.h-16*s,8*s,"rgba(139,209,255,.8)",2*s);
+        ctx.restore();
+        return;
+      }
+      const axisY=g.leftPost.top;
+      const axisLeft=g.leftPost.x, axisRight=g.rightPost.x;
+      const loopW=Math.min(c.w, (axisRight-axisLeft)*.58);
+      const loopLeft=cx-loopW/2, loopRight=cx+loopW/2;
+      const projection=Math.cos(angle);
+      const depth=Math.sin(angle);
+      const rightContactCopper=state.rightHalfScraped && simpleMotorConducting(angle);
+      const halfH=.35*s+Math.abs(projection)*40*s;
+      const yTop=axisY-halfH, yBottom=axisY+halfH;
+      const frontIsTop=projection>=0;
+      const nearY=frontIsTop?yTop:yBottom;
+      const farY=frontIsTop?yBottom:yTop;
+      const leftSideAlpha=(.46+.28*((depth+1)/2)).toFixed(2);
+      const rightSideAlpha=(.46+.28*((1-depth)/2)).toFixed(2);
+      const leftSideColor="rgba(156,195,210,"+leftSideAlpha+")";
+      const rightSideColor="rgba(156,195,210,"+rightSideAlpha+")";
+      ctx.lineJoin="round";
+      ctx.lineCap="round";
+      cable([[axisLeft,axisY],[loopLeft,axisY]],state.leftScraped?"#f4c27c":"#c8434c",4*s);
+      drawRightHalfScrapedLead(loopRight,axisY,axisRight,state.rightHalfScraped,rightContactCopper,s,spinning);
+      cable([[loopLeft,yBottom],[loopLeft,yTop]],leftSideColor,3.6*s);
+      cable([[loopRight,yTop],[loopRight,yBottom]],rightSideColor,3.6*s);
+      cable([[loopLeft,farY],[loopRight,farY]],"rgba(80,135,160,.44)",3.2*s);
+      ctx.save();
+      cable([[loopLeft,nearY],[loopRight,nearY]],"#d78945",6*s);
+      cable([[loopLeft+8*s,nearY-1.4*s],[loopRight-8*s,nearY-1.4*s]],"rgba(255,232,174,.36)",1*s);
+      ctx.restore();
+      fillRound(axisLeft-5*s,axisY-5*s,10*s,10*s,5*s,state.leftScraped?"#f2b765":"#c44b4f");
+      fillRound(axisRight-5*s,axisY-5*s,10*s,10*s,5*s,rightContactCopper?"#ffd96a":(state.rightHalfScraped?"#c8434c":"#a73c47"));
+      ctx.restore();
+    }
+    function drawRightHalfScrapedLead(x1,y,x2,prepared,copperContact,s,spinning){
+      if(!prepared){
+        cable([[x1,y],[x2,y]],"#c8434c",4*s);
+        return;
+      }
+      if(spinning){
+        ctx.save();
+        ctx.globalAlpha=.48;
+        ctx.filter="blur(.35px)";
+        cable([[x1,y],[x2,y]],copperContact ? "#ffd96a" : "#c8434c",5.5*s);
+        ctx.restore();
+        return;
+      }
+      drawSplitScrapedRod(x1,y,x2,7*s,copperContact ? "#c8434c" : "#d9893e",copperContact ? "#ffd96a" : "#c8434c");
+    }
+    function drawSplitScrapedRod(x1,y,x2,width,upperColor,lowerColor){
+      const minX=Math.min(x1,x2), maxX=Math.max(x1,x2);
+      ctx.save();
+      ctx.lineCap="round";
+      ctx.lineWidth=width;
+      ctx.strokeStyle=upperColor;
+      ctx.beginPath();
+      ctx.moveTo(x1,y);
+      ctx.lineTo(x2,y);
+      ctx.stroke();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(minX-width,y,maxX-minX+width*2,width);
+      ctx.clip();
+      ctx.strokeStyle=lowerColor;
+      ctx.beginPath();
+      ctx.moveTo(x1,y);
+      ctx.lineTo(x2,y);
+      ctx.stroke();
+      ctx.restore();
+      ctx.strokeStyle="rgba(255,255,255,.36)";
+      ctx.lineWidth=Math.max(1,width*.16);
+      ctx.beginPath();
+      ctx.moveTo(x1,y-width*.52);
+      ctx.lineTo(x2,y-width*.52);
+      ctx.stroke();
+      ctx.restore();
+    }
+    function drawScrapeCapsule(cx,cy,len,h,s,color){
+      const x=cx-len/2, y=cy-h/2, r=h/2;
+      ctx.save();
+      fillRound(x,y,len,h,r,color);
+      const shine=ctx.createLinearGradient(x,y,x,y+h);
+      shine.addColorStop(0,"rgba(255,255,255,.34)");
+      shine.addColorStop(.42,"rgba(255,255,255,.08)");
+      shine.addColorStop(.58,"rgba(0,0,0,.05)");
+      shine.addColorStop(1,"rgba(0,0,0,.20)");
+      ctx.fillStyle=shine;
+      fillRound(x,y,len,h,r,shine);
+      strokeRound(x,y,len,h,r,"rgba(28,36,42,.28)",1.4*s);
+      ctx.restore();
+    }
+    function drawHalfScrapeIcon(cx,cy,len,h,s,angle,prepared){
+      if(!prepared){
+        drawScrapeCapsule(cx,cy,len,h,s,"#c8434c");
+        return;
+      }
+      const x=cx-len/2, y=cy-h/2, r=h/2;
+      const animated=Number.isFinite(angle);
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x+r,y);
+      ctx.lineTo(x+len-r,y);
+      ctx.quadraticCurveTo(x+len,y,x+len,y+r);
+      ctx.quadraticCurveTo(x+len,y+h,x+len-r,y+h);
+      ctx.lineTo(x+r,y+h);
+      ctx.quadraticCurveTo(x,y+h,x,y+r);
+      ctx.quadraticCurveTo(x,y,x+r,y);
+      ctx.closePath();
+      ctx.clip();
+      if(animated){
+        const phase=simpleMotorScrapePhase(angle);
+        if(phase<.5){
+          const redH=h*phase*2;
+          ctx.fillStyle="#d9893e";
+          ctx.fillRect(x,y,len,h);
+          ctx.fillStyle="#c8434c";
+          ctx.fillRect(x,y+h-redH,len,redH);
+        }else{
+          const yellowH=h*(phase-.5)*2;
+          ctx.fillStyle="#c8434c";
+          ctx.fillRect(x,y,len,h);
+          ctx.fillStyle="#d9893e";
+          ctx.fillRect(x,y+h-yellowH,len,yellowH);
+        }
+      }else{
+        ctx.fillStyle="#c8434c";
+        ctx.fillRect(x,y,len,h/2);
+        ctx.fillStyle="#d9893e";
+        ctx.fillRect(x,y+h/2,len,h/2);
+      }
+      const shine=ctx.createLinearGradient(x,y,x,y+h);
+      shine.addColorStop(0,"rgba(255,255,255,.34)");
+      shine.addColorStop(.42,"rgba(255,255,255,.08)");
+      shine.addColorStop(.58,"rgba(0,0,0,.05)");
+      shine.addColorStop(1,"rgba(0,0,0,.20)");
+      ctx.fillStyle=shine;
+      ctx.fillRect(x,y,len,h);
+      ctx.restore();
+      ctx.save();
+      strokeRound(x,y,len,h,r,"rgba(28,36,42,.28)",1.4*s);
+      ctx.restore();
+    }
+    function drawSimpleCurrentDots(g,angle){
+      const s=g.s,b=g.battery,l=g.leftPost,r=g.rightPost;
+      const axisY=l.top, axisLeft=l.x, axisRight=r.x;
+      const leftWire=sampleCubic(
+        [b.x-b.w/2-4*s,b.y-4*s],
+        [g.board.x+92*s,g.board.y+g.board.h+28*s],
+        [g.board.x+76*s,g.board.y+g.board.h-42*s],
+        [l.x,l.base-4*s],
+        10
+      );
+      const rightWire=sampleCubic(
+        [b.x+b.w/2+4*s,b.y-4*s],
+        [g.board.x+g.board.w-60*s,g.board.y+g.board.h+24*s],
+        [g.board.x+g.board.w-42*s,g.board.y+g.board.h-64*s],
+        [r.x,r.base-4*s],
+        10
+      ).reverse();
+      const leftRoute=[
+        ...leftWire,
+        [l.x,l.base-4*s],
+        [axisLeft,axisY]
+      ];
+      const rightRoute=[
+        [axisRight,axisY],
+        [r.x,r.base-4*s],
+        ...rightWire
+      ];
+      const base=(performance.now()/900)%1;
+      for(let i=0;i<5;i++){
+        drawDotOnPolyline(leftRoute,(base+i/5)%1,4.2*s,i%3===0?"#fff8b5":"#ffd96a");
+        drawDotOnPolyline(rightRoute,(base+.18+i/5)%1,4.2*s,i%3===0?"#fff8b5":"#ffd96a");
+      }
+    }
+    function sampleCubic(p0,p1,p2,p3,steps){
+      const pts=[];
+      for(let i=0;i<=steps;i++){
+        const t=i/steps, mt=1-t;
+        pts.push([
+          mt*mt*mt*p0[0]+3*mt*mt*t*p1[0]+3*mt*t*t*p2[0]+t*t*t*p3[0],
+          mt*mt*mt*p0[1]+3*mt*mt*t*p1[1]+3*mt*t*t*p2[1]+t*t*t*p3[1]
+        ]);
+      }
+      return pts;
+    }
+    function drawDotOnPolyline(points,t,r,color){
+      let total=0;
+      const lengths=[];
+      for(let i=0;i<points.length-1;i++){
+        const dx=points[i+1][0]-points[i][0], dy=points[i+1][1]-points[i][1], len=Math.hypot(dx,dy);
+        lengths.push(len);
+        total+=len;
+      }
+      let target=t*total;
+      for(let i=0;i<lengths.length;i++){
+        if(target<=lengths[i]){
+          const p=points[i], q=points[i+1], k=lengths[i] ? target/lengths[i] : 0;
+          ctx.save();
+          ctx.fillStyle=color;
+          ctx.shadowColor="rgba(255,216,106,.7)";
+          ctx.shadowBlur=8;
+          ctx.beginPath();
+          ctx.arc(p[0]+(q[0]-p[0])*k,p[1]+(q[1]-p[1])*k,r,0,Math.PI*2);
+          ctx.fill();
+          ctx.restore();
+          return;
+        }
+        target-=lengths[i];
+      }
+    }
+    function drawScrapeCallouts(g,angle){
+      const s=g.s;
+      drawOneScrapeCallout(g.callL,"全刮漆",state.leftScraped,true,g.leftPost.x,g.leftPost.top,s,null);
+      drawOneScrapeCallout(g.callR,"半周刮漆",state.rightHalfScraped,false,g.rightPost.x,g.rightPost.top,s,angle);
+    }
+    function drawOneScrapeCallout(c,text,done,full,tx,ty,s,angle){
+      ctx.save();
+      ctx.fillStyle="rgba(238,244,255,.9)";
+      ctx.beginPath();
+      ctx.arc(c.x,c.y,c.r,0,Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle=done?"#3ddc97":"rgba(8,12,18,.55)";
+      ctx.lineWidth=2*s;
+      ctx.stroke();
+      ctx.strokeStyle="rgba(238,244,255,.78)";
+      ctx.lineWidth=2*s;
+      ctx.beginPath();
+      ctx.moveTo(c.x,c.y+c.r*.78);
+      ctx.lineTo(tx,ty);
+      ctx.stroke();
+      ctx.lineWidth=6*s;
+      ctx.lineCap="round";
+      if(full){
+        drawScrapeCapsule(c.x,c.y-5*s,78*s,14*s,s,done?"#d9893e":"#c8434c");
+      }else{
+        drawHalfScrapeIcon(c.x,c.y-5*s,78*s,14*s,s,angle,done);
+      }
+      ctx.fillStyle="#1b2730";
+      ctx.font="700 "+Math.max(11,12*s)+"px Arial";
+      ctx.textAlign="center";
+      ctx.fillText(text,c.x,c.y+28*s);
+      ctx.restore();
+    }
+    function drawSimpleMountCue(g){
+      const s=g.s;
+      ctx.save();
+      ctx.setLineDash([7*s,7*s]);
+      strokeRound(g.leftPost.x-28*s,g.leftPost.top-28*s,g.rightPost.x-g.leftPost.x+56*s,74*s,10*s,"rgba(255,213,79,.62)",2*s);
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
+    function sceneInduction(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.53; drawSolenoidCoil(cx-70*s,cy,n,s); const mx=cx+(n===0?-210:n===1?-110:-250)*s; drawBarMagnet(mx,cy,n===2,s*.86); drawAnalogMeter(cx+270*s,cy,"G",n===1?0:n===0?.72:-.72,s); cable([[cx+70*s,cy-48*s],[cx+210*s,cy-64*s],[cx+230*s,cy-40*s]],"#dcecff",3*s); cable([[cx+70*s,cy+48*s],[cx+210*s,cy+64*s],[cx+230*s,cy+40*s]],"#dcecff",3*s); label(n===0?"插入磁铁，指针偏转":n===1?"相对静止，指针回零":"拔出磁铁，反向偏转",cx,cy+160*s,"#ffd54f"); }
+    function sceneGenerator(r,n){ const s=r.s,cx=r.x+r.w*.48,cy=r.y+r.h*.54; drawUMagnet(cx,cy,s); drawCoil(cx,cy,n,s); drawCrank(cx-125*s,cy,n,s); drawAnalogMeter(cx+285*s,cy,"G",n===0?.25:n===1?.82:-.58,s); drawBulb(cx+250*s,cy+118*s,n===1,s); label(n===1?"快速手摇，小灯泡更亮":n===2?"反向手摇，指针反偏":"慢速手摇",cx,cy+165*s,"#ffd54f"); }
+    function sceneSteam(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.56; drawLabTable(cx,cy+132*s,560*s,s); drawStand(cx-225*s,cy+98*s,s); drawAlcoholLamp(cx-70*s,cy+88*s,n>0,s); cable([[cx-225*s,cy-48*s],[cx-104*s,cy-48*s]],"#9aa8b5",5*s); fillRound(cx-130*s,cy-64*s,36*s,18*s,5*s,"#65727f"); ctx.save(); ctx.translate(cx+25*s,cy-46*s); ctx.rotate(-.14); strokeRound(-172*s,-30*s,320*s,60*s,30*s,"rgba(229,244,255,.92)",7*s); fillRound(-145*s,-18*s,152*s,36*s,18*s,"rgba(91,188,255,.42)"); fillRound(104*s+n*34*s,-25*s,46*s,50*s,10*s,"#8d6e63"); fillRound(-174*s,-10*s,28*s,20*s,8*s,"#607d8b"); ctx.restore(); if(n===2){ drawPulleyWheel(cx+260*s,cy-70*s,s*.58); for(let i=0;i<4;i++){ctx.strokeStyle="rgba(255,255,255,.55)";ctx.lineWidth=2*s;ctx.beginPath();ctx.arc(cx+160*s+i*30*s,cy-58*s-i*8*s,12*s,0,Math.PI*1.55);ctx.stroke();}} label(n===0?"加热水，塞子待动":n===1?"塞子被推出":"水蒸气带动叶轮",cx,cy+184*s,"#ffd54f"); }
+    function sceneFriction(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; drawLabTable(cx,cy+118*s,610*s,s); fillRound(cx-240*s,cy-52*s,480*s,32*s,6*s,"#6d4c41"); fillRound(cx-220*s,cy-66*s,185*s,70*s,8*s,"#9aa8b5"); fillRound(cx+36*s,cy-66*s,185*s,70*s,8*s,"#9aa8b5"); strokeRound(cx-220*s,cy-66*s,185*s,70*s,8*s,"rgba(255,255,255,.28)",2*s); strokeRound(cx+36*s,cy-66*s,185*s,70*s,8*s,"rgba(255,255,255,.28)",2*s); cable([[cx-36*s,cy-31*s],[cx+36*s,cy-31*s]],"#ffd54f",6*s); cable([[cx-270*s,cy-94*s],[cx-198*s,cy-31*s]],"#ffd54f",4*s); cable([[cx+198*s,cy-31*s],[cx+270*s,cy-94*s]],"#ffd54f",4*s); drawThermalSticker(cx+156*s,cy-31*s,n,s*.92); label(n===0?"慢拉木块":n===1?"快速拉动，温度贴变色":"做功越多，温度升高越明显",cx,cy+66*s,"#ffd54f"); }
+    function sceneMotorEnergy(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; drawBatteryPack(cx-310*s,cy+120*s,s); drawKnifeSwitch(cx-150*s,cy+120*s,n>0,s); drawMotorFan(cx+60*s,cy,n,s); cable([[cx-250*s,cy+100*s],[cx-150*s,cy+90*s],[cx+20*s,cy+58*s]],n>0?"#ffd54f":"#777",4*s); label(n===0?"接好电路":n===1?"闭合开关，风扇转动":"增大电压，转速更快",cx,cy+160*s,"#ffd54f"); }
+    function sceneElectricHeat(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; drawBatteryPack(cx-330*s,cy+120*s,s); drawKnifeSwitch(cx-165*s,cy+120*s,n>0,s); drawHeaterCup(cx+75*s,cy,n,s); drawThermometer(cx+220*s,cy-25*s,26+n*17,s); cable([[cx-275*s,cy+100*s],[cx-80*s,cy+95*s],[cx+40*s,cy+45*s]],n>0?"#ffd54f":"#777",4*s); label(n===0?"通电前读数":n===1?"电热丝发热":n===2?"电流增大，升温更快":"",cx,cy+165*s,"#ffd54f"); }
+    function sceneEnergyTrack(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.58; drawLabTable(cx,cy+148*s,650*s,s); ctx.save(); ctx.strokeStyle="rgba(20,26,32,.62)"; ctx.lineWidth=22*s; ctx.beginPath(); ctx.moveTo(cx-305*s,cy-138*s); ctx.quadraticCurveTo(cx-65*s,cy+105*s,cx+255*s,cy-96*s); ctx.stroke(); ctx.strokeStyle="#b8c3cc"; ctx.lineWidth=10*s; ctx.beginPath(); ctx.moveTo(cx-305*s,cy-138*s); ctx.quadraticCurveTo(cx-65*s,cy+105*s,cx+255*s,cy-96*s); ctx.stroke(); ctx.strokeStyle="#61707c"; ctx.lineWidth=3*s; for(let i=0;i<8;i++){ const x=cx-292*s+i*78*s; cable([[x,cy+118*s],[x,cy+136*s]],"#d8e4ef",1.5*s); label(String(i),x,cy+154*s,"#cfe4ff"); } strokeRound(cx-325*s,cy-154*s,58*s,116*s,5*s,"rgba(255,213,79,.55)",2*s); const px=n===0?cx-260*s:n===1?cx-22*s:cx+188*s, py=n===0?cy-106*s:n===1?cy+67*s:cy-55*s; ctx.fillStyle="#78e6dc"; ctx.beginPath(); ctx.arc(px,py,24*s,0,Math.PI*2); ctx.fill(); strokeRound(px-24*s,py-24*s,48*s,48*s,24*s,"#fff4b8",3*s); label(n===1?"速度最大":"高度较高",px,py-44*s,"#ffd54f"); ctx.restore(); }
+    function scenePulley(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.50; drawLabTable(cx,cy+176*s,620*s,s); drawSupportFrame(cx-115*s,cy+132*s,s); drawPulleyWheel(cx-115*s,cy-82*s,s); drawPulleyWheel(cx+42*s,cy+46*s,s*.92); cable([[cx-115*s,cy-82*s],[cx-115*s,cy+132*s],[cx+42*s,cy+46*s],[cx+160*s,cy+130*s]],"#eef7ff",4*s); drawSpringScale(cx+205*s,cy+36*s,n===0?.34:n===1?.55:.72,s*.95); fillRound(cx+4*s,cy+86*s,74*s,68*s,7*s,"#bd7b32"); fillRound(cx+18*s,cy+78*s,46*s,16*s,4*s,"#7d4c20"); label("钩码",cx+41*s,cy+121*s,"#fff"); label(n===0?"匀速提升":n===1?"改变绳端方向":"比较机械效率",cx,cy+206*s,"#ffd54f"); }
+    function sceneHeatCapacity(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.55; drawLabTable(cx,cy+150*s,650*s,s); drawBalance(cx-305*s,cy+60*s,s*.9); drawHeatedBeaker(cx-98*s,cy,"水",n,s); drawHeatedBeaker(cx+165*s,cy,"食用油",n+1,s); cable([[cx-98*s,cy+58*s],[cx-98*s,cy+116*s]],"#ff7043",4*s); cable([[cx+165*s,cy+58*s],[cx+165*s,cy+116*s]],"#ff7043",4*s); label(n===0?"天平取等质量":n===1?"相同加热器同时加热":"比较升高同温所需时间",cx,cy+198*s,"#ffd54f"); }
+    function sceneHeatEngine(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.53; drawLabTable(cx,cy+160*s,560*s,s); drawEngineModel(cx,cy,n,s); label(["吸气冲程","做功冲程","排气冲程"][n],cx,cy+204*s,"#ffd54f"); }
+    function sceneAmmeter(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.55; drawTerminalBoard(cx,cy,s); drawBatteryPack(cx-285*s,cy+96*s,s*.9); drawKnifeSwitch(cx-125*s,cy-100*s,n!==2,s); drawBulb(cx+255*s,cy-100*s,n!==2,s); drawAnalogMeter(cx,cy+96*s,"A",n===2?-0.25:n===0?.42:.68,s); cable([[cx-240*s,cy+96*s],[cx-185*s,cy-100*s],[cx-90*s,cy-100*s],[cx,cy+50*s],[cx+255*s,cy-72*s],[cx+300*s,cy+96*s],[cx-240*s,cy+96*s]],n===2?"#ff5b6e":"#dcecff",4*s); if(n===2) label("并联风险，立即断开",cx,cy-12*s,"#ffb0b0"); }
+    function sceneVoltmeter(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.55; drawTerminalBoard(cx,cy,s); drawBatteryPack(cx-285*s,cy+96*s,s*.9); drawKnifeSwitch(cx-125*s,cy-100*s,true,s); drawBulb(cx+120*s,cy-100*s,true,s); drawAnalogMeter(cx+285*s,cy,"V",n===0?.56:n===1?.72:.88,s); cable([[cx-240*s,cy+96*s],[cx-185*s,cy-100*s],[cx+120*s,cy-100*s],[cx+260*s,cy+96*s],[cx-240*s,cy+96*s]],"#dcecff",4*s); cable([[cx+75*s,cy-100*s],[cx+245*s,cy-35*s],[cx+245*s,cy+35*s],[cx+165*s,cy-100*s]],"#5bbcff",3*s); label(n===2?"测电源电压":"电压表并联",cx,cy+158*s,"#ffd54f"); }
+    function sceneSeriesParallel(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.55; drawTerminalBoard(cx,cy,s); drawBatteryPack(cx-310*s,cy+96*s,s*.9); drawKnifeSwitch(cx-155*s,cy-118*s,n!==2,s); if(n===0){ drawBulb(cx+40*s,cy-118*s,true,s); drawBulb(cx+225*s,cy-118*s,true,s); cable([[cx-270*s,cy+96*s],[cx-210*s,cy-118*s],[cx+40*s,cy-118*s],[cx+225*s,cy-118*s],[cx+310*s,cy+96*s],[cx-270*s,cy+96*s]],"#dcecff",4*s); } else { drawBulb(cx+40*s,cy-145*s,true,s); drawBulb(cx+40*s,cy-35*s,n!==2,s); cable([[cx-270*s,cy+96*s],[cx-210*s,cy-145*s],[cx+40*s,cy-145*s],[cx+250*s,cy-145*s],[cx+250*s,cy+96*s],[cx-270*s,cy+96*s]],"#dcecff",4*s); cable([[cx-210*s,cy-35*s],[cx+40*s,cy-35*s],[cx+250*s,cy-35*s]],"#3ddc97",4*s); if(n===2) drawKnifeSwitch(cx-100*s,cy-35*s,false,s*.72); } label(n===0?"串联：一条路径":n===1?"并联：两条支路":"支路开关只控一路",cx,cy+165*s,"#ffd54f"); }
+    function sceneResistanceMeasure(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.55; drawTerminalBoard(cx,cy,s); drawBatteryPack(cx-310*s,cy+104*s,s*.85); drawKnifeSwitch(cx-160*s,cy-110*s,true,s*.9); drawRheostat(cx-10*s,cy+112*s,n,s); drawResistor(cx+175*s,cy-110*s,s); drawAnalogMeter(cx-20*s,cy-110*s,"A",.35+n*.16,s*.9); drawAnalogMeter(cx+305*s,cy-16*s,"V",.38+n*.18,s*.9); cable([[cx-270*s,cy+104*s],[cx-215*s,cy-110*s],[cx-20*s,cy-110*s],[cx+175*s,cy-110*s],[cx+260*s,cy+104*s],[cx-10*s,cy+112*s],[cx-270*s,cy+104*s]],"#dcecff",4*s); cable([[cx+120*s,cy-110*s],[cx+270*s,cy-52*s],[cx+270*s,cy+18*s],[cx+225*s,cy-110*s]],"#5bbcff",3*s); label("R = U / I，多次测量",cx,cy+170*s,"#ffd54f"); }
+    function sceneCircuitLaws(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.55; if(n===2) sceneSeriesParallel(r,1); else sceneSeriesParallel(r,0); drawAnalogMeter(cx-65*s,cy+8*s,n===1?"V":"A",.55,s*.72); drawAnalogMeter(cx+115*s,cy+8*s,n===1?"V":"A",n===2?.3:.55,s*.72); label(n===0?"串联电流处处相等":n===1?"总电压等于各部分之和":"并联电压相等、电流分流",cx,cy+190*s,"#ffd54f"); }
+    function sceneJouleHeat(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.55; drawTerminalBoard(cx,cy,s); drawHeaterJar(cx-130*s,cy-10*s,"5Ω",28+n*8,s); drawHeaterJar(cx+130*s,cy-10*s,"10Ω",30+n*16,s); drawBatteryPack(cx-335*s,cy+125*s,s*.82); drawKnifeSwitch(cx-200*s,cy+125*s,true,s*.82); drawRheostat(cx,cy+135*s,n,s*.82); cable([[cx-292*s,cy+125*s],[cx-130*s,cy+60*s],[cx+130*s,cy+60*s],[cx+270*s,cy+125*s],[cx,cy+135*s],[cx-292*s,cy+125*s]],"#dcecff",4*s); label(n===0?"比较电阻":n===1?"移动滑片增大电流":"延长通电时间",cx,cy+182*s,"#ffd54f"); }
+    function sceneSafety(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; fillRound(cx-335*s,cy-160*s,670*s,310*s,16*s,"#28313a"); label("低压家庭电路模型",cx,cy-185*s,"#cfe4ff"); cable([[cx-290*s,cy-105*s],[cx+290*s,cy-105*s]],"#ff7043",7*s); cable([[cx-290*s,cy+60*s],[cx+290*s,cy+60*s]],"#5bbcff",7*s); label("火线",cx-320*s,cy-105*s,"#ffb0b0"); label("零线",cx-320*s,cy+60*s,"#b8e2ff"); drawKnifeSwitch(cx-185*s,cy-105*s,n!==1,s*.8); drawFuse(cx-20*s,cy-105*s,n===1,s); drawSocket(cx+170*s,cy-22*s,n===2,s); drawBulb(cx+15*s,cy+60*s,n!==1,s*.9); if(n===2)cable([[cx+170*s,cy+36*s],[cx+245*s,cy+122*s]],"#3ddc97",4*s); label(n===0?"开关接火线":n===1?"过载时保险丝熔断":"金属外壳接地",cx,cy+178*s,"#ffd54f"); }
+    function sceneRenewable(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.54; drawSolarPanel(cx-245*s,cy-15*s,n,s); drawSun(cx-350*s,cy-150*s,n,s); drawAnalogMeter(cx-20*s,cy-25*s,"V",n===0?.28:n===1?.78:.52,s*.86); drawMotorFan(cx+180*s,cy-20*s,n,s); drawLed(cx+300*s,cy-90*s,n>0,s); drawStorage(cx+275*s,cy+92*s,n===2,s); cable([[cx-150*s,cy+55*s],[cx-70*s,cy-5*s],[cx+90*s,cy-5*s],[cx+180*s,cy+40*s]],"#dcecff",4*s); label(n===0?"弱光输出":n===1?"调角强光输出":"储能短时供电",cx,cy+175*s,"#ffd54f"); }
+    function sceneFallback(r,n){ label(SPEC.apparatus,r.x+r.w/2,r.y+r.h*.52); }
+    function drawPaper(x,y,w,h){ fillRound(x,y,w,h,10,"rgba(245,245,230,.9)"); ctx.strokeStyle="rgba(50,70,80,.35)"; ctx.lineWidth=1; for(let i=0;i<8;i++){ ctx.beginPath(); ctx.moveTo(x+20,y+20+i*h/9); ctx.lineTo(x+w-20,y+20+i*h/9); ctx.stroke(); } }
+    function drawLamp(x,y,name){ fillRound(x-34,y-28,68,56,10,"#3b4650"); ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.arc(x,y,19,0,Math.PI*2); ctx.fill(); if(name)label(name,x,y+48); }
+    function drawCorrectionLens(x,y,t,s){ ctx.save(); ctx.strokeStyle=t==="凹透镜"?"#ffb74d":"#5bbcff"; ctx.lineWidth=4*s; ctx.beginPath(); ctx.ellipse(x,y,t==="凹透镜"?13*s:25*s,82*s,0,0,Math.PI*2); ctx.stroke(); label(t,x,y+112*s); ctx.restore(); }
+    function drawEyeModel(x,y,n,s){ ctx.save(); ctx.strokeStyle="#dcecff"; ctx.lineWidth=3*s; ctx.beginPath(); ctx.ellipse(x,y,140*s,82*s,0,0,Math.PI*2); ctx.stroke(); drawLens(x-45*s,y,110*s,"晶状体"); strokeRound(x+92*s,y-64*s,12*s,128*s,6*s,"#3ddc97",5*s); fillRound(x+96*s,y-52*s,7*s,104*s,4*s,"rgba(61,220,151,.22)"); label("视网膜",x+100*s,y+90*s); ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.arc(x+92*s,y,7*s,0,Math.PI*2); ctx.fill(); label(n===0?"像在视网膜上":n===1?"凹透镜矫正近视":n===2?"凸透镜矫正远视":"",x,y+125*s,"#ffd54f"); ctx.restore(); }
+    function drawPrism(cx,cy,n,s){ ctx.save(); ctx.fillStyle="rgba(155,211,255,.18)"; ctx.strokeStyle="#9bd3ff"; ctx.lineWidth=3*s; ctx.beginPath(); ctx.moveTo(cx-62*s,cy+82*s); ctx.lineTo(cx,cy-80*s); ctx.lineTo(cx+82*s,cy+82*s); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+    function drawColorLamp(x,y,color,name,on,s){ fillRound(x-38*s,y-26*s,76*s,52*s,10*s,on?color:"#444"); strokeRound(x-38*s,y-26*s,76*s,52*s,10*s,"rgba(255,255,255,.28)",1.5*s); label(name,x,y+48*s); }
+    function drawChargedRod(x,y,on,s){ ctx.save(); ctx.translate(x,y); ctx.rotate(-.22); ctx.strokeStyle=on?"#ffd54f":"#c9d1d8"; ctx.lineWidth=13*s; ctx.lineCap="round"; ctx.beginPath(); ctx.moveTo(-88*s,0); ctx.lineTo(88*s,0); ctx.stroke(); if(on){ ctx.fillStyle="#ffd54f"; for(let i=0;i<9;i++) label(i%2?"+":"-",(-70+i*18)*s,-18*s,"#ffd54f"); } ctx.restore(); label("塑料棒",x,y+42*s); }
+    function drawPaperBits(x,y,active,s){ ctx.save(); ctx.fillStyle=active?"#ffd54f":"#a69b80"; for(let i=0;i<24;i++){ const a=i*.72, rr=(active?28+Math.sin(i)*18:45+Math.sin(i)*22)*s; ctx.save(); ctx.translate(x+Math.cos(a)*rr,y+Math.sin(i*1.7)*25*s); ctx.rotate(a); ctx.fillRect(-3*s,-2*s,6*s,4*s); ctx.restore(); } label("碎纸屑",x,y+62*s); ctx.restore(); }
+    function drawElectroscope(x,y,open,s){ ctx.save(); strokeRound(x-48*s,y-70*s,96*s,166*s,14*s,"#dcecff",2.5*s); ctx.strokeStyle="#dcecff"; ctx.lineWidth=3*s; ctx.beginPath(); ctx.arc(x,y-92*s,16*s,0,Math.PI*2); ctx.moveTo(x,y-76*s); ctx.lineTo(x,y+10*s); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x,y+10*s); ctx.lineTo(x+(open?40:12)*s,y+70*s); ctx.moveTo(x,y+10*s); ctx.lineTo(x-(open?40:12)*s,y+70*s); ctx.stroke(); label("验电器",x,y+124*s); ctx.restore(); }
+    function drawBarMagnet(cx,cy,reverse,s){ ctx.save(); fillRound(cx-130*s,cy-30*s,130*s,60*s,8*s,reverse?"#3498db":"#e74c3c"); fillRound(cx,cy-30*s,130*s,60*s,8*s,reverse?"#e74c3c":"#3498db"); ctx.fillStyle="#fff"; ctx.font="700 "+18*s+"px Arial"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(reverse?"S":"N",cx-65*s,cy); ctx.fillText(reverse?"N":"S",cx+65*s,cy); ctx.restore(); }
+    function drawFieldLines(cx,cy,reverse,s){ ctx.save(); ctx.strokeStyle="rgba(255,213,79,.46)"; ctx.lineWidth=2*s; for(let i=0;i<5;i++){ ctx.beginPath(); ctx.ellipse(cx,cy,(185+i*28)*s,(72+i*22)*s,0,0,Math.PI*2); ctx.stroke(); } if(reverse) label("方向反转",cx,cy-136*s,"#ffd54f"); ctx.restore(); }
+    function drawCompass(x,y,reverse,s){ ctx.save(); strokeRound(x-32*s,y-32*s,64*s,64*s,32*s,"#dcecff",2*s); ctx.fillStyle="#ff4d4f"; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+(reverse?-26:26)*s,y-8*s); ctx.lineTo(x,y+8*s); ctx.closePath(); ctx.fill(); ctx.fillStyle="#dcecff"; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+(reverse?22:-22)*s,y+7*s); ctx.lineTo(x,y-7*s); ctx.closePath(); ctx.fill(); ctx.restore(); }
+    function drawBatteryPack(x,y,s){ fillRound(x-58*s,y-34*s,116*s,68*s,10*s,"#39424d"); for(let i=0;i<3;i++){ fillRound(x-43*s+i*31*s,y-23*s,22*s,46*s,5*s,i%2?"#222":"#4e5965"); } fillRound(x+44*s,y-8*s,13*s,16*s,3*s,"#ff6b6b"); fillRound(x-57*s,y+18*s,13*s,16*s,3*s,"#8fc8ff"); label("电池组",x,y-52*s); }
+    function drawKnifeSwitch(x,y,closed,s){ fillRound(x-60*s,y-20*s,120*s,40*s,8*s,"#6d5a45"); ctx.strokeStyle="#dcecff"; ctx.lineWidth=4*s; ctx.beginPath(); ctx.arc(x-35*s,y,6*s,0,Math.PI*2); ctx.arc(x+38*s,y,6*s,0,Math.PI*2); ctx.stroke(); ctx.strokeStyle=closed?"#ffd54f":"#cfd7df"; ctx.lineWidth=5*s; ctx.beginPath(); ctx.moveTo(x-35*s,y); ctx.lineTo(x+(closed?38:25)*s,y+(closed?0:-30)*s); ctx.stroke(); label("开关",x,y+40*s); }
+    function drawSolenoidCoil(x,y,n,s){ ctx.save(); fillRound(x-30*s,y-22*s,300*s,44*s,22*s,n===1?"#7b8794":"rgba(120,130,140,.28)"); ctx.strokeStyle="#ffb74d"; ctx.lineWidth=4*s; for(let i=0;i<10;i++){ ctx.beginPath(); ctx.ellipse(x+i*30*s,y,17*s,36*s,0,0,Math.PI*2); ctx.stroke(); } label(n===2?"S      N":"N      S",x+135*s,y+62*s,"#ffd54f"); ctx.restore(); }
+    function drawUMagnet(cx,cy,s){ fillRound(cx-205*s,cy-112*s,74*s,224*s,12*s,"#e74c3c"); fillRound(cx+131*s,cy-112*s,74*s,224*s,12*s,"#3498db"); fillRound(cx-205*s,cy-112*s,410*s,42*s,12*s,"#3b4650"); label("N",cx-168*s,cy,"#fff"); label("S",cx+168*s,cy,"#fff"); }
+    function drawRails(cx,cy,s){ cable([[cx-135*s,cy-45*s],[cx+135*s,cy-45*s]],"#cfd7df",4*s); cable([[cx-135*s,cy+45*s],[cx+135*s,cy+45*s]],"#cfd7df",4*s); }
+    function drawConductorBar(x,y,n,s){ ctx.save(); ctx.strokeStyle="#ffd54f"; ctx.lineWidth=10*s; ctx.lineCap="round"; ctx.beginPath(); ctx.moveTo(x,y-58*s); ctx.lineTo(x,y+58*s); ctx.stroke(); ctx.fillStyle="#ff7043"; ctx.beginPath(); ctx.moveTo(x+(n===1?-82:82)*s,y); ctx.lineTo(x+(n===1?-35:35)*s,y-20*s); ctx.lineTo(x+(n===1?-35:35)*s,y+20*s); ctx.fill(); ctx.restore(); }
+    function drawCoil(cx,cy,n,s){ ctx.save(); ctx.translate(cx,cy); ctx.rotate((n===2?Math.PI/5:0) + (n===1?.18:0)); ctx.strokeStyle="#ffd54f"; ctx.lineWidth=6*s; strokeRound(-62*s,-92*s,124*s,184*s,10*s,"#ffd54f",6*s); ctx.restore(); fillRound(cx-98*s,cy+102*s,196*s,22*s,8*s,"#3b4650"); label("线圈",cx,cy+140*s); }
+    function drawBrushes(cx,cy,s){ fillRound(cx-112*s,cy-18*s,34*s,36*s,5*s,"#cfd7df"); fillRound(cx+78*s,cy-18*s,34*s,36*s,5*s,"#cfd7df"); }
+    function drawAnalogMeter(x,y,t,ratio,s){ ctx.save(); const r=50*s; ctx.fillStyle="#eaf5ff"; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); ctx.strokeStyle=t==="A"?"#3ddc97":t==="V"?"#5bbcff":"#ffd54f"; ctx.lineWidth=3*s; ctx.stroke(); ctx.fillStyle="#26323f"; ctx.font="700 "+21*s+"px Arial"; ctx.textAlign="center"; ctx.fillText(t,x,y-6*s); for(let i=0;i<=6;i++){ const a=-2.25+i*.75; cable([[x+Math.cos(a)*28*s,y+18*s+Math.sin(a)*28*s],[x+Math.cos(a)*38*s,y+18*s+Math.sin(a)*38*s]],"#65727f",1.5*s); } const a=-2.15+clamp((ratio+1)/2,0,1)*2.85; cable([[x,y+16*s],[x+Math.cos(a)*36*s,y+16*s+Math.sin(a)*36*s]],"#d33",2.4*s); label(t==="G"?"灵敏电流计":t==="V"?"电压表":"电流表",x,y+70*s); ctx.restore(); }
+    function drawCrank(x,y,n,s){ strokeRound(x-34*s,y-34*s,68*s,68*s,34*s,"#cfd7df",5*s); const a=n===1?1.4:n===2?-1.2:.4; cable([[x,y],[x+48*s*Math.cos(a),y+48*s*Math.sin(a)]],"#cfd7df",5*s); fillRound(x+44*s*Math.cos(a)-8*s,y+44*s*Math.sin(a)-8*s,16*s,16*s,8*s,"#ffb74d"); }
+    function drawStand(x,y,s){ cable([[x,y+130*s],[x,y-110*s],[x+180*s,y-110*s]],"#77838f",7*s); fillRound(x-80*s,y+130*s,160*s,20*s,6*s,"#505a64"); }
+    function drawAlcoholLamp(x,y,on,s){ fillRound(x-38*s,y,76*s,44*s,9*s,"#54616e"); fillRound(x-24*s,y+22*s,48*s,26*s,7*s,"rgba(91,188,255,.35)"); ctx.fillStyle=on?"#ff7043":"#8a7a5a"; ctx.beginPath(); ctx.moveTo(x,y-45*s); ctx.quadraticCurveTo(x+24*s,y-6*s,x,y); ctx.quadraticCurveTo(x-24*s,y-6*s,x,y-45*s); ctx.fill(); label("酒精灯",x,y+68*s); }
+    function drawThermalSticker(x,y,n,s){ fillRound(x-35*s,y-28*s,70*s,56*s,8*s,n?"#ff7043":"#ffd54f"); label(n?"升温":"温度贴",x,y,n?"#fff":"#4d3200"); }
+    function drawMotorFan(cx,cy,n,s){ fillRound(cx-64*s,cy+52*s,128*s,54*s,10*s,"#3b4650"); label("小电动机",cx,cy+79*s); ctx.save(); ctx.translate(cx,cy); ctx.rotate(n*.45); ctx.fillStyle=n?"#3ddc97":"#7b8794"; for(let i=0;i<3;i++){ ctx.rotate(Math.PI*2/3); roundRect(8*s,-13*s,92*s,26*s,13*s); ctx.fill(); } ctx.restore(); fillRound(cx-18*s,cy-18*s,36*s,36*s,18*s,"#222"); }
+    function drawHeaterCup(cx,cy,n,s){ strokeRound(cx-82*s,cy-72*s,164*s,150*s,8*s,"#dcecff",3*s); fillRound(cx-78*s,cy-4*s,156*s,78*s,4*s,"rgba(91,188,255,.35)"); ctx.strokeStyle="#ff7043"; ctx.lineWidth=5*s; ctx.beginPath(); for(let i=0;i<10;i++) ctx.lineTo(cx-62*s+i*14*s,cy+28*s+Math.sin(i)*13*s); ctx.stroke(); if(n>0){ctx.fillStyle="rgba(255,112,67,.18)";ctx.beginPath();ctx.arc(cx,cy+26*s,(70+n*18)*s,0,Math.PI*2);ctx.fill();} label("电热丝",cx,cy+105*s); }
+    function drawThermometer(x,y,temp,s){ strokeRound(x-9*s,y-92*s,18*s,120*s,8*s,"#dcecff",2*s); ctx.fillStyle="#ff7043"; ctx.fillRect(x-5*s,y+24*s-temp*s,10*s,temp*s); ctx.beginPath(); ctx.arc(x,y+36*s,18*s,0,Math.PI*2); ctx.fill(); label(String(Math.round(20+temp/2))+"℃",x,y+68*s,"#ffd54f"); }
+    function drawSupportFrame(x,y,s){ ctx.save(); fillRound(x-172*s,y+8*s,344*s,24*s,6*s,"#46515c"); fillRound(x-151*s,y+26*s,48*s,18*s,4*s,"#2c343c"); cable([[x-128*s,y+6*s],[x-128*s,y-245*s]],"#8f9aa4",9*s); cable([[x-128*s,y-245*s],[x+168*s,y-245*s]],"#8f9aa4",9*s); fillRound(x-146*s,y-84*s,36*s,16*s,4*s,"#6b7480"); fillRound(x+142*s,y-254*s,46*s,18*s,4*s,"#6b7480"); ctx.strokeStyle="rgba(255,255,255,.5)"; ctx.lineWidth=1*s; for(let i=0;i<8;i++){ const yy=y-220*s+i*26*s; ctx.beginPath(); ctx.moveTo(x-139*s,yy); ctx.lineTo(x-118*s,yy); ctx.stroke(); } ctx.restore(); }
+    function drawPulleyWheel(x,y,s){ ctx.save(); ctx.fillStyle="#202a32"; ctx.beginPath(); ctx.arc(x,y,42*s,0,Math.PI*2); ctx.fill(); ctx.strokeStyle="#dcecff"; ctx.lineWidth=3*s; ctx.stroke(); ctx.strokeStyle="#6f7b86"; ctx.lineWidth=8*s; ctx.beginPath(); ctx.arc(x,y,27*s,0,Math.PI*2); ctx.stroke(); ctx.fillStyle="#edf7ff"; ctx.beginPath(); ctx.arc(x,y,7*s,0,Math.PI*2); ctx.fill(); cable([[x-18*s,y-46*s],[x+18*s,y-46*s]],"#9aa8b5",4*s); ctx.restore(); }
+    function drawSpringScale(x,y,ratio,s){ ctx.save(); cable([[x,y-134*s],[x,y-112*s]],"#dcecff",3*s); ctx.strokeStyle="#dcecff"; ctx.lineWidth=2*s; ctx.beginPath(); ctx.arc(x,y-145*s,13*s,0,Math.PI*2); ctx.stroke(); fillRound(x-28*s,y-112*s,56*s,166*s,18*s,"#21b36b"); fillRound(x-17*s,y-94*s,34*s,124*s,10*s,"#eaf5ff"); ctx.strokeStyle="#26323f"; ctx.lineWidth=1*s; for(let i=0;i<=10;i++){ const yy=y-82*s+i*11*s; cable([[x-12*s,yy],[x+(i%5?8:14)*s,yy]],"#26323f",1*s); } ctx.fillStyle="#d33"; ctx.fillRect(x-14*s,y-82*s+ratio*103*s,28*s,3*s); ctx.fillStyle="#061018"; ctx.font="700 "+10*s+"px Arial"; ctx.textAlign="center"; ctx.fillText((ratio*1.2).toFixed(2)+"N",x,y-42*s); cable([[x,y+54*s],[x,y+91*s]],"#dcecff",3*s); ctx.strokeStyle="#dcecff"; ctx.lineWidth=3*s; ctx.beginPath(); ctx.arc(x,y+102*s,12*s,Math.PI*.15,Math.PI*1.25); ctx.stroke(); label("弹簧测力计",x,y+134*s); ctx.restore(); }
+    function drawHeatedBeaker(x,y,name,heat,s){ ctx.save(); strokeRound(x-66*s,y-88*s,132*s,166*s,8*s,"rgba(232,245,255,.9)",3*s); fillRound(x-60*s,y-4*s-heat*4*s,120*s,78*s+heat*4*s,4*s,name==="水"?"rgba(91,188,255,.42)":"rgba(255,183,77,.34)"); fillRound(x-72*s,y+80*s,144*s,12*s,4*s,"#3b4650"); drawThermometer(x+80*s,y-16*s,25+heat*9,s*.78); ctx.strokeStyle="#ff7043"; ctx.lineWidth=4*s; ctx.beginPath(); for(let i=0;i<8;i++)ctx.lineTo(x-48*s+i*14*s,y+54*s+Math.sin(i)*8*s); ctx.stroke(); label(name,x,y+112*s); ctx.restore(); }
+    function drawBalance(x,y,s){ ctx.save(); fillRound(x-128*s,y+52*s,256*s,22*s,6*s,"#3b4650"); cable([[x,y+50*s],[x,y-70*s]],"#cfd7df",4*s); cable([[x-90*s,y-38*s],[x+90*s,y-38*s]],"#cfd7df",4*s); cable([[x-70*s,y-38*s],[x-86*s,y+4*s]],"#cfd7df",2*s); cable([[x+70*s,y-38*s],[x+86*s,y+4*s]],"#cfd7df",2*s); strokeRound(x-126*s,y+4*s,82*s,24*s,12*s,"#dcecff",2*s); strokeRound(x+44*s,y+4*s,82*s,24*s,12*s,"#dcecff",2*s); fillRound(x-18*s,y-82*s,36*s,24*s,6*s,"#eaf5ff"); label("托盘天平",x,y+96*s); ctx.restore(); }
+    function drawEngineModel(cx,cy,n,s){ ctx.save(); strokeRound(cx-196*s,cy-118*s,245*s,218*s,14*s,"rgba(232,245,255,.85)",4*s); fillRound(cx-184*s,cy-106*s,222*s,194*s,10*s,"rgba(91,188,255,.08)"); const py=n===0?cy+42*s:n===1?cy-18*s:cy-70*s; fillRound(cx-160*s,py,176*s,28*s,7*s,"#9bd3ff"); cable([[cx-72*s,py+28*s],[cx+156*s,cy+28*s]],"#cfd7df",5*s); strokeRound(cx+116*s,cy-50*s,142*s,142*s,71*s,"#dcecff",5*s); cable([[cx+156*s,cy+28*s],[cx+188*s,cy+20*s]],"#cfd7df",5*s); fillRound(cx-178*s,cy-132*s,46*s,24*s,6*s,n===0?"#3ddc97":"#555"); fillRound(cx-44*s,cy-132*s,46*s,24*s,6*s,n===2?"#ff7043":"#555"); ctx.fillStyle=n===1?"rgba(255,112,67,.55)":"rgba(255,183,77,.16)"; ctx.fillRect(cx-158*s,cy-102*s,172*s,py-cy+104*s); if(n===1){ ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.arc(cx-72*s,cy-72*s,13*s,0,Math.PI*2); ctx.fill(); } label("透明汽油机模型",cx,cy+126*s); ctx.restore(); }
+    function drawTerminalBoard(cx,cy,s){ fillRound(cx-360*s,cy-165*s,720*s,330*s,18*s,"#24303a"); strokeRound(cx-360*s,cy-165*s,720*s,330*s,18*s,"rgba(255,255,255,.18)",2*s); for(let i=0;i<9;i++){ fillRound(cx-320*s+i*80*s,cy+137*s,16*s,16*s,8*s,"#b7c4ce"); } label("接线板",cx,cy-188*s,"#cfe4ff"); }
+    function drawBulb(x,y,on,s){ ctx.save(); strokeRound(x-34*s,y-34*s,68*s,68*s,34*s,"#dcecff",3*s); if(on){ ctx.fillStyle="rgba(255,213,79,.55)"; ctx.beginPath(); ctx.arc(x,y,44*s,0,Math.PI*2); ctx.fill(); } cable([[x-14*s,y+28*s],[x+14*s,y+28*s]],"#dcecff",3*s); label("小灯泡",x,y+66*s); ctx.restore(); }
+    function drawRheostat(x,y,n,s){ fillRound(x-105*s,y-38*s,210*s,76*s,10*s,"#333b43"); ctx.strokeStyle="#cfd8dc"; ctx.lineWidth=4*s; ctx.beginPath(); for(let i=0;i<12;i++){ ctx.lineTo(x-78*s+i*14*s,y+Math.sin(i)*10*s); } ctx.stroke(); fillRound(x-70*s+n*50*s,y-42*s,28*s,52*s,6*s,"#5bbcff"); label("滑动变阻器",x,y+62*s); }
+    function drawResistor(x,y,s){ fillRound(x-70*s,y-24*s,140*s,48*s,24*s,"#8d6e63"); ["#ffd54f","#3ddc97","#ff7043"].forEach((c,i)=>fillRound(x-34*s+i*28*s,y-24*s,8*s,48*s,2*s,c)); label("被测电阻",x,y+54*s); }
+    function drawHeaterJar(x,y,name,temp,s){ strokeRound(x-70*s,y-78*s,140*s,156*s,10*s,"#dcecff",3*s); fillRound(x-64*s,y-18*s,128*s,92*s,5*s,"rgba(91,188,255,.3)"); ctx.strokeStyle="#ff7043"; ctx.lineWidth=4*s; ctx.beginPath(); for(let i=0;i<7;i++)ctx.lineTo(x-45*s+i*15*s,y+35*s+Math.sin(i)*11*s); ctx.stroke(); drawThermometer(x+88*s,y-10*s,temp,s*.75); label(name,x,y+104*s); }
+    function drawFuse(x,y,broken,s){ fillRound(x-58*s,y-18*s,116*s,36*s,8*s,"#4e5965"); if(broken){ cable([[x-42*s,y],[x-12*s,y-10*s]],"#ff7043",4*s); cable([[x+12*s,y+10*s],[x+42*s,y]],"#ff7043",4*s); } else cable([[x-42*s,y],[x+42*s,y]],"#ffd54f",5*s); label("保险丝",x,y+42*s); }
+    function drawSocket(x,y,ground,s){ fillRound(x-62*s,y-58*s,124*s,116*s,12*s,"#eaf5ff"); fillRound(x-28*s,y-20*s,14*s,38*s,5*s,"#26323f"); fillRound(x+14*s,y-20*s,14*s,38*s,5*s,"#26323f"); fillRound(x-7*s,y+25*s,14*s,22*s,5*s,ground?"#3ddc97":"#26323f"); label("三孔插座",x,y+82*s,"#eaf5ff"); }
+    function drawSolarPanel(x,y,n,s){ ctx.save(); ctx.translate(x,y); ctx.rotate(n===1?-.28:0); fillRound(-95*s,-65*s,190*s,130*s,8*s,"#1e88e5"); ctx.strokeStyle="rgba(255,255,255,.55)"; ctx.lineWidth=1.5*s; for(let i=1;i<4;i++) cable([[-95*s+i*47*s,-65*s],[-95*s+i*47*s,65*s]],"rgba(255,255,255,.55)",1*s); for(let j=1;j<3;j++) cable([[-95*s,-65*s+j*43*s],[95*s,-65*s+j*43*s]],"rgba(255,255,255,.55)",1*s); ctx.restore(); label("太阳能电池板",x,y+98*s); }
+    function drawSun(x,y,n,s){ ctx.fillStyle="#ffd54f"; ctx.beginPath(); ctx.arc(x,y,(n===1?44:30)*s,0,Math.PI*2); ctx.fill(); }
+    function drawLed(x,y,on,s){ strokeRound(x-22*s,y-30*s,44*s,60*s,20*s,on?"#3ddc97":"#777",3*s); if(on){ctx.fillStyle="rgba(61,220,151,.45)";ctx.beginPath();ctx.arc(x,y,40*s,0,Math.PI*2);ctx.fill();} label("LED",x,y+55*s); }
+    function drawStorage(x,y,on,s){ fillRound(x-48*s,y-28*s,96*s,56*s,8*s,on?"#3ddc97":"#555"); label("储能",x,y,on?"#061018":"#eaf5ff"); }
+    function pointerStage(e){ const r=canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+    function onPointerDown(e){
+      if (state.autoPlaying) return;
+      const p = pointerStage(e);
+      if(!hitBench(p)){ showToast("请在实验台器材上拖动。"); return; }
+      if(state.freeMode){
+        const target = SPEC.scene === "simpleMotor" ? hitSimpleMotorPart(p) : hitDcMotorPart(p);
+        if(!target){ showToast(SPEC.scene === "simpleMotor" ? "可点击线圈、左右刮漆端或电池盒。" : "可点击开关、电池组、线圈，或拖动滑片 P。"); return; }
+        state.drag = target === "rheostat" ? "rheostat" : (SPEC.scene === "simpleMotor" ? "simpleMotor" : "dcMotor");
+        state.moved = true;
+        try { canvas.setPointerCapture(e.pointerId); } catch(err) { console.warn("capture stage pointer failed", err); }
+        if(SPEC.scene === "simpleMotor") operateFreeSimpleMotor(target, true);
+        else if(target === "rheostat") { state.operationCount += 1; setDcRheostatFromPoint(p, false); }
+        else operateDcMotorPart(target, true);
+        e.preventDefault();
+        return;
+      }
+      state.drag = true;
+      state.moved = true;
+      try { canvas.setPointerCapture(e.pointerId); } catch(err) { console.warn("capture stage pointer failed", err); }
+      operateByPoint(p);
+      e.preventDefault();
+    }
+    function onPointerMove(e){
+      if (!state.drag || state.autoPlaying) return;
+      if(state.freeMode && state.drag === "rheostat") setDcRheostatFromPoint(pointerStage(e), false);
+      else if(!state.freeMode) operateByPoint(pointerStage(e));
+      e.preventDefault();
+    }
+    function onPointerUp(e){ if (state.drag) { try { canvas.releasePointerCapture(e.pointerId); } catch(err) { console.warn("release stage pointer failed", err); } state.drag=false; passStepIfReady({ quiet:true }); } e.preventDefault(); }
+    function hitBench(p){ const r = benchArea(state.width, state.height); return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
+    function hitBox(p,x,y,w,h){ return p.x >= x && p.x <= x + w && p.y >= y && p.y <= y + h; }
+    function hitDcMotorPart(p){
+      const g = dcMotorGeom(benchArea(state.width, state.height)), s = g.s, t = dcRheostatTerminals(g.rheo.x, g.rheo.y, s);
+      if(hitBox(p, t.p.x-34*s, t.p.y-18*s, 68*s, 78*s) || hitBox(p, g.rheo.x-116*s, g.rheo.y-42*s, 232*s, 130*s)) return "rheostat";
+      if(hitBox(p, g.switch.x-86*s, g.switch.y-46*s, 172*s, 98*s)) return "switch";
+      if(hitBox(p, g.battery.x-68*s, g.battery.y-46*s, 136*s, 96*s)) return "battery";
+      if(hitBox(p, g.motor.x-76*s, g.motor.y+34*s, 152*s, 112*s)) return "scrape";
+      if(hitBox(p, g.motor.x-120*s, g.motor.y-145*s, 240*s, 285*s)) return "motor";
+      return null;
+    }
+    function hitSimpleMotorPart(p){
+      const g = simpleMotorGeom(benchArea(state.width, state.height)), s = g.s;
+      if(hitBox(p, g.callL.x-g.callL.r, g.callL.y-g.callL.r, g.callL.r*2, g.callL.r*2) || hitBox(p, g.leftPost.x-28*s, g.leftPost.top-34*s, 56*s, 76*s)) return "leftScrape";
+      if(hitBox(p, g.callR.x-g.callR.r, g.callR.y-g.callR.r, g.callR.r*2, g.callR.r*2) || hitBox(p, g.rightPost.x-28*s, g.rightPost.top-34*s, 56*s, 76*s)) return "rightScrape";
+      if(hitBox(p, g.battery.x-g.battery.w*.58, g.battery.y-g.battery.h*.72, g.battery.w*1.16, g.battery.h*1.55)) return "battery";
+      if(state.dcCoilMounted && hitBox(p, g.coil.x-g.coil.w*.75, g.coil.y-g.coil.h*.9, g.coil.w*1.5, g.coil.h*1.8)) return "coil";
+      if(!state.dcCoilMounted && hitBox(p, g.looseCoil.x-g.looseCoil.w*.72, g.looseCoil.y-g.looseCoil.h*.82, g.looseCoil.w*1.44, g.looseCoil.h*1.65)) return "coil";
+      if(hitBox(p, g.magnet.x-g.magnet.w*.64, g.magnet.y-g.magnet.h*.58, g.magnet.w*1.28, g.magnet.h*1.22)) return "coil";
+      return null;
+    }
+    function operateByPoint(p){
+      if(SPEC.scene === "simpleMotor") { operateGuidedSimpleMotor(p); return; }
+      if(SPEC.scene === "dcMotor") { operateGuidedDcMotor(p); return; }
+      const r = benchArea(state.width, state.height); const ratio = clamp((p.x - r.x) / Math.max(1,r.w), 0, 1); const idx = ratio < .34 ? 0 : ratio < .67 ? 1 : 2; setScenario(idx, true);
+    }
+    function operateGuidedSimpleMotor(p){
+      const target = hitSimpleMotorPart(p);
+      if(state.currentTask === 0){
+        if(target !== "coil"){ warnStep("点击线圈，把它架到磁铁间隙中。"); return; }
+        state.dcCoilMounted = true;
+        state.dcSwitchClosed = false;
+        state.dcMotorKicked = false;
+        state.scenarioIndex = 0;
+        state.operationCount += 1;
+        updateStatus("线圈已架入磁极间隙");
+        draw();
+        return;
+      }
+      if(state.currentTask === 1){
+        if(!state.dcCoilMounted){ warnStep("先把线圈架到磁铁间隙中。"); return; }
+        if(target !== "leftScrape"){ warnStep("点击左端引线，完成全刮漆。"); return; }
+        state.leftScraped = true;
+        state.scenarioIndex = 1;
+        state.operationCount += 1;
+        updateStatus("左端已全刮漆");
+        draw();
+        return;
+      }
+      if(state.currentTask === 2){
+        if(!state.dcCoilMounted || !state.leftScraped){ warnStep("先完成架线圈和左端全刮漆。"); return; }
+        if(target !== "rightScrape"){ warnStep("点击右端引线，只刮下半周漆层。"); return; }
+        state.rightHalfScraped = true;
+        state.dcWireScraped = true;
+        state.scenarioIndex = 2;
+        state.operationCount += 1;
+        updateStatus("右端已半周刮漆");
+        draw();
+        return;
+      }
+      if(state.currentTask === 3){
+        if(!state.dcCoilMounted || !state.leftScraped || !state.rightHalfScraped){ warnStep("先完成两端刮漆处理。"); return; }
+        if(target !== "coil" && target !== "battery"){ warnStep("点击线圈，接通并轻拨转动。"); return; }
+        state.dcSwitchClosed = true;
+        state.dcMotorKicked = true;
+        state.scenarioIndex = 3;
+        state.operationCount += 1;
+        state.motorAngleOffset = -.28 - performance.now()/330;
+        updateStatus("半周通电，持续转动");
+        draw();
+        return;
+      }
+      showToast("请先完成当前步骤。");
+    }
+    function operateFreeSimpleMotor(target, mark){
+      if(target === "coil"){
+        if(!state.dcCoilMounted){
+          state.dcCoilMounted = true;
+          state.scenarioIndex = 0;
+          updateStatus("线圈已架入磁极间隙");
+        }else if(state.leftScraped && state.rightHalfScraped){
+          const spinning = simpleMotorPowered() && state.dcMotorKicked;
+          if(spinning) state.dcRestAngle = simpleMotorAngle();
+          state.dcSwitchClosed = true;
+          state.dcMotorKicked = !spinning;
+          if(state.dcMotorKicked) state.motorAngleOffset = state.dcRestAngle - performance.now()/330;
+          state.scenarioIndex = state.dcMotorKicked ? 3 : 2;
+          updateStatus(state.dcMotorKicked ? "线圈持续转动" : "线圈已停止");
+        }else{
+          updateStatus("先处理两端漆层");
+        }
+      }else if(target === "leftScrape"){
+        if(!state.dcCoilMounted) state.dcCoilMounted = true;
+        state.leftScraped = !state.leftScraped;
+        if(!state.leftScraped) state.dcMotorKicked = false;
+        state.scenarioIndex = state.leftScraped ? 1 : 0;
+        updateStatus(state.leftScraped ? "左端已全刮漆" : "左端漆层已恢复");
+      }else if(target === "rightScrape"){
+        if(!state.dcCoilMounted) state.dcCoilMounted = true;
+        state.rightHalfScraped = !state.rightHalfScraped;
+        state.dcWireScraped = state.leftScraped && state.rightHalfScraped;
+        if(!state.rightHalfScraped) state.dcMotorKicked = false;
+        state.scenarioIndex = state.rightHalfScraped ? 2 : (state.leftScraped ? 1 : 0);
+        updateStatus(state.rightHalfScraped ? "右端已半周刮漆" : "右端漆层已恢复");
+      }else if(target === "battery"){
+        if(!state.dcCoilMounted || !state.leftScraped || !state.rightHalfScraped){
+          updateStatus("先架线圈并处理两端漆层");
+        }else{
+          if(state.dcSwitchClosed && state.dcMotorKicked) state.dcRestAngle = simpleMotorAngle();
+          state.dcSwitchClosed = !state.dcSwitchClosed;
+          state.dcMotorKicked = state.dcSwitchClosed;
+          if(state.dcMotorKicked) state.motorAngleOffset = state.dcRestAngle - performance.now()/330;
+          state.scenarioIndex = state.dcSwitchClosed ? 3 : 2;
+          updateStatus(state.dcSwitchClosed ? "电路已接通，线圈转动" : "电路已断开");
+        }
+      }
+      if(mark) state.operationCount += 1;
+      draw();
+    }
+    function operateGuidedDcMotor(p){
+      const target = hitDcMotorPart(p);
+      if(state.currentTask === 0){
+        if(target !== "motor" && target !== "scrape"){ warnStep("点击线圈，把它放入磁铁间隙。"); return; }
+        state.dcCoilMounted = true;
+        state.dcWireScraped = true;
+        state.dcSwitchClosed = false;
+        state.dcMotorKicked = false;
+        state.currentReversed = false;
+        state.scenarioIndex = 0;
+        state.operationCount += 1;
+        updateStatus("线圈已装入，开关断开");
+        draw();
+        return;
+      }
+      if(state.currentTask === 1){
+        if(!state.dcCoilMounted) state.dcCoilMounted = true;
+        state.dcWireScraped = true;
+        if(target !== "switch"){ warnStep("点击开关，闭合电路。"); return; }
+        state.dcWireScraped = true;
+        state.scenarioIndex = 1;
+        state.dcSwitchClosed = true;
+        state.dcMotorKicked = true;
+        state.currentReversed = false;
+        state.motorAngleOffset = state.dcRestAngle - dcMotorBaseAngle();
+        state.operationCount += 1;
+        updateStatus("开关闭合，观察换向器工作");
+        draw();
+        return;
+      }
+      if(state.currentTask === 2){
+        if(!state.dcCoilMounted) state.dcCoilMounted = true;
+        if(!state.dcWireScraped) state.dcWireScraped = true;
+        if(target !== "battery"){ warnStep("点击电池组，切换正负极。"); return; }
+        const angle = state.dcSwitchClosed && state.dcMotorKicked ? dcMotorAngle() : state.dcRestAngle;
+        state.dcSwitchClosed = true;
+        state.dcMotorKicked = true;
+        state.currentReversed = !state.currentReversed;
+        state.scenarioIndex = 2;
+        state.operationCount += 1;
+        state.motorAngleOffset = angle - dcMotorBaseAngle();
+        updateStatus("正负极已切换，转向反向");
+        draw();
+        return;
+      }
+      showToast("请先完成当前步骤。");
+    }
+    function setDcRheostatFromPoint(p, mark){
+      const g = dcMotorGeom(benchArea(state.width, state.height)), range = dcRheostatRange(g.rheo.x, g.rheo.y, g.s), prev = state.rheostatPos;
+      const spinning = state.dcSwitchClosed && state.dcMotorKicked;
+      const angle = spinning ? dcMotorAngle() : state.dcRestAngle;
+      state.rheostatPos = clamp((p.x - range.left) / Math.max(1, range.right - range.left), 0, 1);
+      if(spinning) state.motorAngleOffset = angle - dcMotorBaseAngle();
+      else state.dcRestAngle = angle;
+      if(mark && Math.abs(state.rheostatPos - prev) > .01) state.operationCount += 1;
+      updateStatus(state.rheostatPos > prev ? "电流减小，转速变慢" : "电流增大，转速变快");
+      draw();
+    }
+    function operateDcMotorPart(target, mark){
+      if(target === "scrape") target = "motor";
+      if(target === "switch"){
+        if(state.dcSwitchClosed) state.dcRestAngle = state.dcMotorKicked ? dcMotorAngle() : state.dcRestAngle;
+        state.dcSwitchClosed = !state.dcSwitchClosed;
+        state.dcMotorKicked = state.dcSwitchClosed;
+        if(state.dcSwitchClosed) state.motorAngleOffset = state.dcRestAngle - dcMotorBaseAngle();
+        if(mark) state.operationCount += 1;
+        updateStatus(state.dcSwitchClosed ? "开关闭合，线圈转动" : "开关断开，线圈停止");
+        draw();
+        return;
+      }
+      if(target === "battery"){
+        const spinning = state.dcSwitchClosed && state.dcMotorKicked;
+        const angle = spinning ? dcMotorAngle() : state.dcRestAngle;
+        state.currentReversed = !state.currentReversed;
+        if(spinning) state.motorAngleOffset = angle - dcMotorBaseAngle();
+        else state.dcRestAngle = angle;
+        if(mark) state.operationCount += 1;
+        updateStatus(state.currentReversed ? "电源已反接，转向反向" : "电源方向已恢复");
+        draw();
+        return;
+      }
+      if(target === "motor"){
+        if(state.dcSwitchClosed){
+          if(state.dcMotorKicked) state.dcRestAngle = dcMotorAngle();
+          state.dcMotorKicked = !state.dcMotorKicked;
+          if(state.dcMotorKicked) state.motorAngleOffset = state.dcRestAngle - dcMotorBaseAngle();
+        } else {
+          state.dcMotorKicked = true;
+        }
+        if(mark) state.operationCount += 1;
+        updateStatus(state.dcSwitchClosed ? (state.dcMotorKicked ? "已轻拨线圈，开始转动" : "线圈已停止") : "已轻拨线圈，但电路未接通");
+        draw();
+      }
+    }
+    function moveCursorTo(x,y){const sr=stage.getBoundingClientRect(), lr=labArea.getBoundingClientRect();demoCursor.style.opacity="1";demoCursor.style.transform="translate("+(lr.left-sr.left+x-10)+"px,"+(lr.top-sr.top+y-10)+"px)";}
+    function demoDcTarget(i){
+      const g=dcMotorGeom(benchArea(state.width,state.height)), s=g.s;
+      if(i===0) return { x:g.motor.x, y:g.motor.y-40*s };
+      if(i===1) return { x:g.switch.x, y:g.switch.y };
+      return { x:g.battery.x, y:g.battery.y };
+    }
+    function demoSimpleTarget(i){
+      const g=simpleMotorGeom(benchArea(state.width,state.height)), s=g.s;
+      if(i===0) return { x:g.looseCoil.x, y:g.looseCoil.y };
+      if(i===1) return { x:g.leftPost.x, y:g.leftPost.top };
+      if(i===2) return { x:g.rightPost.x, y:g.rightPost.top };
+      return { x:g.coil.x, y:g.coil.y };
+    }
+    async function demoGesture(i){
+      const dcDemo = SPEC.scene === "dcMotor";
+      const simpleDemo = SPEC.scene === "simpleMotor";
+      const start={x:state.width*.18,y:state.height*.52};
+      const end=simpleDemo ? demoSimpleTarget(i) : (dcDemo ? demoDcTarget(i) : {x:state.width*(.22+i*.28),y:state.height*.52});
+      const s=(simpleDemo ? simpleMotorGeom(benchArea(state.width,state.height)).s : (dcDemo ? dcMotorGeom(benchArea(state.width,state.height)).s : 1));
+      for(let k=0;k<=8;k++){
+        if(state.autoCancel) throw new Error("AUTO_CANCELLED");
+        const t=k/8;
+        moveCursorTo(start.x+(end.x-start.x)*t,start.y+(end.y-start.y)*t+Math.sin(t*Math.PI)*28*s);
+        state.phase=t;
+        draw();
+        await sleep(150);
+      }
+      demoCursor.classList.remove("click");
+      void demoCursor.offsetWidth;
+      demoCursor.classList.add("click");
+      if(simpleDemo) operateGuidedSimpleMotor(end);
+      else if(dcDemo) operateGuidedDcMotor(end);
+      else setScenario(i,true);
+      await sleep(1150);
+    }
+    async function autoRecord(key){ const before=state.records.length; const ok=recordObservation({auto:true}); await sleep(520); if(!ok || !hasRecord(key) || state.records.length<=before) throw new Error("AUTO_RECORD_NOT_PERSISTED:"+key); }
+    async function runAutoDemo(){ if(state.autoPlaying){state.autoCancel=true;return;} state.autoPlaying=true; state.autoCancel=false; autoDemoBtn.textContent="退出自动演示"; freeBtn.disabled=true; setDrawerCollapsed(controlDock,false); setDrawerCollapsed(dataDock,true); setModeLabel(); resetScene({keepMode:false,quiet:true}); state.autoPlaying=true; autoDemoBtn.textContent="退出自动演示"; setDrawerCollapsed(controlDock,false); setModeLabel(); try{ for(let i=0;i<SPEC.scenarios.length;i++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); setStepUI(i); updateStatus("自动演示"); await demoGesture(i); await autoRecord(SPEC.scenarios[i].key); await sleep(900); } setStepUI(SPEC.scenarios.length); await sleep(700); setDrawerCollapsed(dataDock,false); await sleep(700); analyzeConclusion(); await sleep(900); } catch(err){ if(String(err.message||err)!=="AUTO_CANCELLED") showToast("自动演示中断："+(err.message||err)); else showToast("已退出自动演示"); } finally{ state.autoPlaying=false; state.autoCancel=false; autoDemoBtn.textContent="自动演示"; freeBtn.disabled=false; demoCursor.style.opacity="0"; setModeLabel(); updateStatus(); draw(); } }
+    function resetScene(opts){ clearTimers(); state.completed=false; state.autoCancel=false; state.stepWarning=false; state.successCooldown=false; state.scenarioIndex=0; state.operationCount=0; state.records=[]; state.unseenRecords=0; state.analysisDone=false; state.phase=0; state.drag=false; state.currentReversed=false; state.rheostatPos=.5; state.motorAngleOffset=0; state.dcSwitchClosed=false; state.dcMotorKicked=false; state.dcRestAngle=.02; state.dcCoilMounted=false; state.dcWireScraped=false; state.leftScraped=false; state.rightHalfScraped=false; if(!opts || !opts.keepMode) state.freeMode=false; doneMask.style.display="none"; analysisText.classList.remove("ok"); analysisText.textContent="完成四次记录后分析。"; renderRecords(); updateBadge(); setModeLabel(); setStepUI(0); if(!opts || !opts.quiet) showToast("已重置"); }
+    function setFreeMode(on){ state.freeMode=!!on; freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式"; autoDemoBtn.disabled=state.freeMode; setModeLabel(); updateStatus(state.freeMode?(state.dcSwitchClosed?"开关闭合":"开关断开"):""); showToast(state.freeMode?"自由操作已开启":"已回到引导模式"); draw(); }
+    function initEvents(){ canvas.addEventListener("pointerdown",onPointerDown); canvas.addEventListener("pointermove",onPointerMove); canvas.addEventListener("pointerup",onPointerUp); canvas.addEventListener("pointercancel",onPointerUp); recordBtn.addEventListener("click",() => recordObservation()); analyzeBtn.addEventListener("click",analyzeConclusion); resetBtn.addEventListener("click",() => { const free=state.freeMode; resetScene({keepMode:true,quiet:true}); state.freeMode=free; setFreeMode(free); showToast("已重置"); }); autoDemoBtn.addEventListener("click",runAutoDemo); freeBtn.addEventListener("click",() => setFreeMode(!state.freeMode)); controlToggleBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed"))); dataToggleBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed"))); hintLamp.addEventListener("click",() => hintPop.classList.toggle("open")); okBtn.addEventListener("click",() => { doneMask.style.display="none"; }); bindDrawer(controlDock); bindDrawer(dataDock); window.addEventListener("resize",() => { clearTimeout(resizeCanvas.t); resizeCanvas.t=setTimeout(resizeCanvas,120); }); }
+    function animateScene(){ if ((SPEC.scene === "dcMotor" || SPEC.scene === "simpleMotor") && ((state.dcSwitchClosed && state.dcMotorKicked) || state.freeMode || state.autoPlaying)) draw(); requestAnimationFrame(animateScene); }
+    function init(){ initDots(); initEvents(); resizeCanvas(); setDrawerCollapsed(controlDock,true); setDrawerCollapsed(dataDock,true); resetScene({quiet:true}); requestAnimationFrame(() => { resizeCanvas(); draw(); }); requestAnimationFrame(animateScene); setTimeout(() => { resizeCanvas(); draw(); },180); }
+    init(); window.state = state; window.recordObservation = recordObservation; window.analyzeConclusion = analyzeConclusion;
+  })();
+  </script>
+  <script id="codex-exp46-50-ui-runtime">
+  (() => {
+    "use strict";
+    const $ = s => document.querySelector(s);
+    const stage = $("#stage"), controlDock = $("#controlDock"), dataDock = $("#dataDock");
+    if (!stage || !controlDock || !dataDock) return;
+    const taskStep = $("#taskStep"), modeTag = $("#modeTag"), recordBody = $("#recordBody"), dataNotice = $("#dataNotice");
+    const controlToggleBtn = $("#controlToggleBtn"), dataToggleBtn = $("#dataToggleBtn"), analysisText = $("#analysisText");
+    const resetBtn = $("#resetBtn"), autoDemoBtn = $("#autoDemoBtn"), freeBtn = $("#freeBtn"), hintLamp = $("#hintLamp"), hintPop = $("#hintPop");
+    const isMobile = () => window.matchMedia("(max-width:720px)").matches || stage.clientWidth <= 720;
+    let tabsEl = null, syncing = false, queued = false;
+    function makeTab(id, label){ const btn = document.createElement("button"); btn.className = "mobile-tab"; btn.id = id; btn.type = "button"; btn.innerHTML = `<span class="tab-label">${label}<span class="mobile-badge" aria-hidden="true">0</span></span>`; return btn; }
+    function ensureTabs(){ if (tabsEl) return; tabsEl = document.createElement("div"); tabsEl.className = "mobile-tabs"; tabsEl.setAttribute("role", "group"); tabsEl.setAttribute("aria-label", "实验数据面板切换"); const exp = makeTab("experimentTab", "实验面板"); const data = makeTab("dataTab", "数据面板"); tabsEl.append(exp, data); stage.appendChild(tabsEl); exp.addEventListener("click", () => setMobilePanel("control")); data.addEventListener("click", () => setMobilePanel("data")); ensureClose(controlDock); ensureClose(dataDock); }
+    function ensureClose(dock){ const body = dock.querySelector(".dock-body"); if (!body || body.querySelector(".sheet-close")) return; const btn = document.createElement("button"); btn.className = "sheet-close"; btn.type = "button"; btn.textContent = "⌄"; btn.title = "收起"; btn.setAttribute("aria-label", "收起"); btn.addEventListener("click", () => setMobilePanel(null)); body.appendChild(btn); }
+    function setCollapsed(dock, collapsed){ dock.classList.toggle("collapsed", !!collapsed); const btn = dock === controlDock ? controlToggleBtn : dataToggleBtn; if (btn) btn.textContent = collapsed ? "展开" : "收起"; }
+    function clearDataNotice(){ if (window.state && typeof window.state.unseenRecords === "number") window.state.unseenRecords = 0; if (dataNotice) { dataNotice.textContent = "0"; dataNotice.classList.remove("show"); } }
+    function setMobilePanel(panel){ ensureTabs(); if (!isMobile()) return; if (panel === "control") { setCollapsed(controlDock, false); setCollapsed(dataDock, true); } else if (panel === "data") { setCollapsed(controlDock, true); setCollapsed(dataDock, false); clearDataNotice(); } else { setCollapsed(controlDock, true); setCollapsed(dataDock, true); } syncTabs(); }
+    function syncTabs(){ if (!tabsEl) return; const exp = tabsEl.querySelector("#experimentTab"); const data = tabsEl.querySelector("#dataTab"); const controlOpen = !controlDock.classList.contains("collapsed"); const dataOpen = !dataDock.classList.contains("collapsed"); tabsEl.classList.toggle("attached", controlOpen || dataOpen); exp.classList.toggle("active", controlOpen); data.classList.toggle("active", dataOpen); exp.setAttribute("aria-expanded", String(controlOpen)); data.setAttribute("aria-expanded", String(dataOpen)); syncBadge(); }
+    function syncBadge(){ if (!tabsEl || !dataNotice) return; const badge = tabsEl.querySelector("#dataTab .mobile-badge"); const count = parseInt(dataNotice.textContent || "0", 10) || 0; if (!badge) return; badge.textContent = count > 99 ? "99+" : String(count); badge.classList.toggle("show", count > 0 && dataDock.classList.contains("collapsed")); }
+    function annotateRecords(){ if (!recordBody) return; recordBody.querySelectorAll("tr").forEach(tr => { const cells = tr.querySelectorAll("td"); if (cells[0]) cells[0].dataset.label = "步骤"; if (cells[1]) cells[1].dataset.label = "记录"; }); }
+    function syncAnalysis(){ if (!analysisText) return; const placeholder = /完成[三四]次记录后分析/.test(analysisText.textContent || ""); analysisText.classList.toggle("codex-placeholder-hidden", placeholder && !analysisText.classList.contains("ok")); }
+    function normalizeText(){ if (taskStep) { const m = (taskStep.textContent || "").match(/(?:步骤|关卡)\s*(\d+)\s*\/\s*(\d+)/); if (m) { const next = "关卡 " + m[1] + "/" + m[2]; if (taskStep.textContent !== next) taskStep.textContent = next; } } const st = window.state || {}; if (modeTag) { const stepText = taskStep ? (taskStep.textContent || "").replace(/\s+/g, " ").trim() : ""; const sm = stepText.match(/关卡\s*(\d+)\s*\/\s*(\d+)/); const stepMode = sm ? "关卡 " + sm[1] + "/" + sm[2] : stepText; let next = "模式：闯关模式" + (stepMode ? " · " + stepMode : ""); if (st.autoPlaying) next = "模式：演示模式 · 自动运行"; else if (st.freeMode) next = "模式：自由模式"; else if (st.completed) next = "模式：闯关模式 · 已通关"; if (modeTag.textContent !== next) modeTag.textContent = next; } if (resetBtn && resetBtn.textContent !== "重置关卡") resetBtn.textContent = "重置关卡"; if (autoDemoBtn) { const next = st.autoPlaying || /退出/.test(autoDemoBtn.textContent || "") ? "退出演示模式" : "演示模式"; if (autoDemoBtn.textContent !== next) autoDemoBtn.textContent = next; } if (freeBtn && !/退出/.test(freeBtn.textContent || "") && freeBtn.textContent !== "自由模式") freeBtn.textContent = "自由模式"; if (hintLamp) hintLamp.setAttribute("aria-label", "查看实验提示"); if (hintPop) hintPop.setAttribute("role", "note"); }
+    function syncMobile(){ ensureTabs(); const mobile = isMobile(); controlDock.classList.toggle("mobile-sheet", mobile); dataDock.classList.toggle("mobile-sheet", mobile); if (mobile && stage.dataset.codexMobileReady !== "1") { stage.dataset.codexMobileReady = "1"; if (controlDock.classList.contains("collapsed") && dataDock.classList.contains("collapsed")) setMobilePanel("control"); } if (!mobile) stage.dataset.codexMobileReady = "0"; syncTabs(); }
+    function syncAll(){ if (syncing) return; syncing = true; annotateRecords(); syncAnalysis(); normalizeText(); syncMobile(); syncing = false; }
+    function queueSync(){ if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; syncAll(); }); }
+    new MutationObserver(queueSync).observe(stage, { childList:true, subtree:true, attributes:true, attributeFilter:["class", "style"] });
+    window.addEventListener("resize", queueSync, { passive:true });
+    syncAll();
+  })();
+  </script>
+</body>
+</html>
