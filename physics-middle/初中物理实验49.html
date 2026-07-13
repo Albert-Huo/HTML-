@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>初中物理实验49｜制作简易直流电动机</title>
+  <title>初中物理实验49｜设计与制作简易直流电动机模型</title>
   <style>
     :root{--bg:#1a1a1a;--ink:#fff;--card-bg:rgba(255,255,255,.08);--panel-bg:rgba(15,15,15,.54);--line:rgba(255,255,255,.12);--accent:#3ddc97;--warn:#ffb74d;--danger:#ff5b6e;--dockShadow:0 14px 36px rgba(0,0,0,.42)}
     *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;padding:10px;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;letter-spacing:0}
@@ -16,7 +16,7 @@
     .task-step{background:rgba(255,255,255,.16);border-radius:8px;padding:6px 10px;font-weight:700;white-space:nowrap}.task-text{min-width:0;line-height:1.55}#taskHint{color:#ffd54f;font-size:12px;opacity:.95;margin-top:2px}.progress-dots{display:flex;gap:6px;align-items:center}
     .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.26);outline:2px solid rgba(255,255,255,.12)}.dot.active{background:var(--warn)}.dot.done{background:var(--accent);outline-color:rgba(61,220,151,.45)}.dot.warn{background:var(--danger);box-shadow:0 0 10px rgba(255,91,110,.62)}
     #stage{width:100%;max-width:980px;height:66vh;max-height:660px;min-height:520px;margin-top:10px;border-radius:12px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0b0f14;box-shadow:0 10px 26px rgba(0,0,0,.35);touch-action:pan-y pinch-zoom;background-image:radial-gradient(circle at 78% 18%,rgba(255,255,255,.05),transparent 38%),radial-gradient(circle at 22% 80%,rgba(0,255,255,.045),transparent 42%)}
-    .lab-area{position:absolute;inset:54px 10px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(#071018,#0d141c);overflow:hidden}#labCanvas{width:100%;height:100%;display:block;touch-action:pan-y pinch-zoom;cursor:crosshair}
+    .lab-area{position:absolute;inset:54px 10px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(#071018,#0d141c);overflow:hidden}#labCanvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
     .hud{position:absolute;left:10px;top:10px;z-index:20;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:rgba(0,0,0,.48);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12px}.tag{border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:2px 8px;font-weight:700;color:#dce9ff;background:rgba(255,255,255,.06)}
     .hint-lamp{position:absolute;left:10px;top:56px;z-index:22;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#ffd54f;font-size:16px;cursor:pointer;padding:0}.hint-lamp.flash{animation:lampFlash .6s ease}@keyframes lampFlash{50%{box-shadow:0 0 22px rgba(255,91,110,.86);border-color:var(--danger);color:#ffb0b0}}
     .hint-pop{position:absolute;left:10px;top:96px;z-index:23;width:min(330px,calc(100% - 24px));display:none;padding:10px 12px;border:1px solid rgba(255,209,102,.36);border-radius:10px;background:rgba(16,18,20,.9);color:#f4efe2;font-size:13px;line-height:1.55}.hint-pop.open{display:block}
@@ -45,7 +45,7 @@
   <div id="app">
     <div id="spectrum"></div>
     <section class="task-card"><div class="task-step" id="taskStep">步骤 1 / 5</div><div class="task-text"><div id="taskText"></div><div id="taskHint"></div></div><div class="progress-dots" id="dots"></div></section>
-    <main id="stage" aria-label="制作简易直流电动机实验台">
+    <main id="stage" aria-label="设计与制作简易直流电动机模型实验台">
       <div class="hud"><span class="tag mode-strip" id="modeTag">模式：引导</span><span class="tag" id="statusTag">状态：待操作</span></div>
       <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button><div class="hint-pop" id="hintPop"></div>
       <div class="lab-area" id="labArea"><canvas id="labCanvas"></canvas></div>
@@ -54,27 +54,27 @@
         <div class="analysis" id="analysisText">完成四次记录后分析。</div>
       </div></section>
       <section class="dock drawer data collapsed" id="dataDock"><div class="dock-header" data-drag-handle><span class="dockTitle">数据面板 <span class="badge" id="dataNotice">0</span></span><button class="iconBtn" id="dataToggleBtn" type="button">展开</button></div><div class="dock-body"><table class="record"><thead><tr><th>步骤</th><th>记录</th></tr></thead><tbody id="recordBody"></tbody></table><div class="empty" id="emptyRecords">暂无记录。</div></div></section>
-      <div class="toast" id="toast">提示</div><div class="checkmark" id="checkmark"></div><div class="demo-cursor" id="demoCursor"></div><div class="modal-mask" id="doneMask"><div class="modal"><h3>实验完成</h3><p>一端全刮漆、一端半刮漆，让线圈半周通电、半周断电，线圈能靠惯性持续同向转动。</p><button class="ok" id="okBtn" type="button">OK</button></div></div>
+      <div class="toast" id="toast">提示</div><div class="checkmark" id="checkmark"></div><div class="demo-cursor" id="demoCursor"></div><div class="modal-mask" id="doneMask"><div class="modal"><h3>实验完成</h3><p>一端全刮漆、一端只刮半周，使线圈在驱动半周通电、越过平衡位置的半周断电，线圈能靠惯性持续同向转动。</p><button class="ok" id="okBtn" type="button">OK</button></div></div>
     </main>
     <div class="toolbar"><button class="sub" id="resetBtn" type="button">步骤重置</button><button class="sub" id="autoDemoBtn" type="button">自动演示</button><button class="sub" id="freeBtn" type="button">自由模式</button></div>
-    <section class="explanation"><h2>实验名：制作简易直流电动机</h2><p><b>关键过程：</b>把线圈放入磁极间隙，左端引线全刮漆，右端引线只刮下半周，再接通电路并轻拨线圈。</p><p><b>结论：</b>一端全刮、一端半刮能让线圈每转一周只有半周通电，断电半周靠惯性越过平衡位置，从而持续同向转动。</p></section>
+    <section class="explanation"><h2>实验名：设计与制作简易直流电动机模型</h2><p><b>关键过程：</b>把粗漆包线绕成带转轴的矩形线圈，架在接通电池的支架上，再把强磁体放在线圈下方；左端引线全刮漆，右端引线只刮半周，再通电并轻推线圈。</p><p><b>结论：</b>一端全刮、一端只刮半周，可让线圈在需要驱动力矩的半周通电，另一半周断电并靠惯性越过平衡位置，从而持续同向转动。</p></section>
   </div>
   <script>
   (() => {
     "use strict";
-    const SPEC = {"id":49,"title":"制作简易直流电动机","scene":"simpleMotor","family":"电磁","textbook":"九年级全一册 第二十章 第5节 电动机","apparatus":"漆包线线圈、U形磁铁、电池盒、支架、导线、刮刀","keyPoint":"把线圈架在磁极间隙中，左端全刮漆，右端只刮下半周，让线圈周期性通断电。","conclusion":"一端全刮、一端半刮能让线圈每转一周只有半周通电，断电半周靠惯性越过平衡位置，线圈可以持续同向转动。","scenarios":[{"key":"mount","label":"架上线圈","action":"点击线圈，把线圈架到两根支架上，并放入U形磁铁的磁极间隙。","note":"线圈已经位于磁场中，但两端漆层未处理，电路还不能稳定导通。","value":0},{"key":"leftScrape","label":"左端全刮漆","action":"点击左端引线，刮去整圈漆层，让这一端始终可以导电。","note":"左端引线全周导电，作为持续接触的一端。","value":1},{"key":"rightHalf","label":"右端半周刮漆","action":"点击右端引线，只刮去下半周漆层，让线圈每转一周只有半周通电。","note":"右端只在半周内导电，另一半周断电，避免线圈被反向力矩拉回。","value":2},{"key":"spin","label":"轻拨转动","action":"点击线圈，接通电路并轻拨线圈，观察持续转动。","note":"通电半周受到磁场力矩，断电半周靠惯性越过平衡位置，线圈持续同向转动。","value":3}]};
+    const SPEC = {"id":49,"title":"设计与制作简易直流电动机模型","scene":"simpleMotor","family":"电磁","textbook":"九年级全一册 第二十章 第5节 跨学科实践：制作简易直流电动机","apparatus":"粗漆包线线圈、强磁体、电池、硬金属丝支架、硬纸板或电池盒、小刀","keyPoint":"把带转轴的矩形线圈架在接通电池的支架上，并把强磁体放在线圈下方；左端全刮漆，右端只刮半周，让线圈周期性通断电。","conclusion":"一端全刮、一端只刮半周，可让线圈在需要驱动力矩的半周通电，另一半周断电并靠惯性越过平衡位置，线圈可以持续同向转动。","scenarios":[{"key":"mount","label":"架上线圈","action":"拖动矩形线圈，把两端转轴准确对准两根 V 形支架的接点，并保持强磁体位于线圈下方。","note":"约3 cm×2 cm的矩形线圈已架好，两端转轴与支架接点对准；强磁体位于线圈下方，但两端漆层尚未处理。","value":0},{"key":"leftScrape","label":"左端全刮漆","action":"拖动小刀在左端转轴处往复刮动，刮去整圈漆层。","note":"左端转轴全周露出铜线，在整个转动过程中均可接触导电。","value":1},{"key":"rightHalf","label":"右端刮半周","action":"拖动小刀在右端转轴指定侧往复刮动，只刮去半周漆层。","note":"右端只有半周露出铜线，使线圈在驱动半周通电、另一半周断电。","value":2},{"key":"spin","label":"轻推转动","action":"在线圈上拖动完成轻推，观察线圈持续同向转动。","note":"通电半周受到磁场力矩，断电半周靠惯性越过平衡位置，线圈持续同向转动。","value":3}]};
     const $ = s => document.querySelector(s);
     const stage = $("#stage"), labArea = $("#labArea"), canvas = $("#labCanvas"), ctx = canvas.getContext("2d");
     const taskStep = $("#taskStep"), taskText = $("#taskText"), taskHint = $("#taskHint"), dots = $("#dots"), modeTag = $("#modeTag"), statusTag = $("#statusTag");
     const hintLamp = $("#hintLamp"), hintPop = $("#hintPop"), controlDock = $("#controlDock"), dataDock = $("#dataDock"), controlToggleBtn = $("#controlToggleBtn"), dataToggleBtn = $("#dataToggleBtn");
     const recordBtn = $("#recordBtn"), analyzeBtn = $("#analyzeBtn"), analysisText = $("#analysisText"), recordBody = $("#recordBody"), emptyRecords = $("#emptyRecords"), dataNotice = $("#dataNotice");
     const resetBtn = $("#resetBtn"), autoDemoBtn = $("#autoDemoBtn"), freeBtn = $("#freeBtn"), toast = $("#toast"), checkmark = $("#checkmark"), doneMask = $("#doneMask"), okBtn = $("#okBtn"), demoCursor = $("#demoCursor");
-    const state = { currentTask:0, completed:false, freeMode:false, autoPlaying:false, autoCancel:false, drawerDrag:null, stepWarning:false, successCooldown:false, timers:new Set(), scenarioIndex:0, operationCount:0, records:[], unseenRecords:0, analysisDone:false, width:0, height:0, stageWidth:0, stageHeight:0, drag:false, phase:0, moved:false, currentReversed:false, rheostatPos:.5, motorAngleOffset:0, dcSwitchClosed:false, dcMotorKicked:false, dcRestAngle:.02, dcCoilMounted:false, dcWireScraped:false, leftScraped:false, rightHalfScraped:false };
+    const state = { currentTask:0, completed:false, completedByAuto:false, freeMode:false, autoPlaying:false, autoCancel:false, autoToken:0, lastError:null, drawerDrag:null, stepWarning:false, successCooldown:false, timers:new Set(), scenarioIndex:0, operationCount:0, records:[], unseenRecords:0, analysisDone:false, width:0, height:0, stageWidth:0, stageHeight:0, drag:null, coilDrag:null, scraperPos:null, phase:0, moved:false, currentReversed:false, rheostatPos:.5, motorAngleOffset:0, dcSwitchClosed:false, dcMotorKicked:false, dcRestAngle:.02, dcCoilMounted:false, dcWireScraped:false, leftScraped:false, rightHalfScraped:false };
     const tasks = [
-      { text:"操作并记录：架上线圈", hint:"点击线圈，把它放入 U 形磁铁的磁极间隙，并架在两根支架上。", detail:"先把线圈架好，让线圈位于红蓝磁极之间；此时两端漆层还没有处理。", expected:"mount", check:() => hasRecord("mount") },
-      { text:"操作并记录：左端全刮漆", hint:"点击左端引线，刮去整圈漆层，使左端始终导电。", detail:"左端漆层全部刮去，金属铜线能在整个转动过程中接触导电。", expected:"leftScrape", check:() => hasRecord("leftScrape") },
-      { text:"操作并记录：右端半周刮漆", hint:"点击右端引线，只刮下半周漆层。", detail:"右端只刮去下半周漆层，让线圈每转一周只有半周通电，另一半周断电。", expected:"rightHalf", check:() => hasRecord("rightHalf") },
-      { text:"操作并记录：轻拨转动", hint:"点击线圈，接通电路并轻拨，观察线圈持续同向转动。", detail:"半周通电时线圈受磁场力矩转动，断电半周靠惯性越过平衡位置。", expected:"spin", check:() => hasRecord("spin") },
+      { text:"操作并记录：架上线圈", hint:"拖动矩形线圈，把中心对准两根 V 形支架的接点。", detail:"教材参考尺寸约为3 cm×2 cm，两端各留约2 cm作为转轴；左右转轴要同时落入支架接点，强磁体保持在线圈下方。", expected:"mount", check:() => hasRecord("mount") },
+      { text:"操作并记录：左端全刮漆", hint:"拖动小刀到左端转轴并往复刮动，刮去整圈漆层。", detail:"左端漆层全部刮去，露出的铜线能在整个转动过程中保持接触导电。", expected:"leftScrape", check:() => hasRecord("leftScrape") },
+      { text:"操作并记录：右端刮半周", hint:"拖动小刀到右端转轴并往复刮动，只刮去半周漆层。", detail:"右端只刮去半周漆层，使线圈在需要驱动力矩的半周通电，另一半周断电。", expected:"rightHalf", check:() => hasRecord("rightHalf") },
+      { text:"操作并记录：轻推转动", hint:"在线圈上横向拖动完成轻推，观察线圈持续同向转动。", detail:"通电半周由磁场力矩驱动，断电半周靠惯性越过平衡位置。", expected:"spin", check:() => hasRecord("spin") },
       { text:"分析实验结论", hint:"四组记录完成后点击分析。", detail:SPEC.conclusion, check:() => state.analysisDone }
     ];
     function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
@@ -85,8 +85,8 @@
     function hasRecord(key){ return state.records.some(r => r.key === key); }
     function initDots(){ dots.innerHTML = ""; tasks.forEach(() => { const d = document.createElement("span"); d.className = "dot"; dots.appendChild(d); }); }
     function updateDots(){ Array.from(dots.children).forEach((dot, i) => { dot.classList.toggle("done", state.completed || i < state.currentTask); dot.classList.toggle("active", !state.completed && i === state.currentTask && !state.stepWarning); dot.classList.toggle("warn", !state.completed && i === state.currentTask && state.stepWarning); }); }
-    function setStepUI(i){ state.currentTask = clamp(i, 0, tasks.length - 1); state.stepWarning = false; const t = tasks[state.currentTask]; taskStep.textContent = "步骤 " + (state.currentTask + 1) + " / " + tasks.length; taskText.textContent = t.text; taskHint.textContent = t.hint; hintPop.textContent = t.detail; updateDots(); updateReadouts(); draw(); }
-    function setModeLabel(){ modeTag.textContent = state.autoPlaying ? "模式：自动演示" : (state.freeMode ? "模式：自由" : "模式：引导"); }
+    function setStepUI(i){ state.currentTask = clamp(i, 0, tasks.length - 1); state.stepWarning = false; const t = tasks[state.currentTask]; taskStep.textContent = "步骤 " + (state.currentTask + 1) + " / " + tasks.length; taskText.textContent = t.text; taskHint.textContent = t.hint; hintPop.textContent = t.detail; setModeLabel(); updateDots(); updateReadouts(); draw(); }
+    function setModeLabel(){ const step="关卡 "+(state.currentTask+1)+"/"+tasks.length; let text="模式：闯关模式 · "+step; if(state.autoPlaying) text="模式：演示模式 · 自动运行"; else if(state.freeMode) text="模式：自由模式"; else if(state.completed) text=state.completedByAuto?"模式：演示模式 · 演示完成":"模式：闯关模式 · 已通关"; modeTag.textContent=text; }
     function updateStatus(text){ statusTag.textContent = "状态：" + (text || (state.completed ? "已完成" : state.autoPlaying ? "自动演示" : currentScenario().label)); }
     function showToast(msg){ toast.textContent = msg; toast.classList.add("show"); clearTimeout(showToast.t); showToast.t = setTimeout(() => toast.classList.remove("show"), 1500); }
     function showCheck(){ checkmark.classList.add("active"); clearTimeout(showCheck.t); showCheck.t = setTimeout(() => checkmark.classList.remove("active"), 560); }
@@ -107,9 +107,9 @@
       draw();
     }
     function updateReadouts(){ currentScenario(); }
-    function passStepIfReady(opts){ if (state.freeMode || state.completed || state.successCooldown) return false; if (!tasks[state.currentTask].check()) { if (!opts || !opts.quiet) warnStep("当前步骤证据还不完整。"); return false; } state.successCooldown = true; schedule(() => { state.successCooldown = false; }, 400); showCheck(); if (state.currentTask >= tasks.length - 1) { state.completed = true; setDrawerCollapsed(controlDock, false); setDrawerCollapsed(dataDock, true); doneMask.style.display = "flex"; updateStatus(); updateDots(); } else setStepUI(state.currentTask + 1); return true; }
-    function recordObservation(opts){ if (!state.operationCount && !(opts && opts.auto)) { warnStep("先操作实验台上的器材。"); return false; } const s = currentScenario(); const task = tasks[state.currentTask]; if (!state.freeMode && task.expected && task.expected !== s.key) { warnStep("当前步骤应记录：" + task.text.replace("操作并记录：","")); return false; } if (!state.freeMode && SPEC.scene === "simpleMotor") { if (task.expected === "mount" && !state.dcCoilMounted) { warnStep("先点击线圈，把它架到磁铁间隙中。"); return false; } if (task.expected === "leftScrape" && !state.leftScraped) { warnStep("先点击左端引线，完成全刮漆。"); return false; } if (task.expected === "rightHalf" && !state.rightHalfScraped) { warnStep("先点击右端引线，完成半周刮漆。"); return false; } if (task.expected === "spin" && !(state.dcSwitchClosed && state.dcMotorKicked)) { warnStep("先点击线圈，接通并轻拨转动。"); return false; } } if (!state.freeMode && SPEC.scene === "dcMotor") { if (task.expected === "assemble" && !state.dcCoilMounted) { warnStep("先点击线圈，把它放入磁铁间隙。"); return false; } if (task.expected === "closed" && !(state.dcSwitchClosed && state.dcMotorKicked)) { warnStep("先点击开关，闭合电路。"); return false; } if (task.expected === "reverse" && !state.currentReversed) { warnStep("先点击电池组，切换正负极。"); return false; } } if (!hasRecord(s.key)) { state.records.push({ key:s.key, step:s.label, note:s.note }); if (dataDock.classList.contains("collapsed")) { state.unseenRecords += 1; updateBadge(); } renderRecords(); showToast("已记录"); } else if (!opts || !opts.auto) showToast("这组已记录"); passStepIfReady({ quiet:true }); return true; }
-    function analyzeConclusion(){ if (!SPEC.scenarios.every(s => hasRecord(s.key))) { warnStep("请先补齐操作记录。"); return false; } state.analysisDone = true; analysisText.classList.add("ok"); analysisText.textContent = SPEC.conclusion; showToast("已分析"); passStepIfReady({ quiet:true }); return true; }
+    function passStepIfReady(opts){ if (state.freeMode || state.completed) return false; if (!tasks[state.currentTask].check()) { if (!opts || !opts.quiet) warnStep("当前步骤证据还不完整。"); return false; } state.successCooldown = true; schedule(() => { state.successCooldown = false; }, 400); showCheck(); if (state.currentTask >= tasks.length - 1) { state.completed = true; state.completedByAuto=state.autoPlaying; setDrawerCollapsed(controlDock, false); setDrawerCollapsed(dataDock, true); doneMask.style.display = "flex"; setModeLabel(); updateStatus(); updateDots(); } else setStepUI(state.currentTask + 1); return true; }
+    function recordObservation(opts){ if (!state.operationCount && !(opts && opts.auto)) { warnStep("先操作实验台上的器材。"); return false; } const s = currentScenario(); const task = tasks[state.currentTask]; if (!state.freeMode && task.expected && task.expected !== s.key) { warnStep("当前步骤应记录：" + task.text.replace("操作并记录：","")); return false; } if (!state.freeMode && SPEC.scene === "simpleMotor") { if (task.expected === "mount" && !state.dcCoilMounted) { warnStep("先把矩形线圈拖到两根支架上。"); return false; } if (task.expected === "leftScrape" && !state.leftScraped) { warnStep("先拖动小刀，完成左端全周刮漆。"); return false; } if (task.expected === "rightHalf" && !state.rightHalfScraped) { warnStep("先拖动小刀，完成右端半周刮漆。"); return false; } if (task.expected === "spin" && !(state.dcSwitchClosed && state.dcMotorKicked)) { warnStep("先在线圈上拖动，完成轻推启动。"); return false; } } if (!state.freeMode && SPEC.scene === "dcMotor") { if (task.expected === "assemble" && !state.dcCoilMounted) { warnStep("先点击线圈，把它放入磁铁间隙。"); return false; } if (task.expected === "closed" && !(state.dcSwitchClosed && state.dcMotorKicked)) { warnStep("先点击开关，闭合电路。"); return false; } if (task.expected === "reverse" && !state.currentReversed) { warnStep("先点击电池组，切换正负极。"); return false; } } if (!hasRecord(s.key)) { state.records.push({ key:s.key, step:s.label, note:s.note }); if (dataDock.classList.contains("collapsed")) { state.unseenRecords += 1; updateBadge(); } renderRecords(); showToast("已记录"); } else if (!opts || !opts.auto) showToast("这组已记录"); passStepIfReady({ quiet:true }); return true; }
+    function analyzeConclusion(){ if (!SPEC.scenarios.every(s => hasRecord(s.key))) { warnStep("请先补齐操作记录。"); return false; } state.analysisDone = true; analysisText.classList.add("ok"); analysisText.textContent = SPEC.conclusion; showToast("已分析"); if(!passStepIfReady({ quiet:true })&&state.successCooldown) schedule(() => passStepIfReady({ quiet:true }),420); return true; }
     function renderRecords(){ recordBody.innerHTML = ""; state.records.forEach(r => { const tr = document.createElement("tr"); [r.step, r.note].forEach(v => { const td = document.createElement("td"); td.textContent = v; tr.appendChild(td); }); recordBody.appendChild(tr); }); emptyRecords.style.display = state.records.length ? "none" : "block"; }
     function updateBadge(){ dataNotice.textContent = String(state.unseenRecords); dataNotice.classList.toggle("show", state.unseenRecords > 0 && dataDock.classList.contains("collapsed")); }
     function resizeCanvas(){ const sr = stage.getBoundingClientRect(), r = labArea.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; state.width = r.width; state.height = r.height; state.stageWidth = sr.width; state.stageHeight = sr.height; canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr); canvas.style.width = r.width + "px"; canvas.style.height = r.height + "px"; ctx.setTransform(dpr,0,0,dpr,0,0); fitDrawers(); draw(); }
@@ -287,7 +287,7 @@
       ctx.lineTo(-w/2,h/2+skew);
       ctx.closePath();
       ctx.fill();
-      if(spinning){
+      if(spinning&&!state.completed){
         ctx.strokeStyle="rgba(255,216,109,.24)";
         ctx.lineWidth=11*s;
         ctx.beginPath(); ctx.ellipse(0,0,112*s,64*s,0,0,Math.PI*2); ctx.stroke();
@@ -697,11 +697,15 @@
     }
     function sceneSimpleMotor(r,n){
       const g=simpleMotorGeom(r),s=g.s;
-      const mounted=state.dcCoilMounted || n>0;
+      const mounted=state.dcCoilMounted;
       const prepared=state.leftScraped && state.rightHalfScraped;
       const spinning=mounted && prepared && state.dcSwitchClosed && state.dcMotorKicked;
-      const angle=spinning ? simpleMotorAngle() : (mounted ? -.28 : -.05);
+      const angle=spinning ? simpleMotorAngle() : (mounted ? state.dcRestAngle : -.05);
       const conducting=spinning && simpleMotorConducting(angle);
+      if(spinning){
+        const phaseText=conducting ? "状态：通电半周 · 磁场力矩驱动" : "状态：断电半周 · 靠惯性转动";
+        if(statusTag.textContent!==phaseText) statusTag.textContent=phaseText;
+      }
       drawSimpleBoard(g);
       drawSimpleBattery(g, mounted && prepared && state.dcSwitchClosed);
       drawSimpleWires(g, mounted, mounted && prepared && state.dcSwitchClosed);
@@ -709,9 +713,10 @@
       drawSimpleMagnet(g);
       drawSimpleCoil(g, angle, mounted, conducting, spinning);
       if(conducting) drawSimpleCurrentDots(g, angle);
-      drawScrapeCallouts(g, spinning ? angle : null);
+      drawSimpleScraper(g);
+      drawScrapeCallouts(g, state.rightHalfScraped ? angle : null);
       if(!mounted) drawSimpleMountCue(g);
-      if(mounted && state.leftScraped && !state.rightHalfScraped) label("右端还需半周刮漆",g.coil.x,g.board.y+g.board.h+30*s,"#ffd54f");
+      if(mounted && state.leftScraped && !state.rightHalfScraped) simpleLabel("右端还需刮去半周漆层",g.coil.x,g.board.y+g.board.h+30*s,s,"#ffd54f");
     }
     function simpleMotorGeom(r){
       const s=r.s, cx=r.x+r.w*.5, cy=r.y+r.h*.53, compact=state.width<560;
@@ -725,9 +730,10 @@
       rightPost.y = rightPost.base - 72*s;
       const battery={x:board.x+board.w*.72,y:board.y+board.h+42*s,w:158*s,h:56*s};
       const looseCoil={x:board.x+board.w*.22,y:board.y+board.h*.58,w:126*s,h:64*s};
+      const scraper={x:board.x+board.w*.12,y:board.y+board.h+34*s,w:92*s,h:24*s};
       const callL={x:board.x+(compact?92:132)*s,y:Math.max(r.y+38*s,board.y-58*s),r:56*s};
-      const callR={x:board.x+board.w-(compact?92:190)*s,y:Math.max(r.y+38*s,board.y-58*s),r:56*s};
-      return {s,board,magnet,coil,leftPost,rightPost,battery,looseCoil,callL,callR};
+      const callR={x:board.x+board.w-(compact?92:245)*s,y:Math.max(r.y+38*s,board.y-58*s),r:56*s};
+      return {s,board,magnet,coil,leftPost,rightPost,battery,looseCoil,scraper,callL,callR};
     }
     function simpleMotorPowered(){ return state.dcCoilMounted && state.leftScraped && state.rightHalfScraped && state.dcSwitchClosed; }
     function simpleMotorAngle(){ return state.motorAngleOffset + performance.now()/330; }
@@ -778,7 +784,7 @@
       ctx.restore();
     }
     function drawSimplePosts(g,mounted){
-      const s=g.s;
+      const s=g.s,compact=state.width<560;
       [g.leftPost,g.rightPost].forEach((p,i)=>{
         ctx.save();
         fillRound(p.x-24*s,p.base+5*s,48*s,12*s,5*s,"#1e613e");
@@ -790,7 +796,7 @@
         ctx.beginPath();
         ctx.arc(p.x,p.top,5.5*s,0,Math.PI*2);
         ctx.fill();
-        label(i===0?"左V型支架":"右V型支架",p.x,p.base+31*s,"#dff7ef");
+        simpleLabel(i===0?(compact?"左支架":"左 V 形支架"):(compact?"右支架":"右 V 形支架"),p.x+(compact?(i===0?-18:18)*s:0),p.base+31*s,s,"#dff7ef");
         ctx.restore();
       });
       if(mounted){
@@ -800,23 +806,32 @@
     }
     function drawSimpleMagnet(g){
       const s=g.s,m=g.magnet;
+      const x=m.x,y=m.y+8*s,w=132*s,h=64*s;
       ctx.save();
       ctx.shadowColor="rgba(0,0,0,.32)";
       ctx.shadowBlur=10*s;
       ctx.shadowOffsetY=5*s;
-      fillRound(m.x-m.w*.44,m.y-m.h*.44,m.w*.88,m.h*.36,10*s,"#238edb");
-      fillRound(m.x-m.w*.44,m.y-m.h*.08,m.w*.88,m.h*.36,10*s,"#d33b43");
+      const body=ctx.createLinearGradient(x,y-h/2,x,y+h/2);
+      body.addColorStop(0,"#2f9ce0");
+      body.addColorStop(.48,"#287db4");
+      body.addColorStop(.52,"#d94a50");
+      body.addColorStop(1,"#a92f38");
+      fillRound(x-w/2,y-h/2,w,h,12*s,body);
+      ctx.fillStyle="#58b7ee";
+      ctx.beginPath();
+      ctx.ellipse(x,y-h/2,w/2,15*s,0,0,Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle="rgba(107,17,27,.72)";
+      ctx.beginPath();
+      ctx.ellipse(x,y+h/2,w/2,13*s,0,0,Math.PI);
+      ctx.fill();
       ctx.shadowBlur=0;
-      fillRound(m.x-m.w*.30,m.y-m.h*.26,m.w*.60,m.h*.44,10*s,"#071018");
-      fillRound(m.x-m.w*.39,m.y-m.h*.39,m.w*.78,12*s,6*s,"rgba(255,255,255,.16)");
-      fillRound(m.x-m.w*.39,m.y-m.h*.03,m.w*.78,10*s,5*s,"rgba(255,255,255,.10)");
-      label("S",m.x+m.w*.38,m.y-m.h*.25,"#eaf5ff");
-      label("N",m.x-m.w*.38,m.y+m.h*.09,"#fff4f4");
-      label("磁铁",m.x,m.y+m.h*.39,"#eaf5ff");
+      simpleLabel("N",x,y-h/2,s,"#ffffff");
+      simpleLabel("S",x,y+h/2-2*s,s,"#fff4f4");
       ctx.restore();
     }
     function drawSimpleCoil(g,angle,mounted,conducting,spinning){
-      const s=g.s,c=mounted?g.coil:g.looseCoil,cx=c.x,cy=c.y;
+      const s=g.s,c=mounted?g.coil:g.looseCoil,cx=!mounted&&state.coilDrag?state.coilDrag.x:c.x,cy=!mounted&&state.coilDrag?state.coilDrag.y:c.y;
       ctx.save();
       if(!mounted){
         ctx.translate(cx,cy);
@@ -860,6 +875,35 @@
       fillRound(axisLeft-5*s,axisY-5*s,10*s,10*s,5*s,state.leftScraped?"#f2b765":"#c44b4f");
       fillRound(axisRight-5*s,axisY-5*s,10*s,10*s,5*s,rightContactCopper?"#ffd96a":(state.rightHalfScraped?"#c8434c":"#a73c47"));
       ctx.restore();
+    }
+    function simpleLabel(text,x,y,s,color){
+      ctx.save();
+      ctx.fillStyle=color||"#eaf5ff";
+      ctx.font="700 "+Math.max(state.width<560?9:11,12*s)+"px Arial";
+      ctx.textAlign="center";
+      ctx.textBaseline="middle";
+      ctx.fillText(text,x,y);
+      ctx.restore();
+    }
+    function simpleScraperPosition(g){ return state.scraperPos || {x:g.scraper.x,y:g.scraper.y}; }
+    function drawSimpleScraper(g){
+      const s=g.s,p=simpleScraperPosition(g),dragging=state.drag&&state.drag.kind==="scrape";
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.rotate(dragging?-.18:-.08);
+      fillRound(-46*s,-10*s,42*s,20*s,6*s,"#2b8c63");
+      fillRound(-40*s,-5*s,30*s,4*s,2*s,"rgba(255,255,255,.24)");
+      ctx.fillStyle="#dbe3e7";
+      ctx.beginPath();
+      ctx.moveTo(-4*s,-8*s);
+      ctx.lineTo(48*s,-5*s);
+      ctx.lineTo(31*s,8*s);
+      ctx.lineTo(-4*s,8*s);
+      ctx.closePath();
+      ctx.fill();
+      cable([[-2*s,-7*s],[44*s,-4*s]],"rgba(255,255,255,.62)",1*s);
+      ctx.restore();
+      if(!dragging) simpleLabel("小刀",p.x,p.y+24*s,s,"#dff7ef");
     }
     function drawRightHalfScrapedLead(x1,y,x2,prepared,copperContact,s,spinning){
       if(!prepared){
@@ -996,10 +1040,20 @@
         [r.x,r.base-4*s],
         ...rightWire
       ];
+      const loopW=Math.min(g.coil.w,(axisRight-axisLeft)*.58);
+      const loopLeft=g.coil.x-loopW/2,loopRight=g.coil.x+loopW/2;
+      const halfH=.35*s+Math.abs(Math.cos(angle))*40*s;
+      const yTop=axisY-halfH,yBottom=axisY+halfH;
+      const upperCoilRoute=[[axisLeft,axisY],[loopLeft,axisY],[loopLeft,yTop],[loopRight,yTop],[loopRight,axisY],[axisRight,axisY]];
+      const lowerCoilRoute=[[axisRight,axisY],[loopRight,axisY],[loopRight,yBottom],[loopLeft,yBottom],[loopLeft,axisY],[axisLeft,axisY]];
       const base=(performance.now()/900)%1;
       for(let i=0;i<5;i++){
         drawDotOnPolyline(leftRoute,(base+i/5)%1,4.2*s,i%3===0?"#fff8b5":"#ffd96a");
         drawDotOnPolyline(rightRoute,(base+.18+i/5)%1,4.2*s,i%3===0?"#fff8b5":"#ffd96a");
+      }
+      for(let i=0;i<4;i++){
+        drawDotOnPolyline(upperCoilRoute,(base+.08+i/4)%1,3.7*s,i===0?"#fff8b5":"#ffd96a");
+        drawDotOnPolyline(lowerCoilRoute,(base+.58+i/4)%1,3.2*s,i===0?"#fff8b5":"#ffd96a");
       }
     }
     function sampleCubic(p0,p1,p2,p3,steps){
@@ -1077,6 +1131,7 @@
       ctx.setLineDash([7*s,7*s]);
       strokeRound(g.leftPost.x-28*s,g.leftPost.top-28*s,g.rightPost.x-g.leftPost.x+56*s,74*s,10*s,"rgba(255,213,79,.62)",2*s);
       ctx.setLineDash([]);
+      simpleLabel("对准两接点",g.coil.x,g.leftPost.top-40*s,s,"#ffd54f");
       ctx.restore();
     }
     function sceneInduction(r,n){ const s=r.s,cx=r.x+r.w*.5,cy=r.y+r.h*.53; drawSolenoidCoil(cx-70*s,cy,n,s); const mx=cx+(n===0?-210:n===1?-110:-250)*s; drawBarMagnet(mx,cy,n===2,s*.86); drawAnalogMeter(cx+270*s,cy,"G",n===1?0:n===0?.72:-.72,s); cable([[cx+70*s,cy-48*s],[cx+210*s,cy-64*s],[cx+230*s,cy-40*s]],"#dcecff",3*s); cable([[cx+70*s,cy+48*s],[cx+210*s,cy+64*s],[cx+230*s,cy+40*s]],"#dcecff",3*s); label(n===0?"插入磁铁，指针偏转":n===1?"相对静止，指针回零":"拔出磁铁，反向偏转",cx,cy+160*s,"#ffd54f"); }
@@ -1148,14 +1203,21 @@
       if (state.autoPlaying) return;
       const p = pointerStage(e);
       if(!hitBench(p)){ showToast("请在实验台器材上拖动。"); return; }
+      if(SPEC.scene === "simpleMotor"){
+        startSimpleMotorGesture(p);
+        if(state.drag){
+          try { canvas.setPointerCapture(e.pointerId); } catch(err) { console.warn("capture motor gesture failed", err); }
+        }
+        e.preventDefault();
+        return;
+      }
       if(state.freeMode){
-        const target = SPEC.scene === "simpleMotor" ? hitSimpleMotorPart(p) : hitDcMotorPart(p);
-        if(!target){ showToast(SPEC.scene === "simpleMotor" ? "可点击线圈、左右刮漆端或电池盒。" : "可点击开关、电池组、线圈，或拖动滑片 P。"); return; }
-        state.drag = target === "rheostat" ? "rheostat" : (SPEC.scene === "simpleMotor" ? "simpleMotor" : "dcMotor");
+        const target = hitDcMotorPart(p);
+        if(!target){ showToast("可点击开关、电池组、线圈，或拖动滑片 P。"); return; }
+        state.drag = target === "rheostat" ? "rheostat" : "dcMotor";
         state.moved = true;
         try { canvas.setPointerCapture(e.pointerId); } catch(err) { console.warn("capture stage pointer failed", err); }
-        if(SPEC.scene === "simpleMotor") operateFreeSimpleMotor(target, true);
-        else if(target === "rheostat") { state.operationCount += 1; setDcRheostatFromPoint(p, false); }
+        if(target === "rheostat") { state.operationCount += 1; setDcRheostatFromPoint(p, false); }
         else operateDcMotorPart(target, true);
         e.preventDefault();
         return;
@@ -1168,11 +1230,26 @@
     }
     function onPointerMove(e){
       if (!state.drag || state.autoPlaying) return;
+      if(SPEC.scene === "simpleMotor" && typeof state.drag === "object"){
+        moveSimpleMotorGesture(pointerStage(e));
+        e.preventDefault();
+        return;
+      }
       if(state.freeMode && state.drag === "rheostat") setDcRheostatFromPoint(pointerStage(e), false);
       else if(!state.freeMode) operateByPoint(pointerStage(e));
       e.preventDefault();
     }
-    function onPointerUp(e){ if (state.drag) { try { canvas.releasePointerCapture(e.pointerId); } catch(err) { console.warn("release stage pointer failed", err); } state.drag=false; passStepIfReady({ quiet:true }); } e.preventDefault(); }
+    function onPointerUp(e){
+      if(SPEC.scene === "simpleMotor" && state.drag && typeof state.drag === "object"){
+        finishSimpleMotorGesture(pointerStage(e),e.type==="pointercancel");
+        try { canvas.releasePointerCapture(e.pointerId); } catch(err) { console.warn("release motor gesture failed", err); }
+        passStepIfReady({ quiet:true });
+        e.preventDefault();
+        return;
+      }
+      if (state.drag) { try { canvas.releasePointerCapture(e.pointerId); } catch(err) { console.warn("release stage pointer failed", err); } state.drag=false; passStepIfReady({ quiet:true }); }
+      e.preventDefault();
+    }
     function hitBench(p){ const r = benchArea(state.width, state.height); return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
     function hitBox(p,x,y,w,h){ return p.x >= x && p.x <= x + w && p.y >= y && p.y <= y + h; }
     function hitDcMotorPart(p){
@@ -1186,112 +1263,130 @@
     }
     function hitSimpleMotorPart(p){
       const g = simpleMotorGeom(benchArea(state.width, state.height)), s = g.s;
+      const knife=simpleScraperPosition(g);
+      if(hitBox(p,knife.x-54*s,knife.y-24*s,108*s,48*s)) return "scraper";
       if(hitBox(p, g.callL.x-g.callL.r, g.callL.y-g.callL.r, g.callL.r*2, g.callL.r*2) || hitBox(p, g.leftPost.x-28*s, g.leftPost.top-34*s, 56*s, 76*s)) return "leftScrape";
       if(hitBox(p, g.callR.x-g.callR.r, g.callR.y-g.callR.r, g.callR.r*2, g.callR.r*2) || hitBox(p, g.rightPost.x-28*s, g.rightPost.top-34*s, 56*s, 76*s)) return "rightScrape";
-      if(hitBox(p, g.battery.x-g.battery.w*.58, g.battery.y-g.battery.h*.72, g.battery.w*1.16, g.battery.h*1.55)) return "battery";
       if(state.dcCoilMounted && hitBox(p, g.coil.x-g.coil.w*.75, g.coil.y-g.coil.h*.9, g.coil.w*1.5, g.coil.h*1.8)) return "coil";
       if(!state.dcCoilMounted && hitBox(p, g.looseCoil.x-g.looseCoil.w*.72, g.looseCoil.y-g.looseCoil.h*.82, g.looseCoil.w*1.44, g.looseCoil.h*1.65)) return "coil";
-      if(hitBox(p, g.magnet.x-g.magnet.w*.64, g.magnet.y-g.magnet.h*.58, g.magnet.w*1.28, g.magnet.h*1.22)) return "coil";
+      if(hitBox(p, g.magnet.x-g.magnet.w*.64, g.magnet.y-g.magnet.h*.58, g.magnet.w*1.28, g.magnet.h*1.22)) return "mountZone";
       return null;
+    }
+    function beginSimpleMotorGesture(kind,p,target){
+      state.drag={kind,start:{x:p.x,y:p.y},last:{x:p.x,y:p.y},path:0,target:target||null};
+      state.moved=true;
+      if(kind==="mount") state.coilDrag={x:p.x,y:p.y};
+      if(kind==="scrape") state.scraperPos={x:p.x,y:p.y};
+      draw();
+    }
+    function startSimpleMotorGesture(p){
+      const target=hitSimpleMotorPart(p);
+      if(state.freeMode){
+        if(target==="scraper"){
+          if(!state.dcCoilMounted){ showToast("先把线圈拖到两根支架上。"); return; }
+          beginSimpleMotorGesture("scrape",p);
+          return;
+        }
+        if(target==="coil"){ beginSimpleMotorGesture(state.dcCoilMounted?"flick":"mount",p); return; }
+        showToast("拖动线圈、小刀或已架好的线圈完成实验操作。");
+        return;
+      }
+      if(state.currentTask===0){
+        if(target!=="coil"){ warnStep("从左侧拖动矩形线圈，把两端转轴放到 V 形支架上。"); return; }
+        beginSimpleMotorGesture("mount",p,"mount");
+        return;
+      }
+      if(state.currentTask===1 || state.currentTask===2){
+        if(target!=="scraper"){ warnStep("拖动实验台上的小刀到对应转轴，并在接点附近往复刮动。"); return; }
+        beginSimpleMotorGesture("scrape",p,state.currentTask===1?"leftScrape":"rightScrape");
+        return;
+      }
+      if(state.currentTask===3){
+        if(target!=="coil"){ warnStep("在线圈上横向拖动，给线圈一个轻推。"); return; }
+        if(!state.leftScraped || !state.rightHalfScraped){ warnStep("先完成两端漆层处理。"); return; }
+        beginSimpleMotorGesture("flick",p,"spin");
+        return;
+      }
+      showToast("请先记录当前结果，再继续下一步。");
+    }
+    function moveSimpleMotorGesture(p){
+      const drag=state.drag;
+      if(!drag || typeof drag!=="object") return;
+      const d=Math.hypot(p.x-drag.last.x,p.y-drag.last.y);
+      drag.path+=d;
+      drag.last={x:p.x,y:p.y};
+      if(drag.kind==="mount") state.coilDrag={x:p.x,y:p.y};
+      if(drag.kind==="scrape"){
+        state.scraperPos={x:p.x,y:p.y};
+        const g=simpleMotorGeom(benchArea(state.width,state.height)),s=g.s;
+        const blade={x:p.x+36*s,y:p.y};
+        const leftDistance=Math.hypot(blade.x-g.leftPost.x,blade.y-g.leftPost.top);
+        const rightDistance=Math.hypot(blade.x-g.rightPost.x,blade.y-g.rightPost.top);
+        const selected=drag.target || (leftDistance<=rightDistance?"leftScrape":"rightScrape");
+        const near=selected==="leftScrape"?leftDistance:rightDistance;
+        if(near<=68*s){ drag.target=selected; drag.contactPath=(drag.contactPath||0)+d; updateStatus(selected==="leftScrape"?"正在刮去左端全部漆层":"正在刮去右端半周漆层"); }
+      }
+      draw();
+    }
+    function finishSimpleMotorGesture(p,cancelled){
+      const drag=state.drag,g=simpleMotorGeom(benchArea(state.width,state.height)),s=g.s;
+      if(!drag || typeof drag!=="object") return;
+      if(cancelled){ state.coilDrag=null; state.scraperPos=null; state.drag=null; draw(); return; }
+      if(drag.kind==="mount"){
+        const mountTolerance=46*s;
+        const close=Math.hypot(p.x-g.coil.x,p.y-g.coil.y)<=mountTolerance;
+        state.coilDrag=null;
+        if(close) completeSimpleMotorStage(0); else warnStep("把线圈中心对准两根 V 形支架的接点，让左右转轴同时落入支架。");
+      }else if(drag.kind==="scrape"){
+        const enough=(drag.contactPath||0)>=18*s;
+        state.scraperPos=null;
+        if(enough && drag.target==="leftScrape") completeSimpleMotorStage(1);
+        else if(enough && drag.target==="rightScrape") completeSimpleMotorStage(2);
+        else warnStep("让刀刃贴近对应转轴，并往复移动后再松开。");
+      }else if(drag.kind==="flick"){
+        const dx=p.x-drag.start.x;
+        if(Math.abs(dx)>=38*s || drag.path>=72*s) completeSimpleMotorStage(3);
+        else warnStep("在线圈上横向拖动一小段距离，模拟轻推启动。");
+      }
+      state.drag=null;
+      draw();
+    }
+    function completeSimpleMotorStage(index){
+      if(index===0){
+        state.dcCoilMounted=true;
+        state.dcSwitchClosed=false;
+        state.dcMotorKicked=false;
+        state.dcRestAngle=.02;
+        state.scenarioIndex=0;
+        updateStatus("线圈转轴已架入支架");
+      }else if(index===1){
+        state.leftScraped=true;
+        state.scenarioIndex=1;
+        updateStatus("左端已全周刮漆");
+      }else if(index===2){
+        state.rightHalfScraped=true;
+        state.dcWireScraped=true;
+        state.dcSwitchClosed=true;
+        state.dcMotorKicked=false;
+        state.dcRestAngle=.02;
+        state.scenarioIndex=2;
+        updateStatus("右端已刮去半周漆层，等待轻推");
+      }else if(index===3){
+        state.dcSwitchClosed=true;
+        state.dcMotorKicked=true;
+        state.scenarioIndex=3;
+        state.motorAngleOffset=state.dcRestAngle-performance.now()/330;
+        updateStatus("轻推完成，线圈开始转动");
+      }
+      state.operationCount+=1;
+      draw();
     }
     function operateByPoint(p){
       if(SPEC.scene === "simpleMotor") { operateGuidedSimpleMotor(p); return; }
       if(SPEC.scene === "dcMotor") { operateGuidedDcMotor(p); return; }
       const r = benchArea(state.width, state.height); const ratio = clamp((p.x - r.x) / Math.max(1,r.w), 0, 1); const idx = ratio < .34 ? 0 : ratio < .67 ? 1 : 2; setScenario(idx, true);
     }
-    function operateGuidedSimpleMotor(p){
-      const target = hitSimpleMotorPart(p);
-      if(state.currentTask === 0){
-        if(target !== "coil"){ warnStep("点击线圈，把它架到磁铁间隙中。"); return; }
-        state.dcCoilMounted = true;
-        state.dcSwitchClosed = false;
-        state.dcMotorKicked = false;
-        state.scenarioIndex = 0;
-        state.operationCount += 1;
-        updateStatus("线圈已架入磁极间隙");
-        draw();
-        return;
-      }
-      if(state.currentTask === 1){
-        if(!state.dcCoilMounted){ warnStep("先把线圈架到磁铁间隙中。"); return; }
-        if(target !== "leftScrape"){ warnStep("点击左端引线，完成全刮漆。"); return; }
-        state.leftScraped = true;
-        state.scenarioIndex = 1;
-        state.operationCount += 1;
-        updateStatus("左端已全刮漆");
-        draw();
-        return;
-      }
-      if(state.currentTask === 2){
-        if(!state.dcCoilMounted || !state.leftScraped){ warnStep("先完成架线圈和左端全刮漆。"); return; }
-        if(target !== "rightScrape"){ warnStep("点击右端引线，只刮下半周漆层。"); return; }
-        state.rightHalfScraped = true;
-        state.dcWireScraped = true;
-        state.scenarioIndex = 2;
-        state.operationCount += 1;
-        updateStatus("右端已半周刮漆");
-        draw();
-        return;
-      }
-      if(state.currentTask === 3){
-        if(!state.dcCoilMounted || !state.leftScraped || !state.rightHalfScraped){ warnStep("先完成两端刮漆处理。"); return; }
-        if(target !== "coil" && target !== "battery"){ warnStep("点击线圈，接通并轻拨转动。"); return; }
-        state.dcSwitchClosed = true;
-        state.dcMotorKicked = true;
-        state.scenarioIndex = 3;
-        state.operationCount += 1;
-        state.motorAngleOffset = -.28 - performance.now()/330;
-        updateStatus("半周通电，持续转动");
-        draw();
-        return;
-      }
-      showToast("请先完成当前步骤。");
-    }
-    function operateFreeSimpleMotor(target, mark){
-      if(target === "coil"){
-        if(!state.dcCoilMounted){
-          state.dcCoilMounted = true;
-          state.scenarioIndex = 0;
-          updateStatus("线圈已架入磁极间隙");
-        }else if(state.leftScraped && state.rightHalfScraped){
-          const spinning = simpleMotorPowered() && state.dcMotorKicked;
-          if(spinning) state.dcRestAngle = simpleMotorAngle();
-          state.dcSwitchClosed = true;
-          state.dcMotorKicked = !spinning;
-          if(state.dcMotorKicked) state.motorAngleOffset = state.dcRestAngle - performance.now()/330;
-          state.scenarioIndex = state.dcMotorKicked ? 3 : 2;
-          updateStatus(state.dcMotorKicked ? "线圈持续转动" : "线圈已停止");
-        }else{
-          updateStatus("先处理两端漆层");
-        }
-      }else if(target === "leftScrape"){
-        if(!state.dcCoilMounted) state.dcCoilMounted = true;
-        state.leftScraped = !state.leftScraped;
-        if(!state.leftScraped) state.dcMotorKicked = false;
-        state.scenarioIndex = state.leftScraped ? 1 : 0;
-        updateStatus(state.leftScraped ? "左端已全刮漆" : "左端漆层已恢复");
-      }else if(target === "rightScrape"){
-        if(!state.dcCoilMounted) state.dcCoilMounted = true;
-        state.rightHalfScraped = !state.rightHalfScraped;
-        state.dcWireScraped = state.leftScraped && state.rightHalfScraped;
-        if(!state.rightHalfScraped) state.dcMotorKicked = false;
-        state.scenarioIndex = state.rightHalfScraped ? 2 : (state.leftScraped ? 1 : 0);
-        updateStatus(state.rightHalfScraped ? "右端已半周刮漆" : "右端漆层已恢复");
-      }else if(target === "battery"){
-        if(!state.dcCoilMounted || !state.leftScraped || !state.rightHalfScraped){
-          updateStatus("先架线圈并处理两端漆层");
-        }else{
-          if(state.dcSwitchClosed && state.dcMotorKicked) state.dcRestAngle = simpleMotorAngle();
-          state.dcSwitchClosed = !state.dcSwitchClosed;
-          state.dcMotorKicked = state.dcSwitchClosed;
-          if(state.dcMotorKicked) state.motorAngleOffset = state.dcRestAngle - performance.now()/330;
-          state.scenarioIndex = state.dcSwitchClosed ? 3 : 2;
-          updateStatus(state.dcSwitchClosed ? "电路已接通，线圈转动" : "电路已断开");
-        }
-      }
-      if(mark) state.operationCount += 1;
-      draw();
-    }
+    function operateGuidedSimpleMotor(){ completeSimpleMotorStage(state.currentTask); }
     function operateGuidedDcMotor(p){
       const target = hitDcMotorPart(p);
       if(state.currentTask === 0){
@@ -1393,23 +1488,27 @@
       if(i===1) return { x:g.switch.x, y:g.switch.y };
       return { x:g.battery.x, y:g.battery.y };
     }
-    function demoSimpleTarget(i){
+    function demoSimplePath(i){
       const g=simpleMotorGeom(benchArea(state.width,state.height)), s=g.s;
-      if(i===0) return { x:g.looseCoil.x, y:g.looseCoil.y };
-      if(i===1) return { x:g.leftPost.x, y:g.leftPost.top };
-      if(i===2) return { x:g.rightPost.x, y:g.rightPost.top };
-      return { x:g.coil.x, y:g.coil.y };
+      if(i===0) return {start:{x:g.looseCoil.x,y:g.looseCoil.y},end:{x:g.coil.x,y:g.coil.y}};
+      if(i===1) return {start:{x:g.scraper.x,y:g.scraper.y},end:{x:g.leftPost.x-36*s,y:g.leftPost.top}};
+      if(i===2) return {start:{x:g.scraper.x,y:g.scraper.y},end:{x:g.rightPost.x-36*s,y:g.rightPost.top}};
+      return {start:{x:g.coil.x-42*s,y:g.coil.y},end:{x:g.coil.x+58*s,y:g.coil.y}};
     }
     async function demoGesture(i){
       const dcDemo = SPEC.scene === "dcMotor";
       const simpleDemo = SPEC.scene === "simpleMotor";
-      const start={x:state.width*.18,y:state.height*.52};
-      const end=simpleDemo ? demoSimpleTarget(i) : (dcDemo ? demoDcTarget(i) : {x:state.width*(.22+i*.28),y:state.height*.52});
+      const simplePath=simpleDemo?demoSimplePath(i):null;
+      const start=simplePath?simplePath.start:{x:state.width*.18,y:state.height*.52};
+      const end=simplePath?simplePath.end:(dcDemo ? demoDcTarget(i) : {x:state.width*(.22+i*.28),y:state.height*.52});
       const s=(simpleDemo ? simpleMotorGeom(benchArea(state.width,state.height)).s : (dcDemo ? dcMotorGeom(benchArea(state.width,state.height)).s : 1));
       for(let k=0;k<=8;k++){
         if(state.autoCancel) throw new Error("AUTO_CANCELLED");
         const t=k/8;
-        moveCursorTo(start.x+(end.x-start.x)*t,start.y+(end.y-start.y)*t+Math.sin(t*Math.PI)*28*s);
+        const x=start.x+(end.x-start.x)*t,y=start.y+(end.y-start.y)*t+Math.sin(t*Math.PI)*28*s;
+        moveCursorTo(x,y);
+        if(simpleDemo && i===0) state.coilDrag={x,y};
+        if(simpleDemo && (i===1 || i===2)) state.scraperPos={x,y};
         state.phase=t;
         draw();
         await sleep(150);
@@ -1417,17 +1516,34 @@
       demoCursor.classList.remove("click");
       void demoCursor.offsetWidth;
       demoCursor.classList.add("click");
-      if(simpleDemo) operateGuidedSimpleMotor(end);
+      if(simpleDemo){ state.coilDrag=null; state.scraperPos=null; completeSimpleMotorStage(i); }
       else if(dcDemo) operateGuidedDcMotor(end);
       else setScenario(i,true);
       await sleep(1150);
     }
     async function autoRecord(key){ const before=state.records.length; const ok=recordObservation({auto:true}); await sleep(520); if(!ok || !hasRecord(key) || state.records.length<=before) throw new Error("AUTO_RECORD_NOT_PERSISTED:"+key); }
-    async function runAutoDemo(){ if(state.autoPlaying){state.autoCancel=true;return;} state.autoPlaying=true; state.autoCancel=false; autoDemoBtn.textContent="退出自动演示"; freeBtn.disabled=true; setDrawerCollapsed(controlDock,false); setDrawerCollapsed(dataDock,true); setModeLabel(); resetScene({keepMode:false,quiet:true}); state.autoPlaying=true; autoDemoBtn.textContent="退出自动演示"; setDrawerCollapsed(controlDock,false); setModeLabel(); try{ for(let i=0;i<SPEC.scenarios.length;i++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); setStepUI(i); updateStatus("自动演示"); await demoGesture(i); await autoRecord(SPEC.scenarios[i].key); await sleep(900); } setStepUI(SPEC.scenarios.length); await sleep(700); setDrawerCollapsed(dataDock,false); await sleep(700); analyzeConclusion(); await sleep(900); } catch(err){ if(String(err.message||err)!=="AUTO_CANCELLED") showToast("自动演示中断："+(err.message||err)); else showToast("已退出自动演示"); } finally{ state.autoPlaying=false; state.autoCancel=false; autoDemoBtn.textContent="自动演示"; freeBtn.disabled=false; demoCursor.style.opacity="0"; setModeLabel(); updateStatus(); draw(); } }
-    function resetScene(opts){ clearTimers(); state.completed=false; state.autoCancel=false; state.stepWarning=false; state.successCooldown=false; state.scenarioIndex=0; state.operationCount=0; state.records=[]; state.unseenRecords=0; state.analysisDone=false; state.phase=0; state.drag=false; state.currentReversed=false; state.rheostatPos=.5; state.motorAngleOffset=0; state.dcSwitchClosed=false; state.dcMotorKicked=false; state.dcRestAngle=.02; state.dcCoilMounted=false; state.dcWireScraped=false; state.leftScraped=false; state.rightHalfScraped=false; if(!opts || !opts.keepMode) state.freeMode=false; doneMask.style.display="none"; analysisText.classList.remove("ok"); analysisText.textContent="完成四次记录后分析。"; renderRecords(); updateBadge(); setModeLabel(); setStepUI(0); if(!opts || !opts.quiet) showToast("已重置"); }
-    function setFreeMode(on){ state.freeMode=!!on; freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式"; autoDemoBtn.disabled=state.freeMode; setModeLabel(); updateStatus(state.freeMode?(state.dcSwitchClosed?"开关闭合":"开关断开"):""); showToast(state.freeMode?"自由操作已开启":"已回到引导模式"); draw(); }
-    function initEvents(){ canvas.addEventListener("pointerdown",onPointerDown); canvas.addEventListener("pointermove",onPointerMove); canvas.addEventListener("pointerup",onPointerUp); canvas.addEventListener("pointercancel",onPointerUp); recordBtn.addEventListener("click",() => recordObservation()); analyzeBtn.addEventListener("click",analyzeConclusion); resetBtn.addEventListener("click",() => { const free=state.freeMode; resetScene({keepMode:true,quiet:true}); state.freeMode=free; setFreeMode(free); showToast("已重置"); }); autoDemoBtn.addEventListener("click",runAutoDemo); freeBtn.addEventListener("click",() => setFreeMode(!state.freeMode)); controlToggleBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed"))); dataToggleBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed"))); hintLamp.addEventListener("click",() => hintPop.classList.toggle("open")); okBtn.addEventListener("click",() => { doneMask.style.display="none"; }); bindDrawer(controlDock); bindDrawer(dataDock); window.addEventListener("resize",() => { clearTimeout(resizeCanvas.t); resizeCanvas.t=setTimeout(resizeCanvas,120); }); }
+    async function runAutoDemo(){ if(state.autoPlaying){state.autoCancel=true;return;} state.autoPlaying=true; state.autoCancel=false; state.lastError=null; autoDemoBtn.textContent="退出自动演示"; freeBtn.disabled=true; setDrawerCollapsed(controlDock,false); setDrawerCollapsed(dataDock,true); setModeLabel(); resetScene({keepMode:false,quiet:true}); state.autoPlaying=true; autoDemoBtn.textContent="退出自动演示"; setDrawerCollapsed(controlDock,false); setModeLabel(); try{ for(let i=0;i<SPEC.scenarios.length;i++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); setStepUI(i); updateStatus("自动演示"); await demoGesture(i); await autoRecord(SPEC.scenarios[i].key); await sleep(900); } setStepUI(SPEC.scenarios.length); await sleep(700); setDrawerCollapsed(dataDock,false); await sleep(700); analyzeConclusion(); await sleep(900); } catch(err){ if(String(err.message||err)!=="AUTO_CANCELLED"){ state.lastError=String(err.message||err); showToast("自动演示中断："+(err.message||err)); } else showToast("已退出自动演示"); } finally{ state.autoPlaying=false; state.autoCancel=false; state.coilDrag=null; state.scraperPos=null; autoDemoBtn.textContent="自动演示"; freeBtn.disabled=false; demoCursor.style.opacity="0"; setModeLabel(); updateStatus(); draw(); } }
+    function resetScene(opts){ clearTimers(); state.completed=false; state.autoCancel=false; state.lastError=null; state.stepWarning=false; state.successCooldown=false; state.scenarioIndex=0; state.operationCount=0; state.records=[]; state.unseenRecords=0; state.analysisDone=false; state.phase=0; state.drag=null; state.coilDrag=null; state.scraperPos=null; state.currentReversed=false; state.rheostatPos=.5; state.motorAngleOffset=0; state.dcSwitchClosed=false; state.dcMotorKicked=false; state.dcRestAngle=.02; state.dcCoilMounted=false; state.dcWireScraped=false; state.leftScraped=false; state.rightHalfScraped=false; if(!opts || !opts.keepMode) state.freeMode=false; doneMask.style.display="none"; analysisText.classList.remove("ok"); analysisText.textContent="完成四次记录后分析。"; renderRecords(); updateBadge(); setModeLabel(); setStepUI(0); if(!opts || !opts.quiet) showToast("已重置"); }
+    function setFreeMode(on){ state.freeMode=!!on; freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式"; autoDemoBtn.disabled=state.freeMode; setModeLabel(); updateStatus(state.freeMode?(state.dcSwitchClosed?"电路已接通":"电路未接通"):""); showToast(state.freeMode?"自由操作已开启":"已回到引导模式"); draw(); }
+    function initEvents(){ canvas.addEventListener("pointerdown",onPointerDown); canvas.addEventListener("pointermove",onPointerMove); canvas.addEventListener("pointerup",onPointerUp); canvas.addEventListener("pointercancel",onPointerUp); recordBtn.addEventListener("click",() => recordObservation()); analyzeBtn.addEventListener("click",analyzeConclusion); resetBtn.addEventListener("click",() => { const free=state.freeMode; resetScene({keepMode:true,quiet:true}); state.freeMode=free; setFreeMode(free); showToast("已重置"); }); autoDemoBtn.addEventListener("click",runAutoDemo); freeBtn.addEventListener("click",() => setFreeMode(!state.freeMode)); controlToggleBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed"))); dataToggleBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed"))); hintLamp.addEventListener("click",() => hintPop.classList.toggle("open")); okBtn.addEventListener("click",() => { doneMask.style.display="none"; }); bindDrawer(controlDock); bindDrawer(dataDock); window.addEventListener("resize",() => { clearTimeout(resizeCanvas.t); resizeCanvas.t=setTimeout(resizeCanvas,120); }); window.addEventListener("pagehide",() => { state.autoCancel=true; clearTimers(); }); }
     function animateScene(){ if ((SPEC.scene === "dcMotor" || SPEC.scene === "simpleMotor") && ((state.dcSwitchClosed && state.dcMotorKicked) || state.freeMode || state.autoPlaying)) draw(); requestAnimationFrame(animateScene); }
+    function statusSnapshot(){
+      const spinning=state.dcCoilMounted&&state.leftScraped&&state.rightHalfScraped&&state.dcSwitchClosed&&state.dcMotorKicked;
+      const angle=spinning?simpleMotorAngle():state.dcRestAngle;
+      const conducting=spinning&&simpleMotorConducting(angle);
+      return {
+        schemaVersion:"2.0.0",
+        mode:state.autoPlaying?"auto":state.freeMode?"free":"guided",
+        task:{index:state.currentTask,total:tasks.length,completed:state.completed},
+        interaction:{kind:state.drag&&typeof state.drag==="object"?state.drag.kind:null,path:state.drag&&typeof state.drag==="object"?Math.round(state.drag.path||0):0},
+        motor:{mounted:state.dcCoilMounted,leftFullScraped:state.leftScraped,rightHalfScraped:state.rightHalfScraped,powered:state.dcSwitchClosed,spinning,conducting,phase:spinning?(conducting?"powered":"inertia"):"stopped"},
+        records:{keys:state.records.map(record=>record.key),count:state.records.length,analysisDone:state.analysisDone},
+        auto:{playing:state.autoPlaying,cancelRequested:state.autoCancel,lastError:state.lastError},
+        resources:{pendingTimers:state.timers.size},
+        ui:{modeStrip:modeTag.classList.contains("mode-strip"),controlCollapsed:controlDock.classList.contains("collapsed"),dataCollapsed:dataDock.classList.contains("collapsed"),mobile:state.stageWidth<=720}
+      };
+    }
+    Object.defineProperty(window,"__EXP49_STATUS__",{value:statusSnapshot,writable:false,configurable:false,enumerable:false});
     function init(){ initDots(); initEvents(); resizeCanvas(); setDrawerCollapsed(controlDock,true); setDrawerCollapsed(dataDock,true); resetScene({quiet:true}); requestAnimationFrame(() => { resizeCanvas(); draw(); }); requestAnimationFrame(animateScene); setTimeout(() => { resizeCanvas(); draw(); },180); }
     init(); window.state = state; window.recordObservation = recordObservation; window.analyzeConclusion = analyzeConclusion;
   })();
@@ -1454,7 +1570,7 @@
     function annotateRecords(){ if (!recordBody) return; recordBody.querySelectorAll("tr").forEach(tr => { const cells = tr.querySelectorAll("td"); if (cells[0]) cells[0].dataset.label = "步骤"; if (cells[1]) cells[1].dataset.label = "记录"; }); }
     function syncAnalysis(){ if (!analysisText) return; const placeholder = /完成[三四]次记录后分析/.test(analysisText.textContent || ""); analysisText.classList.toggle("codex-placeholder-hidden", placeholder && !analysisText.classList.contains("ok")); }
     function normalizeText(){ if (taskStep) { const m = (taskStep.textContent || "").match(/(?:步骤|关卡)\s*(\d+)\s*\/\s*(\d+)/); if (m) { const next = "关卡 " + m[1] + "/" + m[2]; if (taskStep.textContent !== next) taskStep.textContent = next; } } const st = window.state || {}; if (modeTag) { const stepText = taskStep ? (taskStep.textContent || "").replace(/\s+/g, " ").trim() : ""; const sm = stepText.match(/关卡\s*(\d+)\s*\/\s*(\d+)/); const stepMode = sm ? "关卡 " + sm[1] + "/" + sm[2] : stepText; let next = "模式：闯关模式" + (stepMode ? " · " + stepMode : ""); if (st.autoPlaying) next = "模式：演示模式 · 自动运行"; else if (st.freeMode) next = "模式：自由模式"; else if (st.completed) next = "模式：闯关模式 · 已通关"; if (modeTag.textContent !== next) modeTag.textContent = next; } if (resetBtn && resetBtn.textContent !== "重置关卡") resetBtn.textContent = "重置关卡"; if (autoDemoBtn) { const next = st.autoPlaying || /退出/.test(autoDemoBtn.textContent || "") ? "退出演示模式" : "演示模式"; if (autoDemoBtn.textContent !== next) autoDemoBtn.textContent = next; } if (freeBtn && !/退出/.test(freeBtn.textContent || "") && freeBtn.textContent !== "自由模式") freeBtn.textContent = "自由模式"; if (hintLamp) hintLamp.setAttribute("aria-label", "查看实验提示"); if (hintPop) hintPop.setAttribute("role", "note"); }
-    function syncMobile(){ ensureTabs(); const mobile = isMobile(); controlDock.classList.toggle("mobile-sheet", mobile); dataDock.classList.toggle("mobile-sheet", mobile); if (mobile && stage.dataset.codexMobileReady !== "1") { stage.dataset.codexMobileReady = "1"; if (controlDock.classList.contains("collapsed") && dataDock.classList.contains("collapsed")) setMobilePanel("control"); } if (!mobile) stage.dataset.codexMobileReady = "0"; syncTabs(); }
+    function syncMobile(){ ensureTabs(); const mobile = isMobile(); controlDock.classList.toggle("mobile-sheet", mobile); dataDock.classList.toggle("mobile-sheet", mobile); if (mobile && stage.dataset.codexMobileReady !== "1") { stage.dataset.codexMobileReady = "1"; if(stage.dataset.codexMobileInitialized!=="1"){ stage.dataset.codexMobileInitialized="1"; setMobilePanel(null); } } if (!mobile) stage.dataset.codexMobileReady = "0"; syncTabs(); }
     function syncAll(){ if (syncing) return; syncing = true; annotateRecords(); syncAnalysis(); normalizeText(); syncMobile(); syncing = false; }
     function queueSync(){ if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; syncAll(); }); }
     new MutationObserver(queueSync).observe(stage, { childList:true, subtree:true, attributes:true, attributeFilter:["class", "style"] });
