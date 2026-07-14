@@ -30,6 +30,15 @@
     .explanation{width:100%;max-width:980px;margin:14px 0 22px;color:#e8f4ff;line-height:1.66;font-size:15px}.explanation h2{margin:0 0 8px;color:#9bd3ff;font-size:20px}.explanation p{margin:6px 0}
     @media(max-width:720px){body{padding:8px}#app,#spectrum,.task-card,#stage,.toolbar,.explanation{max-width:100%}.task-card{grid-template-columns:1fr;gap:7px}.task-step{width:fit-content}#stage{height:78vh;min-height:700px}.lab-area{inset:96px 8px 10px}.dock{width:calc(100% - 24px)}.dock.collapsed{width:148px}.toolbar button{flex:1 1 132px}}
   </style>
+  <style id="codex-exp35-49-mode-ui-standard">
+    #stage #modeTag.mode-strip{position:relative!important;isolation:isolate!important;min-width:158px!important;width:auto!important;max-width:none!important;box-sizing:border-box!important;border:2px solid transparent!important;border-radius:999px!important;padding:4px 12px!important;font-weight:900!important;color:#fff!important;background:linear-gradient(rgba(6,10,14,.94),rgba(6,10,14,.94)) padding-box,linear-gradient(90deg,#35ff73,#4bd8ff,#6c5cff,#ff4fc3,#ffd166,#35ff73,#4bd8ff) border-box!important;background-size:100% 100%,260% 100%!important;box-shadow:0 0 13px rgba(75,216,255,.20),inset 0 0 10px rgba(255,255,255,.06)!important;white-space:nowrap!important;text-align:center!important;overflow:hidden!important;text-overflow:clip!important;animation:codexModeRibbonFlow 3.2s linear infinite,codexModeGlow 1.8s ease-in-out infinite alternate!important}
+    #stage #modeTag.mode-strip::before{content:""!important;position:absolute!important;top:-2px!important;bottom:-2px!important;left:-48%!important;width:46%!important;border-radius:inherit!important;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.08) 34%,rgba(255,255,255,.88) 50%,rgba(112,255,204,.42) 64%,transparent 100%)!important;opacity:.68!important;transform:skewX(-18deg) translateX(-130%);animation:codexModeSweep 2.4s linear infinite!important;mix-blend-mode:screen!important;pointer-events:none!important}
+    #stage #modeTag.mode-strip::after{content:""!important;position:absolute!important;left:16px!important;right:16px!important;bottom:3px!important;height:2px!important;border-radius:999px!important;background:linear-gradient(90deg,transparent,#70ffcc,#ffd166,transparent)!important;opacity:.82!important;pointer-events:none!important}
+    @keyframes codexModeRibbonFlow{0%{background-position:0 0,0 0}100%{background-position:0 0,-260% 0}}
+    @keyframes codexModeSweep{0%{transform:skewX(-18deg) translateX(-130%)}100%{transform:skewX(-18deg) translateX(430%)}}
+    @keyframes codexModeGlow{0%{box-shadow:0 0 11px rgba(75,216,255,.18),inset 0 0 9px rgba(255,255,255,.05)}100%{box-shadow:0 0 19px rgba(112,255,204,.34),inset 0 0 12px rgba(255,255,255,.10)}}
+    @media (prefers-reduced-motion:reduce){#stage #modeTag.mode-strip{animation:none!important}#stage #modeTag.mode-strip::before{animation:none!important;display:none!important}}
+  </style>
   <style id="codex-exp51-55-ui-standard">
     #spectrum{
       height:24px !important;
@@ -111,7 +120,7 @@
     <div id="spectrum"></div>
     <section class="task-card"><div class="task-step" id="taskStep">步骤 1 / 4</div><div class="task-text"><div id="taskText"></div><div id="taskHint"></div></div><div class="progress-dots" id="dots"></div></section>
     <main id="stage" aria-label="设计与制作简易直流发电机模型实验台">
-      <div class="hud"><span class="tag" id="modeTag">模式：引导</span><span class="tag" id="statusTag">状态：待操作</span></div>
+      <div class="hud"><span class="tag mode-strip" id="modeTag">模式：引导</span><span class="tag" id="statusTag">状态：待操作</span></div>
       <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button><div class="hint-pop" id="hintPop"></div>
       <div class="lab-area" id="labArea"><canvas id="labCanvas"></canvas><button class="crank-handle-hit" id="crankHandleHit" type="button" aria-label="拖动手摇发电机曲柄"></button></div>
       <section class="dock drawer control collapsed" id="controlDock"><div class="dock-header" data-drag-handle><span class="dockTitle">实验面板</span><button class="iconBtn" id="controlToggleBtn" type="button">展开</button></div><div class="dock-body">
@@ -134,12 +143,14 @@
     const recordBtn = $("#recordBtn"), analyzeBtn = $("#analyzeBtn"), analysisText = $("#analysisText"), recordBody = $("#recordBody"), emptyRecords = $("#emptyRecords"), dataNotice = $("#dataNotice");
     const resetBtn = $("#resetBtn"), autoDemoBtn = $("#autoDemoBtn"), freeBtn = $("#freeBtn"), toast = $("#toast"), checkmark = $("#checkmark"), doneMask = $("#doneMask"), okBtn = $("#okBtn"), demoCursor = $("#demoCursor");
     const TWO_PI = Math.PI * 2;
+    const THREE_QUARTER_VIEW=Object.freeze({depthX:.18,depthY:-.08,barrelDx:38,barrelDy:-12});
     const state = {
       currentTask:0, completed:false, freeMode:false, autoPlaying:false, autoCancel:false, autoLastError:null,
       drawerDrag:null, stepWarning:false, successCooldown:false, records:[], unseenRecords:0, analysisDone:false,
       width:0, height:0, stageWidth:0, stageHeight:0, crankAngle:-Math.PI/4, angularVelocity:0,
       rotationDirection:0, turns:0, coilEmf:0, rectifiedCurrent:0, meterDeflection:0,
-      evidence:{forward:false,fast:false,reverse:false}, directionTravel:{forward:0,reverse:0,fast:0}, signalSamples:[], crankDrag:null,
+      evidence:{forward:false,fast:false,reverse:false}, observations:{forward:null,fast:null,reverse:null}, lastObservationKey:null,
+      directionTravel:{forward:0,reverse:0,fast:0}, signalSamples:[], crankDrag:null,
       rafId:0, lastFrameAt:0, timers:new Set(), uiTimers:new Set(), settleResolvers:[], autoWaitResolve:null
     };
     const tasks = [
@@ -169,12 +180,12 @@
     function layout(){
       const w=state.width, h=state.height, s=Math.min(w/900,h/455);
       const boardW=850*s, boardH=425*s, x=(w-boardW)/2, y=Math.max(8,(h-boardH)/2);
-      const crank={cx:x+112*s,cy:y+225*s,r:72*s};
+      const crank={cx:x+112*s,cy:y+224*s,r:72*s};
       crank.hx=crank.cx+Math.cos(state.crankAngle)*crank.r;
       crank.hy=crank.cy+Math.sin(state.crankAngle)*crank.r;
       return {
         s,x,y,boardW,boardH,crank,
-        generator:{cx:x+388*s,cy:y+210*s},
+        generator:{cx:x+388*s,cy:y+224*s},
         commutator:{cx:x+514*s,cy:y+224*s},
         meter:{cx:x+704*s,cy:y+180*s,r:82*s},
         bench:{x:x+16*s,y:y+346*s,w:818*s,h:58*s}
@@ -187,7 +198,7 @@
         apparatus:{x:g.x+18*s,y:g.y+50*s,width:g.boardW-36*s,height:310*s},
         crankWheel:{x:g.crank.cx-g.crank.r,y:g.crank.cy-g.crank.r,width:g.crank.r*2,height:g.crank.r*2},
         crankHandle:{x:g.crank.hx-handleSize/2,y:g.crank.hy-handleSize/2,width:handleSize,height:handleSize},
-        commutatorBrushContact:{x:g.commutator.cx-48*s,y:g.commutator.cy-46*s,width:96*s,height:92*s},
+        commutatorBrushContact:{x:g.commutator.cx-52*s,y:g.commutator.cy-58*s,width:120*s,height:116*s},
         centerZeroMeterAndTerminals:{x:g.meter.cx-104*s,y:g.meter.cy-96*s,width:208*s,height:204*s}
       };
     }
@@ -211,6 +222,24 @@
       state.signalSamples.push({coilEmf:round(state.coilEmf),rectifiedCurrent:round(state.rectifiedCurrent)});
       while(state.signalSamples.length>24) state.signalSamples.shift();
     }
+    function captureQualifiedObservation(){
+      const speed=Math.abs(state.angularVelocity);
+      let key=null;
+      if(state.rotationDirection>0&&state.directionTravel.fast>=.55&&speed>=14&&state.meterDeflection>.12) key="fast";
+      else if(state.rotationDirection>0&&state.directionTravel.forward>=.55&&speed>=2&&speed<14&&state.meterDeflection>.05) key="forward";
+      else if(state.rotationDirection<0&&state.directionTravel.reverse>=.55&&speed>=2&&state.meterDeflection<-.05) key="reverse";
+      if(!key) return false;
+      state.evidence[key]=true;
+      state.observations[key]={
+        key,
+        direction:state.rotationDirection>0?"顺时针":"逆时针",
+        relativeSpeed:key==="fast"?"快速":"正常",
+        angularVelocity:round(state.angularVelocity),
+        meterDeflection:round(state.meterDeflection)
+      };
+      state.lastObservationKey=key;
+      return true;
+    }
     function applyCrankDelta(deltaAngle,dt){
       const delta=unwrapAngle(Number(deltaAngle)||0);
       const elapsed=clamp(Number(dt)||.03,.012,.18);
@@ -224,9 +253,7 @@
       if(omega<0) state.directionTravel.reverse+=Math.abs(delta)/TWO_PI;
       if(omega>=14) state.directionTravel.fast+=Math.abs(delta)/TWO_PI;
       updateSignals();
-      if(state.directionTravel.forward>=.55) state.evidence.forward=true;
-      if(state.directionTravel.fast>=.55) state.evidence.fast=true;
-      if(state.directionTravel.reverse>=.55) state.evidence.reverse=true;
+      captureQualifiedObservation();
       updateStatus();
       syncCrankHandleLayer();
       draw();
@@ -278,18 +305,15 @@
     }
 
     function evidenceReady(key){
-      const speed=Math.abs(state.angularVelocity);
-      if(key==="forward") return state.evidence.forward&&state.rotationDirection>0&&speed>=2&&speed<14&&state.meterDeflection>.05;
-      if(key==="fast") return state.evidence.fast&&state.rotationDirection>0&&speed>=14&&state.meterDeflection>.12;
-      if(key==="reverse") return state.evidence.reverse&&state.rotationDirection<0&&speed>=2&&state.meterDeflection<-.05;
+      if(key==="forward"||key==="fast"||key==="reverse") return Boolean(state.observations[key]);
       return state.records.length>=3;
     }
     function recordObservation(options){
-      const key=state.freeMode?(state.rotationDirection<0?"reverse":Math.abs(state.angularVelocity)>=14?"fast":"forward"):tasks[state.currentTask].key;
+      const key=state.freeMode?(state.lastObservationKey||(state.rotationDirection<0?"reverse":Math.abs(state.angularVelocity)>=14?"fast":"forward")):tasks[state.currentTask].key;
       if(key==="analysis"||!evidenceReady(key)){ if(!(options&&options.quiet)) warnStep("请先完成当前曲柄操作并观察指针。"); return false; }
       if(!hasRecord(key)){
-        const direction=state.rotationDirection>0?"顺时针":"逆时针";
-        const record={key,direction,relativeSpeed:speedLabel(),angularVelocity:round(state.angularVelocity),meterDeflection:round(state.meterDeflection),note:direction+"，"+speedLabel()+"，指针向"+(state.meterDeflection>=0?"正端":"负端")+"偏转"};
+        const observation=state.observations[key];
+        const record={...observation,note:observation.direction+"，"+observation.relativeSpeed+"，指针向"+(observation.meterDeflection>=0?"正端":"负端")+"偏转"};
         state.records.push(record);
         if(dataDock.classList.contains("collapsed")){ state.unseenRecords+=1; updateBadge(); }
         renderRecords();
@@ -382,50 +406,123 @@
       ctx.restore();
       label("可拖动摇柄",c.cx,c.cy+c.r+30*s,13*s,"#bfffe1");
     }
+    function drawDriveShaft(g){
+      const s=g.s,y=g.generator.cy;
+      line([[g.crank.cx,y],[g.commutator.cx,y]],"rgba(3,10,16,.72)",13*s);
+      line([[g.crank.cx,y],[g.commutator.cx,y]],"#a9bdcc",7*s);
+      line([[g.crank.cx+18*s,y-1.5*s],[g.commutator.cx-18*s,y-1.5*s]],"rgba(235,246,255,.42)",1.5*s);
+      label("机械传动轴",g.crank.cx+146*s,y-18*s,11*s,"#cfe1ee");
+    }
+    function projectCoilPoint(cx,cy,x,y,angle){
+      const depth=y*Math.sin(angle);
+      return {x:cx+x+depth*THREE_QUARTER_VIEW.depthX,y:cy+y*Math.cos(angle)+depth*THREE_QUARTER_VIEW.depthY,depth};
+    }
+    function rotatingCoilContacts(g){
+      const s=g.s,cx=g.generator.cx,cy=g.generator.cy,angle=state.crankAngle;
+      const a=projectCoilPoint(cx,cy,54*s,-68*s,angle);
+      const b=projectCoilPoint(cx,cy,54*s,68*s,angle);
+      return a.y<=b.y?{upper:a,lower:b}:{upper:b,lower:a};
+    }
+    function drawProjectedCoil(g){
+      const s=g.s,cx=g.generator.cx,cy=g.generator.cy,angle=state.crankAngle;
+      const topLeft=projectCoilPoint(cx,cy,-54*s,-68*s,angle);
+      const topRight=projectCoilPoint(cx,cy,54*s,-68*s,angle);
+      const bottomRight=projectCoilPoint(cx,cy,54*s,68*s,angle);
+      const bottomLeft=projectCoilPoint(cx,cy,-54*s,68*s,angle);
+      const topNear=(topLeft.depth+topRight.depth)>=(bottomLeft.depth+bottomRight.depth);
+      const near=topNear?[topLeft,topRight]:[bottomLeft,bottomRight];
+      const far=topNear?[bottomLeft,bottomRight]:[topLeft,topRight];
+      const depth=Math.sin(angle);
+      line([[far[0].x,far[0].y],[far[1].x,far[1].y]],"rgba(164,119,52,.55)",4*s);
+      line([[topLeft.x,topLeft.y],[bottomLeft.x,bottomLeft.y]],"rgba(255,209,102,"+(.7+.2*Math.max(0,depth))+")",5*s);
+      line([[topRight.x,topRight.y],[bottomRight.x,bottomRight.y]],"rgba(255,209,102,"+(.7+.2*Math.max(0,-depth))+")",5*s);
+      line([[near[0].x,near[0].y],[near[1].x,near[1].y]],"#ffd166",7*s);
+      line([[near[0].x+8*s,near[0].y-1.5*s],[near[1].x-8*s,near[1].y-1.5*s]],"rgba(255,244,194,.42)",1.2*s);
+    }
     function drawGenerator(g){
-      const s=g.s,cx=g.generator.cx,cy=g.generator.cy,phase=state.crankAngle;
-      fillRound(cx-126*s,cy-112*s,72*s,224*s,12*s,"#b83b4c");
-      fillRound(cx+54*s,cy-112*s,72*s,224*s,12*s,"#315dab");
-      label("N",cx-90*s,cy,31*s,"#fff"); label("S",cx+90*s,cy,31*s,"#fff");
-      ctx.save(); ctx.translate(cx,cy); ctx.rotate(phase); ctx.strokeStyle="#ffd166"; ctx.lineWidth=7*s; ctx.strokeRect(-54*s,-76*s,108*s,152*s); ctx.restore();
-      line([[g.crank.cx+g.crank.r+8*s,g.crank.cy],[cx-5*s,cy]],"#9eb1c2",7*s);
+      const s=g.s,cx=g.generator.cx,cy=g.generator.cy;
+      const poleW=188*s,poleH=54*s;
+      fillRound(cx-poleW/2,cy-126*s,poleW,poleH,12*s,"#b83b4c");
+      fillRound(cx-poleW/2,cy+72*s,poleW,poleH,12*s,"#315dab");
+      label("N",cx,cy-99*s,28*s,"#fff"); label("S",cx,cy+99*s,28*s,"#fff");
+      drawProjectedCoil(g);
       ctx.fillStyle="#dce9f4"; ctx.beginPath(); ctx.arc(cx,cy,8*s,0,TWO_PI); ctx.fill();
-      label("转动线圈",cx,cy-132*s,13*s,"#ffe6a3");
+      label("转动线圈",cx-78*s,cy-56*s,12*s,"#ffe6a3");
+    }
+    function drawCommutatorBarrel(g,angle){
+      const s=g.s,cx=g.commutator.cx,cy=g.commutator.cy;
+      const visualAngle=-angle;
+      const back={x:cx-THREE_QUARTER_VIEW.barrelDx*s/2,y:cy-THREE_QUARTER_VIEW.barrelDy*s/2};
+      const front={x:cx+THREE_QUARTER_VIEW.barrelDx*s/2,y:cy+THREE_QUARTER_VIEW.barrelDy*s/2};
+      const rx=12*s,ry=29*s;
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(back.x,back.y-ry); ctx.lineTo(front.x,front.y-ry); ctx.lineTo(front.x,front.y+ry); ctx.lineTo(back.x,back.y+ry); ctx.closePath();
+      const shell=ctx.createLinearGradient(back.x,back.y-ry,front.x,front.y+ry); shell.addColorStop(0,"#ad632b"); shell.addColorStop(.48,"#e99a44"); shell.addColorStop(.52,"#397fb7"); shell.addColorStop(1,"#245d91"); ctx.fillStyle=shell; ctx.fill();
+      ctx.strokeStyle="#172530"; ctx.lineWidth=2*s; ctx.stroke();
+      line([[back.x,back.y],[front.x,front.y]],"rgba(8,18,26,.72)",2*s);
+      ctx.beginPath(); ctx.ellipse(back.x,back.y,rx,ry,0,0,TWO_PI); ctx.fillStyle="#263947"; ctx.fill(); ctx.strokeStyle="#6f8492"; ctx.stroke();
+      ctx.save(); ctx.beginPath(); ctx.ellipse(front.x,front.y,rx,ry,0,0,TWO_PI); ctx.clip(); ctx.translate(front.x,front.y); ctx.rotate(visualAngle);
+      ctx.fillStyle="#e88b3c"; ctx.fillRect(-ry,-ry,ry*2,ry);
+      ctx.fillStyle="#5bbcff"; ctx.fillRect(-ry,0,ry*2,ry);
+      ctx.fillStyle="rgba(255,255,255,.2)"; ctx.fillRect(-2*s,-ry,4*s,ry*2); ctx.restore();
+      ctx.beginPath(); ctx.ellipse(front.x,front.y,rx,ry,0,0,TWO_PI); ctx.strokeStyle="#b9c9d3"; ctx.lineWidth=2.2*s; ctx.stroke();
+      ctx.fillStyle="#17232c"; ctx.beginPath(); ctx.ellipse(front.x,front.y,4.5*s,10*s,0,0,TWO_PI); ctx.fill();
+      ctx.restore();
+      const mid={x:(back.x+front.x)/2,y:(back.y+front.y)/2};
+      const brushTop={x:mid.x+3*s,y:mid.y-38*s};
+      const brushBottom={x:mid.x-3*s,y:mid.y+38*s};
+      return {back,front,rx,ry,brushTop,brushBottom};
     }
     function drawCommutator(g){
       const s=g.s,cx=g.commutator.cx,cy=g.commutator.cy,a=state.crankAngle;
-      line([[g.generator.cx,cy],[cx+48*s,cy]],"#b9c8d4",7*s);
-      ctx.save(); ctx.translate(cx,cy); ctx.rotate(a);
-      ctx.lineWidth=13*s;
-      ctx.strokeStyle="#e88b3c"; ctx.beginPath(); ctx.arc(0,0,29*s,-Math.PI/2+.12,Math.PI/2-.12); ctx.stroke();
-      ctx.strokeStyle="#5bbcff"; ctx.beginPath(); ctx.arc(0,0,29*s,Math.PI/2+.12,Math.PI*1.5-.12); ctx.stroke();
-      ctx.restore();
-      fillRound(cx-51*s,cy-39*s,20*s,30*s,4*s,"#444b52"); fillRound(cx+31*s,cy+9*s,20*s,30*s,4*s,"#444b52");
-      line([[cx-41*s,cy-9*s],[cx-28*s,cy-9*s]],"#8b939b",6*s); line([[cx+28*s,cy+9*s],[cx+41*s,cy+9*s]],"#8b939b",6*s);
-      label("电刷",cx-52*s,cy-59*s,11*s); label("分裂环换向器",cx,cy+61*s,12*s,"#ffc98f");
+      const contacts=rotatingCoilContacts(g);
+      const view=drawCommutatorBarrel(g,a);
+      line([[contacts.upper.x,contacts.upper.y],[view.back.x-17*s,contacts.upper.y],[view.back.x,view.back.y-11*s]],"#d9a441",3.5*s);
+      line([[contacts.lower.x,contacts.lower.y],[view.back.x-17*s,contacts.lower.y],[view.back.x,view.back.y+11*s]],"#f1c45c",3.5*s);
+      const brushTop=view.brushTop,brushBottom=view.brushBottom;
+      fillRound(brushTop.x-18*s,brushTop.y-8*s,36*s,16*s,4*s,"#48525a");
+      fillRound(brushBottom.x-18*s,brushBottom.y-8*s,36*s,16*s,4*s,"#48525a");
+      line([[brushTop.x,brushTop.y+8*s],[brushTop.x,view.front.y-view.ry+3*s]],"#9ba6ad",5*s);
+      line([[brushBottom.x,brushBottom.y-8*s],[brushBottom.x,view.front.y+view.ry-3*s]],"#9ba6ad",5*s);
+      label("电刷",cx+4*s,cy-55*s,11*s); label("分裂环换向器",cx+8*s,cy+61*s,12*s,"#ffc98f");
+      return {
+        negative:{x:brushTop.x+18*s,y:brushTop.y},
+        positive:{x:brushBottom.x+18*s,y:brushBottom.y}
+      };
     }
     function drawMeter(g){
       const s=g.s,cx=g.meter.cx,cy=g.meter.cy,r=g.meter.r;
+      const housingX=cx-r-14*s,housingY=cy-r*.72,housingW=r*2+28*s,housingH=r*1.55+56*s;
+      const dialR=r*.84,pivotY=cy+12*s;
       ctx.save();
-      fillRound(cx-r-14*s,cy-r*.72,r*2+28*s,r*1.55+56*s,16*s,"#e9f1f6");
-      strokeRound(cx-r-14*s,cy-r*.72,r*2+28*s,r*1.55+56*s,16*s,"#71808b",3*s);
-      ctx.strokeStyle="#263746"; ctx.lineWidth=3*s; ctx.beginPath(); ctx.arc(cx,cy+12*s,r,-Math.PI*.82,-Math.PI*.18); ctx.stroke();
-      for(let i=0;i<=10;i++){ const a=-Math.PI*.82+i*Math.PI*.064; const inner=r-(i===5?15:9)*s; line([[cx+Math.cos(a)*inner,cy+12*s+Math.sin(a)*inner],[cx+Math.cos(a)*r,cy+12*s+Math.sin(a)*r]],"#263746",i===5?2.5*s:1.3*s); }
-      label("−",cx-r*.75,cy-14*s,16*s,"#263746"); label("0",cx,cy-r*.63,13*s,"#263746"); label("+",cx+r*.75,cy-14*s,16*s,"#263746");
+      fillRound(housingX,housingY,housingW,housingH,16*s,"#e9f1f6");
+      strokeRound(housingX,housingY,housingW,housingH,16*s,"#71808b",3*s);
+      ctx.save(); roundRect(housingX+3*s,housingY+3*s,housingW-6*s,housingH-6*s,13*s); ctx.clip();
+      ctx.strokeStyle="#263746"; ctx.lineWidth=3*s; ctx.beginPath(); ctx.arc(cx,pivotY,dialR,-Math.PI*.82,-Math.PI*.18); ctx.stroke();
+      for(let i=0;i<=10;i++){ const a=-Math.PI*.82+i*Math.PI*.064; const inner=dialR-(i===5?14:8)*s; line([[cx+Math.cos(a)*inner,pivotY+Math.sin(a)*inner],[cx+Math.cos(a)*dialR,pivotY+Math.sin(a)*dialR]],"#263746",i===5?2.5*s:1.3*s); }
+      label("−",cx-dialR*.78,cy-10*s,16*s,"#263746"); label("0",cx,pivotY-dialR*.76,13*s,"#263746"); label("+",cx+dialR*.78,cy-10*s,16*s,"#263746");
       const needle=-Math.PI/2+state.meterDeflection*Math.PI*.28;
-      line([[cx,cy+12*s],[cx+Math.cos(needle)*r*.72,cy+12*s+Math.sin(needle)*r*.72]],"#e33f4f",3*s);
-      ctx.fillStyle="#263746"; ctx.beginPath(); ctx.arc(cx,cy+12*s,7*s,0,TWO_PI); ctx.fill();
+      line([[cx,pivotY],[cx+Math.cos(needle)*dialR*.78,pivotY+Math.sin(needle)*dialR*.78]],"#e33f4f",3*s);
+      ctx.fillStyle="#263746"; ctx.beginPath(); ctx.arc(cx,pivotY,7*s,0,TWO_PI); ctx.fill();
+      ctx.restore();
       const left={x:cx-50*s,y:cy+r*.92}, right={x:cx+50*s,y:cy+r*.92};
-      [left,right].forEach((terminal,index) => { ctx.fillStyle=index?"#d94b4b":"#29323a"; ctx.beginPath(); ctx.arc(terminal.x,terminal.y,12*s,0,TWO_PI); ctx.fill(); ctx.strokeStyle="#edf5fb"; ctx.lineWidth=3*s; ctx.stroke(); });
+      [left,right].forEach((terminal,index) => { ctx.fillStyle=index?"#d94b4b":"#347fc4"; ctx.beginPath(); ctx.arc(terminal.x,terminal.y,12*s,0,TWO_PI); ctx.fill(); ctx.strokeStyle="#edf5fb"; ctx.lineWidth=3*s; ctx.stroke(); });
       label("中心零位灵敏电流计",cx,cy+r+47*s,12*s,"#dbeeff");
       ctx.restore();
       return {left,right};
     }
-    function drawWires(g,terminals){
+    function drawWires(g,terminals,brushes){
       const s=g.s,cx=g.commutator.cx,cy=g.commutator.cy;
-      line([[cx-51*s,cy-24*s],[cx-78*s,cy-24*s],[cx-78*s,g.bench.y-12*s],[terminals.left.x,g.bench.y-12*s],[terminals.left.x,terminals.left.y]],"#2b3036",6*s);
-      line([[cx+51*s,cy+24*s],[cx+78*s,cy+24*s],[cx+78*s,g.bench.y+4*s],[terminals.right.x,g.bench.y+4*s],[terminals.right.x,terminals.right.y]],"#d94b4b",6*s);
-      ctx.fillStyle="#f5f8fb"; [terminals.left,terminals.right].forEach(t => { ctx.beginPath(); ctx.arc(t.x,t.y,4*s,0,TWO_PI); ctx.fill(); });
+      const negativeWire="#4aa3ff",positiveWire="#e34b52";
+      const negativePath=[[brushes.negative.x,brushes.negative.y],[cx+65*s,brushes.negative.y],[cx+65*s,g.bench.y-34*s],[terminals.left.x,g.bench.y-34*s],[terminals.left.x,terminals.left.y]];
+      const positivePath=[[brushes.positive.x,brushes.positive.y],[cx+79*s,brushes.positive.y],[cx+79*s,g.bench.y-12*s],[terminals.right.x,g.bench.y-12*s],[terminals.right.x,terminals.right.y]];
+      line(negativePath,"rgba(3,10,16,.78)",10*s); line(positivePath,"rgba(3,10,16,.78)",10*s);
+      line(negativePath,negativeWire,5*s); line(positivePath,positiveWire,5*s);
+      [[brushes.negative.x,brushes.negative.y,negativeWire],[brushes.positive.x,brushes.positive.y,positiveWire],[terminals.left.x,terminals.left.y,negativeWire],[terminals.right.x,terminals.right.y,positiveWire]].forEach(node => {
+        ctx.fillStyle=node[2]; ctx.beginPath(); ctx.arc(node[0],node[1],5*s,0,TWO_PI); ctx.fill(); ctx.strokeStyle="#edf5fb"; ctx.lineWidth=1.5*s; ctx.stroke();
+      });
+      label("外电路 −",cx-36*s,g.bench.y-44*s,10*s,"#8fc8ff");
+      label("外电路 +",cx+112*s,g.bench.y-22*s,10*s,"#ff9ca2");
     }
     function drawReadout(g){
       const s=g.s,x=g.x+28*s,y=g.y+16*s,w=420*s;
@@ -439,11 +536,12 @@
       const g=layout();
       drawBackground(state.width,state.height,g);
       drawReadout(g);
-      drawCrank(g);
+      drawDriveShaft(g);
       drawGenerator(g);
-      drawCommutator(g);
+      drawCrank(g);
+      const brushes=drawCommutator(g);
       const terminals=drawMeter(g);
-      drawWires(g,terminals);
+      drawWires(g,terminals,brushes);
     }
     function resizeCanvas(){
       const stageRect=stage.getBoundingClientRect(), rect=labArea.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
@@ -541,7 +639,7 @@
       clearAutoWait(); clearUiTimers(); stopPhysics(false);
       state.completed=false; state.analysisDone=false; state.currentTask=0; state.stepWarning=false; state.successCooldown=false;
       state.records=[]; state.unseenRecords=0; state.crankAngle=-Math.PI/4; state.angularVelocity=0; state.rotationDirection=0; state.turns=0;
-      state.coilEmf=0; state.rectifiedCurrent=0; state.meterDeflection=0; state.evidence={forward:false,fast:false,reverse:false}; state.directionTravel={forward:0,reverse:0,fast:0}; state.signalSamples=[]; state.crankDrag=null;
+      state.coilEmf=0; state.rectifiedCurrent=0; state.meterDeflection=0; state.evidence={forward:false,fast:false,reverse:false}; state.observations={forward:null,fast:null,reverse:null}; state.lastObservationKey=null; state.directionTravel={forward:0,reverse:0,fast:0}; state.signalSamples=[]; state.crankDrag=null;
       state.autoLastError=null;
       if(!options||!options.keepMode) state.freeMode=false;
       doneMask.style.display="none"; analysisText.classList.remove("ok"); analysisText.textContent="完成三次记录后分析。"; renderRecords(); updateBadge(); setModeLabel(); syncCrankHandleLayer(); setStepUI(0);
@@ -584,7 +682,7 @@
           turns:round(state.turns), coilEmf:round(state.coilEmf), rectifiedCurrent:round(state.rectifiedCurrent), directionTravel:{...state.directionTravel},
           meterDeflection:round(state.meterDeflection), evidence:{...state.evidence}, signalSamples:state.signalSamples.map(sample => ({...sample}))
         },
-        evidence:{...state.evidence}, records:state.records.map(record => ({...record})),
+        evidence:{...state.evidence}, observations:Object.fromEntries(Object.entries(state.observations).map(([key,value]) => [key,value?{...value}:null])), records:state.records.map(record => ({...record})),
         auto:{playing:state.autoPlaying,lastError:state.autoLastError},
         resources:{rafActive:Boolean(state.rafId),timerCount:state.timers.size+state.uiTimers.size},
         geometry:apparatusGeometry()
