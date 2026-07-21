@@ -30,6 +30,21 @@
     .explanation{width:100%;max-width:980px;margin:14px 0 22px;color:#e8f4ff;line-height:1.66;font-size:15px}.explanation h2{margin:0 0 8px;color:#9bd3ff;font-size:20px}.explanation p{margin:6px 0}
     @media(max-width:720px){body{padding:8px}#app,#spectrum,.task-card,#stage,.toolbar,.explanation{max-width:100%}.task-card{grid-template-columns:1fr;gap:7px}.task-step{width:fit-content}#stage{height:78vh;min-height:700px}.lab-area{inset:96px 8px 10px}.dock{width:calc(100% - 24px)}.dock.collapsed{width:148px}.toolbar button{flex:1 1 132px}}
   </style>
+  <style id="codex-exp53-refine">
+    #modeTag.mode-strip{position:relative;padding:4px 11px;border:0;color:#fff;background:#10151c;isolation:isolate}
+    #modeTag.mode-strip::before{content:"";position:absolute;inset:-2px;border-radius:999px;background:linear-gradient(105deg,#38e89a,#46b7ff,#8d5cff,#ff5f9e,#ffd34f,#38e89a);background-size:220% 100%;animation:modeFlow 5s linear infinite;z-index:-2}
+    #modeTag.mode-strip::after{content:"";position:absolute;inset:0;border-radius:999px;background:#10151c;z-index:-1}
+    @keyframes modeFlow{to{background-position:220% 0}}
+    #retryTrialBtn{background:#344252;color:#dcecff}
+    #retryTrialBtn[hidden]{display:none}
+    .toolbar{padding:6px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.035)}
+    .toolbar button{flex:0 1 112px;font-weight:800}
+    @media(max-width:720px){
+      #stage.mobile-panel-open{height:72vh !important;max-height:680px !important}
+      #stage.mobile-panel-open .lab-area{bottom:216px !important}
+      #stage.mobile-panel-open .hint-pop{max-height:170px;overflow:auto}
+    }
+  </style>
   <style id="codex-exp51-55-ui-standard">
     #spectrum{
       height:24px !important;
@@ -111,14 +126,14 @@
     <div id="spectrum"></div>
     <section class="task-card"><div class="task-step" id="taskStep">步骤 1 / 4</div><div class="task-text"><div id="taskText"></div><div id="taskHint"></div></div><div class="progress-dots" id="dots"></div></section>
     <main id="stage" aria-label="观察机械能转化为内能的实验现象实验台">
-      <div class="hud"><span class="tag" id="modeTag">模式：引导</span><span class="tag" id="statusTag">状态：待操作</span></div>
+      <div class="hud"><span class="tag mode-strip" id="modeTag">模式：闯关模式 · 关卡 1/4</span><span class="tag" id="statusTag">状态：待操作</span></div>
       <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button><div class="hint-pop" id="hintPop"></div>
       <div class="lab-area" id="labArea"><canvas id="labCanvas"></canvas><button class="rope-handle-hit" id="leftRopeHandleHit" type="button" aria-label="拖动左侧绳柄往复摩擦"></button><button class="rope-handle-hit" id="rightRopeHandleHit" type="button" aria-label="拖动右侧绳柄往复摩擦"></button></div>
       <section class="dock drawer control collapsed" id="controlDock"><div class="dock-header" data-drag-handle><span class="dockTitle">实验面板</span><button class="iconBtn" id="controlToggleBtn" type="button">展开</button></div><div class="dock-body">
-        <div class="controls"><button class="main" id="recordBtn" type="button">记录</button><button class="sub" id="analyzeBtn" type="button">分析</button></div>
+        <div class="controls"><button class="main" id="recordBtn" type="button">还需摩擦 1.20 m</button><button class="sub" id="retryTrialBtn" type="button">重做本组</button><button class="sub" id="analyzeBtn" type="button">分析</button></div>
         <div class="analysis" id="analysisText">完成三次记录后分析。</div>
       </div></section>
-      <section class="dock drawer data collapsed" id="dataDock"><div class="dock-header" data-drag-handle><span class="dockTitle">数据面板 <span class="badge" id="dataNotice">0</span></span><button class="iconBtn" id="dataToggleBtn" type="button">展开</button></div><div class="dock-body"><table class="record"><thead><tr><th>阶段</th><th>往复次数</th><th>相对速度</th><th>温度变化</th></tr></thead><tbody id="recordBody"></tbody></table><div class="empty" id="emptyRecords">暂无记录。</div></div></section>
+      <section class="dock drawer data collapsed" id="dataDock"><div class="dock-header" data-drag-handle><span class="dockTitle">数据面板 <span class="badge" id="dataNotice">0</span></span><button class="iconBtn" id="dataToggleBtn" type="button">展开</button></div><div class="dock-body"><table class="record"><thead><tr><th>阶段</th><th>有效换向</th><th>摩擦数据</th><th>温度变化</th></tr></thead><tbody id="recordBody"></tbody></table><div class="empty" id="emptyRecords">暂无记录。</div></div></section>
       <div class="toast" id="toast">提示</div><div class="checkmark" id="checkmark"></div><div class="demo-cursor" id="demoCursor"></div><div class="modal-mask" id="doneMask"><div class="modal"><h3>实验完成</h3><p>对物体做功可以改变内能，机械能可转化为内能。</p><button class="ok" id="okBtn" type="button">OK</button></div></div>
     </main>
     <div class="toolbar"><button class="sub" id="resetBtn" type="button">步骤重置</button><button class="sub" id="autoDemoBtn" type="button">自动演示</button><button class="sub" id="freeBtn" type="button">自由模式</button></div>
@@ -127,26 +142,27 @@
 <script>
   (() => {
     "use strict";
-    const AMBIENT=22,FRICTION_FORCE=6,HEAT_CAPACITY=5,COOLING_RATE=.45,MIN_TRAVEL=28,MIN_REVERSALS=3;
+    const AMBIENT=22,FRICTION_FORCE=6,HEAT_CAPACITY=5,COOLING_RATE=.45,COOLDOWN_RATE=.9,MIN_TRAVEL=28,MIN_REVERSALS=3;
+    const TRIAL_TARGET_DISTANCE=1.2,CUMULATIVE_TARGET_DISTANCE=.6,FAST_THRESHOLD=850;
     const $=selector=>document.querySelector(selector);
     const stage=$("#stage"),labArea=$("#labArea"),canvas=$("#labCanvas"),ctx=canvas.getContext("2d");
     const leftHandleHit=$("#leftRopeHandleHit"),rightHandleHit=$("#rightRopeHandleHit");
     const taskStep=$("#taskStep"),taskText=$("#taskText"),taskHint=$("#taskHint"),dots=$("#dots"),modeTag=$("#modeTag"),statusTag=$("#statusTag");
     const hintLamp=$("#hintLamp"),hintPop=$("#hintPop"),controlDock=$("#controlDock"),dataDock=$("#dataDock"),controlToggleBtn=$("#controlToggleBtn"),dataToggleBtn=$("#dataToggleBtn");
-    const recordBtn=$("#recordBtn"),analyzeBtn=$("#analyzeBtn"),analysisText=$("#analysisText"),recordBody=$("#recordBody"),emptyRecords=$("#emptyRecords"),dataNotice=$("#dataNotice");
+    const recordBtn=$("#recordBtn"),retryTrialBtn=$("#retryTrialBtn"),analyzeBtn=$("#analyzeBtn"),analysisText=$("#analysisText"),recordBody=$("#recordBody"),emptyRecords=$("#emptyRecords"),dataNotice=$("#dataNotice");
     const resetBtn=$("#resetBtn"),autoDemoBtn=$("#autoDemoBtn"),freeBtn=$("#freeBtn"),toast=$("#toast"),checkmark=$("#checkmark"),doneMask=$("#doneMask"),okBtn=$("#okBtn"),demoCursor=$("#demoCursor");
     const tasks=[
-      {text:"慢速往复摩擦并记录",hint:"抓住任一绳柄，完成至少 3 次有效换向。",detail:"每一段要拉够行程；短抖动和单向拉动不能作为往复证据。"},
-      {text:"快速往复摩擦并记录",hint:"用更短时间完成一组有效往复。",detail:"比较相近摩擦路程下，快速操作结束时的温升。"},
-      {text:"继续做功并记录累计变化",hint:"再完成一组有效往复，观察功、路程和温度继续增加。",detail:"记录必须来自当前这一组动作，不能用历史往复证据代替。"},
-      {text:"分析能量转化",hint:"三组记录完成后点击分析。",detail:"克服摩擦力做功，机械能转化为金属筒的内能。"}
+      {text:"慢速完成 1.20 m 摩擦并记录",hint:"稳定往复拉绳；仪表到达 1.20 m 后记录慢速组。",detail:"必须完成足够行程的有效换向。短抖动和单向拉动不能作为往复证据；越界空拖不会增加做功。"},
+      {text:"冷却后快速完成同样 1.20 m",hint:"先等金属筒回到 22.0 ℃，再快速完成与慢速组相同的摩擦距离。",detail:"控制摩擦距离和做功相同，只改变完成快慢，才能进行公平比较。"},
+      {text:"追加 0.60 m，观察累计升温",hint:"不清零快速组结果，继续做功 0.60 m。",detail:"本关观察继续做功时，累计做功和金属筒内能如何变化。"},
+      {text:"比较数据并分析能量转化",hint:"点击分析，比较等距慢速组与快速组，再观察累计组。",detail:"相同做功下，快速组散热历时更短；继续做功时内能继续增加。"}
     ];
     const state={
       currentTask:0,completed:false,analysisDone:false,freeMode:false,autoPlaying:false,autoCancel:false,autoLastError:null,
       width:0,height:0,stageWidth:0,stageHeight:0,ropeOffset:0,ropeVelocity:0,directionChanges:0,frictionDistance:0,mechanicalWork:0,
-      temperature:AMBIENT,lastDragTime:0,drag:null,evidence:{slowRun:false,fastRun:false},lastRun:null,runSerial:0,recordedRunSerial:0,
+      temperature:AMBIENT,lastDragTime:0,drag:null,evidence:{slowRun:false,fastRun:false},lastRun:null,trial:{},runSerial:0,recordedRunSerial:0,
       records:[],unseenRecords:0,drawerDrag:null,stepWarning:false,successCooldown:false,rafId:0,lastFrameAt:0,timers:new Set(),uiTimers:new Set(),
-      autoWaitResolve:null,settleResolvers:[],coolingResolvers:[],resizeTimer:0
+      autoWaitResolve:null,settleResolvers:[],coolingResolvers:[],resizeTimer:0,coolingGate:false
     };
     function clamp(value,min,max){return Math.max(min,Math.min(max,value));}
     function round(value,digits=3){const factor=10**digits;return Math.round(value*factor)/factor;}
@@ -156,9 +172,28 @@
     function cancelResizeTimer(){if(state.resizeTimer)clearTimeout(state.resizeTimer);state.resizeTimer=0;}
     function scheduleResize(){cancelResizeTimer();state.resizeTimer=setTimeout(()=>{state.resizeTimer=0;resizeCanvas();},120);}
     function updateDots(){Array.from(dots.children).forEach((dot,index)=>{dot.classList.toggle("done",state.completed||index<state.currentTask);dot.classList.toggle("active",!state.completed&&index===state.currentTask&&!state.stepWarning);dot.classList.toggle("warn",!state.completed&&index===state.currentTask&&state.stepWarning);});}
-    function setStepUI(index){state.currentTask=clamp(index,0,tasks.length-1);state.stepWarning=false;const task=tasks[state.currentTask];taskStep.textContent="步骤 "+(state.currentTask+1)+" / "+tasks.length;taskText.textContent=task.text;taskHint.textContent=task.hint;hintPop.textContent=task.detail;updateDots();updateStatus();draw();}
+    function targetForStep(step=state.currentTask){return step<2?TRIAL_TARGET_DISTANCE:step===2?CUMULATIVE_TARGET_DISTANCE:0;}
+    function newTrial(step=state.currentTask){return{step,targetDistance:targetForStep(step),baselineDistance:state.frictionDistance,baselineWork:state.mechanicalWork,baselineDirectionChanges:state.directionChanges,startTemperature:state.temperature,distance:0,work:0,speedDistance:0,duration:0,averageSpeed:0,directionChanges:0,kind:"insufficient",status:"ready"};}
+    function prepareTrial(){state.lastRun=null;state.trial=newTrial();state.recordedRunSerial=0;syncActionState();}
+    function setStepUI(index,options={}){state.currentTask=clamp(index,0,tasks.length-1);state.stepWarning=false;const task=tasks[state.currentTask];taskStep.textContent="关卡 "+(state.currentTask+1)+"/"+tasks.length;taskText.textContent=task.text;taskHint.textContent=task.hint;hintPop.textContent=task.detail;if(options.prepare!==false&&state.currentTask<3)prepareTrial();updateDots();updateStatus();draw();}
     function setModeLabel(){modeTag.textContent=state.autoPlaying?"模式：自动演示":state.freeMode?"模式：自由":"模式：引导";}
-    function updateStatus(text){const fallback=state.completed?"已完成":state.drag?"摩擦中":state.temperature>AMBIENT+.02?"温度缓慢回落":"待操作";statusTag.textContent="状态："+(text||fallback);}
+    function qualifyTrialSpeed(run=state.lastRun,step=state.currentTask){if(!run)return"insufficient";if(step===2)return run.directionChanges>=2?"cumulative":"insufficient";if(run.directionChanges<MIN_REVERSALS)return"insufficient";return run.averageSpeed>=FAST_THRESHOLD?"fast":"slow";}
+    function trialComplete(run=state.lastRun){return Boolean(run&&run.distance>=targetForStep(run.step)-.001);}
+    function speedText(run=state.lastRun){const step=run?.step??state.currentTask,kind=qualifyTrialSpeed(run,step);if(state.freeMode)return kind==="fast"?"快速":kind==="slow"?"慢速":"未形成往复";return kind==="fast"?(step===0?"速度偏快":"快速合格"):kind==="slow"?(step===1?"速度偏慢":"慢速合格"):kind==="cumulative"?"追加合格":"未形成往复";}
+    function syncActionState(){
+      if(!recordBtn)return;
+      const run=state.lastRun,remaining=Math.max(0,targetForStep()-(run?.distance||0));
+      retryTrialBtn.hidden=state.freeMode||state.currentTask>=3||state.coolingGate;
+      analyzeBtn.disabled=!state.freeMode&&state.currentTask!==3;
+      if(state.currentTask===3){recordBtn.disabled=true;recordBtn.textContent="三组数据已记录";return;}
+      if(state.coolingGate){recordBtn.disabled=true;recordBtn.textContent="冷却至 22.0 ℃ 后开始";return;}
+      recordBtn.disabled=false;
+      if(!trialComplete(run)){recordBtn.textContent="还需摩擦 "+remaining.toFixed(2)+" m";return;}
+      const qualified=qualifyTrialSpeed(run);
+      const accepted=state.currentTask===0?qualified==="slow":state.currentTask===1?qualified==="fast":qualified==="cumulative";
+      recordBtn.textContent=accepted?"记录并进入关卡 "+(state.currentTask+2):speedText(run)+" · 重做本组";
+    }
+    function updateStatus(text){const run=state.lastRun;let fallback=state.completed?"已完成":state.coolingGate?"冷却中 · 暂停操作":state.drag?"摩擦中 · "+speedText(run):trialComplete(run)?speedText(run):state.temperature>AMBIENT+.02?"温度缓慢回落":"待操作";statusTag.textContent="状态："+(text||fallback);syncActionState();}
     function showToast(message){toast.textContent=message;toast.classList.add("show");if(showToast.id){clearTimeout(showToast.id);state.uiTimers.delete(showToast.id);}showToast.id=scheduleUi(()=>toast.classList.remove("show"),1500);}
     function showCheck(){checkmark.classList.add("active");if(showCheck.id){clearTimeout(showCheck.id);state.uiTimers.delete(showCheck.id);}showCheck.id=scheduleUi(()=>checkmark.classList.remove("active"),560);}
     function warnStep(message){state.stepWarning=true;updateDots();hintLamp.classList.remove("flash");void hintLamp.offsetWidth;hintLamp.classList.add("flash");showToast(message);scheduleUi(()=>{state.stepWarning=false;updateDots();},1200);}
@@ -173,8 +208,12 @@
     function box(center,size=48){return{x:center.x-size/2,y:center.y-size/2,width:size,height:size};}
     function apparatusGeometry(){const g=layout();return{apparatus:{...g.apparatus},cylinder:{...g.cylinder},ropeContact:{...g.ropeContact},leftHandle:box(g.leftCenter,g.hitSize),rightHandle:box(g.rightCenter,g.hitSize),thermometer:{...g.thermometer},readout:{...g.readout}};}
     function syncHandleLayers(){if(!state.width)return;const geometry=apparatusGeometry();[[leftHandleHit,geometry.leftHandle],[rightHandleHit,geometry.rightHandle]].forEach(([element,roi])=>{element.style.left=roi.x+"px";element.style.top=roi.y+"px";element.style.width=roi.width+"px";element.style.height=roi.height+"px";});}
-    function beginRun(source){state.runSerial+=1;state.lastRun={serial:state.runSerial,source,startTemperature:state.temperature,startWork:state.mechanicalWork,startDistance:state.frictionDistance,startDirectionChanges:state.directionChanges,directionChanges:0,distance:0,work:0,speedDistance:0,duration:0,averageSpeed:0,kind:"insufficient"};}
-    function coolFor(dt){if(dt<=0||state.temperature<=AMBIENT)return;state.temperature=AMBIENT+(state.temperature-AMBIENT)*Math.exp(-COOLING_RATE*dt);}
+    function beginRun(source){
+      state.runSerial+=1;
+      const seed=state.trial?.step===state.currentTask?state.trial:newTrial();
+      state.lastRun=state.trial={...seed,serial:state.runSerial,source,startTemperature:state.temperature,status:"running",segmentDirection:0,segmentTravel:0};
+    }
+    function coolFor(dt){if(dt<=0||state.temperature<=AMBIENT)return;const rate=state.coolingGate?COOLDOWN_RATE:COOLING_RATE;state.temperature=AMBIENT+(state.temperature-AMBIENT)*Math.exp(-rate*dt);}
     function applyRopeSample(dx,dt){
       if(!state.lastRun)beginRun("input");
       const elapsed=clamp(Number(dt)||.016,.008,60),g=layout(),oldOffset=clamp(state.ropeOffset,g.offsetBounds.min,g.offsetBounds.max),newOffset=clamp(oldOffset+dx/g.s,g.offsetBounds.min,g.offsetBounds.max),appliedDxPx=(newOffset-oldOffset)*g.s,distancePx=Math.abs(appliedDxPx);
@@ -195,21 +234,25 @@
           run.segmentDirection=direction;run.segmentTravel=distancePx;
         }
       }
-      const distanceM=distancePx*.002,work=FRICTION_FORCE*distanceM;
+      const rawDistanceM=distancePx*.002,remaining=state.freeMode?rawDistanceM:Math.max(0,targetForStep(run.step)-run.distance),distanceM=state.freeMode?rawDistanceM:Math.min(rawDistanceM,remaining),effectiveDistancePx=distanceM/.002;
+      if(distanceM<=0){run.status="complete";state.ropeOffset=newOffset;syncHandleLayers();draw();return false;}
+      const ratio=distanceM/rawDistanceM,work=FRICTION_FORCE*distanceM;
       if(run.source!=="pointer")coolFor(elapsed);
       state.frictionDistance+=distanceM;state.mechanicalWork+=work;state.temperature+=work/HEAT_CAPACITY;
       state.ropeOffset=newOffset;state.ropeVelocity=appliedDxPx/elapsed;state.lastDragTime=performance.now();
-      run.distance+=distanceM;run.work+=work;run.speedDistance+=distancePx;run.duration+=elapsed;run.averageSpeed=run.speedDistance/Math.max(.001,run.duration);
+      run.distance+=distanceM;run.work+=work;run.speedDistance+=effectiveDistancePx;run.duration+=elapsed*ratio;run.averageSpeed=run.speedDistance/Math.max(.001,run.duration);
       if(run.directionChanges>=MIN_REVERSALS){
-        run.kind=run.averageSpeed>=850?"fast":"slow";
+        run.kind=run.averageSpeed>=FAST_THRESHOLD?"fast":"slow";
         state.evidence[run.kind==="fast"?"fastRun":"slowRun"]=true;
       }
+      if(trialComplete(run))run.status="complete";
       if(run.source==="pointer")ensurePhysicsLoop();syncHandleLayers();draw();return true;
     }
     function finishRun(){
       const run=state.lastRun;if(!run)return null;
       run.averageSpeed=run.speedDistance/Math.max(.001,run.duration);
-      run.kind=run.directionChanges>=MIN_REVERSALS?(run.averageSpeed>=850?"fast":"slow"):"insufficient";
+      run.kind=qualifyTrialSpeed(run,run.step);
+      if(trialComplete(run))run.status="complete";
       if(run.kind==="slow")state.evidence.slowRun=true;
       if(run.kind==="fast")state.evidence.fastRun=true;
       state.ropeVelocity=0;ensurePhysicsLoop();updateStatus();draw();return run;
@@ -217,45 +260,56 @@
     function frame(now){
       state.rafId=0;const dt=Math.min(.1,Math.max(0,(now-state.lastFrameAt)/1000));state.lastFrameAt=now;
       coolFor(dt);state.ropeVelocity*=Math.exp(-8*dt);
+      if(state.coolingGate&&state.temperature<=AMBIENT+.03){state.temperature=AMBIENT;state.coolingGate=false;state.trial=newTrial(1);state.lastRun=null;const ready=state.coolingResolvers.splice(0);ready.forEach(item=>item.resolve(true));if(!state.autoPlaying)showToast("已冷却至 22.0 ℃，开始快速组");}
       if(state.temperature-AMBIENT<.01){state.temperature=AMBIENT;state.ropeVelocity=0;const resolvers=state.settleResolvers.splice(0);resolvers.forEach(resolve=>resolve(true));}
       const cooling=state.coolingResolvers.filter(item=>state.temperature<=item.target&&state.temperature>AMBIENT);
       state.coolingResolvers=state.coolingResolvers.filter(item=>!cooling.includes(item));cooling.forEach(item=>item.resolve(true));
       draw();updateStatus();
-      if(state.temperature>AMBIENT||Math.abs(state.ropeVelocity)>.01){state.rafId=requestAnimationFrame(frame);}
+      syncActionState();if(state.temperature>AMBIENT||Math.abs(state.ropeVelocity)>.01||state.coolingGate){state.rafId=requestAnimationFrame(frame);}
     }
     function ensurePhysicsLoop(){if(state.rafId||state.temperature<=AMBIENT)return;state.lastFrameAt=performance.now();state.rafId=requestAnimationFrame(frame);}
     function stopPhysics(){if(state.rafId)cancelAnimationFrame(state.rafId);state.rafId=0;state.lastFrameAt=0;state.settleResolvers.splice(0).forEach(resolve=>resolve(false));state.coolingResolvers.splice(0).forEach(item=>item.resolve(false));}
     function runAcceptedForStep(){
       const run=state.lastRun;if(!run||run.serial===state.recordedRunSerial)return false;
-      if(state.currentTask===0)return run.kind==="slow"&&run.directionChanges>=MIN_REVERSALS;
-      if(state.currentTask===1)return run.kind==="fast"&&run.directionChanges>=MIN_REVERSALS;
-      if(state.currentTask===2)return run.directionChanges>=2&&run.work>=1;
+      if(!trialComplete(run))return false;
+      const kind=qualifyTrialSpeed(run);
+      if(state.currentTask===0)return kind==="slow";
+      if(state.currentTask===1)return kind==="fast";
+      if(state.currentTask===2)return kind==="cumulative";
       return false;
     }
     function passStep(){
       showCheck();
-      if(state.currentTask===2)setStepUI(3);
-      else if(state.currentTask<2)setStepUI(state.currentTask+1);
+      if(state.currentTask===0){setStepUI(1);state.coolingGate=true;state.trial=newTrial(1);state.lastRun=null;ensurePhysicsLoop();updateStatus();}
+      else if(state.currentTask===1)setStepUI(2);
+      else if(state.currentTask===2)setStepUI(3,{prepare:false});
       else if(state.currentTask===3&&state.analysisDone){state.completed=true;doneMask.style.display="flex";setDrawerCollapsed(controlDock,false);setDrawerCollapsed(dataDock,true);updateDots();updateStatus();}
     }
-    function speedLabel(run){return run&&run.kind==="fast"?"快速":run&&run.kind==="slow"?"慢速":"不足一组";}
+    function speedLabel(run){return run&&run.kind==="fast"?"快速":run&&run.kind==="slow"?"慢速":run&&run.kind==="cumulative"?"继续做功":"不足一组";}
     function recordObservation(options){
       const run=state.lastRun;
       if(!run||run.serial===state.recordedRunSerial){if(!options?.quiet)warnStep("当前这一组已经记录，请先重新完成一组往复。");return false;}
       if(state.freeMode){
         if(run.kind==="insufficient"){if(!options?.quiet)warnStep("请先完成有效往复。");return false;}
-      }else if(state.currentTask>=3||!runAcceptedForStep()){if(!options?.quiet)warnStep("当前这一组的速度或往复行程不符合本关要求。");return false;}
-      const record={stage:state.freeMode?"自由比较":state.currentTask===0?"慢速组":state.currentTask===1?"快速组":"累计组",cycles:round(run.directionChanges/2,1),speed:speedLabel(run),temperature:round(state.temperature,2),temperatureRise:round(state.temperature-AMBIENT,2),frictionDistance:round(state.frictionDistance,3),mechanicalWork:round(state.mechanicalWork,3)};
+      }else if(state.currentTask>=3||!runAcceptedForStep()){if(!options?.quiet)warnStep(trialComplete(run)?"本组速度不符合要求，请点击“重做本组”。":"还未达到本关要求的摩擦距离和有效换向。");return false;}
+      const record={stage:state.freeMode?"自由比较":state.currentTask===0?"慢速等距组":state.currentTask===1?"快速等距组":"继续做功组",reversals:run.directionChanges,speed:speedLabel(run),temperature:round(state.temperature,2),startTemperature:round(run.startTemperature,2),temperatureRise:round(state.temperature-run.startTemperature,2),distance:round(run.distance,3),work:round(run.work,3),duration:round(run.duration,3),cumulativeDistance:round(state.frictionDistance,3),cumulativeWork:round(state.mechanicalWork,3)};
       state.records.push(record);state.recordedRunSerial=run.serial;
       if(dataDock.classList.contains("collapsed")){state.unseenRecords+=1;updateBadge();}
       renderRecords();if(!options?.quiet)showToast("已记录当前往复数据");if(!state.freeMode)passStep();return true;
     }
     function analyzeConclusion(){
-      if(state.freeMode){analysisText.classList.add("ok");analysisText.textContent="自由比较：相同路程做功相近；快速完成时散热历时更短，结束温度可更高。";return true;}
+      if(state.freeMode){analysisText.classList.add("ok");analysisText.textContent="自由比较：摩擦距离越长，克服摩擦力做功越多，金属筒升温越明显。";return true;}
       if(state.currentTask!==3||state.records.length<3){warnStep("请先按顺序完成三组当前动作记录。");return false;}
-      state.analysisDone=true;analysisText.classList.add("ok");analysisText.textContent="克服摩擦力对金属筒做功，机械能转化为金属筒的内能。";passStep();return true;
+      const slow=state.records[0],fast=state.records[1],extra=state.records[2];
+      state.analysisDone=true;analysisText.classList.add("ok");analysisText.textContent="慢、快两组摩擦距离均为 "+slow.distance.toFixed(2)+" m，做功均为 "+slow.work.toFixed(1)+" J；快速组用时更短，散热更少。随后追加 "+extra.distance.toFixed(2)+" m，累计做功增至 "+extra.cumulativeWork.toFixed(1)+" J，温度继续上升。说明克服摩擦力做功时，机械能转化为金属筒的内能。";passStep();return true;
     }
-    function renderRecords(){recordBody.innerHTML="";state.records.forEach(record=>{const row=document.createElement("tr");const values=[record.stage,String(record.cycles),record.speed,"+"+record.temperatureRise.toFixed(2)+" ℃"];values.forEach(value=>{const cell=document.createElement("td");cell.textContent=value;row.appendChild(cell);});recordBody.appendChild(row);});emptyRecords.style.display=state.records.length?"none":"block";}
+    function renderRecords(){recordBody.innerHTML="";state.records.forEach(record=>{const row=document.createElement("tr");const values=[record.stage,String(record.reversals)+" 次",record.distance.toFixed(2)+" m · "+record.work.toFixed(1)+" J","+"+record.temperatureRise.toFixed(2)+" ℃"];values.forEach(value=>{const cell=document.createElement("td");cell.textContent=value;row.appendChild(cell);});recordBody.appendChild(row);});emptyRecords.style.display=state.records.length?"none":"block";}
+    function retryCurrentTrial(options={}){
+      if(state.currentTask>=3||state.coolingGate)return false;
+      const trial=state.trial?.step===state.currentTask?state.trial:newTrial();
+      state.frictionDistance=trial.baselineDistance;state.mechanicalWork=trial.baselineWork;state.directionChanges=trial.baselineDirectionChanges;state.temperature=trial.startTemperature;state.ropeOffset=0;state.ropeVelocity=0;state.drag=null;state.lastRun=null;state.trial=newTrial();syncHandleLayers();
+      if(!options.quiet)showToast("已保留既有记录，重新进行本组");updateStatus();draw();return true;
+    }
     function updateBadge(){dataNotice.textContent=String(state.unseenRecords);dataNotice.classList.toggle("show",state.unseenRecords>0&&dataDock.classList.contains("collapsed"));}
     function setDrawerCollapsed(drawer,collapsed){drawer.classList.toggle("collapsed",collapsed);(drawer===controlDock?controlToggleBtn:dataToggleBtn).textContent=collapsed?"展开":"收起";if(drawer===dataDock&&!collapsed){state.unseenRecords=0;updateBadge();}fitDrawers();}
     function fitDrawers(){const sw=state.stageWidth||stage.clientWidth,mobile=sw<=720;[controlDock,dataDock].forEach(drawer=>{if(!drawer.dataset.moved)drawer.style.width="";});if(mobile){if(!controlDock.dataset.moved){controlDock.style.left="12px";controlDock.style.top="56px";}if(!dataDock.dataset.moved){dataDock.style.left=Math.max(12,sw-(dataDock.offsetWidth||148)-12)+"px";dataDock.style.top="104px";}}else{if(!controlDock.dataset.moved){controlDock.style.left=Math.max(12,sw-(controlDock.offsetWidth||330)-12)+"px";controlDock.style.top="58px";}if(!dataDock.dataset.moved){dataDock.style.left=Math.max(12,sw-(dataDock.offsetWidth||330)-12)+"px";dataDock.style.top=(controlDock.offsetTop+controlDock.offsetHeight+8)+"px";}}}
@@ -264,7 +318,7 @@
     function fillRound(x,y,width,height,radius,color){ctx.fillStyle=color;roundRect(x,y,width,height,radius);ctx.fill();}
     function strokeLine(points,color,width){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();points.forEach((point,index)=>index?ctx.lineTo(point[0],point[1]):ctx.moveTo(point[0],point[1]));ctx.stroke();ctx.restore();}
     function label(text,x,y,size,color="#eaf5ff"){ctx.save();ctx.fillStyle=color;ctx.font="700 "+Math.max(10,size)+"px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(text,x,y);ctx.restore();}
-    function draw(){
+    function drawLegacy(){
       if(!state.width||!state.height)return;const g=layout(),s=g.s,cx=g.cylinder.x+g.cylinder.width/2,cy=g.cylinder.y+g.cylinder.height/2;
       const background=ctx.createLinearGradient(0,0,0,state.height);background.addColorStop(0,"#071018");background.addColorStop(1,"#111a22");ctx.fillStyle=background;ctx.fillRect(0,0,state.width,state.height);
       fillRound(g.bench.x,g.bench.y,g.bench.width,g.bench.height,10*s,"#765139");
@@ -284,26 +338,84 @@
       fillRound(g.readout.x,g.readout.y,g.readout.width,g.readout.height,10*s,"rgba(0,0,0,.62)");ctx.save();ctx.fillStyle="#eaf5ff";ctx.font="700 "+Math.max(11,14*s)+"px Arial";ctx.textAlign="left";ctx.textBaseline="middle";ctx.fillText("往复："+(state.directionChanges/2).toFixed(1)+" 次  ·  路程："+state.frictionDistance.toFixed(2)+" m  ·  功："+state.mechanicalWork.toFixed(1)+" J  ·  温度："+state.temperature.toFixed(1)+" ℃",g.readout.x+14*s,g.readout.y+g.readout.height/2);ctx.restore();
       label("左绳柄",g.leftCenter.x,g.leftCenter.y+34*s,11*s,"#bfffe1");label("右绳柄",g.rightCenter.x,g.rightCenter.y+34*s,11*s,"#bdeaff");label("金属筒（绳子绕过表面）",cx,cy-92*s,13*s,"#eaf5ff");
     }
+    function drawInstrumentStrip(g){
+      const s=g.s,run=state.lastRun,remaining=Math.max(0,targetForStep()-(run?.distance||0));
+      const x=g.x+8*s,y=g.y+4*s,w=625*s,h=63*s;
+      fillRound(x,y,w,h,12*s,"rgba(2,8,14,.88)");ctx.strokeStyle="rgba(91,188,255,.24)";ctx.lineWidth=1;roundRect(x,y,w,h,12*s);ctx.stroke();
+      const items=[
+        ["本组有效换向",(run?.directionChanges||0)+" 次"],
+        ["速度状态",state.coolingGate?"冷却锁定":speedText(run)],
+        ["本组摩擦距离",(run?.distance||0).toFixed(2)+" / "+targetForStep().toFixed(2)+" m"],
+        ["本组做功",(run?.work||0).toFixed(1)+" J"],
+        ["实时温度",state.temperature.toFixed(1)+" ℃"]
+      ];
+      const gap=7*s,cardW=(w-gap*6)/5;
+      items.forEach((item,index)=>{const cardX=x+gap+(cardW+gap)*index;fillRound(cardX,y+8*s,cardW,h-16*s,8*s,index===2?"rgba(53,135,196,.18)":"rgba(255,255,255,.045)");ctx.save();ctx.textAlign="left";ctx.textBaseline="middle";ctx.fillStyle="#82a9cb";ctx.font="700 "+Math.max(8,10*s)+"px Arial";ctx.fillText(item[0],cardX+8*s,y+22*s);ctx.fillStyle=index===1&&!state.coolingGate?"#87f2bd":"#f2f8ff";ctx.font="800 "+Math.max(9,12*s)+"px Arial";ctx.fillText(item[1],cardX+8*s,y+42*s);ctx.restore();});
+      if(state.currentTask<3){const progress=clamp(1-remaining/Math.max(.001,targetForStep()),0,1);fillRound(x+8*s,y+h-6*s,w-16*s,3*s,2*s,"rgba(255,255,255,.09)");fillRound(x+8*s,y+h-6*s,(w-16*s)*progress,3*s,2*s,"#3ddc97");}
+    }
+    function drawMetalCylinder(g){
+      const s=g.s,cx=g.cylinder.x+g.cylinder.width/2,cy=g.cylinder.y+g.cylinder.height/2,hot=clamp((state.temperature-AMBIENT)/4,0,1);
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(-.075);
+      const w=250*s,h=116*s,ex=24*s;
+      const metal=ctx.createLinearGradient(0,-h/2,0,h/2);metal.addColorStop(0,"#eef7fb");metal.addColorStop(.14,"#8598a7");metal.addColorStop(.43,"#dce8ee");metal.addColorStop(.72,"#627482");metal.addColorStop(1,"#303d47");
+      ctx.fillStyle=metal;roundRect(-w/2,-h/2,w,h,h/2);ctx.fill();ctx.strokeStyle="#d9ebf4";ctx.lineWidth=3*s;ctx.stroke();
+      ctx.fillStyle="rgba(226,241,247,.68)";ctx.beginPath();ctx.ellipse(-w/2,0,ex,h/2,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#f2fbff";ctx.stroke();
+      ctx.fillStyle="rgba(12,25,35,.75)";ctx.beginPath();ctx.ellipse(w/2,0,ex,h/2,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#9db2c0";ctx.stroke();
+      ctx.fillStyle="rgba(255,255,255,.26)";roundRect(-w/2+8*s,-h/2+12*s,w-20*s,13*s,6*s);ctx.fill();
+      const heatColor="rgba(255,"+Math.round(190-80*hot)+","+Math.round(75-35*hot)+","+(0.18+.5*hot)+")";ctx.fillStyle=heatColor;roundRect(-48*s,-17*s,96*s,34*s,9*s);ctx.fill();
+      ctx.fillStyle=hot>.42?"#fff7e8":"#202a30";ctx.font="900 "+Math.max(11,14*s)+"px Arial";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(state.temperature.toFixed(1)+" ℃",0,0);
+      ctx.restore();
+    }
+    function drawRopeSystem(g){
+      const s=g.s,cx=g.cylinder.x+g.cylinder.width/2,cy=g.cylinder.y+g.cylinder.height/2,active=Boolean(state.drag);
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(-.075);ctx.strokeStyle="rgba(177,127,70,.54)";ctx.lineWidth=7*s;ctx.beginPath();ctx.ellipse(0,-5*s,102*s,75*s,0,Math.PI,Math.PI*2);ctx.stroke();ctx.restore();
+      drawMetalCylinder(g);
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(-.075);ctx.strokeStyle=active?"#ffd58e":"#d8aa69";ctx.lineWidth=8*s;ctx.lineCap="round";ctx.beginPath();ctx.ellipse(0,5*s,102*s,75*s,0,0,Math.PI);ctx.stroke();ctx.restore();
+      strokeLine([[g.leftCenter.x,g.leftCenter.y],[cx-108*s,cy+27*s]],active?"#f6cb82":"#d8aa69",7*s);
+      strokeLine([[cx+108*s,cy+12*s],[g.rightCenter.x,g.rightCenter.y]],active?"#f6cb82":"#d8aa69",7*s);
+      [g.leftCenter,g.rightCenter].forEach((point,index)=>{ctx.save();ctx.shadowColor=index?"rgba(76,185,255,.45)":"rgba(61,220,151,.45)";ctx.shadowBlur=active?18*s:7*s;fillRound(point.x-23*s,point.y-15*s,46*s,30*s,10*s,index?"#369bc7":"#36bd83");ctx.restore();ctx.strokeStyle="#eaffff";ctx.lineWidth=2*s;roundRect(point.x-23*s,point.y-15*s,46*s,30*s,10*s);ctx.stroke();});
+    }
+    function drawThermometer(g){
+      const s=g.s,cx=g.cylinder.x+g.cylinder.width/2,cy=g.cylinder.y+g.cylinder.height/2,tx=cx+165*s,top=cy-128*s;
+      strokeLine([[cx+86*s,cy-42*s],[tx-2*s,top+132*s]],"#b9d3df",5*s);ctx.fillStyle="#ef5f4e";ctx.beginPath();ctx.arc(cx+86*s,cy-42*s,7*s,0,Math.PI*2);ctx.fill();
+      fillRound(tx-13*s,top,26*s,139*s,13*s,"rgba(218,239,248,.9)");ctx.strokeStyle="#7fa4b9";ctx.lineWidth=2*s;roundRect(tx-13*s,top,26*s,139*s,13*s);ctx.stroke();
+      const column=clamp(24+(state.temperature-AMBIENT)*15,24,118)*s;ctx.fillStyle="#ee5546";ctx.fillRect(tx-4*s,top+130*s-column,8*s,column);ctx.beginPath();ctx.arc(tx,top+145*s,17*s,0,Math.PI*2);ctx.fill();
+      for(let i=0;i<6;i++)strokeLine([[tx+13*s,top+18*s+i*18*s],[tx+23*s,top+18*s+i*18*s]],"#d9eef8",1*s);
+      label("接触式温度计",tx,top+180*s,11*s,"#d9f0ff");
+    }
+    function draw(){
+      if(!state.width||!state.height)return;const g=layout(),s=g.s,cx=g.cylinder.x+g.cylinder.width/2,cy=g.cylinder.y+g.cylinder.height/2;
+      const background=ctx.createLinearGradient(0,0,0,state.height);background.addColorStop(0,"#06111a");background.addColorStop(.62,"#0b1721");background.addColorStop(1,"#101820");ctx.fillStyle=background;ctx.fillRect(0,0,state.width,state.height);
+      drawInstrumentStrip(g);
+      fillRound(g.bench.x,g.bench.y,g.bench.width,g.bench.height,10*s,"#724b30");ctx.fillStyle="rgba(255,255,255,.07)";for(let i=1;i<6;i++)ctx.fillRect(g.bench.x,g.bench.y+i*8*s,g.bench.width,1);
+      fillRound(g.x+126*s,g.y+350*s,50*s,58*s,7*s,"#424e58");fillRound(g.x+481*s,g.y+350*s,50*s,58*s,7*s,"#424e58");
+      strokeLine([[g.x+151*s,g.y+360*s],[g.x+151*s,g.y+132*s],[g.x+506*s,g.y+132*s],[g.x+506*s,g.y+360*s]],"#718897",9*s);strokeLine([[g.x+151*s,g.y+132*s],[g.x+506*s,g.y+132*s]],"#a6bbc6",3*s);
+      drawRopeSystem(g);drawThermometer(g);
+      label("左侧绳柄",g.leftCenter.x,g.leftCenter.y+34*s,11*s,"#bfffe1");label("右侧绳柄",g.rightCenter.x,g.rightCenter.y+34*s,11*s,"#bdeaff");label("绳子后侧绕行",cx,cy-101*s,11*s,"#c89b68");label("绳子前侧接触金属筒",cx,cy+104*s,12*s,"#ffd18a");
+      if(state.coolingGate){fillRound(cx-132*s,cy-27*s,264*s,54*s,12*s,"rgba(5,13,20,.88)");label("等待冷却至 22.0 ℃",cx,cy-5*s,15*s,"#8fd7ff");label("快速组尚未开始",cx,cy+17*s,11*s,"#c5d8e7");}
+    }
     function resizeCanvas(){const stageRect=stage.getBoundingClientRect(),rect=labArea.getBoundingClientRect(),dpr=window.devicePixelRatio||1;state.width=rect.width;state.height=rect.height;state.stageWidth=stageRect.width;state.stageHeight=stageRect.height;canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);canvas.style.width=rect.width+"px";canvas.style.height=rect.height+"px";ctx.setTransform(dpr,0,0,dpr,0,0);fitDrawers();syncHandleLayers();draw();}
     function pointerPoint(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
-    function beginHandleDrag(event,handle){if(state.autoPlaying)return;if(state.temperature>AMBIENT)ensurePhysicsLoop();const point=pointerPoint(event);beginRun("pointer");state.drag={pointerId:event.pointerId,handle,lastX:point.x,lastAt:performance.now(),segmentDirection:0,segmentTravel:0};try{event.currentTarget.setPointerCapture(event.pointerId);}catch(error){console.warn("capture rope pointer failed",error);}updateStatus();event.preventDefault();}
+    function beginHandleDrag(event,handle){if(state.autoPlaying)return;if(state.coolingGate){warnStep("请等待金属筒冷却至 22.0 ℃。");return;}if(!state.freeMode&&state.currentTask>=3)return;if(trialComplete(state.lastRun)){warnStep("本组已达到目标，请记录或重做本组。");return;}if(state.temperature>AMBIENT)ensurePhysicsLoop();const point=pointerPoint(event);beginRun("pointer");state.drag={pointerId:event.pointerId,handle,lastX:point.x,lastAt:performance.now(),segmentDirection:0,segmentTravel:0};try{event.currentTarget.setPointerCapture(event.pointerId);}catch(error){console.warn("capture rope pointer failed",error);}updateStatus();event.preventDefault();}
     function moveHandleDrag(event){if(!state.drag||state.drag.pointerId!==event.pointerId||state.autoPlaying)return;const point=pointerPoint(event),now=performance.now(),dx=point.x-state.drag.lastX,dt=(now-state.drag.lastAt)/1000;applyRopeSample(dx,dt);state.drag.lastX=point.x;state.drag.lastAt=now;event.preventDefault();}
     function finishHandleDrag(event){if(!state.drag||state.drag.pointerId!==event.pointerId)return;try{event.currentTarget.releasePointerCapture(event.pointerId);}catch(error){console.warn("release rope pointer failed",error);}if(state.lastRun?.source==="pointer")state.lastRun.duration+=clamp((performance.now()-state.drag.lastAt)/1000,0,60);state.drag=null;finishRun();event.preventDefault();}
     function clearAutoWait(){if(state.autoWaitResolve){const resolve=state.autoWaitResolve;state.autoWaitResolve=null;resolve(false);}for(const id of state.timers)clearTimeout(id);state.timers.clear();}
     function autoWait(ms){return new Promise(resolve=>{const id=setTimeout(()=>{state.timers.delete(id);state.autoWaitResolve=null;resolve(true);},ms);state.timers.add(id);state.autoWaitResolve=value=>{clearTimeout(id);state.timers.delete(id);state.autoWaitResolve=null;resolve(value);};});}
     function moveCursor(point){const stageRect=stage.getBoundingClientRect(),labRect=labArea.getBoundingClientRect();demoCursor.style.opacity="1";demoCursor.style.transform="translate("+(labRect.left-stageRect.left+point.x-10)+"px,"+(labRect.top-stageRect.top+point.y-10)+"px)";}
     function syntheticRub(speed,cycles,visible=false){
+      if(state.coolingGate)return false;
       stopPhysics();beginRun(visible?"auto":"test");state.drag={pointerId:"synthetic",handle:"left",lastX:0,lastAt:performance.now(),segmentDirection:0,segmentTravel:0};
       const halfStrokes=Math.max(2,Math.round((Number(cycles)||1)*2)),dt=speed==="fast"?.035:.14;
       const bounds=layout().offsetBounds,midpoint=(bounds.min+bounds.max)/2,firstHigh=state.ropeOffset<=midpoint;
-      for(let index=0;index<halfStrokes;index++){const high=index%2===0?firstHigh:!firstHigh,target=high?bounds.max:bounds.min,current=layout();applyRopeSample((target-state.ropeOffset)*current.s,dt);}
+      for(let index=0;index<halfStrokes&&!trialComplete(state.lastRun);index++){const high=index%2===0?firstHigh:!firstHigh,target=high?bounds.max:bounds.min,current=layout();applyRopeSample((target-state.ropeOffset)*current.s,dt);}
       state.drag=null;finishRun();return true;
     }
     async function autoRub(speed,cycles){
+      if(state.coolingGate)await waitForCooling();
       stopPhysics();beginRun("auto");state.drag={pointerId:"auto",handle:"left",lastX:0,lastAt:performance.now(),segmentDirection:0,segmentTravel:0};
-      const halfStrokes=Math.max(2,Math.round(cycles*2)),dt=speed==="fast"?.035:.14;
+      const halfStrokes=Math.max(18,Math.round(cycles*2)),dt=speed==="fast"?.035:.14;
       const bounds=layout().offsetBounds,midpoint=(bounds.min+bounds.max)/2,firstHigh=state.ropeOffset<=midpoint;
-      for(let index=0;index<halfStrokes;index++){if(state.autoCancel)throw new Error("AUTO_CANCELLED");const high=index%2===0?firstHigh:!firstHigh,target=high?bounds.max:bounds.min,current=layout();applyRopeSample((target-state.ropeOffset)*current.s,dt);moveCursor(layout().leftCenter);if(!(await autoWait(55)))throw new Error("AUTO_CANCELLED");}
+      for(let index=0;index<halfStrokes&&!trialComplete(state.lastRun);index++){if(state.autoCancel)throw new Error("AUTO_CANCELLED");const high=index%2===0?firstHigh:!firstHigh,target=high?bounds.max:bounds.min,current=layout();applyRopeSample((target-state.ropeOffset)*current.s,dt);moveCursor(layout().leftCenter);if(!(await autoWait(55)))throw new Error("AUTO_CANCELLED");}
       state.drag=null;finishRun();return true;
     }
     async function runAutoDemo(){
@@ -311,18 +423,18 @@
       resetScene({quiet:true,keepMode:false});state.autoPlaying=true;state.autoCancel=false;state.autoLastError=null;resetBtn.disabled=true;freeBtn.disabled=true;autoDemoBtn.textContent="退出自动演示";setModeLabel();setDrawerCollapsed(controlDock,false);setDrawerCollapsed(dataDock,true);
       try{
         const script=[["slow",4],["fast",6],["fast",3]];
-        for(let index=0;index<script.length;index++){setStepUI(index);updateStatus("自动演示");await autoRub(script[index][0],script[index][1]);const before=state.records.length;if(!recordObservation({quiet:true})||state.records.length!==before+1)throw new Error("AUTO_RECORD_NOT_PERSISTED:53-"+index);if(!(await autoWait(720)))throw new Error("AUTO_CANCELLED");}
+        for(let index=0;index<script.length;index++){if(state.currentTask!==index)setStepUI(index);updateStatus("自动演示");await autoRub(script[index][0],script[index][1]);const before=state.records.length;if(!recordObservation({quiet:true})||state.records.length!==before+1)throw new Error("AUTO_RECORD_NOT_PERSISTED:53-"+index);if(index===0)await waitForCooling();if(!(await autoWait(520)))throw new Error("AUTO_CANCELLED");}
         setStepUI(3);if(!(await autoWait(700)))throw new Error("AUTO_CANCELLED");if(!analyzeConclusion())throw new Error("AUTO_ANALYSIS_FAILED");if(!(await autoWait(850)))throw new Error("AUTO_CANCELLED");doneMask.style.display="none";return{completed:true};
       }catch(error){state.autoLastError=String(error.message||error);if(state.autoLastError==="AUTO_CANCELLED"){resetScene({quiet:true,keepMode:false});state.autoLastError="AUTO_CANCELLED";return{cancelled:true,code:"AUTO_CANCELLED"};}console.error("实验53自动演示失败",error);throw error;}
       finally{clearAutoWait();state.autoPlaying=false;state.autoCancel=false;resetBtn.disabled=false;freeBtn.disabled=false;autoDemoBtn.textContent="自动演示";demoCursor.style.opacity="0";setModeLabel();updateStatus();if(state.temperature>AMBIENT)ensurePhysicsLoop();}
     }
     function cancelAutoDemo(){if(!state.autoPlaying)return{accepted:false,code:"AUTO_NOT_RUNNING"};state.autoCancel=true;state.autoLastError="AUTO_CANCELLED";clearAutoWait();return{accepted:true,cancelled:true,code:"AUTO_CANCELLED"};}
     function resetScene(options={}){
-      clearAutoWait();clearUiTimers();cancelResizeTimer();stopPhysics();state.completed=false;state.analysisDone=false;state.currentTask=0;state.stepWarning=false;state.successCooldown=false;state.records=[];state.unseenRecords=0;state.ropeOffset=0;state.ropeVelocity=0;state.directionChanges=0;state.frictionDistance=0;state.mechanicalWork=0;state.temperature=AMBIENT;state.lastDragTime=0;state.drag=null;state.evidence={slowRun:false,fastRun:false};state.lastRun=null;state.runSerial=0;state.recordedRunSerial=0;state.autoLastError=null;if(!options.keepMode)state.freeMode=false;freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式";autoDemoBtn.disabled=state.freeMode;doneMask.style.display="none";analysisText.classList.remove("ok");analysisText.textContent="完成三次记录后分析。";renderRecords();updateBadge();setModeLabel();resizeCanvas();setStepUI(0);if(!options.quiet)showToast("已重置");return true;
+      clearAutoWait();clearUiTimers();cancelResizeTimer();stopPhysics();state.completed=false;state.analysisDone=false;state.currentTask=0;state.stepWarning=false;state.successCooldown=false;state.records=[];state.unseenRecords=0;state.ropeOffset=0;state.ropeVelocity=0;state.directionChanges=0;state.frictionDistance=0;state.mechanicalWork=0;state.temperature=AMBIENT;state.lastDragTime=0;state.drag=null;state.evidence={slowRun:false,fastRun:false};state.lastRun=null;state.trial={};state.runSerial=0;state.recordedRunSerial=0;state.coolingGate=false;state.autoLastError=null;if(!options.keepMode)state.freeMode=false;freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式";autoDemoBtn.disabled=state.freeMode;doneMask.style.display="none";analysisText.classList.remove("ok");analysisText.textContent="完成三组记录后，这里会生成等距比较结论。";renderRecords();updateBadge();setModeLabel();resizeCanvas();setStepUI(0);if(!options.quiet)showToast("已重置");return true;
     }
     function externalReset(){if(state.autoPlaying){state.autoCancel=true;clearAutoWait();}return resetScene({quiet:true,keepMode:false});}
     function setFreeMode(enabled,options={}){if(!enabled&&state.freeMode)resetScene({quiet:true,keepMode:false});state.freeMode=Boolean(enabled);freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式";autoDemoBtn.disabled=state.freeMode;setModeLabel();updateStatus();draw();if(!options.quiet)showToast(state.freeMode?"自由比较已开启":"已回到引导模式");return true;}
-    function waitForCooling(){if(state.temperature<=AMBIENT+.03)return Promise.resolve(true);ensurePhysicsLoop();const target=Math.max(AMBIENT+.015,state.temperature-.05);return new Promise(resolve=>state.coolingResolvers.push({target,resolve}));}
+    function waitForCooling(){if(!state.coolingGate&&state.temperature<=AMBIENT+.03)return Promise.resolve(true);ensurePhysicsLoop();return new Promise(resolve=>state.coolingResolvers.push({target:AMBIENT+.03,resolve}));}
     function waitForSettle(){if(state.temperature===AMBIENT&&!state.rafId)return Promise.resolve(true);ensurePhysicsLoop();return new Promise(resolve=>state.settleResolvers.push(resolve));}
     async function performTestAction(action){
       if(!action||typeof action.type!=="string")throw new Error("INVALID_TEST_ACTION");
@@ -335,6 +447,7 @@
       if(action.type==="rub-rope")return syntheticRub(action.speed,action.cycles);
       if(action.type==="wait-for-cooling")return waitForCooling();
       if(action.type==="wait-for-settle")return waitForSettle();
+      if(action.type==="retry-trial")return retryCurrentTrial({quiet:true});
       if(action.type==="record-observation")return recordObservation({quiet:true});
       if(action.type==="analyze-conclusion")return analyzeConclusion();
       if(action.type==="set-mode")return setFreeMode(action.mode==="free",{quiet:true});
@@ -343,11 +456,11 @@
     function getSnapshot(){
       const run=state.lastRun;
       const liveDuration=(run?.duration||0)+(run?.source==="pointer"&&state.drag?clamp((performance.now()-state.drag.lastAt)/1000,0,60):0),liveAverage=run?run.speedDistance/Math.max(.001,liveDuration):0;
-      return{schemaVersion:1,experimentId:53,mode:state.freeMode?"free":"guided",currentTask:state.currentTask,completed:state.completed,analysisDone:state.analysisDone,physics:{ropeOffset:round(state.ropeOffset),ropeVelocity:round(state.ropeVelocity),directionChanges:state.directionChanges,frictionDistance:round(state.frictionDistance),mechanicalWork:round(state.mechanicalWork),temperature:round(state.temperature),lastDragTime:round(state.lastDragTime),lastRunAverageSpeed:round(liveAverage),lastRunDirectionChanges:run?.directionChanges||0,lastRunWork:round(run?.work||0),activeSegmentTravel:round(state.drag?.segmentTravel??run?.segmentTravel??0),evidence:{...state.evidence}},evidence:{...state.evidence},records:state.records.map(record=>({...record})),auto:{playing:state.autoPlaying,lastError:state.autoLastError},resources:{rafActive:Boolean(state.rafId),timerCount:state.timers.size+state.uiTimers.size+(state.resizeTimer?1:0)},geometry:apparatusGeometry()};
+      return{schemaVersion:2,experimentId:53,mode:state.freeMode?"free":"guided",currentTask:state.currentTask,completed:state.completed,analysisDone:state.analysisDone,coolingGate:state.coolingGate,trial:{...state.trial},physics:{ropeOffset:round(state.ropeOffset),ropeVelocity:round(state.ropeVelocity),directionChanges:state.directionChanges,frictionDistance:round(state.frictionDistance),mechanicalWork:round(state.mechanicalWork),temperature:round(state.temperature),lastDragTime:round(state.lastDragTime),lastRunAverageSpeed:round(liveAverage),lastRunDirectionChanges:run?.directionChanges||0,lastRunWork:round(run?.work||0),activeSegmentTravel:round(state.drag?.segmentTravel??run?.segmentTravel??0),evidence:{...state.evidence}},evidence:{...state.evidence},records:state.records.map(record=>({...record})),auto:{playing:state.autoPlaying,lastError:state.autoLastError},resources:{rafActive:Boolean(state.rafId),timerCount:state.timers.size+state.uiTimers.size+(state.resizeTimer?1:0)},geometry:apparatusGeometry()};
     }
     function initEvents(){
       [[leftHandleHit,"left"],[rightHandleHit,"right"]].forEach(([element,name])=>{element.addEventListener("pointerdown",event=>beginHandleDrag(event,name));element.addEventListener("pointermove",moveHandleDrag);element.addEventListener("pointerup",finishHandleDrag);element.addEventListener("pointercancel",finishHandleDrag);});
-      recordBtn.addEventListener("click",()=>recordObservation());analyzeBtn.addEventListener("click",analyzeConclusion);
+      recordBtn.addEventListener("click",()=>recordObservation());retryTrialBtn.addEventListener("click",()=>retryCurrentTrial());analyzeBtn.addEventListener("click",analyzeConclusion);
       resetBtn.addEventListener("click",()=>{const free=state.freeMode;resetScene({quiet:true,keepMode:true});setFreeMode(free,{quiet:true});showToast("已重置");});
       autoDemoBtn.addEventListener("click",()=>state.autoPlaying?cancelAutoDemo():runAutoDemo());freeBtn.addEventListener("click",()=>setFreeMode(!state.freeMode));
       controlToggleBtn.addEventListener("click",()=>setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed")));dataToggleBtn.addEventListener("click",()=>setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed")));
@@ -431,6 +544,7 @@
         setCollapsed(dataDock, true);
       }
       syncTabs();
+      requestAnimationFrame(() => window.dispatchEvent(new Event("resize")));
     }
     function syncTabs(){
       if (!tabsEl) return;
@@ -439,6 +553,7 @@
       const controlOpen = !controlDock.classList.contains("collapsed");
       const dataOpen = !dataDock.classList.contains("collapsed");
       tabsEl.classList.toggle("attached", controlOpen || dataOpen);
+      stage.classList.toggle("mobile-panel-open",isMobile()&&(controlOpen||dataOpen));
       exp.classList.toggle("active", controlOpen);
       data.classList.toggle("active", dataOpen);
       exp.setAttribute("aria-expanded", String(controlOpen));
@@ -457,13 +572,13 @@
       if (!recordBody) return;
       recordBody.querySelectorAll("tr").forEach(tr => {
         const cells = tr.querySelectorAll("td");
-        const labels = ["阶段", "往复次数", "相对速度", "温度变化"];
+        const labels = ["阶段", "有效换向", "摩擦数据", "温度变化"];
         cells.forEach((cell, index) => { cell.dataset.label = labels[index] || "记录"; });
       });
     }
     function syncAnalysis(){
       if (!analysisText) return;
-      const placeholder = /完成三次记录后分析/.test(analysisText.textContent || "");
+      const placeholder = /完成三组记录|生成等距比较/.test(analysisText.textContent || "");
       analysisText.classList.toggle("codex-placeholder-hidden", placeholder && !analysisText.classList.contains("ok"));
     }
     function normalizeText(){
@@ -499,9 +614,10 @@
       dataDock.classList.toggle("mobile-sheet", mobile);
       if (mobile && stage.dataset.codexMobileReady !== "1") {
         stage.dataset.codexMobileReady = "1";
-        if (controlDock.classList.contains("collapsed") && dataDock.classList.contains("collapsed")) setMobilePanel("control");
+        setCollapsed(controlDock, true);
+        setCollapsed(dataDock, true);
       }
-      if (!mobile) stage.dataset.codexMobileReady = "0";
+      if (!mobile) { stage.dataset.codexMobileReady = "0"; stage.classList.remove("mobile-panel-open"); }
       syncTabs();
     }
     function syncAll(){
