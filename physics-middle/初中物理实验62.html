@@ -49,10 +49,26 @@
     .lab-area{position:absolute;inset:54px 10px 10px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
     #labCanvas{width:100%;height:100%;display:block;touch-action:none}
     .hud{
-      position:absolute;z-index:24;left:10px;top:10px;display:flex;gap:7px;padding:7px 9px;border:1px solid var(--line);
-      border-radius:10px;background:rgba(1,8,13,.72);backdrop-filter:blur(8px);font-size:12px
+      position:absolute;z-index:24;left:10px;top:10px;display:flex;gap:8px;align-items:center;padding:7px 10px;
+      border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.5);font-size:12px
     }
-    .tag{padding:2px 7px;border:1px solid rgba(255,255,255,.16);border-radius:999px;font-weight:800}
+    .tag{
+      padding:3px 8px;border:1px solid rgba(255,255,255,.24);border-radius:999px;background:rgba(255,255,255,.06);
+      color:#dce9ff;font-weight:800;white-space:nowrap
+    }
+    #modeTag.mode-strip{
+      position:relative;isolation:isolate;min-width:158px;overflow:hidden;border:2px solid transparent;padding:4px 12px;
+      background:linear-gradient(rgba(6,10,14,.94),rgba(6,10,14,.94)) padding-box,
+        linear-gradient(90deg,#35ff73,#4bd8ff,#6c5cff,#ff4fc3,#ffd166,#35ff73) border-box;
+      background-size:100% 100%,260% 100%;animation:modeFlow 3.2s linear infinite
+    }
+    #modeTag.mode-strip::before{
+      content:"";position:absolute;top:-2px;bottom:-2px;left:-45%;width:42%;
+      background:linear-gradient(100deg,transparent,rgba(255,255,255,.9),transparent);
+      transform:skewX(-18deg);animation:sweep 2.4s linear infinite;mix-blend-mode:screen
+    }
+    @keyframes modeFlow{to{background-position:0 0,-260% 0}}
+    @keyframes sweep{from{transform:skewX(-18deg) translateX(-140%)}to{transform:skewX(-18deg) translateX(460%)}}
     .hint-lamp{
       position:absolute;z-index:26;left:10px;top:58px;width:36px;height:36px;border:1px solid rgba(255,209,102,.35);
       border-radius:9px;background:rgba(15,28,36,.88);color:var(--yellow);cursor:pointer
@@ -147,7 +163,9 @@
       .toolbar{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:6px;border:1px solid rgba(255,255,255,.08);border-radius:11px;background:rgba(255,255,255,.035)}
       .toolbar button,.controls button{min-width:0;min-height:44px;padding:8px 5px;font-size:12px}
     }
-    @media(prefers-reduced-motion:reduce){#spectrum::before,.badge.show,.mobile-badge.show{animation:none}}
+    @media(prefers-reduced-motion:reduce){
+      #spectrum::before,.badge.show,.mobile-badge.show,#modeTag.mode-strip,#modeTag.mode-strip::before{animation:none}
+    }
   </style>
 </head>
 <body>
@@ -159,7 +177,7 @@
       <div class="progress-dots" id="dots"></div>
     </section>
     <main id="stage" aria-label="用电压表测量电压互动实验台">
-      <div class="hud"><span class="tag" id="modeTag">模式：闯关模式</span><span class="tag" id="statusTag">状态：待接线</span></div>
+      <div class="hud"><span class="tag mode-strip" id="modeTag">模式：闯关模式</span><span class="tag" id="statusTag">状态：待接线</span></div>
       <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看详细提示">💡</button>
       <div class="hint-pop" id="hintPop"></div>
       <div class="lab-area" id="labArea"><canvas id="labCanvas"></canvas></div>
