@@ -376,7 +376,7 @@
     function readings(){
       const effectiveSlider=usesRightLowerTerminal()?1-state.slider:state.slider;
       const rheostat=RHEOSTAT_MIN+(RHEOSTAT_MAX-RHEOSTAT_MIN)*effectiveSlider;
-      if(state.burned||!state.switchClosed||(!state.freeMode&&!circuitComplete()))return{U:0,I:0,R:null,rheostat,overload:false};
+      if(state.burned||(!state.freeMode&&(!state.switchClosed||!circuitComplete())))return{U:0,I:0,R:null,rheostat,overload:false};
       const solved=solveCircuit(),R=Math.abs(solved.I)>1e-6?solved.U/solved.I:null;
       const overload=Math.abs(solved.I)>AMMETER_MAX+.001||Math.abs(solved.U)>VOLTMETER_MAX+.01;
       return{U:solved.U,I:solved.I,R:Number.isFinite(R)?R:null,rheostat,overload}
@@ -412,13 +412,17 @@
     }
     function statusText(){
       if(state.burned)return"状态：电路烧毁";
-      if(state.freeMode&&!state.switchClosed)return circuitComplete()?"状态：接线完成，开关断开":state.wireEdges.length?"状态：自由接线中，开关断开":"状态：等待接线";
+      if(state.freeMode&&!state.switchClosed){
+        const r=readings();
+        if(Math.abs(r.U)>=.01)return`状态：开关断开 · 电压表 U=${r.U.toFixed(2)} V`;
+        return circuitComplete()?"状态：接线完成，开关断开":state.wireEdges.length?"状态：自由接线中，开关断开":"状态：等待接线"
+      }
       if(!circuitComplete()&&!state.freeMode)return state.wireEdges.length?`状态：接线中 · 还缺 ${missingExpectedEdges().length} 根导线`:"状态：等待接线";
       if(!state.switchClosed)return"状态：接线完成，开关断开";
       const r=readings();return r.overload?"状态：电表超量程，请立即断开开关":`状态：已通电 · U=${r.U.toFixed(2)} V，I=${r.I.toFixed(3)} A`
     }
     function currentHint(){
-      if(state.freeMode)return"自由模式可以按任意顺序接线和调节器材；若用导线直接连通电源两极，会发生短路并烧毁。";
+      if(state.freeMode)return"自由模式可以按任意顺序接线和调节器材；电压表直接并联在电源两端时，开关断开也有示数。若用导线直接连通电源两极，会发生短路并烧毁。";
       if(state.completed.every(Boolean))return`三次测得电阻的平均值为 ${state.analysisAverage.toFixed(2)} Ω。`;
       if(state.currentTask===0&&state.wireEdges.length){
         const missing=missingExpectedEdges();
@@ -431,7 +435,7 @@
       updateCompletion();
       taskStep.textContent=state.freeMode?"自由探索":state.completed.every(Boolean)?"关卡 4 / 4":`关卡 ${state.currentTask+1} / ${TASKS.length}`;
       taskText.textContent=state.freeMode?"自由探索伏安法测电阻":state.completed.every(Boolean)?"完成实验并得到平均电阻":TASKS[state.currentTask].title;
-      taskHint.textContent=state.freeMode?"可随意接线和调节滑片；注意避免电源短路。":
+      taskHint.textContent=state.freeMode?"可随意接线；电压表跨接电源两端无需闭合开关。注意避免电源短路。":
         state.completed.every(Boolean)?`平均电阻 ${state.analysisAverage.toFixed(2)} Ω；三次测量结果接近。`:
         state.currentTask===1?`把滑片拖到最${rheostatMaxSide()}端的最大阻值位置，再点击开关。`:
         state.currentTask===2?`已记录 ${guidedRecords().length}/3；调节滑片后点击“记录现象”。`:TASKS[state.currentTask].hint;
@@ -690,7 +694,9 @@
         [edgeKey("H_l","B_neg")]:[t.H_l,{x:244,y:655},{x:150,y:662},t.B_neg],
         [edgeKey("H_r","B_neg")]:[t.H_r,{x:490,y:650},{x:350,y:668},{x:165,y:665},t.B_neg],
         [edgeKey("R_l","V_pos")]:[t.R_l,{x:260,y:316},{x:240,y:360},{x:130,y:376},{x:80,y:402},t.V_pos],
-        [edgeKey("V_neg","R_r")]:[t.V_neg,{x:252,y:442},{x:282,y:402},{x:375,y:390},{x:452,y:350},t.R_r]
+        [edgeKey("V_neg","R_r")]:[t.V_neg,{x:252,y:442},{x:282,y:402},{x:375,y:390},{x:452,y:350},t.R_r],
+        [edgeKey("B_pos","V_pos")]:[t.B_pos,{x:215,y:650},{x:215,y:680},{x:15,y:680},{x:15,y:460},t.V_pos],
+        [edgeKey("B_neg","V_neg")]:[t.B_neg,{x:35,y:645},{x:35,y:540},{x:250,y:525},{x:250,y:470},t.V_neg]
       }:{
         [edgeKey("B_pos","S_l")]:[t.B_pos,{x:276,y:398},{x:276,y:212},{x:105,y:190},t.S_l],
         [edgeKey("S_r","A_pos")]:[t.S_r,{x:282,y:151},{x:292,y:194},t.A_pos],
@@ -699,7 +705,9 @@
         [edgeKey("H_l","B_neg")]:[t.H_l,{x:570,y:434},{x:430,y:442},{x:250,y:438},t.B_neg],
         [edgeKey("H_r","B_neg")]:[t.H_r,{x:810,y:432},{x:620,y:442},{x:360,y:442},t.B_neg],
         [edgeKey("R_l","V_pos")]:[t.R_l,{x:586,y:208},{x:565,y:260},{x:450,y:272},{x:370,y:322},t.V_pos],
-        [edgeKey("V_neg","R_r")]:[t.V_neg,{x:552,y:382},{x:554,y:286},{x:685,y:270},{x:790,y:238},{x:790,y:176},t.R_r]
+        [edgeKey("V_neg","R_r")]:[t.V_neg,{x:552,y:382},{x:554,y:286},{x:685,y:270},{x:790,y:238},{x:790,y:176},t.R_r],
+        [edgeKey("B_pos","V_pos")]:[t.B_pos,{x:276,y:425},{x:300,y:390},t.V_pos],
+        [edgeKey("B_neg","V_neg")]:[t.B_neg,{x:90,y:455},{x:540,y:455},{x:540,y:425},t.V_neg]
       };
       if(routes[key])return routes[key];
       const start=t[a],end=t[b],midX=(start.x+end.x)/2,bow=Math.min(42,Math.max(18,Math.abs(end.x-start.x)*.12));
@@ -707,7 +715,7 @@
     }
     function wireColor(a,b){
       const key=edgeKey(a,b);
-      if([edgeKey("B_pos","S_l"),edgeKey("S_r","A_pos"),edgeKey("A_neg","R_l"),edgeKey("R_l","V_pos")].includes(key))return"#ff6178";
+      if([edgeKey("B_pos","S_l"),edgeKey("S_r","A_pos"),edgeKey("A_neg","R_l"),edgeKey("R_l","V_pos"),edgeKey("B_pos","V_pos")].includes(key))return"#ff6178";
       return"#58bfff"
     }
     function drawWire(points,color,preview=false){
