@@ -98,7 +98,57 @@
     const mobileTabs = $("#mobileTabs"), experimentTab = $("#experimentTab"), dataTab = $("#dataTab"), experimentTabBadge = $("#experimentTabBadge"), dataTabBadge = $("#dataTabBadge"), controlSheetCloseBtn = $("#controlSheetCloseBtn"), dataSheetCloseBtn = $("#dataSheetCloseBtn");
     const recordBtn = $("#recordBtn"), analyzeBtn = $("#analyzeBtn"), recordCue = $("#recordCue"), analysisText = $("#analysisText"), recordBody = $("#recordBody"), recordTable = $(".record"), emptyRecords = $("#emptyRecords"), dataNotice = $("#dataNotice");
     const resetBtn = $("#resetBtn"), autoDemoBtn = $("#autoDemoBtn"), freeBtn = $("#freeBtn"), toast = $("#toast"), checkmark = $("#checkmark"), doneMask = $("#doneMask"), okBtn = $("#okBtn"), demoCursor = $("#demoCursor");
-    const audioState = { ctx:null, input:null, master:null, activeGains:new Set(), warned:false, uiMuted:false, uiUnlocked:false, uiLast:new Map() };
+    const audioState = { ctx:null, input:null, master:null, activeGains:new Set(), warned:false, uiMuted:false, uiUnlocked:false, uiLast:new Map(), labSoundUntil:0 };
+    const UI_SOUND_PATTERNS = Object.freeze({
+      record: {
+        peak: 0.045,
+        duration: 0.13,
+        tones: [
+          { frequency: 554.37, offset: 0, duration: 0.09, type: "triangle" }
+        ]
+      },
+      step: {
+        peak: 0.065,
+        duration: 0.24,
+        tones: [
+          { frequency: 523.25, offset: 0, duration: 0.11, type: "sine" },
+          { frequency: 659.25, offset: 0.085, duration: 0.13, type: "triangle" }
+        ]
+      },
+      finish: {
+        peak: 0.09,
+        duration: 0.78,
+        tones: [
+          { frequency: 392, offset: 0, duration: 0.12, type: "triangle" },
+          { frequency: 523.25, offset: 0.14, duration: 0.14, type: "triangle" },
+          { frequency: 659.25, offset: 0.28, duration: 0.16, type: "triangle" },
+          { frequency: 783.99, offset: 0.42, duration: 0.24, type: "sine" }
+        ]
+      },
+      hint: {
+        peak: 0.04,
+        duration: 0.18,
+        tones: [
+          { frequency: 783.99, offset: 0, duration: 0.08, type: "sine" },
+          { frequency: 987.77, offset: 0.09, duration: 0.07, type: "sine" }
+        ]
+      },
+      warn: {
+        peak: 0.055,
+        duration: 0.26,
+        tones: [
+          { frequency: 293.66, offset: 0, duration: 0.1, type: "triangle" },
+          { frequency: 261.63, offset: 0.11, duration: 0.12, type: "sine" }
+        ]
+      },
+      tap: {
+        peak: 0.022,
+        duration: 0.06,
+        tones: [
+          { frequency: 440, offset: 0, duration: 0.035, type: "triangle" }
+        ]
+      }
+    });
     const state = { currentTask:0, completed:false, demoCompleted:false, freeMode:false, freeStartState:null, autoPlaying:false, autoPaused:false, autoCancel:false, autoRunId:0, drawerDrag:null, stepWarning:false, successCooldown:false, timers:new Set(), scenarioIndex:0, operationCount:0, records:[], unseenRecords:0, analysisDone:false, width:0, height:0, stageWidth:0, stageHeight:0, drag:false, dragTarget:null, model:"normal", correction:null, modelTouched:false, lensTouched:false, phase:0, moved:false };
     const tasks = SPEC.scenarios.map((s) => ({ text:"调节并记录：" + s.label, hint:s.action, detail:s.note, expected:s.key, check:() => hasRecord(s.key) })).concat([{ text:"分析实验结论", hint:"四组记录完成后点击分析。", detail:SPEC.conclusion, check:() => state.analysisDone }]);
     function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
@@ -116,13 +166,92 @@
     function updateStatus(text){ statusTag.textContent = "状态：" + (text || (state.autoPlaying ? (state.autoPaused ? "演示已暂停" : "演示中") : state.freeMode ? "自由探索" : state.completed ? "已完成" : actualStateLabel())); }
     function syncAutoDemoUI(){ resetBtn.textContent=state.autoPlaying?(state.autoPaused?"继续演示":"暂停演示"):(state.freeMode?"重置操作":"重置关卡"); autoDemoBtn.textContent=state.autoPlaying?"退出演示":"演示模式"; autoDemoBtn.disabled=state.freeMode&&!state.autoPlaying; freeBtn.disabled=state.autoPlaying; resetBtn.setAttribute("aria-pressed",state.autoPlaying&&state.autoPaused?"true":"false"); }
     function showToast(msg){ toast.textContent = msg; toast.classList.add("show"); clearTimeout(showToast.t); showToast.t = setTimeout(() => toast.classList.remove("show"), 1500); }
-    function ensureAudio(){ const AudioCtx=window.AudioContext||window.webkitAudioContext; if(!AudioCtx){ if(!audioState.warned){audioState.warned=true;showToast("当前浏览器不支持声音播放。");} return null; } if(!audioState.ctx){ const ctx=new AudioCtx(), compressor=ctx.createDynamicsCompressor(), master=ctx.createGain(); compressor.threshold.value=-18; compressor.knee.value=22; compressor.ratio.value=7; compressor.attack.value=.004; compressor.release.value=.22; master.gain.value=.82; compressor.connect(master); master.connect(ctx.destination); audioState.ctx=ctx; audioState.input=compressor; audioState.master=master; } if(audioState.ctx.state==="suspended") audioState.ctx.resume().catch(error=>console.warn("音频恢复失败",error)); return audioState; }
+    function ensureAudio(){
+      const AudioCtx=window.AudioContext||window.webkitAudioContext;
+      if(!AudioCtx){
+        if(!audioState.warned){
+          audioState.warned=true;
+          showToast("当前浏览器不支持声音播放。");
+        }
+        return null;
+      }
+      if(!audioState.ctx){
+        const ctx=new AudioCtx(), compressor=ctx.createDynamicsCompressor(), master=ctx.createGain();
+        compressor.threshold.value=-6;
+        compressor.knee.value=8;
+        compressor.ratio.value=2.5;
+        compressor.attack.value=.004;
+        compressor.release.value=.14;
+        master.gain.value=.68;
+        compressor.connect(master);
+        master.connect(ctx.destination);
+        audioState.ctx=ctx;
+        audioState.input=compressor;
+        audioState.master=master;
+      }
+      if(audioState.ctx.state==="suspended"){
+        audioState.ctx.resume().catch(error=>console.warn("音频恢复失败",error));
+      }
+      return audioState;
+    }
     function syncAudioToggle(){ audioToggle.classList.toggle("muted",audioState.uiMuted); audioToggle.classList.toggle("ready",audioState.uiUnlocked&&!audioState.uiMuted); audioToggle.textContent=audioState.uiMuted?"🔇":"🔊"; audioToggle.setAttribute("aria-pressed",String(!audioState.uiMuted)); audioToggle.setAttribute("aria-label",audioState.uiMuted?"开启音效":"关闭音效"); }
     function unlockLabAudio(){ const audio=ensureAudio(); if(!audio||!audio.ctx){syncAudioToggle();return null;} audio.uiUnlocked=true; syncAudioToggle(); return audio; }
-    function silenceActiveAudio(){ if(!audioState.ctx)return; const now=audioState.ctx.currentTime; audioState.activeGains.forEach(gain=>{try{gain.cancelScheduledValues(now);gain.setTargetAtTime(.0001,now,.012);}catch(error){console.warn("停止音效失败",error);}}); audioState.activeGains.clear(); }
-    function playUiSound(kind,{force=false}={}){ if(audioState.uiMuted)return; const nowMs=performance.now(), gap=kind==="finish"?520:120, hasPlayed=audioState.uiLast.has(kind), last=audioState.uiLast.get(kind); if(!force&&hasPlayed&&nowMs-last<gap)return; audioState.uiLast.set(kind,nowMs); window.dispatchEvent(new CustomEvent("lab-ui-sound",{detail:{kind}})); const audio=unlockLabAudio(); if(!audio||!audio.ctx||!audio.input)return; const patterns={record:[740,988],step:[660,880],finish:[523.25,659.25,783.99],hint:[1046.5,1318.5],warn:[220,196],tap:[620]}, frequencies=patterns[kind]||patterns.hint, ctx=audio.ctx, start=ctx.currentTime+.012, duration=kind==="finish"?.5:kind==="warn"?.28:kind==="step"?.24:kind==="record"?.18:kind==="hint"?.2:.09, peak=kind==="finish"?.15:kind==="step"?.13:kind==="record"?.12:kind==="warn"?.09:kind==="hint"?.08:.045, output=ctx.createGain(); output.gain.setValueAtTime(.0001,start); output.gain.linearRampToValueAtTime(peak,start+.012); output.gain.exponentialRampToValueAtTime(.0001,start+duration); output.connect(audio.input); audioState.activeGains.add(output.gain); frequencies.forEach((frequency,index)=>{const osc=ctx.createOscillator(), gain=ctx.createGain(), toneStart=start+index*.075, toneDuration=Math.min(.14,duration-index*.04); osc.type=kind==="warn"&&index===0?"sawtooth":index%2?"triangle":"sine"; osc.frequency.setValueAtTime(frequency,toneStart); gain.gain.setValueAtTime(.95,toneStart); gain.gain.exponentialRampToValueAtTime(.0001,toneStart+toneDuration); osc.connect(gain); gain.connect(output); osc.start(toneStart); osc.stop(toneStart+toneDuration+.04);}); setTimeout(()=>{audioState.activeGains.delete(output.gain);try{output.disconnect();}catch(error){console.warn("界面音效节点断开失败",error);}},Math.ceil((duration+.25)*1000)); }
+    function silenceActiveAudio(){
+      audioState.labSoundUntil=0;
+      if(!audioState.ctx)return;
+      const now=audioState.ctx.currentTime;
+      audioState.activeGains.forEach(gain=>{
+        try{
+          gain.cancelScheduledValues(now);
+          gain.setTargetAtTime(.0001,now,.018);
+        }catch(error){
+          console.warn("停止音效失败",error);
+        }
+      });
+      audioState.activeGains.clear();
+    }
+    function playUiSound(kind,{force=false}={}){
+      if(audioState.uiMuted)return false;
+      const nowMs=performance.now();
+      if(!force&&nowMs<audioState.labSoundUntil)return false;
+      const gap=kind==="finish"?620:140;
+      const hasPlayed=audioState.uiLast.has(kind);
+      const last=audioState.uiLast.get(kind);
+      if(!force&&hasPlayed&&nowMs-last<gap)return false;
+      audioState.uiLast.set(kind,nowMs);
+      const audio=unlockLabAudio();
+      if(!audio||!audio.ctx||!audio.input)return false;
+      const pattern=UI_SOUND_PATTERNS[kind]||UI_SOUND_PATTERNS.hint;
+      const ctx=audio.ctx, start=ctx.currentTime+.012, output=ctx.createGain();
+      window.dispatchEvent(new CustomEvent("lab-ui-sound",{detail:{kind}}));
+      output.gain.setValueAtTime(.0001,start);
+      output.gain.linearRampToValueAtTime(pattern.peak,start+.018);
+      output.gain.exponentialRampToValueAtTime(.0001,start+pattern.duration);
+      output.connect(audio.input);
+      audioState.activeGains.add(output.gain);
+      pattern.tones.forEach(tone=>{
+        const osc=ctx.createOscillator(), gain=ctx.createGain(), toneStart=start+tone.offset;
+        osc.type=tone.type;
+        osc.frequency.setValueAtTime(tone.frequency,toneStart);
+        gain.gain.setValueAtTime(.82,toneStart);
+        gain.gain.exponentialRampToValueAtTime(.0001,toneStart+tone.duration);
+        osc.connect(gain);
+        gain.connect(output);
+        osc.start(toneStart);
+        osc.stop(toneStart+tone.duration+.04);
+      });
+      setTimeout(()=>{
+        audioState.activeGains.delete(output.gain);
+        try{
+          output.disconnect();
+        }catch(error){
+          console.warn("界面音效节点断开失败",error);
+        }
+      },Math.ceil((pattern.duration+.25)*1000));
+      return true;
+    }
     window.labAudio={play:playUiSound,setMuted(value){audioState.uiMuted=Boolean(value);if(audioState.uiMuted)silenceActiveAudio();syncAudioToggle();},get muted(){return audioState.uiMuted;},get unlocked(){return audioState.uiUnlocked;}};
-    function showCheck(){ checkmark.classList.add("active"); clearTimeout(showCheck.t); showCheck.t = setTimeout(() => checkmark.classList.remove("active"), 560); playUiSound("step"); }
+    function showCheck({ sound = true } = {}){ checkmark.classList.add("active"); clearTimeout(showCheck.t); showCheck.t = setTimeout(() => checkmark.classList.remove("active"), 560); if(sound)playUiSound("step"); }
     function warnStep(msg){ state.stepWarning = true; updateDots(); hintLamp.classList.remove("flash"); void hintLamp.offsetWidth; hintLamp.classList.add("flash"); showToast(msg); playUiSound("warn"); schedule(() => { state.stepWarning = false; updateDots(); }, 1200); }
     function markOperation(){ state.operationCount += 1; state.phase = 1; }
     function updateScenarioFromApparatus(){ if (state.model === "normal") return; if (state.model === "myopia") state.scenarioIndex = state.correction === "concave" ? 1 : 0; else state.scenarioIndex = state.correction === "convex" ? 3 : 2; }
@@ -155,10 +284,35 @@
     function lensName(type){ return type === "concave" ? "凹透镜" : type === "convex" ? "凸透镜" : "未加镜片"; }
     function modelName(type){ return type === "myopia" ? "近视眼" : type === "hyperopia" ? "远视眼" : "正常眼"; }
     function recordForScenario(s){ return { key:s.key, model:modelName(s.defect), lens:lensName(s.correction), image:s.image }; }
-    function passStepIfReady(opts){ if (state.freeMode || state.completed || state.successCooldown) return false; if (!tasks[state.currentTask].check()) { if (!opts || !opts.quiet) warnStep("当前关卡证据还不完整。"); return false; } state.successCooldown = true; schedule(() => { state.successCooldown = false; }, 400); showCheck(); if (state.currentTask >= tasks.length - 1) { state.completed = true; setDrawerCollapsed(controlDock, false); setDrawerCollapsed(dataDock, true); doneMask.style.display = "flex"; setModeLabel(); updateStatus(); updateDots(); updateReadouts(); playUiSound("finish"); } else setStepUI(state.currentTask + 1); return true; }
+    function passStepIfReady(opts){
+      if(state.freeMode||state.completed||state.successCooldown)return false;
+      if(!tasks[state.currentTask].check()){
+        if(!opts||!opts.quiet)warnStep("当前关卡证据还不完整。");
+        return false;
+      }
+      state.successCooldown=true;
+      schedule(()=>{state.successCooldown=false;},400);
+      const isFinalStep = state.currentTask >= tasks.length - 1;
+      showCheck({ sound: !isFinalStep });
+      if(isFinalStep){
+        state.completed=true;
+        setDrawerCollapsed(controlDock,false);
+        setDrawerCollapsed(dataDock,true);
+        doneMask.style.display="flex";
+        setModeLabel();
+        updateStatus();
+        updateDots();
+        updateReadouts();
+        playUiSound("finish");
+      }else{
+        setStepUI(state.currentTask+1);
+      }
+      return true;
+    }
     function freeObservation(){ const g=eyeGeom(benchArea(state.width,state.height)), image=actualFocusText(g), key=["free",state.model,state.correction||"none",image].join("-"); return {key,model:modelName(state.model),lens:lensName(state.correction),image}; }
     function neutralFreeHint(message){ showToast(message); updateStatus("自由探索"); playUiSound("hint"); }
     function recordObservation(opts){
+      let recorded=false;
       if (state.freeMode) {
         if (!state.operationCount) { neutralFreeHint("自由探索：先调整眼球模型或镜片再记录。"); return false; }
         const observation=freeObservation();
@@ -182,12 +336,13 @@
         if (dataDock.classList.contains("collapsed")) { state.unseenRecords += 1; updateBadge(); }
         renderRecords();
         showToast("已记录");
-        playUiSound("record");
+        recorded=true;
       } else if (!opts || !opts.auto) showToast("这组已记录");
-      passStepIfReady({ quiet:true });
+      const advanced=passStepIfReady({ quiet:true });
+      if(recorded&&!advanced)playUiSound("record");
       return true;
     }
-    function analyzeConclusion(){ if (!SPEC.scenarios.every(s => hasRecord(s.key))) { if(state.freeMode) neutralFreeHint("自由探索：标准四组记录齐全后可生成结论。"); else warnStep("请先补齐四组记录。"); return false; } state.analysisDone = true; analysisText.classList.add("ok"); analysisText.textContent = SPEC.conclusion; showToast("已分析"); playUiSound("record"); passStepIfReady({ quiet:true }); return true; }
+    function analyzeConclusion(){ if (!SPEC.scenarios.every(s => hasRecord(s.key))) { if(state.freeMode) neutralFreeHint("自由探索：标准四组记录齐全后可生成结论。"); else warnStep("请先补齐四组记录。"); return false; } state.analysisDone = true; analysisText.classList.add("ok"); analysisText.textContent = SPEC.conclusion; showToast("已分析"); passStepIfReady({ quiet:true }); return true; }
     function renderRecords(){
       const labels = ["次数","眼球模型","镜片","成像位置"];
       recordBody.innerHTML = "";
@@ -666,7 +821,7 @@
     function resetScene(opts){ const options=opts||{}; silenceActiveAudio(); clearTimers(); state.completed=false; state.demoCompleted=false; state.autoCancel=false; if(!state.autoPlaying)state.autoPaused=false; state.stepWarning=false; state.successCooldown=false; state.scenarioIndex=0; state.operationCount=0; state.records=[]; state.unseenRecords=0; state.analysisDone=false; state.phase=0; state.drag=false; state.dragTarget=null; state.drawerDrag=null; state.model="normal"; state.correction=null; state.modelTouched=false; state.lensTouched=false; if(!options.keepMode){state.freeMode=false;state.freeStartState=null;} doneMask.style.display="none"; demoCursor.style.opacity="0"; analysisText.classList.remove("ok"); analysisText.textContent=""; renderRecords(); updateBadge(); setStepUI(0); syncAutoDemoUI(); setModeLabel(); updateStatus("待操作"); if(!options.quiet) showToast("已重置"); }
     function setFreeMode(on){ const next=!!on, entering=next&&!state.freeMode, leaving=!next&&state.freeMode; if(entering)state.freeStartState=captureFreeStartState(); state.freeMode=next; if(leaving)state.freeStartState=null; freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式"; taskCard.classList.toggle("free-mode",state.freeMode); taskCard.dataset.mode=state.freeMode?"free":"challenge"; taskCard.setAttribute("aria-label",state.freeMode?"关卡参考，自由模式不进行步骤判定":"当前实验关卡"); if(state.freeMode){state.stepWarning=false;updateDots();} syncAutoDemoUI(); setModeLabel(); updateStatus(state.freeMode?"自由探索":undefined); showToast(state.freeMode?"自由模式下可任意比较，不自动推进关卡。":"已回到闯关模式。"); draw(); }
     function bindCanvasPagePan(){ if(canvas.dataset.pagePanBound) return; canvas.dataset.pagePanBound="1"; let pan=null; const isTouch=e=>!e.pointerType||e.pointerType==="touch"; const isDragging=()=>!!(state&&(state.drag||state.dragTarget||state.draggingId||state.drawerDrag)); canvas.addEventListener("pointerdown",e=>{ if(!isTouch(e)) return; pan={id:e.pointerId,y:e.clientY,scrollY:window.scrollY}; },true); canvas.addEventListener("pointermove",e=>{ if(!pan||e.pointerId!==pan.id||isDragging()) return; const dy=pan.y-e.clientY; if(Math.abs(dy)>3){ window.scrollTo(0,pan.scrollY+dy); e.preventDefault(); } },true); ["pointerup","pointercancel","lostpointercapture"].forEach(type=>canvas.addEventListener(type,e=>{ if(!pan||e.pointerId===pan.id||type==="lostpointercapture") pan=null; },true)); }
-    function initEvents(){ document.addEventListener("pointerdown",unlockLabAudio,{passive:true}); document.addEventListener("click",event=>{const button=event.target.closest("button");if(!button||button===audioToggle||button.disabled)return;playUiSound("tap");},{capture:true}); bindCanvasPagePan(); canvas.addEventListener("pointerdown",onPointerDown); canvas.addEventListener("pointermove",onPointerMove); canvas.addEventListener("pointerup",onPointerUp); canvas.addEventListener("pointercancel",onPointerUp); recordBtn.addEventListener("click",() => {if(!state.autoPlaying)recordObservation();}); analyzeBtn.addEventListener("click",()=>{if(!state.autoPlaying)analyzeConclusion();}); resetBtn.addEventListener("click",() => { if(state.autoPlaying){toggleAutoPause();return;} if(state.freeMode&&restoreFreeStartState())return; resetScene({keepMode:false,quiet:true}); showToast("已重置"); }); autoDemoBtn.addEventListener("click",runAutoDemo); freeBtn.addEventListener("click",() => setFreeMode(!state.freeMode)); controlToggleBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed"))); dataToggleBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed"))); controlSheetCloseBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,true)); dataSheetCloseBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,true)); experimentTab.addEventListener("click",() => toggleMobilePanel(controlDock)); dataTab.addEventListener("click",() => toggleMobilePanel(dataDock)); audioToggle.addEventListener("click",event=>{event.stopPropagation();window.labAudio.setMuted(!audioState.uiMuted);if(!audioState.uiMuted){unlockLabAudio();playUiSound("hint",{force:true});}}); hintLamp.addEventListener("click",() => {hintPop.classList.toggle("open");playUiSound("hint");}); okBtn.addEventListener("click",() => { doneMask.style.display="none"; }); bindDrawer(controlDock); bindDrawer(dataDock); window.addEventListener("resize",() => { clearTimeout(resizeCanvas.t); resizeCanvas.t=setTimeout(resizeCanvas,120); }); }
+    function initEvents(){ const semanticSoundButtons=new Set([recordBtn,analyzeBtn,hintLamp]); document.addEventListener("pointerdown",unlockLabAudio,{passive:true}); document.addEventListener("click",event=>{const button=event.target.closest("button");if(!button||button===audioToggle||button.disabled||semanticSoundButtons.has(button))return;playUiSound("tap");},{capture:true}); bindCanvasPagePan(); canvas.addEventListener("pointerdown",onPointerDown); canvas.addEventListener("pointermove",onPointerMove); canvas.addEventListener("pointerup",onPointerUp); canvas.addEventListener("pointercancel",onPointerUp); recordBtn.addEventListener("click",() => {if(!state.autoPlaying)recordObservation();}); analyzeBtn.addEventListener("click",()=>{if(!state.autoPlaying)analyzeConclusion();}); resetBtn.addEventListener("click",() => { if(state.autoPlaying){toggleAutoPause();return;} if(state.freeMode&&restoreFreeStartState())return; resetScene({keepMode:false,quiet:true}); showToast("已重置"); }); autoDemoBtn.addEventListener("click",runAutoDemo); freeBtn.addEventListener("click",() => setFreeMode(!state.freeMode)); controlToggleBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed"))); dataToggleBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed"))); controlSheetCloseBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,true)); dataSheetCloseBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,true)); experimentTab.addEventListener("click",() => toggleMobilePanel(controlDock)); dataTab.addEventListener("click",() => toggleMobilePanel(dataDock)); audioToggle.addEventListener("click",event=>{event.stopPropagation();window.labAudio.setMuted(!audioState.uiMuted);if(!audioState.uiMuted){unlockLabAudio();playUiSound("hint",{force:true});}}); hintLamp.addEventListener("click",() => {hintPop.classList.toggle("open");playUiSound("hint");}); okBtn.addEventListener("click",() => { doneMask.style.display="none"; }); bindDrawer(controlDock); bindDrawer(dataDock); window.addEventListener("resize",() => { clearTimeout(resizeCanvas.t); resizeCanvas.t=setTimeout(resizeCanvas,120); }); }
     function init(){ initDots(); initEvents(); syncAudioToggle(); resizeCanvas(); setDrawerCollapsed(controlDock,true); setDrawerCollapsed(dataDock,true); resetScene({quiet:true}); if (isMobileStage()) setDrawerCollapsed(controlDock,false); if ("ResizeObserver" in window) { const observer = new ResizeObserver(() => { resizeCanvas(); draw(); }); observer.observe(stage); observer.observe(labArea); } window.addEventListener("load",() => { resizeCanvas(); draw(); },{once:true}); [0,60,180,600,1200,1700].forEach(ms => setTimeout(() => { resizeCanvas(); draw(); }, ms)); requestAnimationFrame(() => { resizeCanvas(); draw(); }); }
     init(); window.state = state; window.recordObservation = recordObservation; window.analyzeConclusion = analyzeConclusion; window.playUiSound=playUiSound;
   })();

@@ -744,10 +744,10 @@
         check: () => hasRecord("loud-soft") && hasRecord("loud-loud")
       },
       {
-        text: "点击至少两种乐器，比较相同音调、相近响度下波形形状的差异。",
-        hint: "不同乐器材料和结构不同，波形形状不同，所以音色不同。",
-        detail: "右侧三张乐器板都按相同基准音调显示波形。依次点击两种以上乐器，再记录比较结果。",
-        check: () => uniqueRecordCount("timbre") >= 2
+        text: "依次点击弦乐器和管乐器，比较相同音调、相近响度下波形形状的差异。",
+        hint: "弦乐器和管乐器使用相同基准音调；定音鼓留作自由探索。",
+        detail: "先后点击弦乐器和管乐器并记录。两者保持相同基准音调和相近响度，波形结构不同，所以音色不同。",
+        check: () => hasRecord("timbre-guitar") && hasRecord("timbre-flute")
       },
       {
         text: "点击“分析结论”，归纳音调、响度和音色分别由什么因素决定。",
@@ -760,7 +760,7 @@
     const instruments = [
       { id:"guitar", name:"弦乐器", color:"#ffd166", shape:"saw", detail:"同一音高下，弦的泛音使波形有尖峰。" },
       { id:"flute", name:"管乐器", color:"#5bbcff", shape:"sine", detail:"同一音高下，空气柱振动的波形更圆滑。" },
-      { id:"drum", name:"打击乐器", color:"#ff8a80", shape:"pulse", detail:"同一节奏下，鼓面振动起落更陡。" }
+      { id:"drum", name:"定音鼓", color:"#ff8a80", shape:"pulse", detail:"定音打击声用于自由探索，不计入本关受控比较。" }
     ];
 
     const audioState = {
@@ -771,8 +771,62 @@
       warned: false,
       uiMuted: false,
       uiUnlocked: false,
-      uiLast: new Map()
+      uiLast: new Map(),
+      labSoundUntil: 0,
+      uiAvailableAt: 0,
+      deferredUiTimers: new Set()
     };
+
+    const UI_SOUND_PATTERNS = Object.freeze({
+      record: {
+        peak: 0.045,
+        duration: 0.13,
+        tones: [
+          { frequency: 554.37, offset: 0, duration: 0.09, type: "triangle" }
+        ]
+      },
+      step: {
+        peak: 0.065,
+        duration: 0.24,
+        tones: [
+          { frequency: 523.25, offset: 0, duration: 0.11, type: "sine" },
+          { frequency: 659.25, offset: 0.085, duration: 0.13, type: "triangle" }
+        ]
+      },
+      finish: {
+        peak: 0.09,
+        duration: 0.78,
+        tones: [
+          { frequency: 392, offset: 0, duration: 0.12, type: "triangle" },
+          { frequency: 523.25, offset: 0.14, duration: 0.14, type: "triangle" },
+          { frequency: 659.25, offset: 0.28, duration: 0.16, type: "triangle" },
+          { frequency: 783.99, offset: 0.42, duration: 0.24, type: "sine" }
+        ]
+      },
+      hint: {
+        peak: 0.04,
+        duration: 0.18,
+        tones: [
+          { frequency: 783.99, offset: 0, duration: 0.08, type: "sine" },
+          { frequency: 987.77, offset: 0.09, duration: 0.07, type: "sine" }
+        ]
+      },
+      warn: {
+        peak: 0.055,
+        duration: 0.26,
+        tones: [
+          { frequency: 293.66, offset: 0, duration: 0.1, type: "triangle" },
+          { frequency: 261.63, offset: 0.11, duration: 0.12, type: "sine" }
+        ]
+      },
+      tap: {
+        peak: 0.022,
+        duration: 0.06,
+        tones: [
+          { frequency: 440, offset: 0, duration: 0.035, type: "triangle" }
+        ]
+      }
+    });
 
     const state = {
       currentTask: 0,
@@ -930,11 +984,11 @@ updateDots();
       showToast.timer = setTimeout(() => toastEl.classList.remove("show"), 1500);
     }
 
-    function showCheck() {
+    function showCheck({ sound = true } = {}) {
       checkmarkEl.classList.add("active");
       clearTimeout(showCheck.timer);
       showCheck.timer = setTimeout(() => checkmarkEl.classList.remove("active"), 520);
-      playUiSound("step");
+      if (sound) playUiSoundWhenReady("step");
     }
 
     function warnCurrentStep(message) {
@@ -971,14 +1025,15 @@ updateDots();
       }
       state.successCooldown = true;
       schedule(() => { state.successCooldown = false; }, 360);
-      showCheck();
-      if (state.currentTask >= tasks.length - 1) {
+      const isFinalStep = state.currentTask >= tasks.length - 1;
+      showCheck({ sound: !isFinalStep });
+      if (isFinalStep) {
         state.completed = true;
         prepareCompletionView();
         updateDots();
         updateStatus();
         doneMask.style.display = "flex";
-        playUiSound("finish");
+        playUiSoundWhenReady("finish");
       } else {
         setStepUI(state.currentTask + 1);
       }
@@ -1000,6 +1055,7 @@ updateDots();
 
     function recordLastObservation({ auto = false } = {}) {
       const obs = state.lastObservation;
+      let recorded = false;
       if (!obs) {
         if (state.freeMode) {
           showToast("先进行一次有效操作，再记录观察。");
@@ -1038,12 +1094,13 @@ updateDots();
         }
         renderRecords();
         showToast("已记录观察");
-        playUiSound("record");
+        recorded = true;
       } else if (!auto) {
         showToast("这组现象已经记录过");
       }
       const beforeStep = state.currentTask;
       const advanced = passStepIfReady({ quiet: true });
+      if (recorded && !advanced) playUiSound("record");
       if (!advanced && !state.freeMode && beforeStep === state.currentTask) {
         updateDots();
       }
@@ -1195,12 +1252,12 @@ updateDots();
         const ctx = new AudioCtx();
         const compressor = ctx.createDynamicsCompressor();
         const master = ctx.createGain();
-        compressor.threshold.value = -18;
-        compressor.knee.value = 22;
-        compressor.ratio.value = 7;
+        compressor.threshold.value = -6;
+        compressor.knee.value = 8;
+        compressor.ratio.value = 2.5;
         compressor.attack.value = 0.004;
-        compressor.release.value = 0.22;
-        master.gain.value = 0.82;
+        compressor.release.value = 0.14;
+        master.gain.value = 0.68;
         compressor.connect(master);
         master.connect(ctx.destination);
         audioState.ctx = ctx;
@@ -1242,81 +1299,34 @@ updateDots();
     }
 
     function playUiSound(kind, { force = false } = {}) {
-      if (audioState.uiMuted) return;
+      if (audioState.uiMuted) return false;
       const nowMs = performance.now();
-      const gap = kind === "finish" ? 520 : 120;
+      if (!force && nowMs < audioState.labSoundUntil) return false;
+      const gap = kind === "finish" ? 620 : 140;
       const hasPlayed = audioState.uiLast.has(kind);
       const last = audioState.uiLast.get(kind);
-      if (!force && hasPlayed && nowMs - last < gap) return;
+      if (!force && hasPlayed && nowMs - last < gap) return false;
       audioState.uiLast.set(kind, nowMs);
       const audio = unlockLabAudio();
-      if (!audio || !audio.ctx || !audio.input) return;
+      if (!audio || !audio.ctx || !audio.input) return false;
       const audioCtx = audio.ctx;
       const start = audioCtx.currentTime + 0.012;
-      const patterns = {
-        record: {
-          peak: 0.12,
-          duration: 0.18,
-          tones: [
-            { frequency: 740, offset: 0, duration: 0.08, type: "triangle" },
-            { frequency: 988, offset: 0.055, duration: 0.08, type: "sine" }
-          ]
-        },
-        step: {
-          peak: 0.13,
-          duration: 0.24,
-          tones: [
-            { frequency: 660, offset: 0, duration: 0.07, type: "sine" },
-            { frequency: 880, offset: 0.085, duration: 0.1, type: "triangle" }
-          ]
-        },
-        finish: {
-          peak: 0.15,
-          duration: 0.5,
-          tones: [
-            { frequency: 523.25, offset: 0, duration: 0.14, type: "triangle" },
-            { frequency: 659.25, offset: 0.12, duration: 0.14, type: "triangle" },
-            { frequency: 783.99, offset: 0.24, duration: 0.2, type: "sine" }
-          ]
-        },
-        hint: {
-          peak: 0.08,
-          duration: 0.2,
-          tones: [
-            { frequency: 1046.5, offset: 0, duration: 0.07, type: "sine" },
-            { frequency: 1318.5, offset: 0.09, duration: 0.06, type: "sine" }
-          ]
-        },
-        warn: {
-          peak: 0.09,
-          duration: 0.28,
-          tones: [
-            { frequency: 220, offset: 0, duration: 0.12, type: "sawtooth" },
-            { frequency: 196, offset: 0.105, duration: 0.14, type: "sine" }
-          ]
-        },
-        tap: {
-          peak: 0.045,
-          duration: 0.09,
-          tones: [
-            { frequency: 620, offset: 0, duration: 0.055, type: "sine" }
-          ]
-        }
-      };
-      const pattern = patterns[kind] || patterns.hint;
+      const pattern = UI_SOUND_PATTERNS[kind] || UI_SOUND_PATTERNS.hint;
+      audioState.uiAvailableAt = nowMs + pattern.duration * 1000 + 80;
       window.dispatchEvent(new CustomEvent("lab-ui-sound", { detail:{ kind } }));
       const output = audioCtx.createGain();
       output.gain.setValueAtTime(0.0001, start);
-      output.gain.linearRampToValueAtTime(pattern.peak, start + 0.012);
+      output.gain.linearRampToValueAtTime(pattern.peak, start + 0.018);
       output.gain.exponentialRampToValueAtTime(0.0001, start + pattern.duration);
       output.connect(audio.input);
+      audioState.activeGains.add(output.gain);
       pattern.tones.forEach((tone) => {
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         const toneStart = start + tone.offset;
         osc.type = tone.type;
         osc.frequency.setValueAtTime(tone.frequency, toneStart);
-        gain.gain.setValueAtTime(0.95, toneStart);
+        gain.gain.setValueAtTime(0.82, toneStart);
         gain.gain.exponentialRampToValueAtTime(0.0001, toneStart + tone.duration);
         osc.connect(gain);
         gain.connect(output);
@@ -1324,12 +1334,29 @@ updateDots();
         osc.stop(toneStart + tone.duration + 0.04);
       });
       window.setTimeout(() => {
+        audioState.activeGains.delete(output.gain);
         try {
           output.disconnect();
         } catch (error) {
           console.warn("界面音效节点断开失败", error);
         }
       }, Math.ceil((pattern.duration + 0.25) * 1000));
+      return true;
+    }
+
+    function playUiSoundWhenReady(kind) {
+      const readyAt = Math.max(audioState.labSoundUntil + 80, audioState.uiAvailableAt);
+      const remaining = readyAt - performance.now();
+      if (remaining > 0) {
+        let timerId = 0;
+        timerId = schedule(() => {
+          audioState.deferredUiTimers.delete(timerId);
+          playUiSoundWhenReady(kind);
+        }, Math.ceil(remaining));
+        audioState.deferredUiTimers.add(timerId);
+        return false;
+      }
+      return playUiSound(kind);
     }
 
     window.labAudio = {
@@ -1393,13 +1420,39 @@ updateDots();
       return osc;
     }
 
-    function silenceActiveAudio() {
+    function silenceActiveAudio({ cancelDeferred = true } = {}) {
+      if (cancelDeferred) {
+        audioState.deferredUiTimers.forEach((timerId) => {
+          clearTimeout(timerId);
+          state.timers.delete(timerId);
+        });
+        audioState.deferredUiTimers.clear();
+      }
+      audioState.labSoundUntil = 0;
+      audioState.uiAvailableAt = 0;
       if (!audioState.ctx) return;
       const now = audioState.ctx.currentTime;
       audioState.activeGains.forEach((gain) => {
-        gain.cancelScheduledValues(now);
-        gain.setTargetAtTime(0.0001, now, 0.018);
+        try {
+          gain.cancelScheduledValues(now);
+          gain.setTargetAtTime(0.0001, now, 0.018);
+        } catch (error) {
+          console.warn("停止音效失败", error);
+        }
       });
+      audioState.activeGains.clear();
+    }
+
+    function beginLabSound(duration) {
+      silenceActiveAudio({ cancelDeferred:false });
+      audioState.labSoundUntil = performance.now() + duration * 1000;
+    }
+
+    async function waitForLabSound(runId) {
+      while (performance.now() < audioState.labSoundUntil + 80) {
+        const remaining = audioState.labSoundUntil + 80 - performance.now();
+        await sleep(Math.min(80, Math.max(16, remaining)), runId);
+      }
     }
 
     function playRulerSound() {
@@ -1407,34 +1460,26 @@ updateDots();
       const audio = ensureAudio();
       if (!audio) return;
       const ctx = audio.ctx;
-      const start = ctx.currentTime + 0.004;
+      const duration = 1.15;
+      beginLabSound(duration);
+      const start = ctx.currentTime + 0.024;
       const freq = clamp(state.rulerFreq, 170, 680);
-      const lengthRatio = clamp((state.rulerLength - 82) / 168, 0, 1);
-      const duration = lerp(0.86, 1.65, lengthRatio);
-      const output = createVoiceOutput(ctx, start, duration, 0.22);
-      const filter = ctx.createBiquadFilter();
-      filter.type = "bandpass";
-      filter.frequency.setValueAtTime(clamp(freq * 2.4, 520, 2200), start);
-      filter.Q.setValueAtTime(3.2, start);
-      filter.connect(output);
-      [
-        [1, "triangle", 0.72, 0],
-        [2.62, "sine", 0.34, -5],
-        [5.18, "sine", 0.18, 4],
-        [8.7, "sine", 0.08, -2]
-      ].forEach(([ratio, type, gain, detune]) => addOscillator(ctx, filter, start, duration, freq * ratio, type, gain, detune));
-      const noise = createNoiseSource(ctx, 0.075);
+      const output = createVoiceOutput(ctx, start, duration, 0.18);
+      addOscillator(ctx, output, start, duration, freq, "triangle", 0.72);
+      addOscillator(ctx, output, start, duration * 0.38, freq * 6.27, "sine", 0.09);
+      addOscillator(ctx, output, start, duration * 0.18, freq * 17.55, "sine", 0.025);
+      const noise = createNoiseSource(ctx, 0.055);
       const noiseFilter = ctx.createBiquadFilter();
       const noiseGain = ctx.createGain();
       noiseFilter.type = "highpass";
-      noiseFilter.frequency.setValueAtTime(900, start);
-      noiseGain.gain.setValueAtTime(0.035, start);
-      noiseGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.075);
+      noiseFilter.frequency.setValueAtTime(1200, start);
+      noiseGain.gain.setValueAtTime(0.018, start);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.055);
       noise.connect(noiseFilter);
       noiseFilter.connect(noiseGain);
       noiseGain.connect(output);
       noise.start(start);
-      noise.stop(start + 0.08);
+      noise.stop(start + 0.06);
     }
 
     function playForkSound(pull) {
@@ -1442,20 +1487,20 @@ updateDots();
       const audio = ensureAudio();
       if (!audio) return;
       const ctx = audio.ctx;
-      const start = ctx.currentTime + 0.006;
-      const strength = clamp(pull / 96, 0.16, 1.15);
-      const duration = lerp(1.25, 2.45, strength);
-      const output = createVoiceOutput(ctx, start, duration, lerp(0.07, 0.22, strength));
-      addOscillator(ctx, output, start, duration, 440, "sine", 0.92, -1.5);
-      addOscillator(ctx, output, start, duration * 0.82, 440.8, "sine", 0.38, 1.5);
-      addOscillator(ctx, output, start, duration * 0.45, 880, "sine", 0.055, 0);
+      const duration = 1.65;
+      beginLabSound(duration);
+      const start = ctx.currentTime + 0.024;
+      const strength = clamp(pull / 96, 0.16, 1);
+      const output = createVoiceOutput(ctx, start, duration, lerp(0.045, 0.19, strength));
+      addOscillator(ctx, output, start, duration, 440, "sine", 0.96);
+      addOscillator(ctx, output, start, 0.28, 880, "sine", 0.025);
     }
 
     function playGuitarSound(ctx, start) {
-      const output = createVoiceOutput(ctx, start, 1.45, 0.2);
+      const output = createVoiceOutput(ctx, start, 1.35, 0.16);
       const base = 392;
       [1, 2, 3, 4, 5, 6].forEach((ratio, index) => {
-        addOscillator(ctx, output, start, 1.45 - index * 0.12, base * ratio, index === 0 ? "triangle" : "sine", 0.82 / (index + 1), index % 2 ? -4 : 3);
+        addOscillator(ctx, output, start, 1.35 - index * 0.11, base * ratio, index === 0 ? "triangle" : "sine", 0.78 / (index + 1), index % 2 ? -3 : 2);
       });
       const pluck = createNoiseSource(ctx, 0.045);
       const pluckGain = ctx.createGain();
@@ -1469,7 +1514,7 @@ updateDots();
 
     function playFluteSound(ctx, start) {
       const duration = 1.35;
-      const output = createVoiceOutput(ctx, start, duration, 0.16);
+      const output = createVoiceOutput(ctx, start, duration, 0.15);
       const osc = ctx.createOscillator();
       const vibrato = ctx.createOscillator();
       const vibratoGain = ctx.createGain();
@@ -1479,7 +1524,7 @@ updateDots();
       osc.type = "sine";
       osc.frequency.setValueAtTime(392, start);
       vibrato.frequency.setValueAtTime(5.2, start);
-      vibratoGain.gain.setValueAtTime(8, start);
+      vibratoGain.gain.setValueAtTime(5, start);
       vibrato.connect(vibratoGain);
       vibratoGain.connect(osc.detune);
       breathFilter.type = "bandpass";
@@ -1501,30 +1546,24 @@ updateDots();
     }
 
     function playDrumSound(ctx, start) {
-      const output = createVoiceOutput(ctx, start, 0.62, 0.24);
-      const tone = ctx.createOscillator();
-      const toneGain = ctx.createGain();
-      const noise = createNoiseSource(ctx, 0.22);
+      const base = 392;
+      const duration = 1.1;
+      const output = createVoiceOutput(ctx, start, duration, 0.16);
+      addOscillator(ctx, output, start, duration, base, "sine", 0.82);
+      addOscillator(ctx, output, start, duration * 0.55, base * 1.5, "sine", 0.24);
+      addOscillator(ctx, output, start, duration * 0.32, base * 2.04, "sine", 0.11);
+      const noise = createNoiseSource(ctx, 0.12);
       const noiseFilter = ctx.createBiquadFilter();
       const noiseGain = ctx.createGain();
-      tone.type = "sine";
-      tone.frequency.setValueAtTime(180, start);
-      tone.frequency.exponentialRampToValueAtTime(82, start + 0.28);
-      toneGain.gain.setValueAtTime(0.72, start);
-      toneGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.52);
       noiseFilter.type = "lowpass";
-      noiseFilter.frequency.setValueAtTime(1100, start);
-      noiseGain.gain.setValueAtTime(0.18, start);
-      noiseGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.18);
-      tone.connect(toneGain);
-      toneGain.connect(output);
+      noiseFilter.frequency.setValueAtTime(1500, start);
+      noiseGain.gain.setValueAtTime(0.055, start);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.12);
       noise.connect(noiseFilter);
       noiseFilter.connect(noiseGain);
       noiseGain.connect(output);
-      tone.start(start);
       noise.start(start);
-      tone.stop(start + 0.58);
-      noise.stop(start + 0.24);
+      noise.stop(start + 0.13);
     }
 
     function playInstrumentSound(id) {
@@ -1532,7 +1571,9 @@ updateDots();
       const audio = ensureAudio();
       if (!audio) return;
       const ctx = audio.ctx;
-      const start = ctx.currentTime + 0.006;
+      const duration = id === "drum" ? 1.1 : 1.35;
+      beginLabSound(duration);
+      const start = ctx.currentTime + 0.024;
       if (id === "guitar") playGuitarSound(ctx, start);
       else if (id === "flute") playFluteSound(ctx, start);
       else if (id === "drum") playDrumSound(ctx, start);
@@ -1543,7 +1584,13 @@ updateDots();
     }
 
     function pitchFromRuler(length) {
-      return clamp(780 - length * 2.65, 180, 640);
+      const minLength = 72;
+      const maxLength = 258;
+      const effectiveLength = clamp(length, minLength, maxLength);
+      const inverseSquare = 1 / (effectiveLength * effectiveLength);
+      const inverseMin = 1 / (maxLength * maxLength);
+      const inverseMax = 1 / (minLength * minLength);
+      return lerp(170, 680, (inverseSquare - inverseMin) / (inverseMax - inverseMin));
     }
 
     function rulerPitchKey(length) {
@@ -2299,7 +2346,7 @@ function setDrawerCollapsed(drawer, collapsed) {
       const rows = [
         { name:"音调", factor:"频率", evidence:hasRecord("pitch-low") && hasRecord("pitch-high"), color:"#ffd54f" },
         { name:"响度", factor:"振幅", evidence:hasRecord("loud-soft") && hasRecord("loud-loud"), color:"#3ddc97" },
-        { name:"音色", factor:"材料、结构和振动方式", evidence:uniqueRecordCount("timbre") >= 2, color:"#5bbcff" }
+        { name:"音色", factor:"材料、结构和振动方式", evidence:hasRecord("timbre-guitar") && hasRecord("timbre-flute"), color:"#5bbcff" }
       ];
       rows.forEach((row, index) => {
         const y = summary.y + 58 + index * 36;
@@ -2388,11 +2435,6 @@ function setDrawerCollapsed(drawer, collapsed) {
     }
 
     function resumeApparatusAnimation() {
-      if (state.rulerAmp > .4) {
-        playRulerSound();
-      } else if (state.forkAmp > .4 || state.ballOffset > .5) {
-        playForkSound(clamp(state.forkAmp / .34, 16, 110));
-      }
       if (state.rulerAmp > .4 || state.forkAmp > .4 || state.ballOffset > .5) {
         animateFrame();
       }
@@ -2687,22 +2729,22 @@ function setDrawerCollapsed(drawer, collapsed) {
         await animateRulerLength(218, runId);
         autoCheckpoint(runId);
         pluckRuler();
-        await sleep(780, runId);
+        await waitForLabSound(runId);
         await autoRecord("pitch-low", runId);
         await animateRulerLength(96, runId);
         autoCheckpoint(runId);
         pluckRuler();
-        await sleep(780, runId);
+        await waitForLabSound(runId);
         await autoRecord("pitch-high", runId);
         setStepUI(1);
         await sleep(460, runId);
 
         await animateHammerStrike(30, 720, runId);
-        await sleep(760, runId);
+        await waitForLabSound(runId);
         await autoRecord("loud-soft", runId);
 
         await animateHammerStrike(86, 820, runId);
-        await sleep(760, runId);
+        await waitForLabSound(runId);
         await autoRecord("loud-loud", runId);
         setStepUI(2);
         await sleep(460, runId);
@@ -2712,14 +2754,14 @@ function setDrawerCollapsed(drawer, collapsed) {
         clickCursor();
         autoCheckpoint(runId);
         selectInstrument(cards[0].id);
-        await sleep(700, runId);
+        await waitForLabSound(runId);
         await autoRecord(`timbre-${cards[0].id}`, runId);
         cards = layout().instruments;
         await animateCursorPath([{ x: cards[1].x + cards[1].w / 2, y: cards[1].y + 38 }], 560, runId);
         clickCursor();
         autoCheckpoint(runId);
         selectInstrument(cards[1].id);
-        await sleep(700, runId);
+        await waitForLabSound(runId);
         await autoRecord(`timbre-${cards[1].id}`, runId);
         setStepUI(3);
         await sleep(620, runId);
@@ -2750,12 +2792,13 @@ function setDrawerCollapsed(drawer, collapsed) {
     }
 
     function initEvents() {
+      const semanticSoundButtons = new Set([recordBtn, analyzeBtn, hintLamp]);
       document.addEventListener("pointerdown", () => {
         unlockLabAudio();
       }, { passive:true });
       document.addEventListener("click", (event) => {
         const button = event.target.closest("button");
-        if (!button || button === audioToggle || button.disabled) return;
+        if (!button || button === audioToggle || button.disabled || semanticSoundButtons.has(button)) return;
         playUiSound("tap");
       }, { capture:true });
       canvas.addEventListener("pointerdown", onCanvasPointerDown);
