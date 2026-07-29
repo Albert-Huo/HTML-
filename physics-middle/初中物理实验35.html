@@ -16,6 +16,15 @@
       --accent:#3ddc97;
       --warn:#ffb74d;
       --dockShadow:0 14px 36px rgba(0,0,0,.42);
+      --drawer-collapsed-width:164px;
+      --drawer-stack-offset:26px;
+      --shell-tool-size:13px;
+      --shell-tool-ink:#d9e8f8;
+      --shell-tool-bg:rgba(255,255,255,.075);
+      --shell-title-size:20px;
+      --shell-title-ink:#9bd3ff;
+      --shell-copy-size:15px;
+      --shell-copy-ink:#e8f4ff;
     }
 
     *{ box-sizing:border-box; }
@@ -30,6 +39,13 @@
       flex-direction:column;
       align-items:center;
       letter-spacing:0;
+    }
+    #app{
+      width:100%;
+      max-width:980px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
     }
     button{ font:inherit; touch-action:manipulation; }
     button.main, button.sub{
@@ -65,6 +81,10 @@
       align-items:center;
       gap:10px;
       transition:opacity .2s, filter .2s;
+    }
+    .task-card.free-mode{
+      opacity:.42;
+      filter:grayscale(.86) saturate(.42);
     }
     .task-step{
       background:rgba(255,255,255,.16);
@@ -260,9 +280,10 @@
       overflow:hidden;
       touch-action:none;
       z-index:30;
+      transition:width .18s ease, box-shadow .18s ease, border-color .18s ease;
     }
-    .drawer.control{ top:10px; }
-    .drawer.data{ top:94px; }
+    .drawer.control{ top:58px; }
+    .drawer.data{ top:calc(58px + var(--drawer-stack-offset)); }
     .dock.dragging, .drawer.dragging{ box-shadow:0 20px 48px rgba(0,0,0,.55); }
     .dockHead,
     .drawer-header{
@@ -329,7 +350,20 @@
       -webkit-overflow-scrolling:touch;
     }
     .drawer.collapsed .drawer-body{ display:none; }
-    .drawer.collapsed{ background:var(--panel-bg); }
+    .drawer.collapsed{
+      width:var(--drawer-collapsed-width);
+      background:rgba(15,18,22,.92);
+      border-color:rgba(255,255,255,.16);
+    }
+    .drawer.collapsed .drawer-header{
+      min-height:42px;
+      border-bottom:0;
+      cursor:pointer;
+    }
+    .drawer.collapsed .drawer-title{
+      min-width:0;
+      white-space:nowrap;
+    }
     .readout-grid{
       display:grid;
       grid-template-columns:1fr 1fr;
@@ -395,6 +429,19 @@
       flex-wrap:wrap;
       gap:9px;
       align-items:center;
+    }
+    .toolbar button{
+      border:1px solid rgba(255,255,255,.09);
+      padding:9px 12px;
+      background:var(--shell-tool-bg);
+      color:var(--shell-tool-ink);
+      font-size:var(--shell-tool-size);
+      font-weight:800;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+    }
+    .toolbar button:hover{
+      border-color:rgba(155,211,255,.22);
+      background:rgba(255,255,255,.11);
     }
     .toast{
       position:fixed;
@@ -497,11 +544,17 @@
       width:100%;
       max-width:980px;
       margin:14px 0 22px;
-      color:#e8f4ff;
+      color:var(--shell-copy-ink);
       line-height:1.66;
-      font-size:15px;
+      font-size:var(--shell-copy-size);
     }
-    .explanation h2{ margin:0 0 8px; color:#9bd3ff; font-size:20px; }
+    .explanation h2{
+      margin:0 0 8px;
+      color:var(--shell-title-ink);
+      font-size:var(--shell-title-size);
+      line-height:1.35;
+      letter-spacing:.01em;
+    }
     .explanation ul{ margin:0; padding-left:22px; }
 
     @media (max-width:720px){
@@ -519,6 +572,7 @@
         width:calc(100% - 24px);
         right:12px;
       }
+      .drawer.collapsed{ width:calc(100% - 24px); }
       .drawer.control{ top:112px; }
       .drawer.data{ top:166px; }
       .drawer-body{ max-height:260px; }
@@ -532,6 +586,7 @@
   <style id="codex-exp35-49-mode-ui-standard">#stage #modeTag.mode-strip{position:relative!important;isolation:isolate!important;min-width:158px!important;width:auto!important;max-width:none!important;box-sizing:border-box!important;border:2px solid transparent!important;border-radius:999px!important;padding:4px 12px!important;font-weight:900!important;color:#fff!important;background:linear-gradient(rgba(6,10,14,.94),rgba(6,10,14,.94)) padding-box,linear-gradient(90deg,#35ff73,#4bd8ff,#6c5cff,#ff4fc3,#ffd166,#35ff73,#4bd8ff) border-box!important;background-size:100% 100%,260% 100%!important;box-shadow:0 0 13px rgba(75,216,255,.20),inset 0 0 10px rgba(255,255,255,.06)!important;white-space:nowrap!important;text-align:center!important;overflow:hidden!important;text-overflow:clip!important;animation:codexModeRibbonFlow 3.2s linear infinite,codexModeGlow 1.8s ease-in-out infinite alternate!important}#stage #modeTag.mode-strip::before{content:""!important;position:absolute!important;top:-2px!important;bottom:-2px!important;left:-48%!important;width:46%!important;border-radius:inherit!important;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.08) 34%,rgba(255,255,255,.88) 50%,rgba(112,255,204,.42) 64%,transparent 100%)!important;opacity:.68!important;transform:skewX(-18deg) translateX(-130%);animation:codexModeSweep 2.4s linear infinite!important;mix-blend-mode:screen!important;pointer-events:none!important}#stage #modeTag.mode-strip::after{content:""!important;position:absolute!important;left:16px!important;right:16px!important;bottom:3px!important;height:2px!important;border-radius:999px!important;background:linear-gradient(90deg,transparent,#70ffcc,#ffd166,transparent)!important;opacity:.82!important;pointer-events:none!important}@keyframes codexModeRibbonFlow{0%{background-position:0 0,0 0}100%{background-position:0 0,-260% 0}}@keyframes codexModeSweep{0%{transform:skewX(-18deg) translateX(-130%)}100%{transform:skewX(-18deg) translateX(430%)}}@keyframes codexModeGlow{0%{box-shadow:0 0 11px rgba(75,216,255,.18),inset 0 0 9px rgba(255,255,255,.05)}100%{box-shadow:0 0 19px rgba(112,255,204,.34),inset 0 0 12px rgba(255,255,255,.10)}}@media (prefers-reduced-motion:reduce){#stage #modeTag.mode-strip{animation:none!important}#stage #modeTag.mode-strip::before{animation:none!important;display:none!important}}</style>
 </head>
 <body>
+  <div id="app">
   <div id="spectrum"></div>
 
   <section class="task-card" id="taskCard">
@@ -545,7 +600,7 @@
 
   <main id="stage" aria-label="体验不同声音的特性实验台">
     <div class="hud">
-      <span class="mode-strip" id="modeTag">模式：闯关模式 · 关卡 1/4</span>
+      <span class="tag mode-strip" id="modeTag">模式：闯关模式 · 关卡 1/4</span>
       <span class="tag" id="statusTag">状态：待操作</span>
     </div>
     <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
@@ -627,6 +682,7 @@
       <li><b>实验结论：</b>音调由发声体振动频率决定，频率越高音调越高；响度主要与振幅有关，振幅越大响度越大；音色与发声体的材料、结构和振动方式有关。</li>
     </ul>
   </section>
+  </div>
 
   <script>
     const $ = (selector) => document.querySelector(selector);
@@ -672,7 +728,7 @@
 
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
     const lerp = (a, b, t) => a + (b - a) * t;
-    const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    const rawSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
     const tasks = [
       {
@@ -724,7 +780,10 @@
       demoCompleted: false,
       freeMode: false,
       autoPlaying: false,
+      autoPaused: false,
       autoCancel: false,
+      autoRunId: 0,
+      freeStartState: null,
       draggingId: null,
       dragOffset: { x:0, y:0 },
       successCooldown: false,
@@ -825,13 +884,44 @@ updateDots();
         statusTag.textContent = `状态：${text}`;
         return;
       }
-      if (state.completed) statusTag.textContent = "状态：已完成";
-      else if (state.autoPlaying) statusTag.textContent = "状态：演示中";
+      if (state.autoPlaying) statusTag.textContent = state.autoPaused ? "状态：演示已暂停" : "状态：演示中";
+      else if (state.completed) statusTag.textContent = "状态：已完成";
       else if (state.lastObservation) statusTag.textContent = `状态：${state.lastObservation.short}`;
       else statusTag.textContent = "状态：待操作";
     }
 
-    function setModeLabel(){ modeTag.textContent = "模式：" + (state.autoPlaying ? "演示模式 · 自动运行" : (state.freeMode ? "自由模式 · 自主探索" : (state.completed ? (state.demoCompleted ? "演示模式 · 演示完成" : "闯关模式 · 已通关") : "闯关模式 · 关卡 " + (state.currentTask + 1) + "/" + tasks.length))); }
+    function setModeLabel(){ modeTag.textContent = "模式：" + (state.autoPlaying ? (state.autoPaused ? "演示模式 · 已暂停" : "演示模式 · 自动运行") : (state.freeMode ? "自由模式 · 自主探索" : (state.completed ? (state.demoCompleted ? "演示模式 · 演示完成" : "闯关模式 · 已通关") : "闯关模式 · 关卡 " + (state.currentTask + 1) + "/" + tasks.length))); }
+
+    function syncAutoDemoUI() {
+      resetBtn.textContent = state.autoPlaying
+        ? (state.autoPaused ? "继续演示" : "暂停演示")
+        : (state.freeMode ? "重置操作" : "重置关卡");
+      autoDemoBtn.textContent = state.autoPlaying ? "退出演示" : "演示模式";
+      autoDemoBtn.disabled = state.freeMode && !state.autoPlaying;
+      freeBtn.disabled = state.autoPlaying;
+      resetBtn.setAttribute("aria-pressed", state.autoPlaying && state.autoPaused ? "true" : "false");
+    }
+
+    function autoCheckpoint(runId) {
+      if (state.autoCancel || runId !== state.autoRunId) {
+        throw new Error("AUTO_CANCELLED");
+      }
+    }
+
+    async function sleep(ms, runId) {
+      let remaining = Math.max(0, ms);
+      while (remaining > 0) {
+        autoCheckpoint(runId);
+        if (state.autoPaused) {
+          await rawSleep(16);
+          continue;
+        }
+        const slice = Math.min(remaining, 16);
+        await rawSleep(slice);
+        autoCheckpoint(runId);
+        if (!state.autoPaused) remaining -= slice;
+      }
+    }
 
     function showToast(message) {
       toastEl.textContent = message;
@@ -911,7 +1001,13 @@ updateDots();
     function recordLastObservation({ auto = false } = {}) {
       const obs = state.lastObservation;
       if (!obs) {
-        warnCurrentStep("请先完成一次有效操作，再记录观察。");
+        if (state.freeMode) {
+          showToast("先进行一次有效操作，再记录观察。");
+          updateStatus("自由探索");
+          playUiSound("hint");
+        } else {
+          warnCurrentStep("请先完成一次有效操作，再记录观察。");
+        }
         return false;
       }
       if (!state.freeMode && state.currentTask === 0 && obs.category !== "pitch") {
@@ -1122,6 +1218,7 @@ updateDots();
       audioToggle.classList.toggle("ready", audioState.uiUnlocked && !audioState.uiMuted);
       audioToggle.textContent = audioState.uiMuted ? "🔇" : "🔊";
       audioToggle.setAttribute("aria-pressed", String(!audioState.uiMuted));
+      audioToggle.setAttribute("aria-label", audioState.uiMuted ? "开启音效" : "关闭音效");
       audioToggle.title = audioState.uiMuted ? "开启音效" : (audioState.uiUnlocked ? "关闭音效" : "点击后开启音效");
     }
 
@@ -1148,8 +1245,9 @@ updateDots();
       if (audioState.uiMuted) return;
       const nowMs = performance.now();
       const gap = kind === "finish" ? 520 : 120;
-      const last = audioState.uiLast.get(kind) || 0;
-      if (!force && nowMs - last < gap) return;
+      const hasPlayed = audioState.uiLast.has(kind);
+      const last = audioState.uiLast.get(kind);
+      if (!force && hasPlayed && nowMs - last < gap) return;
       audioState.uiLast.set(kind, nowMs);
       const audio = unlockLabAudio();
       if (!audio || !audio.ctx || !audio.input) return;
@@ -1196,9 +1294,17 @@ updateDots();
             { frequency: 220, offset: 0, duration: 0.12, type: "sawtooth" },
             { frequency: 196, offset: 0.105, duration: 0.14, type: "sine" }
           ]
+        },
+        tap: {
+          peak: 0.045,
+          duration: 0.09,
+          tones: [
+            { frequency: 620, offset: 0, duration: 0.055, type: "sine" }
+          ]
         }
       };
       const pattern = patterns[kind] || patterns.hint;
+      window.dispatchEvent(new CustomEvent("lab-ui-sound", { detail:{ kind } }));
       const output = audioCtx.createGain();
       output.gain.setValueAtTime(0.0001, start);
       output.gain.linearRampToValueAtTime(pattern.peak, start + 0.012);
@@ -1230,6 +1336,7 @@ updateDots();
       play: playUiSound,
       setMuted(value) {
         audioState.uiMuted = Boolean(value);
+        if (audioState.uiMuted) silenceActiveAudio();
         syncAudioToggle();
       },
       get muted() {
@@ -1296,6 +1403,7 @@ updateDots();
     }
 
     function playRulerSound() {
+      if (audioState.uiMuted) return;
       const audio = ensureAudio();
       if (!audio) return;
       const ctx = audio.ctx;
@@ -1330,6 +1438,7 @@ updateDots();
     }
 
     function playForkSound(pull) {
+      if (audioState.uiMuted) return;
       const audio = ensureAudio();
       if (!audio) return;
       const ctx = audio.ctx;
@@ -1419,6 +1528,7 @@ updateDots();
     }
 
     function playInstrumentSound(id) {
+      if (audioState.uiMuted) return;
       const audio = ensureAudio();
       if (!audio) return;
       const ctx = audio.ctx;
@@ -1517,7 +1627,13 @@ updateDots();
 
     function analyzeConclusion() {
       if (!readyForAnalysis()) {
-        warnCurrentStep("请先补齐音调、响度和音色的观察记录。");
+        if (state.freeMode) {
+          showToast("可继续探索并记录更多声音现象。");
+          updateStatus("自由探索");
+          playUiSound("hint");
+        } else {
+          warnCurrentStep("请先补齐音调、响度和音色的观察记录。");
+        }
         return false;
       }
       state.analysisDone = true;
@@ -1529,6 +1645,70 @@ updateDots();
       return true;
     }
 
+    function captureFreeStartState() {
+      return {
+        currentTask: state.currentTask,
+        completed: state.completed,
+        demoCompleted: state.demoCompleted,
+        rulerLength: state.rulerLength,
+        rulerFreq: state.rulerFreq,
+        hammerPull: state.hammerPull,
+        selectedInstrument: state.selectedInstrument,
+        waveMode: state.waveMode,
+        waveShape: state.waveShape,
+        waveAmp: state.waveAmp,
+        records: state.records.map((record) => ({ ...record })),
+        unseenRecords: state.unseenRecords,
+        lastObservation: state.lastObservation ? { ...state.lastObservation } : null,
+        analysisDone: state.analysisDone,
+        analysisHtml: analysisText.innerHTML,
+        analysisOk: analysisText.classList.contains("ok")
+      };
+    }
+
+    function restoreFreeStartState() {
+      const snapshot = state.freeStartState;
+      if (!snapshot) return false;
+      silenceActiveAudio();
+      stopAnimation();
+      clearAllTimers();
+      state.completed = snapshot.completed;
+      state.demoCompleted = snapshot.demoCompleted;
+      state.autoCancel = false;
+      state.autoPaused = false;
+      state.draggingId = null;
+      state.stepWarning = false;
+      state.rulerLength = snapshot.rulerLength;
+      state.rulerPhase = 0;
+      state.rulerAmp = 0;
+      state.rulerFreq = snapshot.rulerFreq;
+      state.hammerPull = snapshot.hammerPull;
+      state.hammerPhase = 0;
+      state.forkAmp = 0;
+      state.ballOffset = 0;
+      state.selectedInstrument = snapshot.selectedInstrument;
+      state.waveMode = snapshot.waveMode;
+      state.waveShape = snapshot.waveShape;
+      state.waveAmp = snapshot.waveAmp;
+      state.records = snapshot.records.map((record) => ({ ...record }));
+      state.unseenRecords = snapshot.unseenRecords;
+      state.lastObservation = snapshot.lastObservation ? { ...snapshot.lastObservation } : null;
+      state.analysisDone = snapshot.analysisDone;
+      doneMask.style.display = "none";
+      analysisText.innerHTML = snapshot.analysisHtml;
+      analysisText.classList.toggle("ok", snapshot.analysisOk);
+      renderRecords();
+      updateBadge();
+      setStepUI(snapshot.currentTask);
+      updateReadouts();
+      syncAutoDemoUI();
+      setModeLabel();
+      updateStatus("自由探索");
+      draw();
+      showToast("自由模式操作已重置");
+      return true;
+    }
+
     function resetScene({ keepMode = true } = {}) {
       silenceActiveAudio();
       stopAnimation();
@@ -1536,6 +1716,7 @@ updateDots();
       state.completed = false;
       state.demoCompleted = false;
       state.autoCancel = false;
+      if (!state.autoPlaying) state.autoPaused = false;
       state.draggingId = null;
       state.stepWarning = false;
       state.rulerLength = 165;
@@ -1567,13 +1748,30 @@ updateDots();
     }
 
     function setFreeMode(on) {
-      state.freeMode = !!on;
+      const nextMode = !!on;
+      const entering = nextMode && !state.freeMode;
+      const leaving = !nextMode && state.freeMode;
+      if (entering) state.freeStartState = captureFreeStartState();
+      state.freeMode = nextMode;
+      if (leaving) state.freeStartState = null;
       freeBtn.textContent = state.freeMode ? "退出自由模式" : "自由模式";
-      autoDemoBtn.disabled = state.freeMode;
+      taskCard.classList.toggle("free-mode", state.freeMode);
+      taskCard.dataset.mode = state.freeMode ? "free" : "challenge";
+      taskCard.setAttribute(
+        "aria-label",
+        state.freeMode ? "关卡参考，自由模式不进行步骤判定" : "当前实验关卡"
+      );
+      if (state.freeMode) {
+        state.stepWarning = false;
+        updateDots();
+      }
+      syncAutoDemoUI();
       setModeLabel();
       if (state.freeMode) {
+        updateStatus("自由探索");
         showToast("自由模式下可任意比较，不自动推进关卡。");
       } else {
+        updateStatus();
         showToast("已回到闯关模式。");
       }
       draw();
@@ -1607,6 +1805,10 @@ function setDrawerCollapsed(drawer, collapsed) {
         if (typeof drawRecordChart === "function") drawRecordChart();
       }
       fitDrawers();
+      clearTimeout(setDrawerCollapsed.fitTimer);
+      setDrawerCollapsed.fitTimer = window.setTimeout(() => {
+        fitDrawers();
+      }, 210);
       syncMobileTabs();
       if (typeof updateReadouts === "function") updateReadouts();
       if (state.width && state.height && typeof draw === "function") draw();
@@ -1641,17 +1843,26 @@ function setDrawerCollapsed(drawer, collapsed) {
             return;
           }
           [control, data].forEach((drawer) => { if (!drawer) return; drawer.classList.remove("mobile-sheet"); drawer.style.bottom = ""; });
-          if (control && !control.dataset.moved) {
-            const cw = control.offsetWidth || 330;
-            control.style.left = Math.max(12, sw - cw - 12) + "px";
-            control.style.top = "58px";
-            control.style.right = "auto";
-          }
-          if (data && !data.dataset.moved) {
-            const dw = data.offsetWidth || 330;
-            data.style.left = Math.max(12, sw - dw - 12) + "px";
-            data.style.top = ((control && control.offsetTop + control.offsetHeight + 8) || 106) + "px";
-            data.style.right = "auto";
+          const placeDrawer = (drawer, top) => {
+            if (!drawer || drawer.dataset.moved) return;
+            const width = drawer.offsetWidth || 330;
+            drawer.style.left = Math.max(12, sw - width - 12) + "px";
+            drawer.style.top = top + "px";
+            drawer.style.right = "auto";
+          };
+          const controlOpen = control && !control.classList.contains("collapsed");
+          const dataOpen = data && !data.classList.contains("collapsed");
+          const stackOffset = Number.parseFloat(
+            getComputedStyle(stage).getPropertyValue("--drawer-stack-offset")
+          ) || 26;
+          if (controlOpen !== dataOpen) {
+            const expanded = controlOpen ? control : data;
+            const compact = controlOpen ? data : control;
+            placeDrawer(expanded, 58);
+            placeDrawer(compact, 58 + (expanded.offsetHeight || 120) - 12);
+          } else {
+            placeDrawer(control, 58);
+            placeDrawer(data, 58 + stackOffset);
           }
           syncMobileTabs();
         }
@@ -2141,6 +2352,10 @@ function setDrawerCollapsed(drawer, collapsed) {
     function animateFrame() {
       if (state.rafId) return;
       const tick = () => {
+        if (state.autoPlaying && state.autoPaused) {
+          state.rafId = requestAnimationFrame(tick);
+          return;
+        }
         state.rulerPhase += state.rulerFreq / 55;
         state.rulerAmp *= .94;
         state.forkAmp *= .95;
@@ -2164,6 +2379,23 @@ function setDrawerCollapsed(drawer, collapsed) {
       if (state.rafId) cancelAnimationFrame(state.rafId);
       state.rafId = 0;
       demoCursor.style.opacity = "0";
+    }
+
+    function pauseApparatusAnimation() {
+      if (state.rafId) cancelAnimationFrame(state.rafId);
+      state.rafId = 0;
+      draw();
+    }
+
+    function resumeApparatusAnimation() {
+      if (state.rulerAmp > .4) {
+        playRulerSound();
+      } else if (state.forkAmp > .4 || state.ballOffset > .5) {
+        playForkSound(clamp(state.forkAmp / .34, 16, 110));
+      }
+      if (state.rulerAmp > .4 || state.forkAmp > .4 || state.ballOffset > .5) {
+        animateFrame();
+      }
     }
 
     function stagePoint(event) {
@@ -2233,6 +2465,7 @@ function setDrawerCollapsed(drawer, collapsed) {
           state.hammerPull = 0;
           draw();
           showToast("把小锤向左拉开后再松手敲击。");
+          playUiSound(state.freeMode ? "hint" : "warn");
         } else {
           strikeFork(pull);
         }
@@ -2247,14 +2480,26 @@ function setDrawerCollapsed(drawer, collapsed) {
             if (isMobileStage() || event.target.closest("button")) return;
             const rect = drawer.getBoundingClientRect();
             const parent = stage.getBoundingClientRect();
-            drawer.dataset.moved = "true";
-            state.drawerDrag = { drawer, dx:event.clientX - rect.left, dy:event.clientY - rect.top, parentLeft:parent.left, parentTop:parent.top };
+            state.drawerDrag = {
+              drawer,
+              dx:event.clientX - rect.left,
+              dy:event.clientY - rect.top,
+              parentLeft:parent.left,
+              parentTop:parent.top,
+              startX:event.clientX,
+              startY:event.clientY,
+              active:false
+            };
             header.setPointerCapture(event.pointerId);
-            event.preventDefault();
           });
           header.addEventListener("pointermove", (event) => {
             if (!state.drawerDrag || state.drawerDrag.drawer !== drawer) return;
             const drag = state.drawerDrag;
+            if (!drag.active) {
+              if (Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
+              drag.active = true;
+              drawer.dataset.moved = "true";
+            }
             const areaWidth = state.stageWidth || stage.clientWidth || state.width;
             const areaHeight = state.stageHeight || stage.clientHeight || state.height;
             const left = clamp(event.clientX - drag.parentLeft - drag.dx, 6, Math.max(6, areaWidth - drawer.offsetWidth - 6));
@@ -2294,58 +2539,60 @@ function setDrawerCollapsed(drawer, collapsed) {
       demoCursor.style.transform = `translate(${rect.left - stageRect.left + rect.width / 2 - 10}px, ${rect.top - stageRect.top + rect.height / 2 - 10}px)`;
     }
 
-    async function clickPanelButton(button) {
+    async function clickPanelButton(button, runId) {
       setDrawerCollapsed(controlDrawer, false);
       bringDrawerToFront(controlDrawer);
-      await sleep(180);
+      await sleep(180, runId);
       moveCursorToElement(button);
       clickCursor();
-      await sleep(360);
+      await sleep(360, runId);
     }
 
-    async function animateCursorPath(points, duration = 500) {
+    async function animateCursorPath(points, duration = 500, runId) {
       if (points.length === 1) {
         moveCursorTo(points[0].x, points[0].y);
-        await sleep(duration);
+        await sleep(duration, runId);
         return;
       }
       moveCursorTo(points[0].x, points[0].y);
       clickCursor();
-      await sleep(220);
-      const start = performance.now();
-      while (performance.now() - start < duration) {
-        if (state.autoCancel) throw new Error("AUTO_CANCELLED");
-        const t = (performance.now() - start) / duration;
+      await sleep(220, runId);
+      let elapsed = 0;
+      while (elapsed < duration) {
+        autoCheckpoint(runId);
+        const frameDuration = Math.min(16, duration - elapsed);
+        await sleep(frameDuration, runId);
+        elapsed += frameDuration;
+        const t = elapsed / duration;
         const segment = Math.min(points.length - 2, Math.floor(t * (points.length - 1)));
         const localT = (t * (points.length - 1)) - segment;
         const a = points[segment];
         const b = points[segment + 1];
         moveCursorTo(lerp(a.x, b.x, localT), lerp(a.y, b.y, localT));
-        await sleep(16);
       }
       const last = points[points.length - 1];
       moveCursorTo(last.x, last.y);
     }
 
-    async function animateRulerLength(targetLength) {
+    async function animateRulerLength(targetLength, runId) {
       const boxes = layout();
       const start = state.rulerLength;
       const s = boxes.ruler.scale || 1;
       const from = { x: boxes.ruler.clampX + start * s, y: boxes.ruler.y };
       const to = { x: boxes.ruler.clampX + targetLength * s, y: boxes.ruler.y };
-      await animateCursorPath([from, to], 820);
+      await animateCursorPath([from, to], 820, runId);
       for (let i = 0; i <= 20; i += 1) {
-        if (state.autoCancel) throw new Error("AUTO_CANCELLED");
+        autoCheckpoint(runId);
         state.rulerLength = lerp(start, targetLength, i / 20);
         state.rulerFreq = pitchFromRuler(state.rulerLength);
         updateReadouts();
         draw();
-        await sleep(32);
+        await sleep(32, runId);
       }
       clickCursor();
     }
 
-    async function animateHammerStrike(strength, duration = 760) {
+    async function animateHammerStrike(strength, duration = 760, runId) {
       const boxes = layout();
       const fork = boxes.fork;
       const s = fork.scale || 1;
@@ -2354,97 +2601,147 @@ function setDrawerCollapsed(drawer, collapsed) {
         x: fork.x - (82 + strength) * s + fork.hammer.w * .62,
         y: fork.hammer.y + fork.hammer.h * .48
       };
-      await animateCursorPath([start, target], duration);
+      await animateCursorPath([start, target], duration, runId);
       state.hammerPull = strength;
       draw();
       clickCursor();
-      await sleep(420);
+      await sleep(420, runId);
+      autoCheckpoint(runId);
       strikeFork(strength);
     }
 
-    async function autoRecord(expectedKey) {
+    async function autoRecord(expectedKey, runId) {
       const before = state.records.length;
-      await clickPanelButton(recordBtn);
+      await clickPanelButton(recordBtn, runId);
+      autoCheckpoint(runId);
       const ok = recordLastObservation({ auto:true });
-      await sleep(420);
+      await sleep(420, runId);
+      autoCheckpoint(runId);
       if (!ok || !hasRecord(expectedKey) || state.records.length <= before) {
         throw new Error(`AUTO_RECORD_NOT_PERSISTED:${expectedKey}`);
       }
     }
 
-    async function autoAnalyze() {
-      await clickPanelButton(analyzeBtn);
+    async function autoAnalyze(runId) {
+      await clickPanelButton(analyzeBtn, runId);
+      autoCheckpoint(runId);
       return analyzeConclusion();
+    }
+
+    function toggleAutoPause() {
+      if (!state.autoPlaying) return;
+      state.autoPaused = !state.autoPaused;
+      if (state.autoPaused) {
+        pauseApparatusAnimation();
+        silenceActiveAudio();
+      } else {
+        resumeApparatusAnimation();
+      }
+      syncAutoDemoUI();
+      setModeLabel();
+      updateStatus();
+      showToast(state.autoPaused ? "演示已暂停" : "演示继续");
+    }
+
+    function exitAutoDemo() {
+      if (!state.autoPlaying) return;
+      state.autoCancel = true;
+      state.autoPaused = false;
+      state.autoRunId += 1;
+      state.autoPlaying = false;
+      silenceActiveAudio();
+      stopAnimation();
+      resetScene({ keepMode:false });
+      syncAutoDemoUI();
+      setModeLabel();
+      updateStatus();
+      showToast("已退出演示");
     }
 
     async function runAutoDemo() {
       if (state.autoPlaying) {
-        state.autoCancel = true;
+        exitAutoDemo();
         return;
       }
       unlockLabAudio();
+      const runId = state.autoRunId + 1;
+      state.autoRunId = runId;
       state.autoPlaying = true;
+      state.autoPaused = false;
       state.autoCancel = false;
-      autoDemoBtn.textContent = "退出演示";
-      freeBtn.disabled = true;
+      syncAutoDemoUI();
       setDrawerCollapsed(controlDrawer, false);
       setDrawerCollapsed(dataDrawer, true);
       setModeLabel();
       resetScene({ keepMode:false });
       state.autoPlaying = true;
-      autoDemoBtn.textContent = "退出演示";
+      state.autoPaused = false;
+      state.autoCancel = false;
+      syncAutoDemoUI();
       setDrawerCollapsed(controlDrawer, false);
       setDrawerCollapsed(dataDrawer, true);
       setModeLabel();
+      updateStatus();
       try {
         setStepUI(0);
-        await animateRulerLength(218);
+        await animateRulerLength(218, runId);
+        autoCheckpoint(runId);
         pluckRuler();
-        await sleep(780);
-        await autoRecord("pitch-low");
-        await animateRulerLength(96);
+        await sleep(780, runId);
+        await autoRecord("pitch-low", runId);
+        await animateRulerLength(96, runId);
+        autoCheckpoint(runId);
         pluckRuler();
-        await sleep(780);
-        await autoRecord("pitch-high");
+        await sleep(780, runId);
+        await autoRecord("pitch-high", runId);
         setStepUI(1);
-        await sleep(460);
+        await sleep(460, runId);
 
-        await animateHammerStrike(30, 720);
-        await sleep(760);
-        await autoRecord("loud-soft");
+        await animateHammerStrike(30, 720, runId);
+        await sleep(760, runId);
+        await autoRecord("loud-soft", runId);
 
-        await animateHammerStrike(86, 820);
-        await sleep(760);
-        await autoRecord("loud-loud");
+        await animateHammerStrike(86, 820, runId);
+        await sleep(760, runId);
+        await autoRecord("loud-loud", runId);
         setStepUI(2);
-        await sleep(460);
+        await sleep(460, runId);
 
         let cards = layout().instruments;
-        await animateCursorPath([{ x: cards[0].x + cards[0].w / 2, y: cards[0].y + 38 }], 320);
+        await animateCursorPath([{ x: cards[0].x + cards[0].w / 2, y: cards[0].y + 38 }], 320, runId);
         clickCursor();
+        autoCheckpoint(runId);
         selectInstrument(cards[0].id);
-        await sleep(700);
-        await autoRecord(`timbre-${cards[0].id}`);
+        await sleep(700, runId);
+        await autoRecord(`timbre-${cards[0].id}`, runId);
         cards = layout().instruments;
-        await animateCursorPath([{ x: cards[1].x + cards[1].w / 2, y: cards[1].y + 38 }], 560);
+        await animateCursorPath([{ x: cards[1].x + cards[1].w / 2, y: cards[1].y + 38 }], 560, runId);
         clickCursor();
+        autoCheckpoint(runId);
         selectInstrument(cards[1].id);
-        await sleep(700);
-        await autoRecord(`timbre-${cards[1].id}`);
+        await sleep(700, runId);
+        await autoRecord(`timbre-${cards[1].id}`, runId);
         setStepUI(3);
-        await sleep(620);
-        await autoAnalyze(); state.demoCompleted=true; state.autoPlaying=false; autoDemoBtn.textContent="演示模式"; freeBtn.disabled=false; setModeLabel(); updateStatus();
+        await sleep(620, runId);
+        const analyzed = await autoAnalyze(runId);
+        autoCheckpoint(runId);
+        if (!analyzed) throw new Error("AUTO_ANALYSIS_FAILED");
+        state.demoCompleted = true;
       } catch (error) {
+        if (runId !== state.autoRunId) return;
         if (String(error.message || error) !== "AUTO_CANCELLED") {
+          state.autoPlaying = false;
+          state.autoPaused = false;
+          state.autoCancel = false;
+          resetScene({ keepMode:false });
           showToast(`演示中断：${error.message || error}`);
-        } else {
-          showToast("已退出演示");
         }
       } finally {
+        if (runId !== state.autoRunId) return;
         state.autoPlaying = false;
+        state.autoPaused = false;
         state.autoCancel = false;
-        autoDemoBtn.textContent = "演示模式";
-        freeBtn.disabled = false;
+        syncAutoDemoUI();
         demoCursor.style.opacity = "0";
         setModeLabel();
         updateStatus();
@@ -2456,13 +2753,29 @@ function setDrawerCollapsed(drawer, collapsed) {
       document.addEventListener("pointerdown", () => {
         unlockLabAudio();
       }, { passive:true });
+      document.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button || button === audioToggle || button.disabled) return;
+        playUiSound("tap");
+      }, { capture:true });
       canvas.addEventListener("pointerdown", onCanvasPointerDown);
       canvas.addEventListener("pointermove", onCanvasPointerMove);
       canvas.addEventListener("pointerup", onCanvasPointerUp);
       canvas.addEventListener("pointercancel", onCanvasPointerUp);
-      recordBtn.addEventListener("click", () => recordLastObservation());
-      analyzeBtn.addEventListener("click", analyzeConclusion);
+      recordBtn.addEventListener("click", () => {
+        if (!state.autoPlaying) recordLastObservation();
+      });
+      analyzeBtn.addEventListener("click", () => {
+        if (!state.autoPlaying) analyzeConclusion();
+      });
       resetBtn.addEventListener("click", () => {
+        if (state.autoPlaying) {
+          toggleAutoPause();
+          return;
+        }
+        if (state.freeMode && restoreFreeStartState()) {
+          return;
+        }
         const free = state.freeMode;
         resetScene();
         state.freeMode = free;
@@ -2479,12 +2792,11 @@ function setDrawerCollapsed(drawer, collapsed) {
       dataTab.addEventListener("click", () => toggleMobilePanel(dataDrawer));
       audioToggle.addEventListener("click", (event) => {
         event.stopPropagation();
-        audioState.uiMuted = !audioState.uiMuted;
+        window.labAudio.setMuted(!audioState.uiMuted);
         if (!audioState.uiMuted) {
           unlockLabAudio();
           playUiSound("hint", { force:true });
         }
-        syncAudioToggle();
       });
       hintLamp.addEventListener("click", () => {
         hintPop.classList.toggle("open");
