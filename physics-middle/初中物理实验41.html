@@ -5,29 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>初中物理实验41｜模拟近视眼和远视眼的矫正</title>
   <style>
-    :root{--bg:#1a1a1a;--ink:#fff;--card-bg:rgba(255,255,255,.08);--panel-bg:rgba(15,15,15,.54);--line:rgba(255,255,255,.12);--accent:#3ddc97;--warn:#ffb74d;--danger:#ff5b6e;--dockShadow:0 14px 36px rgba(0,0,0,.42)}
+    :root{--bg:#1a1a1a;--ink:#fff;--card-bg:rgba(255,255,255,.08);--panel-bg:rgba(15,15,15,.54);--line:rgba(255,255,255,.12);--accent:#3ddc97;--warn:#ffb74d;--danger:#ff5b6e;--dockShadow:0 14px 36px rgba(0,0,0,.42);--drawer-collapsed-width:164px;--drawer-stack-offset:26px;--shell-tool-size:13px;--shell-tool-ink:#d9e8f8;--shell-tool-bg:rgba(255,255,255,.075)}
     *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;padding:10px;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;display:flex;flex-direction:column;align-items:center;letter-spacing:0}
     #app{width:100%;max-width:980px;margin:0 auto 34px}button{font:inherit;touch-action:manipulation}
     button.main,button.sub{border:none;border-radius:8px;padding:8px 12px;color:#fff;cursor:pointer;transition:background .2s,transform .05s,opacity .2s;user-select:none;-webkit-tap-highlight-color:transparent;font-size:13px;background:#444}
     button.main{background:#2e7d32}button.main:hover,button.sub:hover{background:#5a5a5a}button:active{transform:scale(.98)}button:disabled{opacity:.5;cursor:not-allowed}
     #spectrum{position:relative;width:100%;max-width:980px;height:24px;border-radius:10px;overflow:hidden;box-shadow:0 0 15px rgba(255,255,255,.12);margin:0 0 12px;background:#050505;flex-shrink:0}
     #spectrum:before{content:"";position:absolute;inset:0;background-image:linear-gradient(90deg,#ff4c4c 0%,#ff9a3d 5.5%,#f7e94c 11%,#54e86d 17%,#40e0d0 24%,#4aa3ff 31%,#8757ff 38%,#ec5cff 44%,#ff4c4c 50%,#ff9a3d 55.5%,#f7e94c 61%,#54e86d 67%,#40e0d0 74%,#4aa3ff 81%,#8757ff 88%,#ec5cff 94%,#ff4c4c 100%);background-size:200% 100%;background-repeat:repeat;filter:saturate(1.18) brightness(1.04);opacity:.96;animation:flowRainbow 8s linear infinite}@keyframes flowRainbow{0%{background-position:0 0}100%{background-position:-100% 0}}
-    .task-card{width:100%;max-width:980px;background:var(--card-bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;backdrop-filter:blur(6px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px}
+    .task-card{width:100%;max-width:980px;background:var(--card-bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px;backdrop-filter:blur(6px);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;transition:opacity .2s,filter .2s}.task-card.free-mode{opacity:.42;filter:grayscale(.86) saturate(.42)}
     .task-step{background:rgba(255,255,255,.16);border-radius:8px;padding:6px 10px;font-weight:700;white-space:nowrap}.task-text{min-width:0;line-height:1.55}#taskHint{color:#ffd54f;font-size:12px;opacity:.95;margin-top:2px}.progress-dots{display:flex;gap:6px;align-items:center}
     .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.26);outline:2px solid rgba(255,255,255,.12)}.dot.active{background:var(--warn)}.dot.done{background:var(--accent);outline-color:rgba(61,220,151,.45)}.dot.warn{background:var(--danger);box-shadow:0 0 10px rgba(255,91,110,.62)}
     #stage{width:100%;max-width:980px;height:66vh;max-height:660px;min-height:520px;margin-top:10px;border-radius:12px;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#0b0f14;box-shadow:0 10px 26px rgba(0,0,0,.35);touch-action:pan-y pinch-zoom;background-image:radial-gradient(circle at 78% 18%,rgba(255,255,255,.05),transparent 38%),radial-gradient(circle at 22% 80%,rgba(0,255,255,.045),transparent 42%)}
     .lab-area{position:absolute;inset:54px 10px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.08);background:linear-gradient(#071018,#0d141c);overflow:hidden}#labCanvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
     .hud{position:absolute;left:10px;top:10px;z-index:20;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:rgba(0,0,0,.48);border:1px solid var(--line);border-radius:10px;padding:6px 8px;font-size:12px}.tag{border:1px solid rgba(255,255,255,.26);border-radius:999px;padding:2px 8px;font-weight:700;color:#dce9ff;background:rgba(255,255,255,.06)}.mode-strip{position:relative;isolation:isolate;min-width:158px;border:2px solid transparent;border-radius:999px;padding:4px 12px;font-weight:900;color:#fff;background:linear-gradient(rgba(6,10,14,.94),rgba(6,10,14,.94)) padding-box,linear-gradient(90deg,#35ff73,#4bd8ff,#6c5cff,#ff4fc3,#ffd166,#35ff73,#4bd8ff) border-box;background-size:100% 100%,240% 100%;box-shadow:0 0 16px rgba(75,216,255,.18),inset 0 0 10px rgba(255,255,255,.06);white-space:nowrap;text-align:center;animation:modeRibbonFlow 5s linear infinite}.mode-strip:after{content:"";position:absolute;left:16px;right:16px;bottom:3px;height:2px;border-radius:999px;background:linear-gradient(90deg,transparent,#70ffcc,#ffd166,transparent);opacity:.72}@keyframes modeRibbonFlow{0%{background-position:0 0,0 0}100%{background-position:0 0,-240% 0}}@media(prefers-reduced-motion:reduce){.mode-strip{animation:none}}
-    .hint-lamp{position:absolute;left:10px;top:56px;z-index:22;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#ffd54f;font-size:16px;cursor:pointer;padding:0}.hint-lamp.flash{animation:lampFlash .6s ease}@keyframes lampFlash{50%{box-shadow:0 0 22px rgba(255,91,110,.86);border-color:var(--danger);color:#ffb0b0}}
+    .hint-lamp{position:absolute;left:10px;top:56px;z-index:22;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#ffd54f;font-size:16px;cursor:pointer;padding:0}.hint-lamp.flash{animation:lampFlash .6s ease}@keyframes lampFlash{50%{box-shadow:0 0 22px rgba(255,91,110,.86);border-color:var(--danger);color:#ffb0b0}}.audio-toggle{position:absolute;left:52px;top:56px;z-index:22;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#dce9ff;font-size:15px;cursor:pointer;padding:0}.audio-toggle.muted{color:#9fb0c4;opacity:.72}.audio-toggle.ready{border-color:rgba(61,220,151,.42);box-shadow:0 0 12px rgba(61,220,151,.16)}
     .hint-pop{position:absolute;left:10px;top:96px;z-index:23;width:min(330px,calc(100% - 24px));display:none;padding:10px 12px;border:1px solid rgba(255,209,102,.36);border-radius:10px;background:rgba(16,18,20,.9);color:#f4efe2;font-size:13px;line-height:1.55}.hint-pop.open{display:block}
-    .dock{position:absolute;width:min(94%,330px);border-radius:12px;border:1px solid var(--line);background:var(--panel-bg);backdrop-filter:blur(6px);box-shadow:var(--dockShadow);overflow:hidden;touch-action:none;z-index:30}.dock-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);cursor:grab;user-select:none;touch-action:none}.dockTitle{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#e7f0ff;white-space:nowrap}.iconBtn{border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8f1ff;border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;white-space:nowrap}.dock-body{padding:10px;max-height:310px;overflow:auto;-webkit-overflow-scrolling:touch}.collapsed .dock-body{display:none}
+    .dock{position:absolute;width:min(94%,330px);border-radius:12px;border:1px solid var(--line);background:var(--panel-bg);backdrop-filter:blur(6px);box-shadow:var(--dockShadow);overflow:hidden;touch-action:none;z-index:30;transition:width .18s ease,box-shadow .18s ease,border-color .18s ease}.dock-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);cursor:grab;user-select:none;touch-action:none}.dockTitle{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#e7f0ff;white-space:nowrap}.iconBtn{border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#e8f1ff;border-radius:7px;padding:4px 8px;font-size:12px;cursor:pointer;white-space:nowrap}.dock-body{padding:10px;max-height:310px;overflow:auto;-webkit-overflow-scrolling:touch}.collapsed .dock-body{display:none}.drawer.collapsed{width:var(--drawer-collapsed-width);background:rgba(15,18,22,.92);border-color:rgba(255,255,255,.16)}.drawer.collapsed .dock-header{min-height:42px;border-bottom:0;cursor:pointer}
     .mobile-tabs,.sheet-close{display:none}.record-cue{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.045);border-radius:8px;padding:7px 9px;margin:0 0 8px;color:#cbd8e6;font-size:12px;line-height:1.45}.record-cue.ready{border-color:rgba(61,220,151,.56);background:rgba(61,220,151,.12);color:#e7fff3}.record-cue.warn{border-color:rgba(255,183,77,.44);background:rgba(255,183,77,.1);color:#ffe1ae}.record-cue.done{border-color:rgba(91,188,255,.42);background:rgba(91,188,255,.09);color:#d9ecff}.controls{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}.controls button{flex:1 1 86px}.analysis{margin-top:8px;border:1px solid rgba(91,188,255,.28);background:rgba(91,188,255,.07);color:#d9ecff;border-radius:8px;padding:8px 10px;font-size:13px;line-height:1.5}.analysis:not(.ok):empty{display:none}.analysis.ok{border-color:rgba(61,220,151,.55);background:rgba(61,220,151,.12);color:#e7fff3}
     .source-line{margin:0 0 8px;color:#bcd0e4;font-size:12px;line-height:1.4}.badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ef476f;color:#fff;font-size:12px;transform:scale(0);opacity:0;transition:.15s}.badge.show{transform:scale(1);opacity:1;animation:badgePulse .9s ease-in-out infinite}@keyframes badgePulse{50%{transform:scale(1.14)}}
     table.record{width:100%;border-collapse:collapse;font-size:12px;color:#e8f1ff}table.record th,table.record td{border:1px solid rgba(255,255,255,.1);padding:6px;vertical-align:top;line-height:1.45;text-align:left}table.record th{background:rgba(255,255,255,.08);color:#cfe4ff}.empty{margin:8px 2px;color:#aebbd0;font-size:12px}
-    .toolbar{width:100%;max-width:980px;display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%) translateY(18px);opacity:0;pointer-events:none;padding:10px 16px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.12);color:#fff;font-weight:800;transition:.18s ease;z-index:80}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .toolbar{width:100%;max-width:980px;display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin:10px 0 0}.toolbar button{border:1px solid rgba(255,255,255,.09);padding:9px 12px;background:var(--shell-tool-bg);color:var(--shell-tool-ink);font-size:var(--shell-tool-size);font-weight:800;box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}.toolbar button:hover{border-color:rgba(155,211,255,.22);background:rgba(255,255,255,.11)}.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%) translateY(18px);opacity:0;pointer-events:none;padding:10px 16px;border-radius:999px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.12);color:#fff;font-weight:800;transition:.18s ease;z-index:80}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
     .checkmark{position:absolute;left:50%;top:50%;width:64px;height:64px;border-radius:50%;transform:translate(-50%,-50%) scale(.7);opacity:0;pointer-events:none;background:rgba(37,194,119,.96);box-shadow:0 0 24px rgba(37,194,119,.55);z-index:82;transition:.18s ease}.checkmark:before{content:"";position:absolute;left:19px;top:16px;width:24px;height:13px;border-left:5px solid #fff;border-bottom:5px solid #fff;transform:rotate(-45deg)}.checkmark.active{opacity:1;transform:translate(-50%,-50%) scale(1)}
     .modal-mask{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.58);z-index:90;padding:16px}.modal{width:min(430px,92vw);padding:18px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:#101317;text-align:center;box-shadow:0 18px 44px rgba(0,0,0,.42)}.modal h3{margin:4px 0 8px;font-size:21px}.modal p{margin:0;color:#cdd7e0;line-height:1.55}.modal .ok{margin-top:14px;border:none;border-radius:8px;padding:8px 18px;background:var(--accent);color:#07170f;font-weight:800;cursor:pointer}.demo-cursor{position:absolute;left:0;top:0;width:20px;height:20px;border-radius:50%;border:2px solid #fff;background:rgba(91,188,255,.8);box-shadow:0 0 14px rgba(91,188,255,.8);opacity:0;z-index:72;pointer-events:none;transition:opacity .15s}.demo-cursor.click{animation:cursorClick .34s ease}@keyframes cursorClick{50%{opacity:.55;box-shadow:0 0 0 14px rgba(255,255,255,.18),0 0 14px rgba(91,188,255,.8)}}
-    .explanation{width:100%;max-width:980px;margin:14px 0 22px;color:#e8f4ff;line-height:1.66;font-size:15px}.explanation h2{margin:0 0 8px;color:#9bd3ff;font-size:20px}.explanation p{margin:6px 0}
+    .explanation{width:100%;max-width:980px;margin:14px 0 22px;color:#e8f4ff;line-height:1.66;font-size:15px}.explanation h2{margin:0 0 8px;color:#9bd3ff;font-size:20px;line-height:1.35}.explanation p{margin:6px 0}
     @media(max-width:720px){body{padding:8px}#app,#spectrum,.task-card,#stage,.toolbar,.explanation{max-width:100%}#spectrum{height:20px;margin-bottom:10px;border-radius:10px}.task-card{grid-template-columns:1fr;gap:7px}.task-step{width:fit-content}#stage{height:58vh;min-height:500px;max-height:560px}.lab-area{inset:96px 8px 10px}.mobile-tabs{position:absolute;left:12px;right:12px;bottom:8px;z-index:44;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;border:1px solid rgba(91,188,255,.24);border-radius:11px;background:rgba(9,12,16,.9);backdrop-filter:blur(10px);box-shadow:0 12px 30px rgba(0,0,0,.42)}.mobile-tabs.attached{border-top:0;border-radius:0 0 12px 12px;background:linear-gradient(180deg,rgba(9,21,33,.96),rgba(6,14,23,.96));box-shadow:0 16px 34px rgba(0,0,0,.45)}.mobile-tab{position:relative;border:0;border-radius:8px;padding:9px 10px;background:rgba(255,255,255,.04);color:#cfe4ff;font-weight:900;font-size:13px;cursor:pointer;overflow:visible}.mobile-tab.active{background:rgba(61,220,151,.16);color:#effff7;box-shadow:inset 0 0 0 1px rgba(61,220,151,.56)}.tab-label{position:relative;display:inline-block}.mobile-badge{position:absolute;top:-9px;right:-17px;display:grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ff3b30;color:#fff;font-size:11px;font-weight:900;line-height:1;border:2px solid rgba(9,12,16,.96);box-shadow:0 3px 10px rgba(255,59,48,.45);opacity:0;transform:scale(.55);pointer-events:none;transition:opacity .16s,transform .16s}.mobile-badge.show{opacity:1;transform:scale(1)}.dock{width:calc(100% - 24px);border-radius:12px}.dock.mobile-sheet{bottom:56px;border-color:rgba(91,188,255,.32);border-bottom-color:rgba(91,188,255,.18);border-radius:12px 12px 0 0;background:linear-gradient(180deg,rgba(22,44,64,.96),rgba(9,21,33,.96));box-shadow:0 18px 36px rgba(0,0,0,.5);touch-action:auto}.dock.mobile-sheet .dock-header{display:none}.dock.mobile-sheet .dock-body{display:grid;max-height:154px;padding:8px;overflow:auto;background:rgba(3,10,16,.26)}.dock.mobile-sheet.collapsed{display:none}.dock.mobile-sheet .record-cue{display:none}.dock.mobile-sheet .sheet-close{display:inline-flex;align-items:center;justify-content:center;min-width:48px;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(255,255,255,.075);color:#d8e8f8;font-weight:800;font-size:12px}.control.mobile-sheet .dock-body{grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.control.mobile-sheet .controls{grid-column:1;grid-row:1;margin:0;padding:8px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.055)}.control.mobile-sheet .sheet-close{grid-column:2;grid-row:1}.control.mobile-sheet .analysis{grid-column:1/-1;margin-top:0}.data.mobile-sheet .dock-body{grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}.data.mobile-sheet .sheet-close{grid-column:2;grid-row:1}.data.mobile-sheet table.record{grid-column:1/-1;background:rgba(255,255,255,.04)}.data.mobile-sheet .empty{grid-column:1;grid-row:1;margin:0;padding:9px 10px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.045)}.toolbar button{flex:1 1 132px}}
     @media(max-width:720px){
           .dock.mobile-sheet .dock-body{max-height:188px}
@@ -53,10 +53,10 @@
 <body>
   <div id="app">
     <div id="spectrum"></div>
-    <section class="task-card"><div class="task-step" id="taskStep">关卡 1 / 5</div><div class="task-text"><div id="taskText"></div><div id="taskHint"></div></div><div class="progress-dots" id="dots"></div></section>
+    <section class="task-card" id="taskCard" data-mode="challenge" aria-label="当前实验关卡"><div class="task-step" id="taskStep">关卡 1 / 5</div><div class="task-text"><div id="taskText"></div><div id="taskHint"></div></div><div class="progress-dots" id="dots"></div></section>
     <main id="stage" aria-label="模拟近视眼和远视眼的矫正实验台">
       <div class="hud"><span class="tag mode-strip" id="modeTag">模式：闯关模式 · 关卡 1/5</span><span class="tag" id="statusTag">状态：待操作</span></div>
-      <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button><div class="hint-pop" id="hintPop"></div>
+      <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button><button class="audio-toggle" id="audioToggle" type="button" aria-label="关闭音效" aria-pressed="true" title="音效开关">🔊</button><div class="hint-pop" id="hintPop"></div>
       <div class="lab-area" id="labArea"><canvas id="labCanvas"></canvas></div>
       <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换"><button class="mobile-tab active" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="true"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button><button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button></div>
       <section class="dock drawer control collapsed" id="controlDock"><div class="dock-header" data-drag-handle><span class="dockTitle">实验面板</span><button class="iconBtn" id="controlToggleBtn" type="button">展开</button></div><div class="dock-body">
@@ -65,27 +65,46 @@
         <button class="sheet-close" id="controlSheetCloseBtn" type="button" aria-label="收起实验面板" title="收起">⌄</button>
         <div class="analysis" id="analysisText"></div>
       </div></section>
-      <section class="dock drawer data collapsed" id="dataDock"><div class="dock-header" data-drag-handle><span class="dockTitle">数据面板 <span class="badge" id="dataNotice">0</span></span><button class="iconBtn" id="dataToggleBtn" type="button">展开</button></div><div class="dock-body"><button class="sheet-close" id="dataSheetCloseBtn" type="button" aria-label="收起数据面板" title="收起">⌄</button><table class="record"><thead><tr><th>次数</th><th>眼球模型</th><th>镜片</th><th>成像位置</th></tr></thead><tbody id="recordBody"></tbody></table><div class="empty" id="emptyRecords">暂无记录。</div></div></section>
+      <section class="dock drawer data collapsed" id="dataDock"><div class="dock-header" data-drag-handle><span class="dockTitle">数据面板 <span class="badge" id="dataNotice">0</span></span><button class="iconBtn" id="dataToggleBtn" type="button">展开</button></div><div class="dock-body"><button class="sheet-close" id="dataSheetCloseBtn" type="button" aria-label="收起数据面板" title="收起">⌄</button><table class="record" id="recordTable"><thead><tr><th>次数</th><th>眼球模型</th><th>镜片</th><th>成像位置</th></tr></thead><tbody id="recordBody"></tbody></table><div class="empty" id="emptyRecords">暂无记录。</div></div></section>
       <div class="toast" id="toast">提示</div><div class="checkmark" id="checkmark"></div><div class="demo-cursor" id="demoCursor"></div><div class="modal-mask" id="doneMask"><div class="modal"><h3>实验完成</h3><p>近视眼用凹透镜矫正，远视眼用凸透镜矫正，使像重新落在视网膜上。</p><button class="ok" id="okBtn" type="button">OK</button></div></div>
     </main>
     <div class="toolbar"><button class="sub" id="resetBtn" type="button">重置关卡</button><button class="sub" id="autoDemoBtn" type="button">演示模式</button><button class="sub" id="freeBtn" type="button">自由模式</button></div>
-    <section class="explanation"><h2>实验名：模拟近视眼和远视眼的矫正</h2><p><b>关键过程：</b>改变晶状体等效焦距，观察像落在视网膜前后，再加矫正透镜。</p><p><b>结论：</b>近视眼用凹透镜矫正，远视眼用凸透镜矫正，使像重新落在视网膜上。</p></section>
+    <section class="explanation"><h2>实验名：模拟近视眼和远视眼的矫正</h2><p><b>关键过程：</b>在简化眼球模型中切换晶状体的会聚能力，观察平行光成像落在视网膜前后，再加入矫正透镜。近视状态以较厚晶状体表示会聚偏强，远视状态以较薄晶状体表示会聚偏弱。</p><p><b>结论：</b>近视眼用凹透镜矫正，远视眼用凸透镜矫正，使像重新落在视网膜上。</p></section>
   </div>
   <script>
+  const AUTO_DEMO_TIMING = Object.freeze({
+    cursorPress:220,
+    panelReveal:180,
+    buttonAim:360,
+    dragSoft:720,
+    actionMotion:820,
+    selectFast:320,
+    selectCompare:560,
+    observePrimary:780,
+    observeSecondary:760,
+    observeComparison:700,
+    recordConfirm:420,
+    stepTransition:460,
+    analysisLead:620,
+    actionSettle:120
+  });
   (() => {
     "use strict";
     const SPEC = {"id":41,"title":"模拟近视眼和远视眼的矫正","scene":"eyeCorrection","family":"光学","textbook":"八年级上册 第五章 透镜及其应用；PDF 搜索命中“近视眼/远视眼”第134-136页","apparatus":"眼球模型、凸透镜、凹透镜、视网膜屏、平行光源、镜片插槽","keyPoint":"改变眼球模型等效焦距，观察像落在视网膜前后，再插入矫正透镜。","conclusion":"近视眼用凹透镜矫正，远视眼用凸透镜矫正，使像重新落在视网膜上。","scenarios":[{"key":"myopiaRaw","label":"近视眼成像","action":"把眼模型下方滑杆从正常拖到近视，保持镜片未插入。","note":"近视眼会聚能力偏强，像落在视网膜前。","defect":"myopia","correction":null,"image":"视网膜前"},{"key":"myopiaCorrect","label":"凹透镜矫正","action":"把凹透镜拖入眼前插槽。","note":"凹透镜先发散光线，使像后移到视网膜上。","defect":"myopia","correction":"concave","image":"视网膜上"},{"key":"hyperopiaRaw","label":"远视眼成像","action":"把眼模型下方滑杆从正常拖到远视，保持镜片未插入。","note":"远视眼会聚能力偏弱，像落在视网膜后。","defect":"hyperopia","correction":null,"image":"视网膜后"},{"key":"hyperopiaCorrect","label":"凸透镜矫正","action":"把凸透镜拖入眼前插槽。","note":"凸透镜增强会聚，使像提前回到视网膜上。","defect":"hyperopia","correction":"convex","image":"视网膜上"}]};
     const $ = s => document.querySelector(s);
     const stage = $("#stage"), labArea = $("#labArea"), canvas = $("#labCanvas"), ctx = canvas.getContext("2d");
-    const taskStep = $("#taskStep"), taskText = $("#taskText"), taskHint = $("#taskHint"), dots = $("#dots"), modeTag = $("#modeTag"), statusTag = $("#statusTag");
-    const hintLamp = $("#hintLamp"), hintPop = $("#hintPop"), controlDock = $("#controlDock"), dataDock = $("#dataDock"), controlToggleBtn = $("#controlToggleBtn"), dataToggleBtn = $("#dataToggleBtn");
+    const taskCard = $("#taskCard"), taskStep = $("#taskStep"), taskText = $("#taskText"), taskHint = $("#taskHint"), dots = $("#dots"), modeTag = $("#modeTag"), statusTag = $("#statusTag");
+    const hintLamp = $("#hintLamp"), audioToggle = $("#audioToggle"), hintPop = $("#hintPop"), controlDock = $("#controlDock"), dataDock = $("#dataDock"), controlToggleBtn = $("#controlToggleBtn"), dataToggleBtn = $("#dataToggleBtn");
     const mobileTabs = $("#mobileTabs"), experimentTab = $("#experimentTab"), dataTab = $("#dataTab"), experimentTabBadge = $("#experimentTabBadge"), dataTabBadge = $("#dataTabBadge"), controlSheetCloseBtn = $("#controlSheetCloseBtn"), dataSheetCloseBtn = $("#dataSheetCloseBtn");
     const recordBtn = $("#recordBtn"), analyzeBtn = $("#analyzeBtn"), recordCue = $("#recordCue"), analysisText = $("#analysisText"), recordBody = $("#recordBody"), recordTable = $(".record"), emptyRecords = $("#emptyRecords"), dataNotice = $("#dataNotice");
     const resetBtn = $("#resetBtn"), autoDemoBtn = $("#autoDemoBtn"), freeBtn = $("#freeBtn"), toast = $("#toast"), checkmark = $("#checkmark"), doneMask = $("#doneMask"), okBtn = $("#okBtn"), demoCursor = $("#demoCursor");
-    const state = { currentTask:0, completed:false, demoCompleted:false, freeMode:false, autoPlaying:false, autoCancel:false, drawerDrag:null, stepWarning:false, successCooldown:false, timers:new Set(), scenarioIndex:0, operationCount:0, records:[], unseenRecords:0, analysisDone:false, width:0, height:0, stageWidth:0, stageHeight:0, drag:false, dragTarget:null, model:"normal", correction:null, modelTouched:false, lensTouched:false, phase:0, moved:false };
+    const audioState = { ctx:null, input:null, master:null, activeGains:new Set(), warned:false, uiMuted:false, uiUnlocked:false, uiLast:new Map() };
+    const state = { currentTask:0, completed:false, demoCompleted:false, freeMode:false, freeStartState:null, autoPlaying:false, autoPaused:false, autoCancel:false, autoRunId:0, drawerDrag:null, stepWarning:false, successCooldown:false, timers:new Set(), scenarioIndex:0, operationCount:0, records:[], unseenRecords:0, analysisDone:false, width:0, height:0, stageWidth:0, stageHeight:0, drag:false, dragTarget:null, model:"normal", correction:null, modelTouched:false, lensTouched:false, phase:0, moved:false };
     const tasks = SPEC.scenarios.map((s) => ({ text:"调节并记录：" + s.label, hint:s.action, detail:s.note, expected:s.key, check:() => hasRecord(s.key) })).concat([{ text:"分析实验结论", hint:"四组记录完成后点击分析。", detail:SPEC.conclusion, check:() => state.analysisDone }]);
     function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
-    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+    const rawSleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+    function autoCheckpoint(runId){ if (state.autoCancel || runId !== state.autoRunId) throw new Error("AUTO_CANCELLED"); }
+    async function sleep(ms, runId){ let remaining=Math.max(0,ms); while(remaining>0){ autoCheckpoint(runId); if(state.autoPaused){ await rawSleep(16); continue; } const slice=Math.min(remaining,16); await rawSleep(slice); autoCheckpoint(runId); if(!state.autoPaused) remaining-=slice; } }
     function schedule(fn, ms){ const id = setTimeout(() => { state.timers.delete(id); fn(); }, ms); state.timers.add(id); return id; }
     function clearTimers(){ for (const id of state.timers) clearTimeout(id); state.timers.clear(); }
     function currentScenario(){ return SPEC.scenarios[state.scenarioIndex]; }
@@ -93,11 +112,18 @@
     function initDots(){ dots.innerHTML = ""; tasks.forEach(() => { const d = document.createElement("span"); d.className = "dot"; dots.appendChild(d); }); }
     function updateDots(){ Array.from(dots.children).forEach((dot, i) => { dot.classList.toggle("done", state.completed || i < state.currentTask); dot.classList.toggle("active", !state.completed && i === state.currentTask && !state.stepWarning); dot.classList.toggle("warn", !state.completed && i === state.currentTask && state.stepWarning); }); }
     function setStepUI(i){ state.currentTask = clamp(i, 0, tasks.length - 1); if (state.currentTask < SPEC.scenarios.length) state.scenarioIndex = state.currentTask; state.stepWarning = false; const t = tasks[state.currentTask]; taskStep.textContent = "关卡 " + (state.currentTask + 1) + " / " + tasks.length; taskText.textContent = t.text; taskHint.textContent = t.hint; hintPop.textContent = t.detail; setModeLabel(); updateDots(); updateReadouts(); draw(); }
-    function setModeLabel(){ modeTag.textContent = "模式：" + (state.autoPlaying ? "演示模式 · 自动运行" : (state.freeMode ? "自由模式 · 自主探索" : (state.completed ? (state.demoCompleted ? "演示模式 · 演示完成" : "闯关模式 · 已通关") : "闯关模式 · 关卡 " + (state.currentTask + 1) + "/" + tasks.length))); }
-    function updateStatus(text){ statusTag.textContent = "状态：" + (text || (state.completed ? "已完成" : state.autoPlaying ? "演示中" : actualStateLabel())); }
+    function setModeLabel(){ modeTag.textContent = "模式：" + (state.autoPlaying ? (state.autoPaused ? "演示模式 · 已暂停" : "演示模式 · 自动运行") : (state.freeMode ? "自由模式 · 自主探索" : (state.completed ? (state.demoCompleted ? "演示模式 · 演示完成" : "闯关模式 · 已通关") : "闯关模式 · 关卡 " + (state.currentTask + 1) + "/" + tasks.length))); }
+    function updateStatus(text){ statusTag.textContent = "状态：" + (text || (state.autoPlaying ? (state.autoPaused ? "演示已暂停" : "演示中") : state.freeMode ? "自由探索" : state.completed ? "已完成" : actualStateLabel())); }
+    function syncAutoDemoUI(){ resetBtn.textContent=state.autoPlaying?(state.autoPaused?"继续演示":"暂停演示"):(state.freeMode?"重置操作":"重置关卡"); autoDemoBtn.textContent=state.autoPlaying?"退出演示":"演示模式"; autoDemoBtn.disabled=state.freeMode&&!state.autoPlaying; freeBtn.disabled=state.autoPlaying; resetBtn.setAttribute("aria-pressed",state.autoPlaying&&state.autoPaused?"true":"false"); }
     function showToast(msg){ toast.textContent = msg; toast.classList.add("show"); clearTimeout(showToast.t); showToast.t = setTimeout(() => toast.classList.remove("show"), 1500); }
-    function showCheck(){ checkmark.classList.add("active"); clearTimeout(showCheck.t); showCheck.t = setTimeout(() => checkmark.classList.remove("active"), 560); }
-    function warnStep(msg){ state.stepWarning = true; updateDots(); hintLamp.classList.remove("flash"); void hintLamp.offsetWidth; hintLamp.classList.add("flash"); showToast(msg); schedule(() => { state.stepWarning = false; updateDots(); }, 1200); }
+    function ensureAudio(){ const AudioCtx=window.AudioContext||window.webkitAudioContext; if(!AudioCtx){ if(!audioState.warned){audioState.warned=true;showToast("当前浏览器不支持声音播放。");} return null; } if(!audioState.ctx){ const ctx=new AudioCtx(), compressor=ctx.createDynamicsCompressor(), master=ctx.createGain(); compressor.threshold.value=-18; compressor.knee.value=22; compressor.ratio.value=7; compressor.attack.value=.004; compressor.release.value=.22; master.gain.value=.82; compressor.connect(master); master.connect(ctx.destination); audioState.ctx=ctx; audioState.input=compressor; audioState.master=master; } if(audioState.ctx.state==="suspended") audioState.ctx.resume().catch(error=>console.warn("音频恢复失败",error)); return audioState; }
+    function syncAudioToggle(){ audioToggle.classList.toggle("muted",audioState.uiMuted); audioToggle.classList.toggle("ready",audioState.uiUnlocked&&!audioState.uiMuted); audioToggle.textContent=audioState.uiMuted?"🔇":"🔊"; audioToggle.setAttribute("aria-pressed",String(!audioState.uiMuted)); audioToggle.setAttribute("aria-label",audioState.uiMuted?"开启音效":"关闭音效"); }
+    function unlockLabAudio(){ const audio=ensureAudio(); if(!audio||!audio.ctx){syncAudioToggle();return null;} audio.uiUnlocked=true; syncAudioToggle(); return audio; }
+    function silenceActiveAudio(){ if(!audioState.ctx)return; const now=audioState.ctx.currentTime; audioState.activeGains.forEach(gain=>{try{gain.cancelScheduledValues(now);gain.setTargetAtTime(.0001,now,.012);}catch(error){console.warn("停止音效失败",error);}}); audioState.activeGains.clear(); }
+    function playUiSound(kind,{force=false}={}){ if(audioState.uiMuted)return; const nowMs=performance.now(), gap=kind==="finish"?520:120, hasPlayed=audioState.uiLast.has(kind), last=audioState.uiLast.get(kind); if(!force&&hasPlayed&&nowMs-last<gap)return; audioState.uiLast.set(kind,nowMs); window.dispatchEvent(new CustomEvent("lab-ui-sound",{detail:{kind}})); const audio=unlockLabAudio(); if(!audio||!audio.ctx||!audio.input)return; const patterns={record:[740,988],step:[660,880],finish:[523.25,659.25,783.99],hint:[1046.5,1318.5],warn:[220,196],tap:[620]}, frequencies=patterns[kind]||patterns.hint, ctx=audio.ctx, start=ctx.currentTime+.012, duration=kind==="finish"?.5:kind==="warn"?.28:kind==="step"?.24:kind==="record"?.18:kind==="hint"?.2:.09, peak=kind==="finish"?.15:kind==="step"?.13:kind==="record"?.12:kind==="warn"?.09:kind==="hint"?.08:.045, output=ctx.createGain(); output.gain.setValueAtTime(.0001,start); output.gain.linearRampToValueAtTime(peak,start+.012); output.gain.exponentialRampToValueAtTime(.0001,start+duration); output.connect(audio.input); audioState.activeGains.add(output.gain); frequencies.forEach((frequency,index)=>{const osc=ctx.createOscillator(), gain=ctx.createGain(), toneStart=start+index*.075, toneDuration=Math.min(.14,duration-index*.04); osc.type=kind==="warn"&&index===0?"sawtooth":index%2?"triangle":"sine"; osc.frequency.setValueAtTime(frequency,toneStart); gain.gain.setValueAtTime(.95,toneStart); gain.gain.exponentialRampToValueAtTime(.0001,toneStart+toneDuration); osc.connect(gain); gain.connect(output); osc.start(toneStart); osc.stop(toneStart+toneDuration+.04);}); setTimeout(()=>{audioState.activeGains.delete(output.gain);try{output.disconnect();}catch(error){console.warn("界面音效节点断开失败",error);}},Math.ceil((duration+.25)*1000)); }
+    window.labAudio={play:playUiSound,setMuted(value){audioState.uiMuted=Boolean(value);if(audioState.uiMuted)silenceActiveAudio();syncAudioToggle();},get muted(){return audioState.uiMuted;},get unlocked(){return audioState.uiUnlocked;}};
+    function showCheck(){ checkmark.classList.add("active"); clearTimeout(showCheck.t); showCheck.t = setTimeout(() => checkmark.classList.remove("active"), 560); playUiSound("step"); }
+    function warnStep(msg){ state.stepWarning = true; updateDots(); hintLamp.classList.remove("flash"); void hintLamp.offsetWidth; hintLamp.classList.add("flash"); showToast(msg); playUiSound("warn"); schedule(() => { state.stepWarning = false; updateDots(); }, 1200); }
     function markOperation(){ state.operationCount += 1; state.phase = 1; }
     function updateScenarioFromApparatus(){ if (state.model === "normal") return; if (state.model === "myopia") state.scenarioIndex = state.correction === "concave" ? 1 : 0; else state.scenarioIndex = state.correction === "convex" ? 3 : 2; }
     function setScenario(i, mark){ state.scenarioIndex = clamp(i, 0, SPEC.scenarios.length - 1); const s = currentScenario(); state.model = s.defect; state.correction = s.correction; if (mark) markOperation(); updateReadouts(); updateStatus(currentScenario().label); draw(); }
@@ -129,9 +155,39 @@
     function lensName(type){ return type === "concave" ? "凹透镜" : type === "convex" ? "凸透镜" : "未加镜片"; }
     function modelName(type){ return type === "myopia" ? "近视眼" : type === "hyperopia" ? "远视眼" : "正常眼"; }
     function recordForScenario(s){ return { key:s.key, model:modelName(s.defect), lens:lensName(s.correction), image:s.image }; }
-    function passStepIfReady(opts){ if (state.freeMode || state.completed || state.successCooldown) return false; if (!tasks[state.currentTask].check()) { if (!opts || !opts.quiet) warnStep("当前关卡证据还不完整。"); return false; } state.successCooldown = true; schedule(() => { state.successCooldown = false; }, 400); showCheck(); if (state.currentTask >= tasks.length - 1) { state.completed = true; setDrawerCollapsed(controlDock, false); setDrawerCollapsed(dataDock, isMobileStage()); doneMask.style.display = "flex"; setModeLabel(); updateStatus(); updateDots(); updateReadouts(); } else setStepUI(state.currentTask + 1); return true; }
-    function recordObservation(opts){ if (!state.operationCount && !(opts && opts.auto)) { warnStep("先把眼球模型从正常调到近视或远视。"); return false; } if (state.model === "normal") { warnStep("当前是正常眼，请先调到近视眼或远视眼。"); return false; } updateScenarioFromApparatus(); const s = currentScenario(); const task = tasks[state.currentTask]; if (!state.freeMode && task.expected && task.expected !== s.key) { warnStep("当前关卡应记录：" + task.text.replace("调节并记录：","")); return false; } if (!scenarioReady(s.key)) { warnStep("请先把模型和镜片调到当前关卡要求。"); return false; } if (!hasRecord(s.key)) { state.records.push(recordForScenario(s)); if (dataDock.classList.contains("collapsed")) { state.unseenRecords += 1; updateBadge(); } renderRecords(); showToast("已记录"); } else if (!opts || !opts.auto) showToast("这组已记录"); passStepIfReady({ quiet:true }); return true; }
-    function analyzeConclusion(){ if (!SPEC.scenarios.every(s => hasRecord(s.key))) { warnStep("请先补齐四组记录。"); return false; } state.analysisDone = true; analysisText.classList.add("ok"); analysisText.textContent = SPEC.conclusion; showToast("已分析"); passStepIfReady({ quiet:true }); return true; }
+    function passStepIfReady(opts){ if (state.freeMode || state.completed || state.successCooldown) return false; if (!tasks[state.currentTask].check()) { if (!opts || !opts.quiet) warnStep("当前关卡证据还不完整。"); return false; } state.successCooldown = true; schedule(() => { state.successCooldown = false; }, 400); showCheck(); if (state.currentTask >= tasks.length - 1) { state.completed = true; setDrawerCollapsed(controlDock, false); setDrawerCollapsed(dataDock, true); doneMask.style.display = "flex"; setModeLabel(); updateStatus(); updateDots(); updateReadouts(); playUiSound("finish"); } else setStepUI(state.currentTask + 1); return true; }
+    function freeObservation(){ const g=eyeGeom(benchArea(state.width,state.height)), image=actualFocusText(g), key=["free",state.model,state.correction||"none",image].join("-"); return {key,model:modelName(state.model),lens:lensName(state.correction),image}; }
+    function neutralFreeHint(message){ showToast(message); updateStatus("自由探索"); playUiSound("hint"); }
+    function recordObservation(opts){
+      if (state.freeMode) {
+        if (!state.operationCount) { neutralFreeHint("自由探索：先调整眼球模型或镜片再记录。"); return false; }
+        const observation=freeObservation();
+        if (!hasRecord(observation.key)) {
+          state.records.push(observation);
+          if (dataDock.classList.contains("collapsed")) { state.unseenRecords += 1; updateBadge(); }
+          renderRecords();
+          showToast("已记录自由探索结果");
+          playUiSound("record");
+        } else showToast("这组自由探索结果已记录");
+        return true;
+      }
+      if (!state.operationCount && !(opts && opts.auto)) { warnStep("先把眼球模型从正常调到近视或远视。"); return false; }
+      if (state.model === "normal") { warnStep("当前是正常眼，请先调到近视眼或远视眼。"); return false; }
+      updateScenarioFromApparatus();
+      const s = currentScenario(), task = tasks[state.currentTask];
+      if (task.expected && task.expected !== s.key) { warnStep("当前关卡应记录：" + task.text.replace("调节并记录：","")); return false; }
+      if (!scenarioReady(s.key)) { warnStep("请先把模型和镜片调到当前关卡要求。"); return false; }
+      if (!hasRecord(s.key)) {
+        state.records.push(recordForScenario(s));
+        if (dataDock.classList.contains("collapsed")) { state.unseenRecords += 1; updateBadge(); }
+        renderRecords();
+        showToast("已记录");
+        playUiSound("record");
+      } else if (!opts || !opts.auto) showToast("这组已记录");
+      passStepIfReady({ quiet:true });
+      return true;
+    }
+    function analyzeConclusion(){ if (!SPEC.scenarios.every(s => hasRecord(s.key))) { if(state.freeMode) neutralFreeHint("自由探索：标准四组记录齐全后可生成结论。"); else warnStep("请先补齐四组记录。"); return false; } state.analysisDone = true; analysisText.classList.add("ok"); analysisText.textContent = SPEC.conclusion; showToast("已分析"); playUiSound("record"); passStepIfReady({ quiet:true }); return true; }
     function renderRecords(){
       const labels = ["次数","眼球模型","镜片","成像位置"];
       recordBody.innerHTML = "";
@@ -176,7 +232,7 @@
       if (isMobileStage() && !drawer.classList.contains("collapsed")) setDrawerCollapsed(drawer, true);
       else setDrawerCollapsed(drawer, false);
     }
-    function setDrawerCollapsed(drawer, collapsed){ const other = drawer === controlDock ? dataDock : controlDock; if (!collapsed && isMobileStage()) { other.classList.add("collapsed"); (other === controlDock ? controlToggleBtn : dataToggleBtn).textContent = "展开"; } bringDrawerToFront(drawer); drawer.classList.toggle("collapsed", collapsed); (drawer === controlDock ? controlToggleBtn : dataToggleBtn).textContent = collapsed ? "展开" : "收起"; if (drawer === dataDock && !collapsed) { state.unseenRecords = 0; updateBadge(); } fitDrawers(); syncMobileTabs(); updateReadouts(); if (state.width && state.height) draw(); }
+    function setDrawerCollapsed(drawer, collapsed){ const other = drawer === controlDock ? dataDock : controlDock; if (!collapsed && isMobileStage()) { other.classList.add("collapsed"); (other === controlDock ? controlToggleBtn : dataToggleBtn).textContent = "展开"; } bringDrawerToFront(drawer); drawer.classList.toggle("collapsed", collapsed); (drawer === controlDock ? controlToggleBtn : dataToggleBtn).textContent = collapsed ? "展开" : "收起"; if (drawer === dataDock && !collapsed) { state.unseenRecords = 0; updateBadge(); } fitDrawers(); clearTimeout(setDrawerCollapsed.fitTimer); setDrawerCollapsed.fitTimer=setTimeout(fitDrawers,210); syncMobileTabs(); updateReadouts(); if (state.width && state.height) draw(); }
     function bringDrawerToFront(drawer){ const other = drawer === controlDock ? dataDock : controlDock; drawer.style.zIndex = "36"; other.style.zIndex = "30"; }
     function fitDrawers(){
       const sw = state.stageWidth || stage.clientWidth, sh = state.stageHeight || stage.clientHeight, mobile = sw <= 720;
@@ -191,12 +247,14 @@
         syncMobileTabs();
       } else {
         [controlDock, dataDock].forEach(d => { d.classList.remove("mobile-sheet"); d.style.bottom = ""; });
-        if (!controlDock.dataset.moved) { const cw = controlDock.offsetWidth || 330; controlDock.style.left = Math.max(12, sw - cw - 12) + "px"; controlDock.style.top = "58px"; }
-        if (!dataDock.dataset.moved) { const dw = dataDock.offsetWidth || 330; dataDock.style.left = Math.max(12, sw - dw - 12) + "px"; dataDock.style.top = (controlDock.offsetTop + controlDock.offsetHeight + 8) + "px"; }
+        const placeDrawer=(drawer,top)=>{ if(drawer.dataset.moved)return; const width=drawer.offsetWidth||330; drawer.style.left=Math.max(12,sw-width-12)+"px"; drawer.style.top=top+"px"; };
+        const controlOpen=!controlDock.classList.contains("collapsed"), dataOpen=!dataDock.classList.contains("collapsed");
+        if(controlOpen!==dataOpen){ const expanded=controlOpen?controlDock:dataDock, compact=controlOpen?dataDock:controlDock; placeDrawer(expanded,58); placeDrawer(compact,58+(expanded.offsetHeight||120)-12); }
+        else { const stackOffset=Number.parseFloat(getComputedStyle(stage).getPropertyValue("--drawer-stack-offset"))||26; placeDrawer(controlDock,58); placeDrawer(dataDock,58+stackOffset); }
         syncMobileTabs();
       }
     }
-    function bindDrawer(drawer){ const header = drawer.querySelector("[data-drag-handle]"); drawer.addEventListener("pointerdown", () => bringDrawerToFront(drawer)); header.addEventListener("pointerdown", e => { if (isMobileStage() || e.target.closest("button")) return; const r = drawer.getBoundingClientRect(), sr = stage.getBoundingClientRect(); state.drawerDrag = { drawer, dx:e.clientX-r.left, dy:e.clientY-r.top, sw:sr.width, sh:sr.height }; drawer.dataset.moved = "1"; header.setPointerCapture(e.pointerId); e.preventDefault(); }); header.addEventListener("pointermove", e => { if (!state.drawerDrag || state.drawerDrag.drawer !== drawer) return; const sr = stage.getBoundingClientRect(); const x = clamp(e.clientX - sr.left - state.drawerDrag.dx, 6, sr.width - drawer.offsetWidth - 6); const y = clamp(e.clientY - sr.top - state.drawerDrag.dy, 6, sr.height - drawer.offsetHeight - 6); drawer.style.left = x + "px"; drawer.style.top = y + "px"; e.preventDefault(); }); header.addEventListener("pointerup", e => { if (state.drawerDrag && state.drawerDrag.drawer === drawer) state.drawerDrag = null; try { header.releasePointerCapture(e.pointerId); } catch(err) { console.warn("release drawer pointer failed", err); } }); }
+    function bindDrawer(drawer){ const header = drawer.querySelector("[data-drag-handle]"); drawer.addEventListener("pointerdown", () => bringDrawerToFront(drawer)); header.addEventListener("pointerdown", e => { if (isMobileStage() || e.target.closest("button")) return; const r = drawer.getBoundingClientRect(), sr = stage.getBoundingClientRect(); state.drawerDrag = { drawer, dx:e.clientX-r.left, dy:e.clientY-r.top, parentLeft:sr.left, parentTop:sr.top, startX:e.clientX, startY:e.clientY, active:false }; header.setPointerCapture(e.pointerId); }); header.addEventListener("pointermove", e => { if (!state.drawerDrag || state.drawerDrag.drawer !== drawer) return; const drag=state.drawerDrag; if(!drag.active){ if(Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)<4)return; drag.active=true; drawer.dataset.moved="1"; } const sw=state.stageWidth||stage.clientWidth, sh=state.stageHeight||stage.clientHeight; const x = clamp(e.clientX - drag.parentLeft - drag.dx, 6, Math.max(6,sw - drawer.offsetWidth - 6)); const y = clamp(e.clientY - drag.parentTop - drag.dy, 6, Math.max(6,sh - Math.min(drawer.offsetHeight,48) - 6)); drawer.style.left = x + "px"; drawer.style.top = y + "px"; e.preventDefault(); }); header.addEventListener("pointerup", e => { if (!state.drawerDrag || state.drawerDrag.drawer !== drawer)return; state.drawerDrag = null; try { header.releasePointerCapture(e.pointerId); } catch(err) { console.warn("release drawer pointer failed", err); } }); header.addEventListener("pointercancel",()=>{if(state.drawerDrag&&state.drawerDrag.drawer===drawer)state.drawerDrag=null;}); }
     function draw(){ const w = state.width, h = state.height; if (!w || !h) return; state.phase *= .92; drawRoom(w,h); const area = benchArea(w,h); drawWoodBench(area); drawScene(area); drawStageReadout(area); }
     function reservedRightForDataDock(){
       if ((state.stageWidth || stage.clientWidth) <= 720 || dataDock.classList.contains("collapsed") || dataDock.dataset.moved) return 0;
@@ -252,7 +310,7 @@
     function beamPath(points){ ctx.beginPath(); points.forEach((p,i)=>{ if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]); }); }
     function drawSoftBeam(topPath, midPath, bottomPath, color){ ctx.save(); ctx.lineCap="round"; ctx.lineJoin="round"; ctx.globalCompositeOperation="lighter"; ctx.shadowColor="rgba(255,216,92,.28)"; ctx.shadowBlur=18; ctx.fillStyle=color || "rgba(255,225,116,.16)"; ctx.beginPath(); topPath.forEach((p,i)=>{ if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]); }); [...bottomPath].reverse().forEach(p=>ctx.lineTo(p[0],p[1])); ctx.closePath(); ctx.fill(); ctx.strokeStyle="rgba(255,235,150,.14)"; ctx.lineWidth=10; beamPath(midPath); ctx.stroke(); ctx.shadowBlur=0; ctx.globalCompositeOperation="source-over"; ctx.strokeStyle="rgba(255,244,184,.18)"; ctx.lineWidth=1.1; beamPath(topPath); ctx.stroke(); beamPath(bottomPath); ctx.stroke(); ctx.strokeStyle="rgba(255,213,79,.56)"; ctx.lineWidth=1.4; beamPath(midPath); ctx.stroke(); ctx.restore(); }
     function drawAnteriorEye(g){ const s=g.s, y=g.eyeY, corneaX=g.eyeX-g.eyeW*.47, pupilX=corneaX+38*s; ctx.save(); ctx.strokeStyle="rgba(205,238,255,.66)"; ctx.lineWidth=2.4*s; ctx.lineCap="round"; ctx.beginPath(); ctx.moveTo(corneaX-18*s,y-56*s); ctx.quadraticCurveTo(corneaX-43*s,y,corneaX-18*s,y+56*s); ctx.stroke(); ctx.fillStyle="rgba(74,162,222,.24)"; ctx.beginPath(); ctx.ellipse(pupilX,y,15*s,42*s,0,0,Math.PI*2); ctx.fill(); ctx.fillStyle="rgba(4,14,24,.70)"; ctx.beginPath(); ctx.ellipse(pupilX-4*s,y,5*s,31*s,0,0,Math.PI*2); ctx.fill(); ctx.restore(); }
-    function drawCrystallineLens(g){ const s=g.s, x=g.lensX+10*s, y=g.eyeY; ctx.save(); const glass=ctx.createLinearGradient(x-30*s,y-60*s,x+30*s,y+60*s); glass.addColorStop(0,"rgba(220,246,255,.42)"); glass.addColorStop(.5,"rgba(84,178,236,.18)"); glass.addColorStop(1,"rgba(255,255,255,.30)"); ctx.fillStyle=glass; ctx.strokeStyle="rgba(155,211,255,.92)"; ctx.lineWidth=2.5*s; ctx.beginPath(); ctx.moveTo(x,y-64*s); ctx.quadraticCurveTo(x-31*s,y,x,y+64*s); ctx.quadraticCurveTo(x+31*s,y,x,y-64*s); ctx.closePath(); ctx.fill(); ctx.stroke(); roomyTagLabel("晶状体",x+38*s,y-86*s,"#cfe4ff"); ctx.restore(); }
+    function drawCrystallineLens(g){ const s=g.s, x=g.lensX+10*s, y=g.eyeY, bulge=(state.model==="myopia"?36:state.model==="hyperopia"?24:31)*s; ctx.save(); const glass=ctx.createLinearGradient(x-bulge,y-60*s,x+bulge,y+60*s); glass.addColorStop(0,"rgba(220,246,255,.42)"); glass.addColorStop(.5,"rgba(84,178,236,.18)"); glass.addColorStop(1,"rgba(255,255,255,.30)"); ctx.fillStyle=glass; ctx.strokeStyle="rgba(155,211,255,.92)"; ctx.lineWidth=2.5*s; ctx.beginPath(); ctx.moveTo(x,y-64*s); ctx.quadraticCurveTo(x-bulge,y,x,y+64*s); ctx.quadraticCurveTo(x+bulge,y,x,y-64*s); ctx.closePath(); ctx.fill(); ctx.stroke(); roomyTagLabel("晶状体",x+38*s,y-86*s,"#cfe4ff"); ctx.restore(); }
     function drawEyeModelSwitch(g){
       const s=g.s, knobX=modelStopX(g,state.model);
       ctx.save();
@@ -477,18 +535,18 @@
     function moveCursorTo(x,y){const sr=stage.getBoundingClientRect(), lr=labArea.getBoundingClientRect();demoCursor.style.opacity="1";demoCursor.style.transform="translate("+(lr.left-sr.left+x-10)+"px,"+(lr.top-sr.top+y-10)+"px)";}
     function clickCursor(){demoCursor.classList.remove("click"); void demoCursor.offsetWidth; demoCursor.classList.add("click");}
     function moveCursorToElement(el){const sr=stage.getBoundingClientRect(), r=el.getBoundingClientRect();demoCursor.style.opacity="1";demoCursor.style.transform="translate("+(r.left-sr.left+r.width/2-10)+"px,"+(r.top-sr.top+r.height/2-10)+"px)";}
-    async function clickPanelButton(btn){setDrawerCollapsed(controlDock,false);bringDrawerToFront(controlDock);await sleep(180);moveCursorToElement(btn);clickCursor();await sleep(360);}
-    async function autoAnalyze(){await clickPanelButton(analyzeBtn);return analyzeConclusion();}
-    async function animateModel(target){
+    async function clickPanelButton(btn,runId){setDrawerCollapsed(controlDock,false);bringDrawerToFront(controlDock);await sleep(AUTO_DEMO_TIMING.panelReveal,runId);moveCursorToElement(btn);clickCursor();await sleep(AUTO_DEMO_TIMING.buttonAim,runId);}
+    async function autoAnalyze(runId){await clickPanelButton(analyzeBtn,runId);autoCheckpoint(runId);return analyzeConclusion();}
+    async function animateModel(target,runId){
       const r = benchArea(state.width,state.height), g = eyeGeom(r);
       const from = modelStopX(g,state.model);
       const to = modelStopX(g,target);
       markOperation();
       moveCursorTo(from,g.trackY);
       clickCursor();
-      await sleep(260);
+      await sleep(AUTO_DEMO_TIMING.cursorPress,runId);
       for(let k=0;k<=12;k++){
-        if(state.autoCancel) throw new Error("AUTO_CANCELLED");
+        autoCheckpoint(runId);
         const t=k/12, ease=.5-Math.cos(Math.PI*t)/2;
         moveCursorTo(from+(to-from)*ease,g.trackY+Math.sin(t*Math.PI)*18*g.s);
         if(t>.45) state.model = target;
@@ -497,7 +555,7 @@
         updateScenarioFromApparatus();
         updateReadouts();
         draw();
-        await sleep(320);
+        await sleep(AUTO_DEMO_TIMING.actionMotion/13,runId);
       }
       state.model = target;
       state.correction = null;
@@ -506,14 +564,14 @@
       updateReadouts();
       draw();
     }
-    async function animateLens(type){
+    async function animateLens(type,runId){
       const r = benchArea(state.width,state.height), g = eyeGeom(r), start = lensPosition(type,g), end = {x:g.slotX,y:g.cy};
       markOperation();
       moveCursorTo(start.x,start.y);
       clickCursor();
-      await sleep(260);
+      await sleep(AUTO_DEMO_TIMING.cursorPress,runId);
       for(let k=0;k<=14;k++){
-        if(state.autoCancel) throw new Error("AUTO_CANCELLED");
+        autoCheckpoint(runId);
         const t=k/14, ease=.5-Math.cos(Math.PI*t)/2;
         moveCursorTo(start.x+(end.x-start.x)*ease,start.y+(end.y-start.y)*ease-22*g.s*Math.sin(t*Math.PI));
         if(t>.72) state.correction = type;
@@ -521,7 +579,7 @@
         updateScenarioFromApparatus();
         updateReadouts();
         draw();
-        await sleep(320);
+        await sleep(AUTO_DEMO_TIMING.actionMotion/15,runId);
       }
       state.correction = type;
       state.lensTouched = true;
@@ -529,27 +587,88 @@
       updateReadouts();
       draw();
     }
-    async function demoGesture(i){
+    async function demoGesture(i,runId){
       const scenario = SPEC.scenarios[i];
-      if (!scenario.correction) await animateModel(scenario.defect);
+      if (!scenario.correction) await animateModel(scenario.defect,runId);
       else {
-        if (state.model !== scenario.defect) await animateModel(scenario.defect);
-        await animateLens(scenario.correction);
+        if (state.model !== scenario.defect) await animateModel(scenario.defect,runId);
+        await animateLens(scenario.correction,runId);
       }
+      autoCheckpoint(runId);
       state.scenarioIndex = i;
       clickCursor();
       updateStatus(scenario.label);
       draw();
-      await sleep(1400);
+      const observationTime=[AUTO_DEMO_TIMING.observePrimary,AUTO_DEMO_TIMING.observeSecondary,AUTO_DEMO_TIMING.observeComparison,AUTO_DEMO_TIMING.observeSecondary][i];
+      await sleep(observationTime,runId);
     }
-    async function autoRecord(key){ const before=state.records.length; await clickPanelButton(recordBtn); const ok=recordObservation({auto:true}); await sleep(700); if(!ok || !hasRecord(key) || state.records.length<=before) throw new Error("AUTO_RECORD_NOT_PERSISTED:"+key); }
-    async function runAutoDemo(){ if(state.autoPlaying){state.autoCancel=true;return;} state.autoPlaying=true; state.autoCancel=false; autoDemoBtn.textContent="退出演示"; freeBtn.disabled=true; setDrawerCollapsed(controlDock,false); setDrawerCollapsed(dataDock,true); setModeLabel(); resetScene({keepMode:false,quiet:true}); state.autoPlaying=true; state.demoCompleted=false; autoDemoBtn.textContent="退出演示"; setDrawerCollapsed(controlDock,false); setModeLabel(); try{ for(let i=0;i<SPEC.scenarios.length;i++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); setStepUI(i); updateStatus("演示中"); await demoGesture(i); await autoRecord(SPEC.scenarios[i].key); await sleep(1400); } setStepUI(SPEC.scenarios.length); await sleep(1200); setDrawerCollapsed(dataDock,false); await sleep(1200); await autoAnalyze(); state.demoCompleted=true; state.autoPlaying=false; autoDemoBtn.textContent="演示模式"; freeBtn.disabled=false; setModeLabel(); updateStatus(); await sleep(1200); } catch(err){ if(String(err.message||err)!=="AUTO_CANCELLED") showToast("演示中断："+(err.message||err)); else showToast("已退出演示"); } finally{ state.autoPlaying=false; state.autoCancel=false; autoDemoBtn.textContent="演示模式"; freeBtn.disabled=false; demoCursor.style.opacity="0"; setModeLabel(); updateStatus(); draw(); } }
-    function resetScene(opts){ clearTimers(); state.completed=false; state.demoCompleted=false; state.autoCancel=false; state.stepWarning=false; state.successCooldown=false; state.scenarioIndex=0; state.operationCount=0; state.records=[]; state.unseenRecords=0; state.analysisDone=false; state.phase=0; state.drag=false; state.dragTarget=null; state.model="normal"; state.correction=null; state.modelTouched=false; state.lensTouched=false; if(!opts || !opts.keepMode) state.freeMode=false; doneMask.style.display="none"; analysisText.classList.remove("ok"); analysisText.textContent=""; renderRecords(); updateBadge(); setModeLabel(); setStepUI(0); updateStatus("待操作"); if(!opts || !opts.quiet) showToast("已重置"); }
-    function setFreeMode(on){ state.freeMode=!!on; freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式"; autoDemoBtn.disabled=state.freeMode; setModeLabel(); showToast(state.freeMode?"自由操作已开启":"已回到闯关模式"); draw(); }
+    async function autoRecord(key,runId){ const before=state.records.length; await clickPanelButton(recordBtn,runId); autoCheckpoint(runId); const ok=recordObservation({auto:true}); await sleep(AUTO_DEMO_TIMING.recordConfirm,runId); autoCheckpoint(runId); if(!ok || !hasRecord(key) || state.records.length<=before) throw new Error("AUTO_RECORD_NOT_PERSISTED:"+key); }
+    function toggleAutoPause(){ if(!state.autoPlaying)return; state.autoPaused=!state.autoPaused; if(state.autoPaused)silenceActiveAudio(); syncAutoDemoUI(); setModeLabel(); updateStatus(); showToast(state.autoPaused?"演示已暂停":"演示继续"); }
+    function exitAutoDemo(){ if(!state.autoPlaying)return; state.autoCancel=true; state.autoPaused=false; state.autoRunId+=1; state.autoPlaying=false; silenceActiveAudio(); demoCursor.style.opacity="0"; resetScene({keepMode:false,quiet:true}); syncAutoDemoUI(); setModeLabel(); updateStatus(); showToast("已退出演示"); }
+    async function runAutoDemo(){
+      if(state.autoPlaying){exitAutoDemo();return;}
+      unlockLabAudio();
+      const runId=state.autoRunId+1;
+      state.autoRunId=runId;
+      state.autoPlaying=true;
+      state.autoPaused=false;
+      state.autoCancel=false;
+      syncAutoDemoUI();
+      resetScene({keepMode:false,quiet:true});
+      state.autoPlaying=true;
+      state.autoPaused=false;
+      state.autoCancel=false;
+      syncAutoDemoUI();
+      setDrawerCollapsed(controlDock,false);
+      setDrawerCollapsed(dataDock,true);
+      setModeLabel();
+      updateStatus();
+      try{
+        for(let i=0;i<SPEC.scenarios.length;i++){
+          autoCheckpoint(runId);
+          setStepUI(i);
+          updateStatus("演示中");
+          await demoGesture(i,runId);
+          await autoRecord(SPEC.scenarios[i].key,runId);
+          if(i<SPEC.scenarios.length-1)await sleep(AUTO_DEMO_TIMING.stepTransition,runId);
+        }
+        setStepUI(SPEC.scenarios.length);
+        await sleep(AUTO_DEMO_TIMING.analysisLead,runId);
+        const analyzed=await autoAnalyze(runId);
+        autoCheckpoint(runId);
+        if(!analyzed)throw new Error("AUTO_ANALYSIS_FAILED");
+        state.demoCompleted=true;
+      }catch(err){
+        if(runId!==state.autoRunId)return;
+        if(String(err.message||err)!=="AUTO_CANCELLED"){
+          state.autoPlaying=false;
+          state.autoPaused=false;
+          state.autoCancel=false;
+          resetScene({keepMode:false,quiet:true});
+          showToast("演示中断："+(err.message||err));
+        }
+      }finally{
+        if(runId!==state.autoRunId)return;
+        state.autoPlaying=false;
+        state.autoPaused=false;
+        state.autoCancel=false;
+        syncAutoDemoUI();
+        demoCursor.style.opacity="0";
+        setDrawerCollapsed(controlDock,false);
+        setDrawerCollapsed(dataDock,true);
+        setModeLabel();
+        updateStatus();
+        draw();
+      }
+    }
+    function captureFreeStartState(){ return {currentTask:state.currentTask,completed:state.completed,demoCompleted:state.demoCompleted,scenarioIndex:state.scenarioIndex,operationCount:state.operationCount,records:state.records.map(record=>({...record})),unseenRecords:state.unseenRecords,analysisDone:state.analysisDone,analysisHtml:analysisText.innerHTML,analysisOk:analysisText.classList.contains("ok"),model:state.model,correction:state.correction,modelTouched:state.modelTouched,lensTouched:state.lensTouched}; }
+    function restoreFreeStartState(){ const snapshot=state.freeStartState; if(!snapshot)return false; silenceActiveAudio(); clearTimers(); state.completed=snapshot.completed; state.demoCompleted=snapshot.demoCompleted; state.autoCancel=false; state.autoPaused=false; state.stepWarning=false; state.successCooldown=false; state.drawerDrag=null; state.drag=false; state.dragTarget=null; state.phase=0; state.scenarioIndex=snapshot.scenarioIndex; state.operationCount=snapshot.operationCount; state.records=snapshot.records.map(record=>({...record})); state.unseenRecords=snapshot.unseenRecords; state.analysisDone=snapshot.analysisDone; state.model=snapshot.model; state.correction=snapshot.correction; state.modelTouched=snapshot.modelTouched; state.lensTouched=snapshot.lensTouched; doneMask.style.display="none"; demoCursor.style.opacity="0"; analysisText.innerHTML=snapshot.analysisHtml; analysisText.classList.toggle("ok",snapshot.analysisOk); renderRecords(); updateBadge(); setStepUI(snapshot.currentTask); state.scenarioIndex=snapshot.scenarioIndex; updateReadouts(); syncAutoDemoUI(); setModeLabel(); updateStatus("自由探索"); draw(); showToast("自由模式操作已重置"); return true; }
+    function resetScene(opts){ const options=opts||{}; silenceActiveAudio(); clearTimers(); state.completed=false; state.demoCompleted=false; state.autoCancel=false; if(!state.autoPlaying)state.autoPaused=false; state.stepWarning=false; state.successCooldown=false; state.scenarioIndex=0; state.operationCount=0; state.records=[]; state.unseenRecords=0; state.analysisDone=false; state.phase=0; state.drag=false; state.dragTarget=null; state.drawerDrag=null; state.model="normal"; state.correction=null; state.modelTouched=false; state.lensTouched=false; if(!options.keepMode){state.freeMode=false;state.freeStartState=null;} doneMask.style.display="none"; demoCursor.style.opacity="0"; analysisText.classList.remove("ok"); analysisText.textContent=""; renderRecords(); updateBadge(); setStepUI(0); syncAutoDemoUI(); setModeLabel(); updateStatus("待操作"); if(!options.quiet) showToast("已重置"); }
+    function setFreeMode(on){ const next=!!on, entering=next&&!state.freeMode, leaving=!next&&state.freeMode; if(entering)state.freeStartState=captureFreeStartState(); state.freeMode=next; if(leaving)state.freeStartState=null; freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式"; taskCard.classList.toggle("free-mode",state.freeMode); taskCard.dataset.mode=state.freeMode?"free":"challenge"; taskCard.setAttribute("aria-label",state.freeMode?"关卡参考，自由模式不进行步骤判定":"当前实验关卡"); if(state.freeMode){state.stepWarning=false;updateDots();} syncAutoDemoUI(); setModeLabel(); updateStatus(state.freeMode?"自由探索":undefined); showToast(state.freeMode?"自由模式下可任意比较，不自动推进关卡。":"已回到闯关模式。"); draw(); }
     function bindCanvasPagePan(){ if(canvas.dataset.pagePanBound) return; canvas.dataset.pagePanBound="1"; let pan=null; const isTouch=e=>!e.pointerType||e.pointerType==="touch"; const isDragging=()=>!!(state&&(state.drag||state.dragTarget||state.draggingId||state.drawerDrag)); canvas.addEventListener("pointerdown",e=>{ if(!isTouch(e)) return; pan={id:e.pointerId,y:e.clientY,scrollY:window.scrollY}; },true); canvas.addEventListener("pointermove",e=>{ if(!pan||e.pointerId!==pan.id||isDragging()) return; const dy=pan.y-e.clientY; if(Math.abs(dy)>3){ window.scrollTo(0,pan.scrollY+dy); e.preventDefault(); } },true); ["pointerup","pointercancel","lostpointercapture"].forEach(type=>canvas.addEventListener(type,e=>{ if(!pan||e.pointerId===pan.id||type==="lostpointercapture") pan=null; },true)); }
-    function initEvents(){ bindCanvasPagePan(); canvas.addEventListener("pointerdown",onPointerDown); canvas.addEventListener("pointermove",onPointerMove); canvas.addEventListener("pointerup",onPointerUp); canvas.addEventListener("pointercancel",onPointerUp); recordBtn.addEventListener("click",() => recordObservation()); analyzeBtn.addEventListener("click",analyzeConclusion); resetBtn.addEventListener("click",() => { const free=state.freeMode; resetScene({keepMode:true,quiet:true}); state.freeMode=free; setFreeMode(free); showToast("已重置"); }); autoDemoBtn.addEventListener("click",runAutoDemo); freeBtn.addEventListener("click",() => setFreeMode(!state.freeMode)); controlToggleBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed"))); dataToggleBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed"))); controlSheetCloseBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,true)); dataSheetCloseBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,true)); experimentTab.addEventListener("click",() => toggleMobilePanel(controlDock)); dataTab.addEventListener("click",() => toggleMobilePanel(dataDock)); hintLamp.addEventListener("click",() => hintPop.classList.toggle("open")); okBtn.addEventListener("click",() => { doneMask.style.display="none"; }); bindDrawer(controlDock); bindDrawer(dataDock); window.addEventListener("resize",() => { clearTimeout(resizeCanvas.t); resizeCanvas.t=setTimeout(resizeCanvas,120); }); }
-    function init(){ initDots(); initEvents(); resizeCanvas(); setDrawerCollapsed(controlDock,true); setDrawerCollapsed(dataDock,true); resetScene({quiet:true}); if (isMobileStage()) setDrawerCollapsed(controlDock,false); if ("ResizeObserver" in window) { const observer = new ResizeObserver(() => { resizeCanvas(); draw(); }); observer.observe(stage); observer.observe(labArea); } window.addEventListener("load",() => { resizeCanvas(); draw(); },{once:true}); [0,60,180,600,1200,1700].forEach(ms => setTimeout(() => { resizeCanvas(); draw(); }, ms)); requestAnimationFrame(() => { resizeCanvas(); draw(); }); }
-    init(); window.state = state; window.recordObservation = recordObservation; window.analyzeConclusion = analyzeConclusion;
+    function initEvents(){ document.addEventListener("pointerdown",unlockLabAudio,{passive:true}); document.addEventListener("click",event=>{const button=event.target.closest("button");if(!button||button===audioToggle||button.disabled)return;playUiSound("tap");},{capture:true}); bindCanvasPagePan(); canvas.addEventListener("pointerdown",onPointerDown); canvas.addEventListener("pointermove",onPointerMove); canvas.addEventListener("pointerup",onPointerUp); canvas.addEventListener("pointercancel",onPointerUp); recordBtn.addEventListener("click",() => {if(!state.autoPlaying)recordObservation();}); analyzeBtn.addEventListener("click",()=>{if(!state.autoPlaying)analyzeConclusion();}); resetBtn.addEventListener("click",() => { if(state.autoPlaying){toggleAutoPause();return;} if(state.freeMode&&restoreFreeStartState())return; resetScene({keepMode:false,quiet:true}); showToast("已重置"); }); autoDemoBtn.addEventListener("click",runAutoDemo); freeBtn.addEventListener("click",() => setFreeMode(!state.freeMode)); controlToggleBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed"))); dataToggleBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed"))); controlSheetCloseBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,true)); dataSheetCloseBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,true)); experimentTab.addEventListener("click",() => toggleMobilePanel(controlDock)); dataTab.addEventListener("click",() => toggleMobilePanel(dataDock)); audioToggle.addEventListener("click",event=>{event.stopPropagation();window.labAudio.setMuted(!audioState.uiMuted);if(!audioState.uiMuted){unlockLabAudio();playUiSound("hint",{force:true});}}); hintLamp.addEventListener("click",() => {hintPop.classList.toggle("open");playUiSound("hint");}); okBtn.addEventListener("click",() => { doneMask.style.display="none"; }); bindDrawer(controlDock); bindDrawer(dataDock); window.addEventListener("resize",() => { clearTimeout(resizeCanvas.t); resizeCanvas.t=setTimeout(resizeCanvas,120); }); }
+    function init(){ initDots(); initEvents(); syncAudioToggle(); resizeCanvas(); setDrawerCollapsed(controlDock,true); setDrawerCollapsed(dataDock,true); resetScene({quiet:true}); if (isMobileStage()) setDrawerCollapsed(controlDock,false); if ("ResizeObserver" in window) { const observer = new ResizeObserver(() => { resizeCanvas(); draw(); }); observer.observe(stage); observer.observe(labArea); } window.addEventListener("load",() => { resizeCanvas(); draw(); },{once:true}); [0,60,180,600,1200,1700].forEach(ms => setTimeout(() => { resizeCanvas(); draw(); }, ms)); requestAnimationFrame(() => { resizeCanvas(); draw(); }); }
+    init(); window.state = state; window.recordObservation = recordObservation; window.analyzeConclusion = analyzeConclusion; window.playUiSound=playUiSound;
   })();
   </script>
 </body>
