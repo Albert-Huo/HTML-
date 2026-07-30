@@ -281,7 +281,7 @@
       right:20px;
       width:24px;
       height:286px;
-      z-index:20;
+      z-index:23;
       cursor:pointer;
       transition:all .7s cubic-bezier(0.34, 1.56, 0.64, 1);
       filter:drop-shadow(0 4px 8px rgba(0,0,0,0.55));
@@ -1296,16 +1296,40 @@
       min-height:760px !important;
     }
     #stage .beaker{
-      bottom:360px !important;
+      bottom:190px !important;
     }
     #stage .tripod{
-      bottom:270px !important;
+      bottom:100px !important;
     }
     #stage .alcohol-lamp{
-      bottom:260px !important;
+      bottom:90px !important;
     }
     #stage .thermo-container.inserted{
-      bottom:386px !important;
+      bottom:216px !important;
+    }
+    #stage .thermo-container.inserted.touching-bottom{
+      bottom:188px !important;
+    }
+    #stage .stand-clamp{
+      top:calc(22% + 170px) !important;
+    }
+    #stage:has(#controlBody:not(.collapsed)) .beaker{
+      bottom:280px !important;
+    }
+    #stage:has(#controlBody:not(.collapsed)) .tripod{
+      bottom:190px !important;
+    }
+    #stage:has(#controlBody:not(.collapsed)) .alcohol-lamp{
+      bottom:180px !important;
+    }
+    #stage:has(#controlBody:not(.collapsed)) .thermo-container.inserted{
+      bottom:306px !important;
+    }
+    #stage:has(#controlBody:not(.collapsed)) .thermo-container.inserted.touching-bottom{
+      bottom:278px !important;
+    }
+    #stage:has(#controlBody:not(.collapsed)) .stand-clamp{
+      top:calc(22% + 80px) !important;
     }
   }
 </style>
@@ -1816,6 +1840,194 @@
     .explanation h2{ font-size:20px !important; }
   }
 </style>
+<style id="exp4-observation-flow-style">
+  .exp4-learning-bar{
+    width:100%;
+    max-width:980px;
+    margin-top:8px;
+  }
+  .exp4-quiz-strip{
+    min-height:48px;
+    display:grid;
+    grid-template-columns:minmax(220px, 1fr) minmax(330px, 1.35fr);
+    align-items:center;
+    gap:10px;
+    padding:8px 10px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;
+    background:rgba(255,255,255,.055);
+    transition:opacity .18s ease, filter .18s ease;
+  }
+  .exp4-quiz-strip.locked{
+    grid-template-columns:1fr;
+    opacity:.72;
+  }
+  .exp4-quiz-strip.free-mode{
+    opacity:.38;
+    filter:grayscale(.8);
+    pointer-events:none;
+  }
+  .exp4-quiz-strip .mini{ line-height:1.45; }
+  .exp4-quiz-strip .quizRow{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:8px;
+    margin:0;
+  }
+  .exp4-quiz-strip .quizBtn{
+    min-width:0;
+    height:38px;
+    padding:8px 10px;
+    text-align:center;
+    white-space:normal;
+    line-height:1.2;
+  }
+  .exp4-observation-panel{
+    position:absolute;
+    left:82px;
+    top:12px;
+    z-index:22;
+    width:min(330px, calc(100% - 94px));
+    padding:10px;
+    border:1px solid rgba(155,211,255,.22);
+    border-radius:12px;
+    background:rgba(7,14,24,.3);
+    box-shadow:0 10px 28px rgba(0,0,0,.22);
+    backdrop-filter:none;
+    pointer-events:none;
+  }
+  .exp4-observation-panel.dragging{
+    border-color:rgba(91,188,255,.52);
+    box-shadow:0 14px 34px rgba(0,0,0,.3);
+  }
+  .exp4-observation-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    pointer-events:auto;
+    cursor:grab;
+    touch-action:none;
+    user-select:none;
+  }
+  .exp4-observation-panel.dragging .exp4-observation-head{
+    cursor:grabbing;
+  }
+  .exp4-drag-grip{
+    flex:0 0 auto;
+    color:rgba(207,226,255,.64);
+    font-size:15px;
+    line-height:1;
+  }
+  .exp4-observation-panel .lab-note{
+    position:static;
+    min-width:0;
+    padding:0;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    color:#cfe2ff;
+    font-size:12px;
+    line-height:1.35;
+  }
+  .exp4-temperature{
+    flex:0 0 auto;
+    color:#fff;
+    font-size:25px;
+    line-height:1;
+    font-variant-numeric:tabular-nums;
+    text-shadow:0 0 16px rgba(61,220,151,.24);
+  }
+  .exp4-observation-panel .readout{
+    display:grid;
+    grid-template-columns:repeat(2, minmax(0, 1fr));
+    gap:6px;
+    margin-top:9px;
+  }
+  .exp4-observation-panel .pill{
+    min-width:0;
+    justify-content:space-between;
+    gap:4px;
+    padding:5px 7px;
+    overflow:hidden;
+    font-size:11px;
+  }
+  .exp4-observation-panel .chartWrap{
+    height:118px;
+    margin-top:8px;
+    padding:4px;
+    border-color:rgba(155,211,255,.16);
+    background:rgba(0,0,0,.05);
+  }
+  .exp4-observation-panel #chartCanvas{
+    width:100%;
+    height:100%;
+    background:transparent;
+  }
+  #controlBody > .btnRow{ margin-top:0 !important; }
+  @media (max-width:720px){
+    .exp4-learning-bar{ margin-top:7px; }
+    .exp4-quiz-strip{
+      min-height:44px;
+      grid-template-columns:1fr;
+      gap:7px;
+      padding:7px 8px;
+    }
+    .exp4-quiz-strip .quizRow{
+      grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+      flex-wrap:nowrap !important;
+      gap:6px !important;
+    }
+    .exp4-quiz-strip .quizBtn{
+      min-height:36px !important;
+      height:auto;
+      padding:7px 5px !important;
+      font-size:12px !important;
+    }
+    .exp4-observation-panel{
+      left:82px;
+      top:9px;
+      width:calc(100% - 91px);
+      padding:8px;
+      background:rgba(7,14,24,.46);
+      backdrop-filter:none;
+    }
+    .exp4-observation-head{
+      pointer-events:none;
+      cursor:auto;
+      touch-action:auto;
+      user-select:auto;
+    }
+    .exp4-drag-grip{ display:none; }
+    .exp4-observation-panel .lab-note{ font-size:11px; }
+    .exp4-temperature{ font-size:22px; }
+    .exp4-observation-panel .readout{
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:4px;
+      margin-top:7px;
+    }
+    .exp4-observation-panel .pill{
+      display:block;
+      padding:4px 3px;
+      text-align:center;
+      font-size:10px;
+      text-overflow:ellipsis;
+    }
+    .exp4-observation-panel .pill b{
+      display:block;
+      margin-top:2px;
+      font-size:11px;
+    }
+    .exp4-observation-panel .chartWrap{
+      height:88px;
+      margin-top:6px;
+      padding:3px;
+    }
+    #labArea .thermo-container{
+      width:44px;
+    }
+  }
+</style>
 </head>
 <body>
 <div id="app">
@@ -1835,6 +2047,13 @@
     </div>
   </div>
 
+  <div class="exp4-learning-bar" id="exp4LearningBar">
+    <div class="exp4-quiz-strip locked" id="quizCard">
+      <div class="mini" id="quizText">🧠 <b>观察后小测</b>：完成沸腾现象观察并点击“确认观察”后出现小测。</div>
+      <div class="quizRow" id="quizRow"></div>
+    </div>
+  </div>
+
   <div id="stage">
     <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
       <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
@@ -1850,6 +2069,23 @@
     <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
     <div class="hint-pop" id="hintPop"></div>
 <div class="lab-area" id="labArea">
+      <section class="exp4-observation-panel" id="exp4ObservationPanel" aria-label="实时观察">
+        <div class="exp4-observation-head" id="exp4ObservationHead" title="按住拖动观察面板">
+          <span class="exp4-drag-grip" id="exp4DragGrip" aria-hidden="true">⠿</span>
+          <div class="lab-note" id="labNote">装置状态：待组装</div>
+          <strong class="exp4-temperature"><b id="tempPill">20.0</b>℃</strong>
+        </div>
+        <div class="readout">
+          <span class="pill">加热 <b id="heatPill">关闭</b></span>
+          <span class="pill">采样 <b id="samplePill">0</b></span>
+          <span class="pill">观察 <b id="boilPill">0.0s</b></span>
+          <span class="pill">温度计 <b id="positionPill">未插入</b></span>
+        </div>
+        <div class="chartWrap">
+          <canvas id="chartCanvas" role="img" aria-label="温度—时间图像：横轴为时间，单位分钟；纵轴为温度，单位摄氏度"></canvas>
+        </div>
+      </section>
+
       <div class="stand-rod"></div>
       <div class="stand-clamp"></div>
 
@@ -1878,7 +2114,6 @@
         </div>
       </div>
 
-      <div class="lab-note" id="labNote">装置状态：待组装</div>
       <div class="checkmark" id="checkmark"><div></div></div>
     </div>
 
@@ -1893,30 +2128,11 @@
         </div>
       </div>
       <div class="dockBody collapsed drawer-body" id="controlBody">
-        <div class="secTitle">过程读数</div>
-        <div class="mini">目标：观察“温度先升高，沸腾后持续吸热但温度基本不变”的图像与现象。</div>
-
-        <div class="readout">
-          <span class="pill">温度：<b id="tempPill">20.0</b>℃</span>
-          <span class="pill">加热：<b id="heatPill">关闭</b></span>
-          <span class="pill">已采样：<b id="samplePill">0</b></span>
-          <span class="pill">沸腾稳定：<b id="boilPill">0.0</b>s</span>
-          <span class="pill">温度计位置：<b id="positionPill">未插入</b></span>
-        </div>
-
-        <div class="chartWrap">
-          <canvas id="chartCanvas"></canvas>
-        </div>
-
-        <div class="btnRow" style="margin-top:10px;">
+        <div class="btnRow">
           <button class="warn" id="heatBtn">点燃酒精灯 🔥</button>
           <button id="positionBtn">调整温度计位置</button>
           <button id="checkBtn">确认观察 ✅</button>
         </div>
-
-        <div class="secTitle" style="margin-top:10px;">结论小测</div>
-        <div class="mini" id="quizText">请在步骤4回答：水沸腾时温度如何变化？</div>
-        <div class="quizRow" id="quizRow"></div>
       </div>
     </div>
 
@@ -1977,7 +2193,7 @@
     <h2>实验名：探究水沸腾时温度变化规律</h2>
     <ul>
       <li><b>实验说明</b>：温度计玻璃泡悬空浸入水中、不能接触杯底；加热时按每 0.5 min 的模拟间隔记录温度和现象。</li>
-      <li><b>原理与结论</b>：水沸腾前温度升高，沸腾时继续吸热但温度基本保持在沸点附近。</li>
+      <li id="conclusionItem"><b>原理与结论</b>：完成四关观察和小测后显示。</li>
     </ul>
   </div>
 
@@ -2007,7 +2223,8 @@ const state = {
   demoRunId: 0,
   timers: new Set(),
   rafId: 0,
-  dockMoved: { control: false, data: false }
+  dockMoved: { control: false, data: false },
+  observationPanelMoved: false
 };
 
 const sim = {
@@ -2035,13 +2252,13 @@ const tasks = [
     pass: () => sim.temp >= 95 && sim.dataPoints.length >= 12
   },
   {
-    text: '继续加热并观察沸腾平台：温度接近 100℃ 且稳定一段时间。',
-    hint: '提示：沸腾稳定累计达到约 3 秒即可确认。',
+    text: '继续加热，观察水沸腾时的现象和图线变化；观察充分后点击“确认观察”。',
+    hint: '提示：温度接近 100℃ 后继续记录至少 8 个点，留意图线后半段走势。',
     pass: () => sim.temp >= 99 && sim.boilStableSec >= 3 && plateauCount() >= 8
   },
   {
-    text: '回答结论：水沸腾时温度有何变化？',
-    hint: '提示：依据图像后半段走势作答。',
+    text: '根据刚才记录的图线，完成观察后小测。',
+    hint: '提示：只依据实际观察到的图线走势作答。',
     pass: () => sim.quizPassed
   }
 ];
@@ -2057,6 +2274,8 @@ const modeBadge = $('#modeBadge');
 
 const stage = $('#stage');
 const labArea = $('#labArea');
+const observationPanel = $('#exp4ObservationPanel');
+const observationHead = $('#exp4ObservationHead');
 const labNote = $('#labNote');
 const thermo = $('#thermo');
 const thermoTag = $('#thermoTag');
@@ -2085,8 +2304,10 @@ const samplePill = $('#samplePill');
 const boilPill = $('#boilPill');
 const heatBtn = $('#heatBtn');
 const checkBtn = $('#checkBtn');
+const quizCard = $('#quizCard');
 const quizText = $('#quizText');
 const quizRow = $('#quizRow');
+const conclusionItem = $('#conclusionItem');
 
 const resetBtn = $('#resetBtn');
 const autoDemoBtn = $('#autoDemoBtn');
@@ -2210,6 +2431,16 @@ function plateauCount() {
 
 function renderQuiz() {
   quizRow.innerHTML = '';
+  const unlocked = state.currentTask === 3 && !state.completed && !state.freeMode;
+  quizCard.classList.toggle('locked', !unlocked);
+  quizCard.classList.toggle('free-mode', state.freeMode);
+  if (!unlocked) {
+    quizText.innerHTML = state.freeMode
+      ? '🧠 <b>观察后小测</b>：自由模式下仅作观察，不进行小测判定。'
+      : '🧠 <b>观察后小测</b>：完成沸腾现象观察并点击“确认观察”后出现小测。';
+    return;
+  }
+  quizText.innerHTML = '🧠 <b>观察后小测</b>：根据刚才记录的图线，水沸腾时温度如何变化？';
   const options = [
     { key: 'A', text: 'A. 温度继续快速上升' },
     { key: 'B', text: 'B. 温度基本保持不变' },
@@ -2233,7 +2464,7 @@ function refreshQuizVisual(selected = '') {
     b.classList.remove('correct', 'wrong');
     if (sim.quizPassed && b.dataset.ans === 'B') b.classList.add('correct');
     if (selected && !sim.quizPassed && b.dataset.ans === selected) b.classList.add('wrong');
-    b.disabled = state.autoPlaying;
+    b.disabled = state.autoPlaying || state.freeMode || sim.quizPassed;
   });
 }
 
@@ -2250,14 +2481,13 @@ function renderStepUI() {
     d.classList.toggle('active', isActive);
     d.classList.toggle('warn', isActive && state.warningStep === i);
   });
-  quizText.textContent = i === 3 ? '请点击选项并确认观察。' : '请在步骤4回答：水沸腾时温度如何变化？';
-  quizRow.classList.toggle('codex-show-quiz', i === 3);
   renderQuiz();
 }
 function setStepUI(i) {
   state.currentTask = clamp(i, 0, tasks.length - 1);
   renderStepUI();
   updateModeHud();
+  refreshInteractionLocks();
 }
 function markStepWarning(msg) {
   if (state.freeMode || state.completed) return;
@@ -2304,6 +2534,7 @@ function updatePhysics(dt) {
   sim.temp = clamp(sim.temp, ROOM_TEMP, 102);
 
   if (sim.heating && sim.temp >= 99.1) sim.boilStableSec += dt;
+  else if (!sim.heating) sim.boilStableSec = 0;
   else if (sim.temp < 98.3) sim.boilStableSec = Math.max(0, sim.boilStableSec - dt * 0.65);
 
   if (sim.heating || sim.temp > ROOM_TEMP + 0.2) {
@@ -2339,39 +2570,81 @@ function drawChart() {
   chartCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   const cw = rect.width;
   const ch = rect.height;
-  const pad = 18;
+  const compactChart = rect.width < 260;
+  const plot = {
+    left: 34,
+    right: cw - (compactChart ? 40 : 6),
+    top: 15,
+    bottom: ch - 25
+  };
+  const plotWidth = Math.max(10, plot.right - plot.left);
+  const plotHeight = Math.max(10, plot.bottom - plot.top);
+  const maxTime = Math.max(8, Math.ceil(sim.time + 1));
+  const maxTemp = 110;
+  const xAt = (time) => plot.left + (time / maxTime) * plotWidth;
+  const yAt = (temp) => plot.bottom - (temp / maxTemp) * plotHeight;
 
-  chartCtx.fillStyle = '#000';
+  chartCtx.clearRect(0, 0, cw, ch);
+  chartCtx.fillStyle = 'rgba(3,8,14,.07)';
   chartCtx.fillRect(0, 0, cw, ch);
 
-  chartCtx.strokeStyle = 'rgba(255,255,255,0.14)';
+  chartCtx.strokeStyle = 'rgba(255,255,255,.13)';
   chartCtx.lineWidth = 1;
   chartCtx.beginPath();
-  for (let i = 0; i <= 5; i++) {
-    const y = ch - pad - (i / 5) * (ch - pad * 2);
-    chartCtx.moveTo(pad, y);
-    chartCtx.lineTo(cw - 2, y);
+  for (let temp = 0; temp <= 100; temp += 25) {
+    const y = yAt(temp);
+    chartCtx.moveTo(plot.left, y);
+    chartCtx.lineTo(plot.right, y);
   }
   chartCtx.stroke();
 
+  chartCtx.strokeStyle = 'rgba(226,239,255,.58)';
+  chartCtx.beginPath();
+  chartCtx.moveTo(plot.left, plot.top);
+  chartCtx.lineTo(plot.left, plot.bottom);
+  chartCtx.lineTo(plot.right, plot.bottom);
+  chartCtx.stroke();
+
+  chartCtx.fillStyle = 'rgba(226,239,255,.76)';
+  chartCtx.font = '9px system-ui, -apple-system, sans-serif';
+  chartCtx.textBaseline = 'middle';
+  chartCtx.textAlign = 'right';
+  [0, 50, 100].forEach((temp) => {
+    chartCtx.fillText(String(temp), plot.left - 4, yAt(temp));
+  });
+
+  chartCtx.textBaseline = 'top';
+  [0, maxTime / 2, maxTime].forEach((time, index) => {
+    chartCtx.textAlign = index === 0 ? 'left' : index === 2 ? 'right' : 'center';
+    const label = Number.isInteger(time) ? String(time) : time.toFixed(1);
+    chartCtx.fillText(label, xAt(time), plot.bottom + 3);
+  });
+
+  chartCtx.fillStyle = 'rgba(226,239,255,.86)';
+  chartCtx.font = '700 9px system-ui, -apple-system, sans-serif';
+  chartCtx.textBaseline = 'top';
+  chartCtx.textAlign = 'left';
+  chartCtx.fillText('温度/℃', 2, 2);
+  chartCtx.textBaseline = 'bottom';
+  chartCtx.textAlign = 'center';
+  chartCtx.fillText('时间/min', plot.left + plotWidth * .72, ch - 1);
+
   if (sim.dataPoints.length < 2) return;
-  const maxTime = Math.max(8, sim.time + 1);
-  const maxTemp = 110;
 
   chartCtx.strokeStyle = '#3ddc97';
   chartCtx.lineWidth = 2.6;
   chartCtx.beginPath();
   sim.dataPoints.forEach((p, i) => {
-    const x = pad + (p.t / maxTime) * (cw - pad * 2);
-    const y = (ch - pad) - (p.temp / maxTemp) * (ch - pad * 2);
+    const x = xAt(p.t);
+    const y = yAt(p.temp);
     if (i === 0) chartCtx.moveTo(x, y);
     else chartCtx.lineTo(x, y);
   });
   chartCtx.stroke();
 
   const last = sim.dataPoints[sim.dataPoints.length - 1];
-  const lx = pad + (last.t / maxTime) * (cw - pad * 2);
-  const ly = (ch - pad) - (last.temp / maxTemp) * (ch - pad * 2);
+  const lx = xAt(last.t);
+  const ly = yAt(last.temp);
   chartCtx.fillStyle = '#fff';
   chartCtx.beginPath();
   chartCtx.arc(lx, ly, 3.5, 0, Math.PI * 2);
@@ -2382,7 +2655,7 @@ function refreshReadouts() {
   tempPill.textContent = sim.temp.toFixed(1);
   heatPill.textContent = sim.heating ? '开启' : '关闭';
   samplePill.textContent = String(sim.dataPoints.length);
-  boilPill.textContent = sim.boilStableSec.toFixed(1);
+  boilPill.textContent = `${sim.boilStableSec.toFixed(1)}s`;
 
   const h = 5 + ((sim.temp - ROOM_TEMP) / 90) * 90;
   mercury.style.height = `${Math.min(h, 95)}%`;
@@ -2401,7 +2674,7 @@ function refreshReadouts() {
   else if (!sim.safePosition) labNote.textContent = '装置状态：玻璃泡接触杯底，需上调温度计';
   else if (!sim.heating) labNote.textContent = '装置状态：可开始加热';
   else if (sim.temp < 99) labNote.textContent = '装置状态：升温中';
-  else labNote.textContent = '装置状态：沸腾平台观察中';
+  else labNote.textContent = '装置状态：沸腾现象观察中';
 }
 
 function tick(now) {
@@ -2417,6 +2690,10 @@ tick.last = 0;
 
 function answerQuiz(ans, fromAuto = false) {
   if (state.autoPlaying && !fromAuto) return;
+  if (state.freeMode && !fromAuto) {
+    showToast('自由模式下仅作观察，不进行小测判定。');
+    return;
+  }
   if (!state.freeMode && !state.completed && state.currentTask !== 3 && !fromAuto) {
     markStepWarning('当前还未到结论作答步骤。');
     return;
@@ -2424,10 +2701,25 @@ function answerQuiz(ans, fromAuto = false) {
   sim.quizPassed = ans === 'B';
   refreshQuizVisual(ans);
   if (sim.quizPassed) {
-    setStatusTag('结论已选中');
-    if (!fromAuto) showToast('选项正确，请点击“确认观察”。');
+    setStatusTag('回答正确');
+    if (!fromAuto) {
+      showToast('回答正确：水沸腾时继续吸热，温度基本保持不变。');
+      const taskIndex = state.currentTask;
+      const id = setTimeout(() => {
+        untrackTimer(id);
+        if (
+          !state.autoPlaying &&
+          !state.freeMode &&
+          !state.completed &&
+          state.currentTask === taskIndex
+        ) {
+          tryPassCurrentStep(false);
+        }
+      }, 1600);
+      trackTimer(id);
+    }
   } else if (!fromAuto) {
-    showToast('不正确，请观察沸腾平台段图像。');
+    showToast('不正确，请重新观察图线后半段。');
   }
 }
 
@@ -2484,7 +2776,7 @@ function toggleHeat(fromAuto = false) {
 function tryPassCurrentStep(fromAuto = false) {
   if (state.successCooldown || state.completed) return false;
   if (state.freeMode && !fromAuto) {
-    if (sim.temp >= 99) showToast('观察：已接近沸腾平台。');
+    if (sim.temp >= 99) showToast('观察：已进入充分沸腾观察阶段。');
     else showToast('观察：当前仍在升温阶段。');
     return false;
   }
@@ -2501,6 +2793,7 @@ function tryPassCurrentStep(fromAuto = false) {
   if (state.currentTask >= tasks.length - 1) {
     state.completed = true;
     if (state.autoPlaying) state.demoCompleted = true;
+    conclusionItem.innerHTML = '<b>原理与结论</b>：水沸腾前温度升高；沸腾时继续吸热，但温度基本保持在沸点附近。';
     renderStepUI();
     setStatusTag('挑战完成');
     showDone();
@@ -2688,11 +2981,96 @@ function bindDockDrag(el, headEl, kind) {
 bindDockDrag(controlDock, controlHead, 'control');
 bindDockDrag(dataDock, dataHead, 'data');
 
+function observationPanelDraggable() {
+  return window.innerWidth > 720;
+}
+function observationPanelCurrentPos() {
+  const area = labArea.getBoundingClientRect();
+  const panel = observationPanel.getBoundingClientRect();
+  return { x: panel.left - area.left, y: panel.top - area.top };
+}
+function clampObservationPanelPos(x, y) {
+  const area = labArea.getBoundingClientRect();
+  const panel = observationPanel.getBoundingClientRect();
+  return {
+    x: clamp(x, 0, Math.max(0, area.width - panel.width)),
+    y: clamp(y, 0, Math.max(0, area.height - panel.height))
+  };
+}
+function setObservationPanelPos(x, y) {
+  observationPanel.style.left = `${x}px`;
+  observationPanel.style.top = `${y}px`;
+  observationPanel.style.right = 'auto';
+  observationPanel.style.bottom = 'auto';
+}
+function resetObservationPanelPosition() {
+  state.observationPanelMoved = false;
+  observationPanel.classList.remove('dragging');
+  observationPanel.style.left = '';
+  observationPanel.style.top = '';
+  observationPanel.style.right = '';
+  observationPanel.style.bottom = '';
+}
+function constrainObservationPanelPosition() {
+  if (!observationPanelDraggable()) {
+    resetObservationPanelPosition();
+    return;
+  }
+  if (!state.observationPanelMoved) return;
+  const current = observationPanelCurrentPos();
+  const next = clampObservationPanelPos(current.x, current.y);
+  setObservationPanelPos(next.x, next.y);
+}
+function bindObservationPanelDrag() {
+  let dragging = false;
+  let startX = 0;
+  let startY = 0;
+  let baseX = 0;
+  let baseY = 0;
+
+  function finishDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    observationPanel.classList.remove('dragging');
+    try { observationHead.releasePointerCapture(e.pointerId); }
+    catch (err) { console.warn('observation panel releasePointerCapture failed', err); }
+  }
+
+  observationHead.addEventListener('pointerdown', (e) => {
+    if (!observationPanelDraggable() || e.button !== 0) return;
+    const current = observationPanelCurrentPos();
+    dragging = true;
+    state.observationPanelMoved = true;
+    baseX = current.x;
+    baseY = current.y;
+    startX = e.clientX;
+    startY = e.clientY;
+    observationPanel.classList.add('dragging');
+    try { observationHead.setPointerCapture(e.pointerId); }
+    catch (err) { console.warn('observation panel setPointerCapture failed', err); }
+    e.preventDefault();
+  });
+  observationHead.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const next = clampObservationPanelPos(
+      baseX + (e.clientX - startX),
+      baseY + (e.clientY - startY)
+    );
+    setObservationPanelPos(next.x, next.y);
+    e.preventDefault();
+  });
+  observationHead.addEventListener('pointerup', finishDrag);
+  observationHead.addEventListener('pointercancel', finishDrag);
+}
+bindObservationPanelDrag();
+
 function refreshInteractionLocks() {
   const autoLocked = state.autoPlaying;
   heatBtn.disabled = autoLocked;
-  checkBtn.disabled = autoLocked;
-  $$('.quizBtn').forEach((b) => { b.disabled = autoLocked; });
+  checkBtn.disabled = autoLocked || (!state.freeMode && state.currentTask === 3);
+  $$('.quizBtn').forEach((b) => {
+    b.disabled = autoLocked || state.freeMode || sim.quizPassed;
+  });
   resetBtn.disabled = autoLocked;
   freeBtn.disabled = autoLocked;
 
@@ -2762,12 +3140,14 @@ function resetAll(opts = {}) {
   state.records = [];
   state.unseenRecordCount = 0;
   doneMask.style.display = 'none';
+  conclusionItem.innerHTML = '<b>原理与结论</b>：完成四关观察和小测后显示。';
 
   setControlCollapsed(true);
   setDataCollapsed(true);
   state.dockMoved.control = false;
   state.dockMoved.data = false;
   defaultDockPositions(true);
+  resetObservationPanelPosition();
 
   resetSim();
   renderRecordTable();
@@ -2808,11 +3188,13 @@ function stopAutoDemo(byUser = false) {
 }
 
 function assertAutoRecorded(beforeLen) {
-  if (state.records.length <= beforeLen) throw new Error('AUTO_RECORD_NOT_PERSISTED');
+  if (state.records.length !== beforeLen + 1) throw new Error('AUTO_RECORD_COUNT_MISMATCH');
 }
 
 function setDemoCursor(x, y) {
   demoCursor.classList.add('show');
+  demoCursor.style.position = 'fixed';
+  demoCursorPulse.style.position = 'fixed';
   demoCursor.style.left = `${x}px`;
   demoCursor.style.top = `${y}px`;
 }
@@ -2837,13 +3219,12 @@ async function clickDemoCursor(ms = 220, runId = state.demoRunId) {
   await waitAuto(ms, runId);
   demoCursor.classList.remove('clicking');
 }
-function elemCenterInStage(el) {
-  const s = stage.getBoundingClientRect();
+function elemCenterInViewport(el) {
   const r = el.getBoundingClientRect();
-  return { x: r.left - s.left + r.width / 2, y: r.top - s.top + r.height / 2 };
+  return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
 }
 async function demoClickElement(el, runId, action = null) {
-  const p = elemCenterInStage(el);
+  const p = elemCenterInViewport(el);
   setDemoCursor(p.x, p.y);
   await waitAuto(240, runId);
   await clickDemoCursor(160, runId);
@@ -2890,17 +3271,16 @@ async function startAutoDemo() {
     const right = quizRow.querySelector('[data-ans="B"]');
     if (!right) throw new Error('AUTO_QUIZ_BUTTON_MISSING');
     await demoClickElement(right, runId, async () => { answerQuiz('B', true); });
+    await waitAuto(1600, runId);
 
     const r4 = state.records.length;
-    await demoClickElement(checkBtn, runId, async () => {
-      tryPassCurrentStep(true);
-      if (state.completed && runId === state.demoRunId) {
-        state.autoPlaying = false;
-        updateModeHud();
-        refreshInteractionLocks();
-      }
-    });
+    if (!tryPassCurrentStep(true)) throw new Error('AUTO_QUIZ_COMPLETION_FAILED');
     assertAutoRecorded(r4);
+    if (state.completed && runId === state.demoRunId) {
+      state.autoPlaying = false;
+      updateModeHud();
+      refreshInteractionLocks();
+    }
 
     if (!state.completed) throw new Error('AUTO_NOT_COMPLETED');
     setStatusTag('挑战完成');
@@ -2966,6 +3346,7 @@ const relayout = (() => {
       t = 0;
       defaultDockPositions();
       resolveDrawerOverlap(true);
+      constrainObservationPanelPosition();
       drawChart();
     }, 120));
   };
