@@ -326,18 +326,6 @@
     background:linear-gradient(180deg, #dce5ef, #94a4b4);
   }
 
-  .force-line{
-    position:absolute;
-    height:4px;
-    border-radius:999px;
-    background:linear-gradient(90deg, rgba(255,193,74,.12), rgba(255,193,74,.85), rgba(255,193,74,.12));
-    transform-origin:left center;
-    opacity:0;
-    pointer-events:none;
-    filter:drop-shadow(0 0 6px rgba(255,193,74,.35));
-  }
-  .force-line.show{ opacity:1; }
-
   .effect-tag{
     position:absolute;
     left:12px;
@@ -1620,8 +1608,161 @@
     }
   }
 </style>
+<style id="exp7-governance-style">
+  :root{
+    --drawer-collapsed-width:164px;
+    --drawer-stack-offset:26px;
+    --magnet-h:46px;
+  }
+  #app{
+    width:100%;
+    max-width:980px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .task-card.free-mode{
+    opacity:.42 !important;
+    filter:grayscale(.86) saturate(.42) !important;
+  }
+  .quiz-card{
+    width:100%;
+    max-width:980px;
+    margin-top:10px;
+    padding:9px 12px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:11px;
+    background:rgba(255,255,255,.055);
+    color:#dce9f8;
+    transition:opacity .2s, border-color .2s, background .2s;
+  }
+  .quiz-card.ready{
+    border-color:rgba(91,188,255,.34);
+    background:rgba(22,53,80,.38);
+  }
+  .quiz-card.free-locked{ opacity:.46; filter:grayscale(.75); }
+  .quiz-prompt{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-height:30px;
+    font-size:13px;
+    line-height:1.5;
+  }
+  .quiz-row{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    margin-top:8px;
+  }
+  .quiz-row:empty{ display:none; }
+  .quiz-row button{
+    min-height:42px;
+    padding:7px 10px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:9px;
+    background:rgba(255,255,255,.07);
+    color:#f3f8ff;
+    font-size:13px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .audio-toggle{
+    position:absolute;
+    left:52px;
+    top:56px;
+    z-index:44;
+    width:34px;
+    height:34px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:8px;
+    background:rgba(255,255,255,.08);
+    color:#dce9ff;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .audio-toggle.muted{ color:#9fb0c4; opacity:.72; }
+  .audio-toggle.ready{
+    border-color:rgba(61,220,151,.42);
+    box-shadow:0 0 12px rgba(61,220,151,.16);
+  }
+  #stage{
+    height:clamp(560px,64vw,620px) !important;
+    min-height:560px !important;
+    max-height:620px !important;
+  }
+  #stage.lab-demo-paused *{ animation-play-state:paused !important; }
+  #stage .lab-area{ padding:14px 16px 70px !important; }
+  #stage .hint-card{ display:none !important; }
+  #controlBody .btnRow{
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    margin:0 !important;
+  }
+  #controlBody .btnRow + .btnRow{ margin-top:8px !important; }
+  #controlBody button{
+    min-height:42px;
+    padding:8px !important;
+  }
+  #dataDock .chartWrap{ display:none !important; }
+  .toolbar,
+  .explanation{ width:100%; max-width:980px; }
+  .explanation{
+    color:#e8f4ff !important;
+    font-size:15px !important;
+    line-height:1.66 !important;
+  }
+  .explanation h2{
+    color:#9bd3ff !important;
+    font-size:20px !important;
+    line-height:1.35 !important;
+  }
+  @media(min-width:721px){
+    #stage .mobile-tabs,
+    #stage .sheet-close{ display:none !important; }
+    #stage #controlDock,
+    #stage #dataDock{
+      position:absolute !important;
+      right:auto !important;
+      bottom:auto !important;
+      width:min(94%,380px) !important;
+      max-width:380px !important;
+      min-width:0 !important;
+      overflow:hidden !important;
+    }
+    #stage #controlDock.collapsed,
+    #stage #dataDock.collapsed{
+      width:var(--drawer-collapsed-width) !important;
+      max-width:var(--drawer-collapsed-width) !important;
+    }
+    #stage #controlDock.collapsed .drawer-body,
+    #stage #dataDock.collapsed .drawer-body,
+    #stage #controlDock .drawer-body.collapsed,
+    #stage #dataDock .drawer-body.collapsed{
+      display:none !important;
+    }
+    #stage #controlDock.collapsed .drawer-header,
+    #stage #dataDock.collapsed .drawer-header{
+      min-height:46px !important;
+      height:46px !important;
+      overflow:hidden !important;
+      flex-wrap:nowrap !important;
+    }
+  }
+  @media(max-width:720px){
+    #app{ max-width:100%; }
+    .quiz-card{ padding:8px 10px; }
+    .quiz-row{ grid-template-columns:1fr; }
+    .rail{ top:240px !important; }
+    .rail-label{ top:212px !important; }
+  }
+</style>
 </head>
 <body>
+<div id="app">
   <div id="spectrum"></div>
 
   <div class="task-card" id="taskCard">
@@ -1637,22 +1778,33 @@
     </div>
   </div>
 
+  <div class="quiz-card" id="quizCard" aria-live="polite">
+    <div class="quiz-prompt">
+      <span aria-hidden="true">🧠</span>
+      <span id="quizText">完成三次观察并逐次点击“确认观察”后，再进行结论小测。</span>
+    </div>
+    <div class="quiz-row" id="quizRow"></div>
+  </div>
+
   <div id="stage">
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button>
+    </div>
     <div class="hud">
-      <span class="mode-strip" id="modeTag">闯关模式 · 关卡 1/3</span>
+      <span class="mode-strip tag" id="modeTag">闯关模式 · 关卡 1/3</span>
       <span class="tag" id="statusTag">状态：待操作</span>
     </div>
 
 
     <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <button class="audio-toggle" id="audioToggle" type="button" aria-label="关闭音效" aria-pressed="true" title="关闭音效">🔊</button>
     <div class="hint-pop" id="hintPop"></div>
 <div class="lab-area" id="labArea">
       <div class="board-grid"></div>
       <div class="rail" id="rail"></div>
       <div class="rail-label">滑轨磁铁演示区</div>
       <div class="world" id="world"></div>
-      <div class="effect-tag" id="effectTag"><span class="effect-dot"></span><span id="effectText">观察：等待操作</span></div>
-      <div class="lab-note" id="labNote">实验状态：拖动活动磁铁开始观察</div>
       <div class="hint-card" id="hintCard">步骤 1 先观察磁铁能否吸附铁钉；步骤 2、3 再比较同极相斥和异极相吸。</div>
       <div class="bench-top"></div>
       <div class="checkmark" id="checkmark"><div></div></div>
@@ -1660,28 +1812,20 @@
 
     <div class="dock drawer control" id="controlDock" style="right:10px; top:10px;">
       <div class="dockHead drawer-header" id="controlHead" data-drag-handle data-drag-handle>
-        <div class="dockTitle drawer-title">实验面板</div>
+        <div class="dockTitle drawer-title">实验面板 <span class="dockBadge" id="modeBadge">闯关</span></div>
         <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
       </div>
       <div class="dockBody collapsed drawer-body" id="controlBody">
-        <div class="secTitle">过程读数</div>
-        <div class="mini">过程读数就近显示在这里，数据面板只保留历史记录。</div>
-        <div class="readout">
-          <span class="pill">当前任务：<b id="stepPill">吸附铁钉</b></span>
-          <span class="pill">活动磁铁：<b id="activePolePill">左N 右S</b></span>
-          <span class="pill">目标关系：<b id="pairPill">未接近</b></span>
-          <span class="pill">极间距离：<b id="distancePill">--</b></span>
-          <span class="pill">铁钉吸附：<b id="nailPill">0 / 8</b></span>
-          <span class="pill">当前现象：<b id="resultPill">等待观察</b></span>
-        </div>
         <div class="btnRow">
-          <button id="trialResetBtn">本步复位</button>
-          <button id="checkBtn">确认观察 ✅</button>
-        </div>
-        <div class="btnRow">
+          <button id="trialResetBtn">重置本轮</button>
           <button id="flipBtn">翻转活动磁铁</button>
+        </div>
+        <div class="btnRow">
           <button id="targetFlipBtn">翻转目标磁铁</button>
           <button id="rescatterBtn">补撒铁钉</button>
+        </div>
+        <div class="btnRow">
+          <button id="checkBtn">确认观察</button>
         </div>
       </div>
     </div>
@@ -1693,7 +1837,7 @@
       </div>
       <div class="dockBody collapsed drawer-body" id="dataBody">
         <div class="secTitle">数据记录</div>
-        <table class="table">
+        <table class="table record">
           <thead>
             <tr>
               <th>#</th>
@@ -1737,34 +1881,53 @@
   <div class="explanation">
     <h2>实验名：观察磁现象</h2>
     <ul>
-      <li><b>实验说明</b>：让磁铁靠近铁钉和另一块磁铁，比较吸附、相斥和相吸现象。</li>
-      <li><b>原理与结论</b>：磁体两端磁性最强；磁铁能吸引铁等物质，同名磁极相斥，异名磁极相吸。</li>
+      <li><b>实验说明</b>：比较条形磁铁中部与两端靠近铁钉时的现象，再观察两块磁铁不同磁极靠近时的运动。</li>
+      <li><b>实验结论</b>：<span id="conclusionText">完成三组观察和结论小测后显示。</span></li>
     </ul>
   </div>
+</div>
 
 <script>
 const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
-const AUTO_DEMO_FACTOR = 1.28;
+const AUTO_DEMO_TIMING = Object.freeze({
+  cursorPress: 220,
+  panelReveal: 180,
+  buttonAim: 360,
+  dragSoft: 720,
+  actionMotion: 820,
+  selectFast: 320,
+  selectCompare: 560,
+  observePrimary: 780,
+  observeSecondary: 760,
+  observeComparison: 700,
+  recordConfirm: 420,
+  stepTransition: 460,
+  analysisLead: 620,
+  actionSettle: 120
+});
+window.AUTO_DEMO_TIMING = AUTO_DEMO_TIMING;
 
 const TASKS = [
   {
-    short: '吸附铁钉',
-    text: '拖动活动磁铁，吸附桌面上散落的全部铁钉。',
-    hint: '提示：磁铁两端磁性最强，尽量用磁极去接近铁钉。',
-    check: () => state.scene.nails.length > 0 && getAttachedNailCount() === state.scene.nails.length
+    short: '铁钉对照',
+    text: '先用条形磁铁中部、再用两端靠近铁钉，比较现象并吸附全部铁钉。',
+    hint: '提示：保持距离相近，只记录铁钉是否被吸起。',
+    check: () => state.scene.middleProbeObserved &&
+      state.scene.nails.length > 0 &&
+      getAttachedNailCount() === state.scene.nails.length
   },
   {
-    short: '同极相斥',
-    text: '拖动活动磁铁的红色 N 极去靠近目标磁铁的红色 N 极，观察是否排斥。',
-    hint: '提示：看目标磁铁是否沿滑轨被推开。',
+    short: '同名磁极靠近',
+    text: '让活动磁铁的红色 N 极靠近目标磁铁的红色 N 极，观察目标磁铁如何运动。',
+    hint: '提示：只记录目标磁铁是靠近、远离还是无明显变化。',
     check: () => state.scene.lastInteraction === '同极相斥' && state.scene.targetShift >= 28
   },
   {
-    short: '异极相吸',
-    text: '拖动活动磁铁的红色 N 极去靠近目标磁铁的蓝色 S 极，观察是否吸引并贴合。',
-    hint: '提示：看目标磁铁是否被拉近并最终吸附在一起。',
+    short: '异名磁极靠近',
+    text: '让活动磁铁的红色 N 极靠近目标磁铁的蓝色 S 极，观察目标磁铁如何运动。',
+    hint: '提示：继续缓慢靠近，记录两块磁铁最终是否贴合。',
     check: () => state.scene.lastInteraction === '异极相吸' && state.scene.snapped
   }
 ];
@@ -1775,6 +1938,8 @@ const state = {
   demoCompleted: false,
   freeMode: false,
   autoPlaying: false,
+  autoPaused: false,
+  awaitingQuiz: false,
   draggingId: '',
   rafId: 0,
   timers: new Set(),
@@ -1798,9 +1963,13 @@ const state = {
     targetShift: 0,
     pairText: '未接近',
     minDistance: Infinity,
-    targetBounds: { minX: 0, maxX: 0 }
+    targetBounds: { minX: 0, maxX: 0 },
+    middleProbeObserved: false,
+    layoutSize: { width: 0, height: 0 }
   }
 };
+let challengeEntrySnapshot = null;
+let freeWorldSnapshot = null;
 
 const stage = $('#stage');
 const labArea = $('#labArea');
@@ -1815,9 +1984,8 @@ const dots = [$('#dot1'), $('#dot2'), $('#dot3')];
 
 const modeTag = $('#modeTag');
 const statusTag = $('#statusTag');
-const effectText = $('#effectText');
-const labNote = $('#labNote');
 const hintCard = $('#hintCard');
+const modeBadge = $('#modeBadge');
 
 const controlDock = $('#controlDock');
 const controlHead = $('#controlHead');
@@ -1829,13 +1997,6 @@ const dataBody = $('#dataBody');
 const dataToggleBtn = $('#dataToggleBtn');
 const dataNotice = $('#dataNotice');
 const recordBody = $('#recordBody');
-
-const stepPill = $('#stepPill');
-const activePolePill = $('#activePolePill');
-const pairPill = $('#pairPill');
-const distancePill = $('#distancePill');
-const nailPill = $('#nailPill');
-const resultPill = $('#resultPill');
 
 const trialResetBtn = $('#trialResetBtn');
 const checkBtn = $('#checkBtn');
@@ -1850,6 +2011,11 @@ const toastEl = $('#toast');
 const checkmark = $('#checkmark');
 const doneMask = $('#doneMask');
 const okBtn = $('#okBtn');
+const quizCard = $('#quizCard');
+const quizText = $('#quizText');
+const quizRow = $('#quizRow');
+const conclusionText = $('#conclusionText');
+const audioToggle = $('#audioToggle');
 
 const demoCursor = $('#demoCursor');
 const demoCursorPulse = $('#demoCursorPulse');
@@ -1867,8 +2033,18 @@ function wait(ms){
   });
 }
 async function waitAuto(ms, runId){
-  await wait(Math.round(ms * AUTO_DEMO_FACTOR));
-  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+  let remaining = Math.max(0, Number(ms) || 0);
+  while(remaining > 0){
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    if(state.autoPaused){
+      await new Promise((resolve)=>setTimeout(resolve, 16));
+      continue;
+    }
+    const slice = Math.min(remaining, 16);
+    await new Promise((resolve)=>setTimeout(resolve, slice));
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    if(!state.autoPaused) remaining -= slice;
+  }
 }
 async function waitForAutoCondition(check, timeoutMs, runId, errorCode){
   const start = performance.now();
@@ -1913,26 +2089,53 @@ function showCheck(){
 }
 showCheck.t = 0;
 
+function getStatusEvidence(){
+  if(state.completed) return '三组记录完成';
+  if(state.awaitingQuiz) return '等待结论小测';
+  if(state.freeMode){
+    if(state.scene.snapped) return '两块磁铁已贴合';
+    if(state.scene.lastInteraction === '同极相斥') return '目标磁铁正在移开';
+    if(state.scene.lastInteraction === '异极相吸') return '目标磁铁正在靠近';
+    const total = state.scene.nails.length;
+    return total ? `铁钉 ${getAttachedNailCount()}/${total}` : '自由探索';
+  }
+  if(state.currentTask === 0){
+    const middle = state.scene.middleProbeObserved ? '中部已观察' : '中部待观察';
+    return `${middle} · 铁钉 ${getAttachedNailCount()}/${state.scene.nails.length}`;
+  }
+  if(state.currentTask === 1){
+    return state.scene.lastInteraction === '同极相斥' && state.scene.targetShift >= 28
+      ? '目标磁铁明显移开'
+      : '等待运动证据';
+  }
+  return state.scene.snapped ? '两块磁铁已贴合' : '等待运动证据';
+}
 function setStatus(text){
-  statusTag.textContent = `状态：${text || '待操作'}`;
+  const base = text || '待操作';
+  const evidence = getStatusEvidence();
+  statusTag.textContent = `状态：${base}${evidence ? ` · ${evidence}` : ''}`;
 }
 function updateModeHud(){
   modeTag.classList.remove('mode-auto');
   if(state.autoPlaying){
-    modeTag.textContent = state.completed ? '演示模式 · 演示完成' : '演示模式 · 自动运行';
+    modeTag.textContent = state.autoPaused
+      ? '模式：演示模式 · 已暂停'
+      : (state.completed ? '模式：演示模式 · 演示完成' : '模式：演示模式 · 自动运行');
     modeTag.classList.add('mode-auto');
   }else if(state.freeMode){
-    modeTag.textContent = '自由模式 · 自主探索';
+    modeTag.textContent = '模式：自由模式 · 自主探索';
   }else{
-    modeTag.textContent = state.completed ? (state.demoCompleted ? '演示模式 · 演示完成' : '闯关模式 · 已通关') : `闯关模式 · 关卡 ${state.currentTask + 1}/3`;
+    modeTag.textContent = state.completed
+      ? (state.demoCompleted ? '模式：演示模式 · 演示完成' : '模式：闯关模式 · 已通关')
+      : (state.awaitingQuiz ? '模式：闯关模式 · 结论小测' : `模式：闯关模式 · 关卡 ${state.currentTask + 1}/3`);
   }
 }
 
 function renderStepDots(){
   const last = TASKS.length - 1;
   dots.forEach((d, idx)=>{
-    const done = idx < state.currentTask || (state.completed && idx === last);
-    const active = idx === state.currentTask && !state.completed;
+    const done = state.awaitingQuiz || state.completed || idx < state.currentTask;
+    const active = idx === state.currentTask && !state.completed && !state.awaitingQuiz;
     d.classList.toggle('done', done);
     d.classList.toggle('active', active);
     d.classList.toggle('warn', active && state.warningStep === state.currentTask);
@@ -1943,10 +2146,21 @@ function setStepUI(i){
   state.currentTask = clamp(i, 0, TASKS.length - 1);
   const t = TASKS[state.currentTask];
   if(state.warningStep !== state.currentTask) state.warningStep = -1;
-  taskStepEl.textContent = `关卡 ${state.currentTask + 1} / ${TASKS.length}`;
-  taskTextEl.textContent = t.text;
-  taskHintEl.textContent = t.hint;
+  if(state.completed){
+    taskStepEl.textContent = `完成 ${TASKS.length}/${TASKS.length}`;
+    taskTextEl.textContent = '三组观察和结论小测已完成。';
+    taskHintEl.textContent = '可打开数据面板复核三组实验记录。';
+  }else if(state.awaitingQuiz){
+    taskStepEl.textContent = '结论小测';
+    taskTextEl.textContent = '根据三组观察记录，判断不同磁极靠近时的共同规律。';
+    taskHintEl.textContent = '提示：只依据目标磁铁的运动方向和是否贴合作答。';
+  }else{
+    taskStepEl.textContent = `关卡 ${state.currentTask + 1} / ${TASKS.length}`;
+    taskTextEl.textContent = t.text;
+    taskHintEl.textContent = t.hint;
+  }
   renderStepDots();
+  renderQuiz();
   refreshReadouts();
   updateModeHud();
 }
@@ -1954,6 +2168,7 @@ function warnCurrentStep(msg){
   if(state.freeMode || state.completed) return;
   state.warningStep = state.currentTask;
   renderStepDots();
+  playUiSound('warn');
   showToast(msg);
 }
 
@@ -1964,7 +2179,7 @@ class Magnet {
     this.x = x;
     this.y = y;
     this.w = 146;
-    this.h = 42;
+    this.h = 46;
     this.flipped = !!flipped;
     this.baseX = x;
     this.baseY = y;
@@ -2070,15 +2285,10 @@ function clearScene(){
     targetShift: 0,
     pairText: '未接近',
     minDistance: Infinity,
-    targetBounds: { minX: 0, maxX: 0 }
+    targetBounds: { minX: 0, maxX: 0 },
+    middleProbeObserved: false,
+    layoutSize: { width: 0, height: 0 }
   };
-}
-
-function createForceLine(){
-  const line = document.createElement('div');
-  line.className = 'force-line';
-  world.appendChild(line);
-  return line;
 }
 
 function getRailY(){
@@ -2127,6 +2337,7 @@ function scatterNails(count){
 function initScene(){
   clearScene();
   const rect = labArea.getBoundingClientRect();
+  state.scene.layoutSize = { width:rect.width, height:rect.height };
   const railY = getRailY();
   const active = new Magnet('active', 'active', 54, state.currentTask === 0 ? 126 : rail.offsetLeft - 6, state.currentTask > 0);
   active.setPos(54, state.currentTask === 0 ? 126 : railY);
@@ -2139,38 +2350,29 @@ function initScene(){
     target.baseX = target.x;
     state.scene.magnets.push(target);
     scatterNails(8);
-    hintCard.textContent = '自由模式：可拖动活动磁铁，并用面板按钮翻转活动磁铁或目标磁铁进行对比。';
-    setStageMessage('自由探索：可自由比较吸铁、相斥和相吸现象。', '等待观察');
+    hintCard.textContent = '自由模式：可拖动活动磁铁，并翻转两块磁铁进行对比。';
   } else if(state.currentTask === 0){
     scatterNails(6);
-    hintCard.textContent = '先拖动活动磁铁去吸附桌面上的铁钉，再点击“确认观察”。';
-    setStageMessage('步骤1：请拖动活动磁铁去吸附铁钉。', '等待观察');
+    hintCard.textContent = '先用磁铁中部靠近一枚铁钉，再用两端吸附全部铁钉。';
   } else if(state.currentTask === 1){
     const target = new Magnet('target', 'target', rect.width - 248, railY, false);
     state.scene.targetBounds = getRailBounds();
     target.setPos(state.scene.targetBounds.minX + (state.scene.targetBounds.maxX - state.scene.targetBounds.minX) * 0.42, railY);
     target.baseX = target.x;
     state.scene.magnets.push(target);
-    hintCard.textContent = '让活动磁铁右侧的 N 极靠近目标磁铁左侧的 N 极，观察滑轨上的目标磁铁被推开。';
-    setStageMessage('步骤2：请观察同极相斥。', '未接近');
+    hintCard.textContent = '让右侧 N 极靠近目标磁铁左侧 N 极，观察目标磁铁的运动方向。';
   } else {
     const target = new Magnet('target', 'target', rect.width - 248, railY, true);
     state.scene.targetBounds = getRailBounds();
     target.setPos(state.scene.targetBounds.minX + (state.scene.targetBounds.maxX - state.scene.targetBounds.minX) * 0.42, railY);
     target.baseX = target.x;
     state.scene.magnets.push(target);
-    hintCard.textContent = '让活动磁铁右侧的 N 极靠近目标磁铁左侧的 S 极，观察目标磁铁被拉近并吸附。';
-    setStageMessage('步骤3：请观察异极相吸。', '未接近');
+    hintCard.textContent = '让右侧 N 极靠近目标磁铁左侧 S 极，观察目标磁铁的运动方向。';
   }
 
   state.warningStep = -1;
   refreshReadouts();
   startPhysicsLoop();
-}
-
-function setStageMessage(note, result){
-  labNote.textContent = `实验状态：${note}`;
-  effectText.textContent = `观察：${result}`;
 }
 
 function getAttachedNailCount(){
@@ -2204,10 +2406,22 @@ function updateNailAttachment(){
     }
     for(const magnet of magnets){
       const poles = magnet.getPoles();
+      const nailPoint = { x:nail.x + 13, y:nail.y + 3 };
+      if(
+        magnet.role === 'active' &&
+        !state.freeMode &&
+        state.currentTask === 0
+      ){
+        const center = { x:magnet.x + magnet.w / 2, y:magnet.y + magnet.h / 2 };
+        const poleDistances = poles.map((pole)=>dist(nailPoint, pole));
+        if(dist(nailPoint, center) < 26 && poleDistances.every((value)=>value > 32)){
+          state.scene.middleProbeObserved = true;
+        }
+      }
       for(let i = 0; i < poles.length; i++){
         const pole = poles[i];
-        const d = dist({ x: nail.x + 13, y: nail.y + 3 }, pole);
-        if(d < 56){
+        const d = dist(nailPoint, pole);
+        if(d < 30){
           nail.attachedTo = {
             magnet,
             poleIndex: i,
@@ -2223,31 +2437,6 @@ function updateNailAttachment(){
       if(nail.attachedTo) break;
     }
   }
-}
-
-function renderForceLine(pair){
-  let line = $('#forceLine');
-  if(!line){
-    line = createForceLine();
-    line.id = 'forceLine';
-  }
-  if(!pair || pair.distance > 180){
-    line.classList.remove('show');
-    return;
-  }
-  const x1 = pair.activePole.x;
-  const y1 = pair.activePole.y;
-  const x2 = pair.targetPole.x;
-  const y2 = pair.targetPole.y;
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const len = Math.max(18, Math.hypot(dx, dy));
-  const ang = Math.atan2(dy, dx) * 180 / Math.PI;
-  line.classList.add('show');
-  line.style.left = `${x1}px`;
-  line.style.top = `${y1}px`;
-  line.style.width = `${len}px`;
-  line.style.transform = `translateY(-50%) rotate(${ang}deg)`;
 }
 
 function poleSideOffset(magnet, side){
@@ -2268,12 +2457,14 @@ function lockTargetToActive(active, target, pair, bounds){
 }
 
 function engageSnapLock(active, target, pair, bounds){
+  const wasEngaged = state.scene.snapLock.engaged;
   state.scene.snapLock.engaged = true;
   state.scene.snapLock.activeSide = pair.activePole.side;
   state.scene.snapLock.targetSide = pair.targetPole.side;
   lockTargetToActive(active, target, pair, bounds);
   state.scene.snapped = true;
   state.scene.lastInteraction = '异极相吸';
+  if(!wasEngaged) playUiSound('snap');
 }
 
 function canKeepSnap(active, target, pair){
@@ -2339,44 +2530,28 @@ function refreshExperimentPhysics(){
     state.scene.targetShift = 0;
   }
 
-  renderForceLine(pair);
   refreshReadouts();
 }
 
 function refreshReadouts(){
-  const active = state.scene.magnets.find((m)=>m.role === 'active');
   const target = state.scene.magnets.find((m)=>m.role === 'target');
-  stepPill.textContent = TASKS[state.currentTask].short;
-  activePolePill.textContent = active ? active.activePoleText() : '--';
-  pairPill.textContent = state.scene.pairText;
-  distancePill.textContent = Number.isFinite(state.scene.minDistance) ? `${state.scene.minDistance.toFixed(1)} px` : '--';
-  nailPill.textContent = `${getAttachedNailCount()} / ${state.scene.nails.length}`;
-  resultPill.textContent = state.scene.lastInteraction;
-
   if(target){
     const targetPoles = target.getPoles();
-    targetFlipBtn.disabled = !(state.freeMode || state.currentTask > 0) || state.autoPlaying;
+    targetFlipBtn.disabled = state.awaitingQuiz ||
+      !(state.freeMode || state.currentTask > 0) ||
+      state.autoPlaying;
     targetFlipBtn.textContent = `翻转目标磁铁（左${targetPoles[0].type} 右${targetPoles[1].type}）`;
   } else {
     targetFlipBtn.disabled = true;
     targetFlipBtn.textContent = '翻转目标磁铁';
   }
-  flipBtn.disabled = state.autoPlaying;
-  rescatterBtn.disabled = state.autoPlaying || (!state.freeMode && state.currentTask !== 0);
+  flipBtn.disabled = state.autoPlaying || state.awaitingQuiz;
+  rescatterBtn.disabled = state.autoPlaying ||
+    state.awaitingQuiz ||
+    (!state.freeMode && state.currentTask !== 0);
 
-  if(state.completed){
-    setStageMessage('挑战完成', '已完成全部观察');
-  } else if(state.freeMode){
-    setStageMessage('自由探索中，可反复比较现象。', state.scene.lastInteraction);
-  } else if(state.currentTask === 0){
-    setStageMessage('步骤1：请拖动活动磁铁去吸附铁钉。', state.scene.lastInteraction);
-  } else if(state.currentTask === 1){
-    setStageMessage(`步骤2：目标磁铁已偏移 ${state.scene.targetShift.toFixed(1)} px。`, state.scene.lastInteraction);
-  } else {
-    setStageMessage(state.scene.snapped ? '步骤3：两块磁铁已吸附在一起。' : '步骤3：继续靠近，观察吸引。', state.scene.lastInteraction);
-  }
-
-  if(state.autoPlaying) setStatus('演示中');
+  if(state.autoPaused) setStatus('演示已暂停');
+  else if(state.autoPlaying) setStatus('演示中');
   else if(state.freeMode) setStatus('自由探索');
   else if(state.completed) setStatus('挑战完成');
   else if(state.draggingId) setStatus('拖动观察中');
@@ -2406,6 +2581,65 @@ function refreshDataNotice(){
   dataNotice.classList.toggle('show', state.dataCollapsed && n > 0);
 }
 
+function renderQuiz(){
+  const ready = state.awaitingQuiz && !state.completed;
+  quizCard.classList.toggle('ready', ready);
+  quizCard.classList.toggle('free-locked', state.freeMode);
+  if(!ready){
+    quizText.textContent = state.completed
+      ? '结论小测已完成。'
+      : '完成三次观察并逐次点击“确认观察”后，再进行结论小测。';
+    quizRow.replaceChildren();
+    return;
+  }
+  quizText.textContent = '两块磁铁的不同磁极靠近时，哪项规律与观察记录相符？';
+  quizRow.replaceChildren();
+  [
+    ['同名磁极相斥，异名磁极相吸', true],
+    ['同名磁极相吸，异名磁极相斥', false],
+    ['所有磁极都相互吸引', false]
+  ].forEach(([label, correct])=>{
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = label;
+    button.disabled = state.freeMode || state.autoPlaying;
+    button.addEventListener('click', ()=>answerQuiz(correct, false));
+    quizRow.appendChild(button);
+  });
+}
+
+function finishExperiment(fromAuto = false){
+  state.awaitingQuiz = false;
+  state.completed = true;
+  if(fromAuto) state.demoCompleted = true;
+  conclusionText.textContent = '条形磁体两端磁性较强，能吸引铁质物体；同名磁极相斥，异名磁极相吸。';
+  setStepUI(state.currentTask);
+  refreshInteractionLocks();
+  setControlCollapsed(false);
+  setDataCollapsed(true);
+  defaultDockPositions(true);
+  setStatus('挑战完成');
+  playUiSound('finish');
+  doneMask.style.display = 'flex';
+}
+
+function answerQuiz(correct, fromAuto = false){
+  if(!state.awaitingQuiz || state.completed) return false;
+  if(state.freeMode && !fromAuto) return false;
+  if(state.autoPlaying && !fromAuto) return false;
+  if(!correct){
+    if(!fromAuto){
+      playUiSound('warn');
+      showToast('请重新比较目标磁铁在两次观察中的运动方向。');
+    }
+    return false;
+  }
+  playUiSound('step');
+  showToast('回答正确，已形成实验结论。');
+  finishExperiment(fromAuto);
+  return true;
+}
+
 function lockSuccess(){
   state.successCooldown = true;
   const id = setTimeout(()=>{
@@ -2418,24 +2652,24 @@ function lockSuccess(){
 function buildRecordForCurrentStep(){
   if(state.currentTask === 0){
     return {
-      phenomenon: '磁铁吸引铁钉',
-      reading: `吸附 ${getAttachedNailCount()} / ${state.scene.nails.length} 枚`
+      phenomenon: '中部与两端对照',
+      reading: `中部对照后，两端吸附 ${getAttachedNailCount()} / ${state.scene.nails.length} 枚`
     };
   }
   if(state.currentTask === 1){
     return {
-      phenomenon: '同极相斥',
-      reading: `N 对 N，位移 ${state.scene.targetShift.toFixed(1)} px`
+      phenomenon: '同名磁极靠近',
+      reading: 'N 对 N，目标磁铁明显移开'
     };
   }
   return {
-    phenomenon: '异极相吸',
-    reading: `N 对 S，极间距 ${Math.max(0, state.scene.minDistance).toFixed(1)} px`
+    phenomenon: '异名磁极靠近',
+    reading: 'N 对 S，两块磁铁贴合'
   };
 }
 
 function passCurrentTask(fromAuto = false){
-  if(state.successCooldown || state.completed) return false;
+  if(state.successCooldown || state.completed || state.awaitingQuiz) return false;
 
   if(state.freeMode && !fromAuto){
     showToast('自由模式下可继续比较现象，不进入闯关判定。');
@@ -2444,7 +2678,7 @@ function passCurrentTask(fromAuto = false){
 
   if(!TASKS[state.currentTask].check()){
     if(!fromAuto){
-      if(state.currentTask === 0) warnCurrentStep('请先用磁极吸附全部铁钉。');
+      if(state.currentTask === 0) warnCurrentStep('请先用磁铁中部完成对照，再用两端吸附全部铁钉。');
       else if(state.currentTask === 1) warnCurrentStep('请先让 N 极靠近 N 极，并观察目标磁铁被推开。');
       else warnCurrentStep('请先让 N 极靠近 S 极，并观察两块磁铁吸附。');
     }
@@ -2455,15 +2689,15 @@ function passCurrentTask(fromAuto = false){
   const record = buildRecordForCurrentStep();
   addRecord(`步骤${state.currentTask + 1}`, record.phenomenon, record.reading);
   showCheck();
+  playUiSound('step');
   lockSuccess();
 
   if(state.currentTask >= TASKS.length - 1){
-    state.completed = true;
-    if (state.autoPlaying) state.demoCompleted = true;
-    renderStepDots();
-    refreshReadouts();
-    setStatus('挑战完成');
-    doneMask.style.display = 'flex';
+    state.awaitingQuiz = true;
+    setStepUI(state.currentTask);
+    refreshInteractionLocks();
+    setStatus('等待结论小测');
+    if(!fromAuto) showToast('三组观察已记录，请完成结论小测。');
   } else {
     setStepUI(state.currentTask + 1);
     initScene();
@@ -2474,7 +2708,7 @@ function passCurrentTask(fromAuto = false){
 
 function startMagnetDrag(e, magnet){
   if(e.button !== 0) return;
-  if(state.autoPlaying || state.completed) return;
+  if(state.autoPlaying || state.completed || state.awaitingQuiz) return;
   state.draggingId = magnet.id;
   state.dragPointerId = e.pointerId;
   state.dragOffsetX = e.clientX - magnet.el.getBoundingClientRect().left;
@@ -2538,7 +2772,7 @@ function flipTargetMagnet(){
   showToast('已翻转目标磁铁。');
 }
 function resetCurrentScene(){
-  if(state.autoPlaying) return;
+  if(state.autoPlaying || state.awaitingQuiz) return;
   initScene();
   showToast(state.freeMode ? '自由场景已复位。' : `已复位当前步骤：${TASKS[state.currentTask].short}。`);
 }
@@ -2546,11 +2780,11 @@ function resetCurrentScene(){
 trialResetBtn.onclick = () => resetCurrentScene();
 checkBtn.onclick = () => { passCurrentTask(false); };
 flipBtn.onclick = () => {
-  if(state.autoPlaying) return;
+  if(state.autoPlaying || state.awaitingQuiz) return;
   flipActiveMagnet();
 };
 targetFlipBtn.onclick = () => {
-  if(state.autoPlaying) return;
+  if(state.autoPlaying || state.awaitingQuiz) return;
   if(!state.freeMode && state.currentTask === 0){
     warnCurrentStep('当前步骤没有目标磁铁。');
     return;
@@ -2558,7 +2792,7 @@ targetFlipBtn.onclick = () => {
   flipTargetMagnet();
 };
 rescatterBtn.onclick = () => {
-  if(state.autoPlaying) return;
+  if(state.autoPlaying || state.awaitingQuiz) return;
   if(!state.freeMode && state.currentTask !== 0){
     warnCurrentStep('当前步骤无需补撒铁钉。');
     return;
@@ -2574,11 +2808,13 @@ rescatterBtn.onclick = () => {
 
 function setControlCollapsed(on){
   state.panelCollapsed = !!on;
+  controlDock.classList.toggle('collapsed', state.panelCollapsed);
   controlBody.classList.toggle('collapsed', state.panelCollapsed);
   controlToggleBtn.textContent = state.panelCollapsed ? '展开' : '收起';
 }
 function setDataCollapsed(on){
   state.dataCollapsed = !!on;
+  dataDock.classList.toggle('collapsed', state.dataCollapsed);
   dataBody.classList.toggle('collapsed', state.dataCollapsed);
   dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
   if(!state.dataCollapsed) state.unseenRecordCount = 0;
@@ -2627,7 +2863,7 @@ function startPhysicsLoop(){
     state.rafId = 0;
   }
   const tick = () => {
-    refreshExperimentPhysics();
+    if(!state.autoPaused) refreshExperimentPhysics();
     state.rafId = requestAnimationFrame(tick);
   };
   tick();
@@ -2670,19 +2906,30 @@ function resolveDrawerOverlap(force = false){
   if(best) setDockPos(dataDock, best.x, best.y);
 }
 function defaultDockPositions(force = false){
+  if(window.innerWidth <= 720){
+    if(typeof window.codexLabMobileSync === 'function') window.codexLabMobileSync();
+    return;
+  }
   const s = getStageRect();
-  const pad = 10;
+  const pad = 12;
   const cr = controlDock.getBoundingClientRect();
   const dr = dataDock.getBoundingClientRect();
-
-  if(force || !state.dockMoved.control) setDockPos(controlDock, s.width - cr.width - pad, pad);
-  const cNow = controlDock.getBoundingClientRect();
-  const baseY = cNow.bottom - s.top + 8;
-  if(force || !state.dockMoved.data){
-    const next = clampDockPos(dataDock, s.width - dr.width - pad, baseY);
-    setDockPos(dataDock, next.x, next.y);
+  const top = 58;
+  if(force || !state.dockMoved.control){
+    setDockPos(controlDock, s.width - cr.width - pad, top);
   }
-  resolveDrawerOverlap();
+  if(force || !state.dockMoved.data){
+    let dataTop = top + 26;
+    if(!state.panelCollapsed && state.dataCollapsed){
+      dataTop = top + Math.max(24, cr.height - 12);
+    }else if(state.panelCollapsed && !state.dataCollapsed){
+      dataTop = top;
+      if(force || !state.dockMoved.control){
+        setDockPos(controlDock, s.width - cr.width - pad, top + Math.max(24, dr.height - 12));
+      }
+    }
+    setDockPos(dataDock, s.width - dr.width - pad, dataTop);
+  }
 }
 function bindDockDrag(el, headEl, kind){
   let dragging = false;
@@ -2731,59 +2978,240 @@ function bindDockDrag(el, headEl, kind){
 }
 bindDockDrag(controlDock, controlHead, 'control');
 bindDockDrag(dataDock, dataHead, 'data');
+controlDock.addEventListener('pointerdown', ()=>bringToFront('control'), true);
+dataDock.addEventListener('pointerdown', ()=>bringToFront('data'), true);
+
+function cloneData(value){
+  try {
+    if(typeof structuredClone === 'function') return structuredClone(value);
+  } catch (error) {
+    console.warn('structuredClone failed', error);
+  }
+  return JSON.parse(JSON.stringify(value));
+}
+
+function captureSceneSnapshot(){
+  const magnets = [...new Map(
+    state.scene.magnets.map((magnet)=>[magnet.id, magnet])
+  ).values()];
+  return {
+    magnets:magnets.map((magnet)=>({
+      id:magnet.id,
+      role:magnet.role,
+      x:magnet.x,
+      y:magnet.y,
+      flipped:magnet.flipped,
+      baseX:magnet.baseX,
+      baseY:magnet.baseY
+    })),
+    nails:state.scene.nails.map((nail)=>({
+      x:nail.x,
+      y:nail.y,
+      baseX:nail.baseX,
+      baseY:nail.baseY,
+      rot:nail.rot,
+      attachedTo:nail.attachedTo ? {
+        magnetId:nail.attachedTo.magnet.id,
+        poleIndex:nail.attachedTo.poleIndex,
+        dx:nail.attachedTo.dx,
+        dy:nail.attachedTo.dy,
+        angle:nail.attachedTo.angle
+      } : null
+    })),
+    meta:{
+      lastInteraction:state.scene.lastInteraction,
+      snapped:state.scene.snapped,
+      snapLock:cloneData(state.scene.snapLock),
+      targetShift:state.scene.targetShift,
+      pairText:state.scene.pairText,
+      minDistance:state.scene.minDistance,
+      targetBounds:cloneData(state.scene.targetBounds),
+      middleProbeObserved:state.scene.middleProbeObserved,
+      layoutSize:cloneData(state.scene.layoutSize)
+    }
+  };
+}
+
+function restoreSceneSnapshot(snapshot){
+  if(!snapshot) return;
+  clearScene();
+  const magnetMap = new Map();
+  snapshot.magnets.forEach((saved)=>{
+    const magnet = new Magnet(
+      saved.id,
+      saved.role,
+      saved.x,
+      saved.y,
+      saved.flipped
+    );
+    magnet.setPos(saved.x, saved.y);
+    magnet.baseX = saved.baseX;
+    magnet.baseY = saved.baseY;
+    state.scene.magnets.push(magnet);
+    magnetMap.set(magnet.id, magnet);
+  });
+  snapshot.nails.forEach((saved)=>{
+    const nail = new Nail(saved.x, saved.y);
+    nail.baseX = saved.baseX;
+    nail.baseY = saved.baseY;
+    nail.rot = saved.rot;
+    nail.moveTo(saved.x, saved.y, saved.rot);
+    if(saved.attachedTo){
+      const magnet = magnetMap.get(saved.attachedTo.magnetId);
+      if(magnet){
+        nail.attachedTo = {
+          magnet,
+          poleIndex:saved.attachedTo.poleIndex,
+          dx:saved.attachedTo.dx,
+          dy:saved.attachedTo.dy,
+          angle:saved.attachedTo.angle
+        };
+      }
+    }
+    state.scene.nails.push(nail);
+  });
+  Object.assign(state.scene, cloneData(snapshot.meta || {}));
+  startPhysicsLoop();
+  relayoutScene();
+  refreshExperimentPhysics();
+}
+
+function captureWorldSnapshot(){
+  const skip = new Set([
+    'scene', 'timers', 'rafId', 'autoPlaying', 'autoPaused', 'freeMode',
+    'draggingId', 'dragPointerId', 'successCooldown'
+  ]);
+  const stateData = {};
+  Object.keys(state).forEach((key)=>{
+    if(skip.has(key)) return;
+    const value = state[key];
+    if(typeof value === 'function' || (value && value.nodeType)) return;
+    try { stateData[key] = cloneData(value); }
+    catch (error) { console.warn(`snapshot state failed: ${key}`, error); }
+  });
+  return {
+    stateData,
+    scene:captureSceneSnapshot(),
+    conclusion:conclusionText.textContent,
+    doneDisplay:doneMask.style.display
+  };
+}
+
+function restoreWorldSnapshot(snapshot, keepFree){
+  if(!snapshot) return;
+  clearTrackedTimers();
+  Object.entries(snapshot.stateData || {}).forEach(([key, value])=>{
+    state[key] = cloneData(value);
+  });
+  state.autoPlaying = false;
+  state.autoPaused = false;
+  state.successCooldown = false;
+  state.freeMode = !!keepFree;
+  state.draggingId = '';
+  state.dragPointerId = -1;
+  stage.classList.remove('lab-demo-paused');
+  taskCard.classList.toggle('free-mode', state.freeMode);
+  taskCard.dataset.mode = state.freeMode ? 'free' : 'challenge';
+  doneMask.style.display = state.freeMode ? 'none' : (snapshot.doneDisplay || 'none');
+  conclusionText.textContent = snapshot.conclusion;
+  setControlCollapsed(state.panelCollapsed);
+  setDataCollapsed(state.dataCollapsed);
+  restoreSceneSnapshot(snapshot.scene);
+  renderRecordTable();
+  refreshDataNotice();
+  setStepUI(state.currentTask);
+  refreshModeStyle();
+  refreshInteractionLocks();
+}
+
+function refreshModeStyle(){
+  modeBadge.textContent = state.freeMode ? '自由' : '闯关';
+  modeBadge.style.background = state.freeMode
+    ? 'rgba(255,183,77,.95)'
+    : 'rgba(61,220,151,.95)';
+}
 
 function refreshInteractionLocks(){
-  const autoLocked = state.autoPlaying;
-  trialResetBtn.disabled = autoLocked;
-  checkBtn.disabled = autoLocked;
-  resetBtn.disabled = autoLocked;
-  freeBtn.disabled = autoLocked;
-  flipBtn.disabled = autoLocked;
-  targetFlipBtn.disabled = autoLocked || (!state.freeMode && !state.scene.magnets.find((m)=>m.role === 'target'));
-  rescatterBtn.disabled = autoLocked || (!state.freeMode && state.currentTask !== 0);
-
-  if(autoLocked){
-    autoDemoBtn.textContent = '退出演示';
-    autoDemoBtn.disabled = false;
-  }else{
-    autoDemoBtn.textContent = '演示模式';
-    autoDemoBtn.disabled = state.freeMode;
-  }
+  const auto = state.autoPlaying;
+  const quizLocked = state.awaitingQuiz;
+  trialResetBtn.disabled = auto || quizLocked;
+  checkBtn.disabled = auto || quizLocked;
+  flipBtn.disabled = auto || quizLocked;
+  targetFlipBtn.disabled = auto ||
+    quizLocked ||
+    (!state.freeMode && !state.scene.magnets.find((magnet)=>magnet.role === 'target'));
+  rescatterBtn.disabled = auto ||
+    quizLocked ||
+    (!state.freeMode && state.currentTask !== 0);
+  resetBtn.disabled = false;
+  resetBtn.textContent = auto
+    ? (state.autoPaused ? '继续演示' : '暂停演示')
+    : (state.freeMode ? '重置操作' : '重置关卡');
+  autoDemoBtn.textContent = auto ? '退出演示' : '演示模式';
+  autoDemoBtn.disabled = state.freeMode && !auto;
+  freeBtn.disabled = auto;
   freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+  renderQuiz();
 }
 
 function setFreeMode(on){
   if(state.autoPlaying) return;
-  state.freeMode = !!on;
-  state.warningStep = -1;
-  doneMask.style.display = 'none';
-  if(state.freeMode){
-    taskCard.style.opacity = '.28';
-    taskCard.style.filter = 'grayscale(.6)';
-    setStatus('自由探索');
-    showToast('自由模式：可比较不同磁极排列和吸铁效果。');
-  }else{
-    taskCard.style.opacity = '1';
-    taskCard.style.filter = 'none';
-    setStatus('待操作');
+  if(on && !state.freeMode && state.draggingId){
+    showToast('请先松开活动磁铁，再进入自由模式。');
+    return;
   }
+  state.warningStep = -1;
+  if(on && !state.freeMode){
+    challengeEntrySnapshot = captureWorldSnapshot();
+    state.freeMode = true;
+    state.completed = false;
+    state.awaitingQuiz = false;
+    doneMask.style.display = 'none';
+    taskCard.classList.add('free-mode');
+    taskCard.dataset.mode = 'free';
+    initScene();
+    freeWorldSnapshot = captureWorldSnapshot();
+    setStatus('自由探索');
+    showToast('自由模式：可比较不同磁极排列和吸铁效果，不进行步骤判定。');
+  }else if(!on && state.freeMode){
+    const snapshot = challengeEntrySnapshot;
+    challengeEntrySnapshot = null;
+    freeWorldSnapshot = null;
+    restoreWorldSnapshot(snapshot, false);
+    setStatus(state.awaitingQuiz ? '等待结论小测' : '待操作');
+    showToast('已回到闯关模式。');
+    return;
+  }
+  refreshModeStyle();
   updateModeHud();
   refreshInteractionLocks();
-  initScene();
   renderStepDots();
+  refreshReadouts();
+}
+
+function resetFreeOperation(){
+  if(!state.freeMode || !freeWorldSnapshot) return;
+  restoreWorldSnapshot(freeWorldSnapshot, true);
+  taskCard.classList.add('free-mode');
+  taskCard.dataset.mode = 'free';
+  setStatus('自由探索');
+  showToast('自由模式操作已重置。');
 }
 
 function resetAll(opts = {}){
   const { preserveAuto = false, showTip = true, preserveFreeMode = false } = opts;
   clearTrackedTimers();
+  stage.classList.remove('lab-demo-paused');
   const keepFree = preserveFreeMode && state.freeMode;
 
   if(!preserveAuto){
     state.autoPlaying = false;
+    state.autoPaused = false;
     state.demoRunId += 1;
   }
 
   state.completed = false; state.demoCompleted = false;
+  state.awaitingQuiz = false;
   state.successCooldown = false;
   state.warningStep = -1;
   state.currentTask = 0;
@@ -2792,6 +3220,7 @@ function resetAll(opts = {}){
   state.draggingId = '';
   state.dragPointerId = -1;
   doneMask.style.display = 'none';
+  conclusionText.textContent = '完成三组观察和结论小测后显示。';
 
   setControlCollapsed(true);
   setDataCollapsed(true);
@@ -2800,13 +3229,18 @@ function resetAll(opts = {}){
   defaultDockPositions(true);
 
   state.freeMode = !!keepFree;
-  taskCard.style.opacity = keepFree ? '.28' : '1';
-  taskCard.style.filter = keepFree ? 'grayscale(.6)' : 'none';
+  taskCard.classList.toggle('free-mode', keepFree);
+  taskCard.dataset.mode = keepFree ? 'free' : 'challenge';
+  if(!keepFree){
+    challengeEntrySnapshot = null;
+    freeWorldSnapshot = null;
+  }
 
   renderRecordTable();
   refreshDataNotice();
   setStepUI(0);
   updateModeHud();
+  refreshModeStyle();
   refreshInteractionLocks();
   initScene();
   if(showTip && !state.autoPlaying) showToast(keepFree ? '自由模式场景已重置。' : '已重置：回到步骤1。');
@@ -2838,7 +3272,7 @@ function hideDemoCursor(){
   demoCursorPulse.style.left = '-200px';
   demoCursorPulse.style.top = '-200px';
 }
-async function clickDemoCursor(ms = 200, runId = state.demoRunId){
+async function clickDemoCursor(ms = AUTO_DEMO_TIMING.cursorPress, runId = state.demoRunId){
   if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
   demoCursor.classList.add('clicking');
   const x = Number.parseFloat(demoCursor.style.left || '0');
@@ -2859,11 +3293,11 @@ function elemCenterInStage(el){
 async function demoClickElement(el, runId, action = null){
   const p = elemCenterInStage(el);
   setDemoCursor(p.x, p.y);
-  await waitAuto(240, runId);
-  await clickDemoCursor(160, runId);
+  await waitAuto(AUTO_DEMO_TIMING.buttonAim, runId);
+  await clickDemoCursor(AUTO_DEMO_TIMING.cursorPress, runId);
   if(action) await action();
   else el.click();
-  await waitAuto(200, runId);
+  await waitAuto(AUTO_DEMO_TIMING.recordConfirm, runId);
 }
 
 async function demoDragMagnet(path, runId){
@@ -2872,8 +3306,8 @@ async function demoDragMagnet(path, runId){
   const sRect = labArea.getBoundingClientRect();
   const start = { x: magnet.x + magnet.w / 2, y: magnet.y + magnet.h / 2 };
   setDemoCursor(start.x, start.y);
-  await waitAuto(160, runId);
-  await clickDemoCursor(130, runId);
+  await waitAuto(AUTO_DEMO_TIMING.buttonAim, runId);
+  await clickDemoCursor(AUTO_DEMO_TIMING.cursorPress, runId);
 
   for(const point of path){
     const steps = point.steps || 14;
@@ -2886,26 +3320,37 @@ async function demoDragMagnet(path, runId){
       magnet.setPos(nx, ny);
       refreshExperimentPhysics();
       setDemoCursor(nx + magnet.w / 2, ny + magnet.h / 2);
-      await waitAuto(point.ms ? point.ms / steps : 28, runId);
+      await waitAuto(
+        (point.ms || AUTO_DEMO_TIMING.actionMotion) / steps,
+        runId
+      );
     }
   }
-  await waitAuto(180, runId);
+  await waitAuto(AUTO_DEMO_TIMING.actionSettle, runId);
 }
 
 function stopAutoDemo(byUser = false){
   if(!state.autoPlaying) return;
   state.demoRunId += 1;
   state.autoPlaying = false;
+  state.autoPaused = false;
+  stage.classList.remove('lab-demo-paused');
+  clearTrackedTimers();
   hideDemoCursor();
+  resetAll({ preserveAuto:false, showTip:false });
+  setControlCollapsed(false);
+  setDataCollapsed(true);
+  defaultDockPositions(true);
   updateModeHud();
   refreshInteractionLocks();
-  if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
+  setStatus('待操作');
   if(byUser) showToast('已退出演示模式。');
 }
 
 async function startAutoDemo(){
   if(state.autoPlaying || state.freeMode) return;
   state.autoPlaying = true;
+  state.autoPaused = false;
   const runId = ++state.demoRunId;
   updateModeHud();
   refreshInteractionLocks();
@@ -2916,39 +3361,80 @@ async function startAutoDemo(){
   try {
     let active = state.scene.magnets.find((m)=>m.role === 'active');
     const nails = state.scene.nails;
+    const firstNail = nails[0];
+    const middleX = firstNail.x + 13 - active.w / 2;
+    const middleY = firstNail.y + 3 - active.h / 2;
+    const alignY = Math.max(26, middleY - 80);
+    await demoDragMagnet([
+      {
+        x:12,
+        y:active.y,
+        ms:AUTO_DEMO_TIMING.selectFast
+      },
+      {
+        x:12,
+        y:alignY,
+        ms:AUTO_DEMO_TIMING.selectFast
+      },
+      {
+        x:middleX,
+        y:alignY,
+        ms:AUTO_DEMO_TIMING.selectFast
+      },
+      {
+        x:middleX,
+        y:middleY,
+        ms:AUTO_DEMO_TIMING.selectCompare
+      }
+    ], runId);
+    await waitAuto(AUTO_DEMO_TIMING.observeSecondary, runId);
+    if(!state.scene.middleProbeObserved) throw new Error('AUTO_MIDDLE_COMPARE_MISSING');
     const nailPath = nails.map((nail, idx) => ({
       x: nail.x - 88,
       y: nail.y - (idx < 2 ? 26 : 22),
-      ms: 420
+      ms: AUTO_DEMO_TIMING.selectFast
     }));
     await demoDragMagnet(nailPath, runId);
     await waitForAutoCondition(() => TASKS[0].check(), 2400, runId, 'AUTO_STEP1_NOT_READY');
+    await waitAuto(AUTO_DEMO_TIMING.observePrimary, runId);
     let before = state.records.length;
     await demoClickElement(checkBtn, runId, async () => { passCurrentTask(true); });
     assertAutoRecorded(before);
-    await waitAuto(720, runId);
+    await waitAuto(AUTO_DEMO_TIMING.stepTransition, runId);
 
     active = state.scene.magnets.find((m)=>m.role === 'active');
     const target1 = state.scene.magnets.find((m)=>m.role === 'target');
     await demoDragMagnet([
-      { x: target1.x - active.w + 66, y: target1.y, ms: 840 }
+      { x: target1.x - active.w + 66, y: target1.y, ms: AUTO_DEMO_TIMING.actionMotion }
     ], runId);
     await waitForAutoCondition(() => TASKS[1].check(), 2800, runId, 'AUTO_STEP2_NOT_READY');
+    await waitAuto(AUTO_DEMO_TIMING.observeComparison, runId);
     before = state.records.length;
     await demoClickElement(checkBtn, runId, async () => { passCurrentTask(true); });
     assertAutoRecorded(before);
-    await waitAuto(720, runId);
+    await waitAuto(AUTO_DEMO_TIMING.stepTransition, runId);
 
     active = state.scene.magnets.find((m)=>m.role === 'active');
     const target2 = state.scene.magnets.find((m)=>m.role === 'target');
     await demoDragMagnet([
-      { x: target2.x - active.w + 78, y: target2.y, ms: 980 }
+      { x: target2.x - active.w + 78, y: target2.y, ms: AUTO_DEMO_TIMING.actionMotion }
     ], runId);
     await waitForAutoCondition(() => TASKS[2].check(), 4200, runId, 'AUTO_STEP3_NOT_READY');
+    await waitAuto(AUTO_DEMO_TIMING.observePrimary, runId);
     before = state.records.length;
     await demoClickElement(checkBtn, runId, async () => { passCurrentTask(true); });
     assertAutoRecorded(before);
 
+    if(!state.awaitingQuiz) throw new Error('AUTO_QUIZ_NOT_READY');
+    await waitAuto(AUTO_DEMO_TIMING.analysisLead, runId);
+    const correctQuizButton = [...quizRow.querySelectorAll('button')]
+      .find((button)=>button.textContent === '同名磁极相斥，异名磁极相吸');
+    if(!correctQuizButton) throw new Error('AUTO_QUIZ_OPTION_MISSING');
+    await demoClickElement(
+      correctQuizButton,
+      runId,
+      async ()=>answerQuiz(true, true)
+    );
     if(!state.completed) throw new Error('AUTO_NOT_COMPLETED');
     setStatus('挑战完成');
   } catch (err) {
@@ -2963,6 +3449,8 @@ async function startAutoDemo(){
     hideDemoCursor();
     if(runId === state.demoRunId){
       state.autoPlaying = false;
+      state.autoPaused = false;
+      stage.classList.remove('lab-demo-paused');
       updateModeHud();
       refreshInteractionLocks();
       if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
@@ -2970,9 +3458,49 @@ async function startAutoDemo(){
   }
 }
 
+function toggleAutoPause(){
+  if(!state.autoPlaying) return;
+  state.autoPaused = !state.autoPaused;
+  stage.classList.toggle('lab-demo-paused', state.autoPaused);
+  setStatus(state.autoPaused ? '演示已暂停' : '演示中');
+  updateModeHud();
+  refreshInteractionLocks();
+  showToast(state.autoPaused ? '演示已暂停。' : '演示继续。');
+}
+
+window.getLabPauseSnapshot = function(){
+  const active = state.scene.magnets.find((magnet)=>magnet.role === 'active');
+  const target = state.scene.magnets.find((magnet)=>magnet.role === 'target');
+  return {
+    task:state.currentTask,
+    awaitingQuiz:state.awaitingQuiz,
+    completed:state.completed,
+    records:cloneData(state.records),
+    active:active ? {
+      x:Number(active.x.toFixed(3)),
+      y:Number(active.y.toFixed(3)),
+      flipped:active.flipped
+    } : null,
+    target:target ? {
+      x:Number(target.x.toFixed(3)),
+      y:Number(target.y.toFixed(3)),
+      flipped:target.flipped
+    } : null,
+    attached:getAttachedNailCount(),
+    cursor:demoCursor.style.cssText
+  };
+};
+
 resetBtn.onclick = () => {
-  if(state.autoPlaying) return;
-  resetAll({ preserveAuto: false, showTip: true, preserveFreeMode: state.freeMode });
+  if(state.autoPlaying){
+    toggleAutoPause();
+    return;
+  }
+  if(state.freeMode){
+    resetFreeOperation();
+    return;
+  }
+  resetAll({ preserveAuto: false, showTip: true });
 };
 freeBtn.onclick = () => setFreeMode(!state.freeMode);
 autoDemoBtn.onclick = () => {
@@ -2989,18 +3517,138 @@ okBtn.onclick = () => { doneMask.style.display = 'none'; };
 
 function relayoutScene(){
   if(state.autoPlaying) return;
+  const rect = labArea.getBoundingClientRect();
+  const previous = state.scene.layoutSize || { width:rect.width, height:rect.height };
+  const scaleX = previous.width > 0 ? rect.width / previous.width : 1;
+  const scaleY = previous.height > 0 ? rect.height / previous.height : 1;
+  const oldBounds = cloneData(state.scene.targetBounds);
+
+  for(const nail of state.scene.nails){
+    if(nail.attachedTo) continue;
+    nail.baseX = clamp(nail.baseX * scaleX, 12, Math.max(12, rect.width - 40));
+    nail.baseY = clamp(nail.baseY * scaleY, 76, Math.max(76, rect.height - 100));
+    nail.moveTo(
+      clamp(nail.x * scaleX, 12, Math.max(12, rect.width - 40)),
+      clamp(nail.y * scaleY, 76, Math.max(76, rect.height - 100)),
+      nail.rot
+    );
+  }
+
   const target = state.scene.magnets.find((m)=>m.role === 'target');
   if(target){
     state.scene.targetBounds = getRailBounds();
-    target.baseX = clamp(target.baseX, state.scene.targetBounds.minX, state.scene.targetBounds.maxX);
-    target.setPos(clamp(target.x, state.scene.targetBounds.minX, state.scene.targetBounds.maxX), getRailY());
+    const oldSpan = Math.max(1, oldBounds.maxX - oldBounds.minX);
+    const baseRatio = clamp((target.baseX - oldBounds.minX) / oldSpan, 0, 1);
+    const currentRatio = clamp((target.x - oldBounds.minX) / oldSpan, 0, 1);
+    const newSpan = Math.max(1, state.scene.targetBounds.maxX - state.scene.targetBounds.minX);
+    target.baseX = state.scene.targetBounds.minX + newSpan * baseRatio;
+    target.setPos(
+      state.scene.targetBounds.minX + newSpan * currentRatio,
+      getRailY()
+    );
   }
   const active = state.scene.magnets.find((m)=>m.role === 'active');
   if(active){
-    active.setPos(active.x, state.currentTask === 0 && !state.freeMode ? active.y : getRailY());
+    if(state.currentTask === 0 || state.freeMode){
+      active.setPos(active.x * scaleX, active.y * scaleY);
+    }else{
+      active.setPos(active.x * scaleX, getRailY());
+    }
   }
+  state.scene.layoutSize = { width:rect.width, height:rect.height };
   refreshExperimentPhysics();
 }
+
+const audioState = { ctx:null, muted:false, unlocked:false };
+function syncAudioToggle(){
+  audioToggle.classList.toggle('muted', audioState.muted);
+  audioToggle.classList.toggle('ready', audioState.unlocked && !audioState.muted);
+  audioToggle.textContent = audioState.muted ? '🔇' : '🔊';
+  audioToggle.setAttribute('aria-pressed', String(!audioState.muted));
+  audioToggle.setAttribute('aria-label', audioState.muted ? '开启音效' : '关闭音效');
+  audioToggle.title = audioState.muted ? '开启音效' : '关闭音效';
+}
+function ensureAudio(){
+  if(audioState.muted) return null;
+  if(!audioState.ctx){
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if(!AudioContextClass) return null;
+    try {
+      audioState.ctx = new AudioContextClass();
+    } catch (error) {
+      console.warn('AudioContext unavailable', error);
+      return null;
+    }
+  }
+  audioState.unlocked = true;
+  if(audioState.ctx.state === 'suspended'){
+    audioState.ctx.resume().catch((error)=>console.warn('AudioContext resume failed', error));
+  }
+  syncAudioToggle();
+  return audioState.ctx;
+}
+function tone(frequency, duration, type = 'sine', gain = .03, delay = 0){
+  const ctx = ensureAudio();
+  if(!ctx) return;
+  const start = ctx.currentTime + delay;
+  const oscillator = ctx.createOscillator();
+  const envelope = ctx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, start);
+  envelope.gain.setValueAtTime(.0001, start);
+  envelope.gain.exponentialRampToValueAtTime(gain, start + .012);
+  envelope.gain.exponentialRampToValueAtTime(.0001, start + duration);
+  oscillator.connect(envelope).connect(ctx.destination);
+  oscillator.start(start);
+  oscillator.stop(start + duration + .03);
+}
+function playUiSound(kind){
+  if(audioState.muted) return;
+  window.dispatchEvent(new CustomEvent('lab-ui-sound', { detail:{ kind } }));
+  if(kind === 'warn'){
+    tone(190, .16, 'sawtooth', .04);
+    tone(145, .2, 'sawtooth', .035, .11);
+  }else if(kind === 'finish'){
+    tone(523, .18, 'sine', .04);
+    tone(659, .2, 'sine', .04, .13);
+    tone(784, .28, 'sine', .045, .27);
+  }else if(kind === 'record' || kind === 'step'){
+    tone(480, .11, 'triangle', .03);
+    tone(660, .16, 'triangle', .032, .08);
+  }else if(kind === 'snap'){
+    tone(210, .09, 'square', .025);
+    tone(420, .14, 'triangle', .03, .05);
+  }else if(kind === 'hint'){
+    tone(660, .12, 'triangle', .028);
+  }else{
+    tone(360, .07, 'sine', .018);
+  }
+}
+window.playUiSound = playUiSound;
+window.labAudio = {
+  play:playUiSound,
+  isMuted:()=>audioState.muted,
+  setMuted(value){
+    audioState.muted = !!value;
+    syncAudioToggle();
+    return audioState.muted;
+  }
+};
+document.addEventListener('pointerdown', ()=>ensureAudio(), { passive:true });
+document.addEventListener('click', (event)=>{
+  const button = event.target.closest('button');
+  if(!button || button === audioToggle || button.disabled) return;
+  playUiSound('tap');
+}, true);
+audioToggle.addEventListener('click', (event)=>{
+  event.preventDefault();
+  event.stopPropagation();
+  window.labAudio.setMuted(!audioState.muted);
+  if(!audioState.muted){
+    ensureAudio();
+    playUiSound('hint');
+  }
+});
 
 function init(){
   renderRecordTable();
@@ -3008,6 +3656,8 @@ function init(){
   setControlCollapsed(true);
   setDataCollapsed(true);
   resetAll({ preserveAuto: false, showTip: false });
+  syncAudioToggle();
+  renderQuiz();
 }
 
 const relayout = (() => {
@@ -3158,6 +3808,7 @@ init();
   var dataToggle = $("#dataToggleBtn") || $('[data-toggle="dataDock"]');
   var doneMask = $("#doneMask");
   var mobileCompletionOpened = false;
+  var desktopCompletionArranged = false;
 
   function isDone(){
     var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
@@ -3167,7 +3818,7 @@ init();
   }
 
   function isMobile(){
-    return window.innerWidth <= 720 || (stage && stage.clientWidth <= 720);
+    return window.innerWidth <= 720;
   }
 
   function syncMobileShell(){
@@ -3208,14 +3859,16 @@ init();
     if (!stage || !controlDock || !dataDock) return;
     if (!isDone()) {
       mobileCompletionOpened = false;
+      desktopCompletionArranged = false;
       keepNarrowDrawersExclusive();
       return;
     }
 
     if (isMobile()) {
+      desktopCompletionArranged = false;
       if (!mobileCompletionOpened) {
-        setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-        setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+        setPanelCollapsed(controlDock, controlBody, controlToggle, false);
+        setPanelCollapsed(dataDock, dataBody, dataToggle, true);
         syncMobileShell();
         mobileCompletionOpened = true;
       }
@@ -3223,15 +3876,17 @@ init();
     }
 
     mobileCompletionOpened = false;
-    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    if (desktopCompletionArranged) return;
+    setPanelCollapsed(controlDock, controlBody, controlToggle, false);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, true);
     var sw = stage.clientWidth;
     var controlW = controlDock.offsetWidth || 160;
     var dataW = dataDock.offsetWidth || 260;
     var controlX = sw - controlW - 10;
     var dataX = sw - dataW - 10;
     placeDock(controlDock, controlX, 10);
-    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
+    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) - 12);
+    desktopCompletionArranged = true;
   }
 
   if (!stage || !controlDock || !dataDock) return;
@@ -3515,7 +4170,7 @@ init();
   function setInitialMobileState(){
     if (!isMobile()) return;
     forceClassState('data', false);
-    forceClassState('control', true);
+    forceClassState('control', false);
     syncMobileShell();
   }
   function dataNoticeCount(){
