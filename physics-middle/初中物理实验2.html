@@ -1546,11 +1546,143 @@
     }
   }
 </style>
+
+
+
+
+
+
+
+<style id="exp35-governance-v2-style">
+  :root{
+    --drawer-collapsed-width:164px;
+    --drawer-stack-offset:26px;
+    --shell-tool-size:13px;
+    --shell-title-size:20px;
+    --shell-title-ink:#9bd3ff;
+    --shell-copy-size:15px;
+    --shell-copy-ink:#e8f4ff;
+  }
+  #app{
+    width:100%;
+    max-width:980px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .task-card.free-mode{
+    opacity:.42 !important;
+    filter:grayscale(.86) saturate(.42) !important;
+  }
+  .audio-toggle{
+    position:absolute;
+    left:52px;
+    top:56px;
+    z-index:44;
+    width:34px;
+    height:34px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:8px;
+    background:rgba(255,255,255,.08);
+    color:#dce9ff;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .audio-toggle.muted{ color:#9fb0c4; opacity:.72; }
+  .audio-toggle.ready{
+    border-color:rgba(61,220,151,.42);
+    box-shadow:0 0 12px rgba(61,220,151,.16);
+  }
+  .toolbar{
+    display:flex !important;
+    flex-wrap:wrap;
+    gap:8px;
+    width:100%;
+    max-width:980px;
+  }
+  .toolbar button{ font-size:var(--shell-tool-size) !important; }
+  .explanation{
+    width:100%;
+    max-width:980px;
+    color:var(--shell-copy-ink) !important;
+    font-size:var(--shell-copy-size) !important;
+    line-height:1.65;
+  }
+  .explanation h2{
+    color:var(--shell-title-ink) !important;
+    font-size:var(--shell-title-size) !important;
+  }
+  #stage .drawer{
+    transition:width .18s ease, box-shadow .18s ease, border-color .18s ease !important;
+  }
+  #stage.lab-demo-paused *{
+    animation-play-state:paused !important;
+  }
+  @media (min-width:721px){
+    #stage .mobile-tabs,
+    #stage .sheet-close{ display:none !important; }
+    #stage #controlDock,
+    #stage #dataDock{
+      position:absolute !important;
+      right:auto !important;
+      bottom:auto !important;
+      width:min(94%, 380px) !important;
+      max-width:380px !important;
+      min-width:0 !important;
+      overflow:hidden !important;
+    }
+    #stage #controlDock.collapsed,
+    #stage #dataDock.collapsed{
+      width:var(--drawer-collapsed-width) !important;
+      max-width:var(--drawer-collapsed-width) !important;
+    }
+    #stage #controlDock.collapsed .drawer-body,
+    #stage #dataDock.collapsed .drawer-body,
+    #stage #controlDock .drawer-body.collapsed,
+    #stage #dataDock .drawer-body.collapsed{
+      display:none !important;
+    }
+    #stage #controlDock.collapsed .drawer-header,
+    #stage #dataDock.collapsed .drawer-header{
+      min-height:46px !important;
+      height:46px !important;
+      overflow:hidden !important;
+      flex-wrap:nowrap !important;
+    }
+    #stage #controlDock.collapsed .drawer-title,
+    #stage #dataDock.collapsed .drawer-title{
+      min-width:0 !important;
+      white-space:nowrap !important;
+      overflow:hidden !important;
+      text-overflow:ellipsis !important;
+    }
+  }
+  @media (max-width:720px){
+    #app{ max-width:100%; }
+    .toolbar button{
+      min-width:0;
+      max-width:100%;
+      white-space:normal;
+    }
+    .explanation h2{ font-size:20px !important; }
+  }
+</style>
+<style id="exp2-mobile-graph-safe-area">
+@media (max-width: 720px) {
+  #stage > .stage {
+    padding-bottom: 60px !important;
+  }
+}
+</style>
 </head>
 <body>
+<div id="app">
   <div id="spectrum"></div>
 
-  <div class="task-card" id="taskCard">
+  <div class="task-card" id="taskCard" data-mode="challenge">
     <div class="task-step" id="taskStep">关卡 1 / 3</div>
     <div class="task-text">
       <div id="taskText">启动<strong>水浴加热</strong>，让温度升至接近 100℃（全过程）</div>
@@ -1563,9 +1695,14 @@
     </div>
   </div>
 
-  <div id="stage">
+  <div id="stage" class="lab-area">
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button>
+    </div>
+    <button class="audio-toggle" id="audioToggle" type="button" aria-label="关闭音效" aria-pressed="true" title="关闭音效">🔊</button>
     <div class="hud">
-      <span class="mode-strip" id="modeTag">闯关模式 · 关卡 1/3</span>
+      <span class="mode-strip tag" id="modeTag">闯关模式 · 关卡 1/3</span>
       <span class="tag" id="statusTag">状态：待操作</span>
     </div>
 
@@ -1916,7 +2053,10 @@
         ? `translate(-50%,-50%) scale(${0.95 + sim.power * 0.35})`
         : 'translate(-50%,-50%) scale(0.95)';
 
-      const solidH = clamp(70 * (1 - sim.meltFrac) + 70 * sim.freezeFrac, 0, 70);
+      const solidFraction = sim.phase === 'freezing'
+        ? sim.freezeFrac
+        : (sim.phase === 'solid' ? 1 : 1 - sim.meltFrac);
+      const solidH = clamp(70 * solidFraction, 0, 70);
       const liquidH = clamp(70 - solidH, 0, 70);
       solidLayer.style.height = `${solidH}%`;
       liquidLayer.style.height = `${liquidH}%`;
@@ -1956,6 +2096,7 @@
           if (sim.T >= Tmax) sim.T = Tmax;
         } else if (sim.phase === 'freezing') {
           sim.phase = 'melting';
+          sim.meltFrac = 1 - sim.freezeFrac;
           sim.freezeFrac = 0;
         }
       } else if (sim.phase === 'liquid') {
@@ -1977,7 +2118,7 @@
         if (sim.T <= Tmin) sim.T = Tmin;
       } else if (sim.phase === 'melting') {
         sim.phase = 'freezing';
-        sim.meltFrac = 1 - sim.freezeFrac;
+        sim.freezeFrac = 1 - sim.meltFrac;
       }
 
       sim.t += dt;
@@ -3157,266 +3298,6 @@
 </script>
 
 
-<script id="exp35-ui-completion-drawer-fit">
-(function(){
-  "use strict";
-  var $ = function(selector, root){ return (root || document).querySelector(selector); };
-  var stage = $("#stage");
-  var controlDock = $("#controlDock");
-  var dataDock = $("#dataDock");
-  var controlBody = $("#controlBody") || $("#panelBody") || (controlDock && ($(".panelBody", controlDock) || $(".dockBody", controlDock) || $(".dock-body", controlDock) || $(".drawer-body", controlDock)));
-  var dataBody = $("#dataBody") || $("#resultsBody") || (dataDock && ($(".resultsBody", dataDock) || $(".dockBody", dataDock) || $(".dock-body", dataDock) || $(".drawer-body", dataDock)));
-  var controlToggle = $("#controlToggleBtn") || $('[data-toggle="controlDock"]');
-  var dataToggle = $("#dataToggleBtn") || $('[data-toggle="dataDock"]');
-  var doneMask = $("#doneMask");
-  var mobileCompletionOpened = false;
-
-  function isDone(){
-    var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
-    var stateDone = false;
-    try { stateDone = !!window.state && !!window.state.completed; } catch (_) {}
-    return modalDone || stateDone;
-  }
-
-  function isMobile(){
-    return window.innerWidth <= 720 || (stage && stage.clientWidth <= 720);
-  }
-
-  function syncMobileShell(){
-    if (typeof window.codexLabMobileSync === "function") window.codexLabMobileSync();
-    if (typeof window.codexExp11MobileSync === "function") window.codexExp11MobileSync();
-    if (typeof window.codexExp11GraphRelayout === "function") window.codexExp11GraphRelayout();
-  }
-
-  function setPanelCollapsed(dock, body, toggle, collapsed){
-    if (dock) dock.classList.toggle("collapsed", collapsed);
-    if (body) body.classList.toggle("collapsed", collapsed);
-    if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
-  }
-
-  function placeDock(dock, left, top){
-    if (!dock || !stage) return;
-    var sw = stage.clientWidth;
-    var sh = stage.clientHeight;
-    var w = dock.offsetWidth || 160;
-    var h = dock.offsetHeight || 44;
-    var x = Math.max(10, Math.min(left, sw - w - 10));
-    var y = Math.max(10, Math.min(top, sh - h - 10));
-    dock.style.left = x + "px";
-    dock.style.top = y + "px";
-    dock.style.right = "auto";
-  }
-
-  function keepNarrowDrawersExclusive(){
-    if (!stage || !controlDock || !dataDock || !isMobile()) return;
-    var dataOpen = dataBody && !dataBody.classList.contains("collapsed");
-    var controlOpen = controlBody && !controlBody.classList.contains("collapsed");
-    if (!dataOpen || !controlOpen) return;
-    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-    syncMobileShell();
-  }
-
-  function fitCompletionDrawers(){
-    if (!stage || !controlDock || !dataDock) return;
-    if (!isDone()) {
-      mobileCompletionOpened = false;
-      keepNarrowDrawersExclusive();
-      return;
-    }
-
-    if (isMobile()) {
-      if (!mobileCompletionOpened) {
-        setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-        setPanelCollapsed(dataDock, dataBody, dataToggle, false);
-        syncMobileShell();
-        mobileCompletionOpened = true;
-      }
-      return;
-    }
-
-    mobileCompletionOpened = false;
-    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
-    var sw = stage.clientWidth;
-    var controlW = controlDock.offsetWidth || 160;
-    var dataW = dataDock.offsetWidth || 260;
-    var controlX = sw - controlW - 10;
-    var dataX = sw - dataW - 10;
-    placeDock(controlDock, controlX, 10);
-    placeDock(dataDock, dataX, 10 + (controlDock.offsetHeight || 44) + 10);
-  }
-
-  if (!stage || !controlDock || !dataDock) return;
-  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
-  setInterval(fitCompletionDrawers, 450);
-})();
-</script>
-
-
-<script id="codex-exp1-10-panel-align">
-(function(){
-  "use strict";
-  if (window.__codexExp110PanelAlign) return;
-  window.__codexExp110PanelAlign = true;
-
-  var stage = document.querySelector("#stage") || document.querySelector(".stage");
-  var controlDock = document.querySelector("#controlDock");
-  var dataDock = document.querySelector("#dataDock");
-  var controlBody = document.querySelector("#controlBody");
-  var dataBody = document.querySelector("#dataBody");
-  if (!stage || !controlDock || !dataDock) return;
-
-  stage.classList.add("codex-exp1-10-panel-align-stage");
-
-  var css = document.createElement("style");
-  css.textContent = "\n    @media (max-width: 760px){\n      #stage.codex-exp1-10-panel-align-stage #controlDock,\n      #stage.codex-exp1-10-panel-align-stage #dataDock{\n        min-width:0 !important;\n        touch-action:none;\n      }\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed{\n        width:var(--codex-collapsed-dock-width, 144px) !important;\n        max-width:var(--codex-collapsed-dock-width, 144px) !important;\n      }\n      #stage.codex-exp1-10-panel-align-stage #controlDock:not(.collapsed),\n      #stage.codex-exp1-10-panel-align-stage #dataDock:not(.collapsed){\n        width:calc(100% - 24px) !important;\n        max-width:calc(100% - 24px) !important;\n      }\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed #controlBody,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed #panelBody,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .panelBody,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .dockBody,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .drawer-body,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed #dataBody,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed #resultsBody,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .resultsBody,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .dockBody,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .drawer-body{\n        display:none !important;\n      }\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .title .pill,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .title .chip,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .dockBadge,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .chip,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .dockNotice,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .dataNotice,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .notice-badge{\n        display:none !important;\n      }\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .panelHead,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .dockHead,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .drawer-header,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .resultsHead,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .dockHead,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .drawer-header{\n        height:46px !important;\n        min-height:46px !important;\n        box-sizing:border-box !important;\n        flex-wrap:nowrap !important;\n        overflow:hidden !important;\n      }\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .title,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .dockTitle,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .drawer-title,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .title,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .dockTitle,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .drawer-title{\n        min-width:0 !important;\n        white-space:nowrap !important;\n        overflow:hidden !important;\n        text-overflow:ellipsis !important;\n      }\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed .iconBtn,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .iconBtn,\n      #stage.codex-exp1-10-panel-align-stage #controlDock.collapsed button,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed button,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .dockNotice,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .dataNotice,\n      #stage.codex-exp1-10-panel-align-stage #dataDock.collapsed .notice-badge{\n        flex:0 0 auto !important;\n      }\n      #stage.codex-exp1-10-panel-align-stage #controlBody:not(.collapsed),\n      #stage.codex-exp1-10-panel-align-stage #dataBody:not(.collapsed){\n        max-height:min(210px, 42vh) !important;\n        overflow:auto !important;\n        -webkit-overflow-scrolling:touch;\n      }\n    }\n  ";
-  document.head.appendChild(css);
-
-  var zTop = 80;
-  function isMobile(){ return window.matchMedia("(max-width: 760px)").matches; }
-  function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
-  function bodyLooksCollapsed(body, dock){
-    if (!body) return true;
-    var toggle = dock && dock.querySelector("#controlToggleBtn, #dataToggleBtn, .iconBtn, button");
-    var label = toggle ? (toggle.textContent || "").trim() : "";
-    if (label === "展开") return true;
-    if (label === "收起") return false;
-    return body.classList.contains("collapsed");
-  }
-  function dockIsCollapsed(dock, body){
-    return bodyLooksCollapsed(body, dock);
-  }
-  function setCollapsedClass(dock, body, collapsed){
-    dock.classList.toggle("collapsed", collapsed);
-    if (body) body.classList.toggle("collapsed", collapsed);
-    var toggle = dock.querySelector("#controlToggleBtn, #dataToggleBtn, .iconBtn, button");
-    if (toggle && /^(展开|收起)$/.test((toggle.textContent || "").trim())) toggle.textContent = collapsed ? "展开" : "收起";
-  }
-  function manualMoved(dock){
-    return dock && dock.dataset.codexManualMoved === "1";
-  }
-  function clearManualMoved(dock){
-    if (dock) dock.dataset.codexManualMoved = "0";
-  }
-  function placeDock(dock, x, y){
-    var w = dock.offsetWidth || 144;
-    var h = dock.offsetHeight || 46;
-    var sw = stage.clientWidth || stage.getBoundingClientRect().width;
-    var sh = stage.clientHeight || stage.getBoundingClientRect().height;
-    dock.style.left = clamp(x, 8, Math.max(8, sw - w - 8)) + "px";
-    dock.style.top = clamp(y, 8, Math.max(8, sh - h - 8)) + "px";
-    dock.style.right = "auto";
-    dock.style.bottom = "auto";
-  }
-  function clampCurrentDock(dock){
-    if (!dock) return;
-    var s = stage.getBoundingClientRect();
-    var r = dock.getBoundingClientRect();
-    if (!r.width || !r.height) return;
-    var x = r.left - s.left;
-    var y = r.top - s.top;
-    placeDock(dock, x, y);
-  }
-  function bringToFront(dock){
-    if (!dock) return;
-    zTop += 1;
-    dock.style.zIndex = String(zTop);
-  }
-  function setDockWidth(dock, width){
-    dock.style.width = width + "px";
-    dock.style.maxWidth = width + "px";
-  }
-  function maybePlaceDock(dock, x, y, force){
-    if (force || !manualMoved(dock)) placeDock(dock, x, y);
-    else clampCurrentDock(dock);
-  }
-  function placeCollapsedPair(controlCollapsed, dataCollapsed, force){
-    var sw = stage.clientWidth || stage.getBoundingClientRect().width;
-    var collapsedWidth = Math.max(132, Math.min(144, Math.floor((sw - 124) / 2)));
-    stage.style.setProperty("--codex-collapsed-dock-width", collapsedWidth + "px");
-    if (controlCollapsed) setDockWidth(controlDock, collapsedWidth);
-    if (dataCollapsed) setDockWidth(dataDock, collapsedWidth);
-    var top = 56;
-    if (controlCollapsed && dataCollapsed) {
-      maybePlaceDock(controlDock, sw - collapsedWidth * 2 - 14, top, force);
-      maybePlaceDock(dataDock, sw - collapsedWidth - 8, top, force);
-      return;
-    }
-    if (controlCollapsed) maybePlaceDock(controlDock, sw - collapsedWidth - 8, top, force);
-    if (dataCollapsed) maybePlaceDock(dataDock, sw - collapsedWidth - 8, top, force);
-  }
-  function placeExpanded(dock, force){
-    var sw = stage.clientWidth || stage.getBoundingClientRect().width;
-    var sh = stage.clientHeight || stage.getBoundingClientRect().height;
-    var width = Math.max(280, sw - 24);
-    setDockWidth(dock, width);
-    var h = dock.offsetHeight || 260;
-    var lowerY = sh - h - 12;
-    var preferredY = Math.max(116, sh * 0.64);
-    maybePlaceDock(dock, 12, Math.min(preferredY, lowerY), force);
-  }
-  function layout(force){
-    if (!isMobile()) return;
-    var controlCollapsed = dockIsCollapsed(controlDock, controlBody);
-    var dataCollapsed = dockIsCollapsed(dataDock, dataBody);
-    setCollapsedClass(controlDock, controlBody, controlCollapsed);
-    setCollapsedClass(dataDock, dataBody, dataCollapsed);
-    placeCollapsedPair(controlCollapsed, dataCollapsed, !!force);
-    if (!controlCollapsed) placeExpanded(controlDock, !!force);
-    if (!dataCollapsed) placeExpanded(dataDock, !!force);
-  }
-  function scheduleLayout(force){
-    [0, 80, 220, 420, 760].forEach(function(ms){ setTimeout(function(){ layout(!!force); }, ms); });
-  }
-  function bindManualMoveFlag(dock){
-    var header = dock.querySelector("#controlHead, #dataHead, .panelHead, .resultsHead, .dockHead, .drawer-header") || dock;
-    var sx = 0;
-    var sy = 0;
-    var active = false;
-    header.addEventListener("pointerdown", function(evt){
-      bringToFront(dock);
-      if (evt.target && evt.target.closest && evt.target.closest("button")) return;
-      active = true;
-      sx = evt.clientX;
-      sy = evt.clientY;
-    }, true);
-    header.addEventListener("pointermove", function(evt){
-      if (!active) return;
-      if (Math.abs(evt.clientX - sx) + Math.abs(evt.clientY - sy) > 8) dock.dataset.codexManualMoved = "1";
-    }, true);
-    ["pointerup", "pointercancel", "lostpointercapture"].forEach(function(type){
-      header.addEventListener(type, function(){ active = false; }, true);
-    });
-    dock.addEventListener("click", function(){ bringToFront(dock); }, true);
-  }
-
-  bindManualMoveFlag(controlDock);
-  bindManualMoveFlag(dataDock);
-
-  var controlToggle = document.querySelector("#controlToggleBtn");
-  var dataToggle = document.querySelector("#dataToggleBtn");
-  if (controlToggle) controlToggle.addEventListener("click", function(){ clearManualMoved(controlDock); scheduleLayout(true); }, true);
-  if (dataToggle) dataToggle.addEventListener("click", function(){ clearManualMoved(dataDock); scheduleLayout(true); }, true);
-  var resetBtn = document.querySelector("#resetBtn");
-  if (resetBtn) resetBtn.addEventListener("click", function(){ clearManualMoved(controlDock); clearManualMoved(dataDock); scheduleLayout(true); }, true);
-  var autoDemoBtn = document.querySelector("#autoDemoBtn");
-  if (autoDemoBtn) {
-    autoDemoBtn.addEventListener("click", function(){
-      if (isMobile()) stage.scrollIntoView({ block:"start", inline:"nearest" });
-      [0, 120, 360, 760, 1200, 1800].forEach(function(ms){ setTimeout(function(){ layout(false); }, ms); });
-    }, true);
-  }
-  [controlBody, dataBody].forEach(function(body){
-    if (!body) return;
-    new MutationObserver(function(){ scheduleLayout(false); }).observe(body, { attributes:true, attributeFilter:["class", "style"] });
-  });
-  window.addEventListener("resize", function(){ scheduleLayout(false); });
-  window.addEventListener("orientationchange", function(){ scheduleLayout(false); });
-  bringToFront(controlDock);
-  scheduleLayout(true);
-})();
-</script>
-
 <script id="codex-exp41-mobile-standard-runtime">
 (() => {
   const MOBILE_MAX = 720;
@@ -3597,6 +3478,613 @@
   setTimeout(setInitialMobileState, 120);
   setTimeout(syncMobileShell, 420);
   setTimeout(syncMobileShell, 1100);
+})();
+</script>
+
+</div>
+
+
+
+
+
+
+
+<script id="exp35-governance-v2-runtime">
+(function(){
+  "use strict";
+  var $ = function(selector, root){ return (root || document).querySelector(selector); };
+  var stage = $("#stage");
+  var taskCard = $("#taskCard");
+  var modeTag = $("#modeTag");
+  var statusTag = $("#statusTag");
+  var resetBtn = $("#resetBtn");
+  var autoDemoBtn = $("#autoDemoBtn");
+  var freeBtn = $("#freeBtn");
+  var audioToggle = $("#audioToggle");
+  var controlDock = $("#controlDock");
+  var dataDock = $("#dataDock");
+  var controlToggle = $("#controlToggleBtn");
+  var dataToggle = $("#dataToggleBtn");
+  var doneMask = $("#doneMask");
+  var recordBody = $("#recordBody");
+  var controlBody = $("#controlBody") || $("#panelBody") || $(".drawer-body", controlDock);
+  var dataBody = $("#dataBody") || $("#resultsBody") || $(".drawer-body", dataDock);
+  if (!stage || !taskCard || !resetBtn || !autoDemoBtn || !freeBtn) return;
+
+  var acceptedTiming = Object.freeze({
+    cursorPress:220,
+    panelReveal:180,
+    buttonAim:360,
+    dragSoft:720,
+    actionMotion:820,
+    selectFast:320,
+    selectCompare:560,
+    observePrimary:780,
+    observeSecondary:760,
+    observeComparison:700,
+    recordConfirm:420,
+    stepTransition:460,
+    analysisLead:620,
+    actionSettle:120
+  });
+  window.AUTO_DEMO_TIMING = acceptedTiming;
+
+  var labState = window.state || null;
+  try {
+    if (!labState && typeof state !== "undefined") labState = state;
+  } catch (_) {}
+  if (!labState) return;
+  window.state = labState;
+  if (typeof labState.autoPaused !== "boolean") labState.autoPaused = false;
+
+  var originalResetAll = typeof window.resetAll === "function" ? window.resetAll : null;
+  var originalStopAutoDemo = typeof window.stopAutoDemo === "function" ? window.stopAutoDemo : null;
+  var freeEntrySnapshot = null;
+  var pauseSnapshot = null;
+  var pauseGuard = 0;
+
+  function cloneValue(value){
+    try {
+      if (typeof structuredClone === "function") return structuredClone(value);
+    } catch (_) {}
+    try { return JSON.parse(JSON.stringify(value)); } catch (_) { return value; }
+  }
+
+  function getSim(){
+    try {
+      var current = typeof sim !== "undefined" && sim && typeof sim === "object" ? sim : null;
+      if (current) window.labSim = current;
+      return current;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  var stateSkip = new Set([
+    "autoPlaying", "autoPaused", "demoRunId", "autoRunId", "autoCancel",
+    "freeMode", "freeStartState", "timers", "rafId", "lastTs",
+    "draggingId", "dragPointerId", "draggingBox", "drawerDrag"
+  ]);
+
+  function snapshotObject(source, skip){
+    if (!source || typeof source !== "object") return null;
+    var result = {};
+    Object.keys(source).forEach(function(key){
+      if (skip && skip.has(key)) return;
+      var value = source[key];
+      if (typeof value === "function" || (value && value.nodeType)) return;
+      var cloned = cloneValue(value);
+      if (cloned !== undefined) result[key] = cloned;
+    });
+    return result;
+  }
+
+  function restoreObject(target, snapshot, skip){
+    if (!target || !snapshot) return;
+    Object.keys(snapshot).forEach(function(key){
+      if (skip && skip.has(key)) return;
+      try { target[key] = cloneValue(snapshot[key]); } catch (_) {}
+    });
+  }
+
+  function captureForms(){
+    return Array.from(document.querySelectorAll("input, select, textarea")).map(function(el){
+      return {
+        id:el.id,
+        name:el.name,
+        type:el.type,
+        value:el.value,
+        checked:!!el.checked
+      };
+    }).filter(function(item){ return item.id || item.name; });
+  }
+
+  function restoreForms(items){
+    (items || []).forEach(function(item){
+      var el = item.id ? document.getElementById(item.id) : document.querySelector('[name="' + item.name + '"]');
+      if (!el) return;
+      try {
+        el.value = item.value;
+        if (item.type === "checkbox" || item.type === "radio") el.checked = item.checked;
+        el.dispatchEvent(new Event("input", { bubbles:true }));
+        el.dispatchEvent(new Event("change", { bubbles:true }));
+      } catch (_) {}
+    });
+  }
+
+  function findDemoCursor(){
+    return $("#demoCursor") || $(".demo-cursor-show", stage) || $("div[style*='z-index: 140']", stage);
+  }
+
+  function captureWorld(){
+    var cursor = findDemoCursor();
+    return {
+      state:snapshotObject(labState, stateSkip),
+      sim:snapshotObject(getSim()),
+      forms:captureForms(),
+      cursorStyle:cursor ? cursor.style.cssText : "",
+      task:$("#taskStep") ? $("#taskStep").textContent : "",
+      rows:recordBody ? recordBody.querySelectorAll("tr").length : 0
+    };
+  }
+
+  function refreshExperimentView(){
+    [
+      "renderStepUI", "updateModeHud", "updateVisual", "drawGraph",
+      "renderRecordTable", "renderTable", "updateStats", "updateBeakerVisual",
+      "updateReadout", "renderPills", "renderQuiz", "drawParticles",
+      "renderCrystals", "drawChart"
+    ].forEach(function(name){
+      try {
+        if (typeof window[name] === "function") window[name]();
+      } catch (_) {}
+    });
+  }
+
+  function restoreWorld(snapshot, keepFree){
+    if (!snapshot) return;
+    restoreObject(labState, snapshot.state, stateSkip);
+    restoreObject(getSim(), snapshot.sim);
+    restoreForms(snapshot.forms);
+    if (keepFree) labState.freeMode = true;
+    refreshExperimentView();
+  }
+
+  function setCollapsed(dock, body, toggle, collapsed){
+    if (!dock) return;
+    dock.classList.toggle("collapsed", collapsed);
+    if (body) body.classList.toggle("collapsed", collapsed);
+    if (toggle && /^(展开|收起)$/.test((toggle.textContent || "").trim())) {
+      toggle.textContent = collapsed ? "展开" : "收起";
+    }
+  }
+
+  function isCollapsed(dock, body){
+    return !dock || dock.classList.contains("collapsed") || (body && body.classList.contains("collapsed"));
+  }
+
+  function bringToFront(drawer){
+    if (!drawer) return;
+    var other = drawer === controlDock ? dataDock : controlDock;
+    drawer.style.zIndex = "48";
+    if (other) other.style.zIndex = "42";
+  }
+
+  function fitDrawers(){
+    if (!controlDock || !dataDock) return;
+    if (window.innerWidth <= 720 || stage.clientWidth <= 720) {
+      if (typeof window.codexLabMobileSync === "function") window.codexLabMobileSync();
+      return;
+    }
+    controlDock.classList.remove("mobile-sheet");
+    dataDock.classList.remove("mobile-sheet");
+    var stageWidth = stage.clientWidth;
+    var controlOpen = !isCollapsed(controlDock, controlBody);
+    var dataOpen = !isCollapsed(dataDock, dataBody);
+    var place = function(drawer, top){
+      var width = drawer.offsetWidth || 164;
+      drawer.style.left = Math.max(12, stageWidth - width - 12) + "px";
+      drawer.style.top = Math.max(58, top) + "px";
+      drawer.style.right = "auto";
+      drawer.style.bottom = "auto";
+    };
+    if (controlOpen !== dataOpen) {
+      var expanded = controlOpen ? controlDock : dataDock;
+      var compact = controlOpen ? dataDock : controlDock;
+      place(expanded, 58);
+      place(compact, 58 + (expanded.offsetHeight || 120) - 12);
+    } else {
+      place(controlDock, 58);
+      place(dataDock, 58 + acceptedTiming.panelReveal / 7);
+    }
+  }
+
+  function normalizeModeText(){
+    if (!modeTag) return;
+    var text = (modeTag.textContent || "").trim();
+    if (text && !/^模式[:：]/.test(text)) modeTag.textContent = "模式：" + text;
+  }
+
+  function syncModeControls(){
+    var auto = !!labState.autoPlaying;
+    var paused = auto && !!labState.autoPaused;
+    var free = !!labState.freeMode;
+    resetBtn.textContent = auto ? (paused ? "继续演示" : "暂停演示") : (free ? "重置操作" : "重置关卡");
+    autoDemoBtn.textContent = auto ? "退出演示" : "演示模式";
+    autoDemoBtn.disabled = free && !auto;
+    freeBtn.disabled = auto;
+    if (auto || free) resetBtn.disabled = false;
+    freeBtn.textContent = free ? "退出自由模式" : "自由模式";
+    resetBtn.setAttribute("aria-pressed", paused ? "true" : "false");
+    taskCard.classList.toggle("free-mode", free);
+    taskCard.dataset.mode = free ? "free" : "challenge";
+    taskCard.setAttribute("aria-label", free ? "关卡参考，自由模式不进行步骤判定" : "当前实验关卡");
+    if (auto && modeTag) {
+      modeTag.textContent = paused ? "模式：演示模式 · 已暂停" : "模式：演示模式 · 自动运行";
+    } else if (free && modeTag) {
+      modeTag.textContent = "模式：自由模式 · 自主探索";
+    } else {
+      normalizeModeText();
+    }
+    if (paused && statusTag) statusTag.textContent = "状态：演示已暂停";
+    else if (auto && statusTag) statusTag.textContent = "状态：演示中";
+    else if (free && statusTag) statusTag.textContent = "状态：自由探索";
+  }
+
+  function normalizeDemoWait(ms){
+    if (ms <= 40) return ms;
+    if (ms <= 160) return acceptedTiming.actionSettle;
+    if (ms <= 260) return acceptedTiming.cursorPress;
+    if (ms <= 399) return acceptedTiming.selectFast;
+    if (ms <= 520) return acceptedTiming.stepTransition;
+    if (ms <= 680) return acceptedTiming.analysisLead;
+    if (ms <= 760) return acceptedTiming.observeComparison;
+    if (ms <= 860) return acceptedTiming.observeSecondary;
+    return acceptedTiming.observePrimary;
+  }
+
+  window.waitAuto = async function(ms, runId){
+    var remaining = Math.max(0, normalizeDemoWait(Number(ms) || 0));
+    while (remaining > 0) {
+      if (runId !== undefined && runId !== labState.demoRunId) throw new Error("AUTO_DEMO_CANCELLED");
+      if (labState.autoPaused) {
+        await new Promise(function(resolve){ setTimeout(resolve, 16); });
+        continue;
+      }
+      var slice = Math.min(remaining, 16);
+      await new Promise(function(resolve){ setTimeout(resolve, slice); });
+      if (runId !== undefined && runId !== labState.demoRunId) throw new Error("AUTO_DEMO_CANCELLED");
+      if (!labState.autoPaused) remaining -= slice;
+    }
+  };
+
+  function setPauseGuard(active){
+    if (pauseGuard) {
+      clearInterval(pauseGuard);
+      pauseGuard = 0;
+    }
+    stage.classList.toggle("lab-demo-paused", active);
+    if (!active || !pauseSnapshot) return;
+    pauseGuard = setInterval(function(){
+      restoreObject(labState, pauseSnapshot.state, stateSkip);
+      var currentSim = getSim();
+      restoreObject(currentSim, pauseSnapshot.sim);
+      if (currentSim && typeof currentSim.running === "boolean") currentSim.running = false;
+      var cursor = findDemoCursor();
+      if (cursor && pauseSnapshot.cursorStyle) cursor.style.cssText = pauseSnapshot.cursorStyle;
+    }, 16);
+  }
+
+  window.getLabPauseSnapshot = function(){
+    var current = labState.autoPaused && pauseSnapshot ? pauseSnapshot : captureWorld();
+    return cloneValue({
+      state:current.state,
+      sim:current.sim,
+      task:current.task,
+      rows:current.rows,
+      cursorStyle:current.cursorStyle
+    });
+  };
+
+  function toggleAutoPause(){
+    if (!labState.autoPlaying) return;
+    labState.autoPaused = !labState.autoPaused;
+    if (labState.autoPaused) {
+      pauseSnapshot = captureWorld();
+      setPauseGuard(true);
+    } else {
+      setPauseGuard(false);
+      restoreWorld(pauseSnapshot, false);
+      pauseSnapshot = null;
+    }
+    syncModeControls();
+    try {
+      if (typeof window.updateModeHud === "function") window.updateModeHud();
+    } catch (_) {}
+    syncModeControls();
+    try {
+      if (typeof window.showToast === "function") {
+        window.showToast(labState.autoPaused ? "演示已暂停" : "演示继续");
+      }
+    } catch (_) {}
+  }
+
+  function restoreFreeEntry(){
+    if (!freeEntrySnapshot) return;
+    try {
+      if (originalResetAll) {
+        originalResetAll({
+          preserveAuto:false,
+          showResetToast:false,
+          showTip:false
+        });
+      }
+    } catch (_) {}
+    labState.freeMode = true;
+    labState.autoPlaying = false;
+    labState.autoPaused = false;
+    restoreWorld(freeEntrySnapshot, true);
+    syncModeControls();
+    try {
+      if (typeof window.showToast === "function") window.showToast("自由模式操作已重置");
+    } catch (_) {}
+  }
+
+  function toggleFreeMode(){
+    if (labState.autoPlaying) return;
+    if (!labState.freeMode) {
+      freeEntrySnapshot = captureWorld();
+      labState.freeMode = true;
+      labState.autoPaused = false;
+    } else {
+      labState.freeMode = false;
+      freeEntrySnapshot = null;
+    }
+    try {
+      if (typeof window.refreshInteractionLocks === "function") window.refreshInteractionLocks();
+      if (typeof window.renderStepUI === "function") window.renderStepUI();
+      if (typeof window.updateModeHud === "function") window.updateModeHud();
+    } catch (_) {}
+    syncModeControls();
+    try {
+      if (typeof window.showToast === "function") {
+        window.showToast(labState.freeMode ? "自由模式下可任意探索，不进行步骤判定。" : "已回到闯关模式。");
+      }
+    } catch (_) {}
+  }
+
+  function exitAutoDemo(){
+    if (!labState.autoPlaying) return;
+    setPauseGuard(false);
+    pauseSnapshot = null;
+    try {
+      if (originalStopAutoDemo) originalStopAutoDemo(true);
+      else {
+        labState.demoRunId = (labState.demoRunId || 0) + 1;
+        labState.autoPlaying = false;
+      }
+    } catch (_) {
+      labState.demoRunId = (labState.demoRunId || 0) + 1;
+      labState.autoPlaying = false;
+    }
+    labState.autoPlaying = false;
+    labState.autoPaused = false;
+    labState.freeMode = false;
+    try {
+      if (originalResetAll) {
+        originalResetAll({
+          preserveAuto:false,
+          showResetToast:false,
+          showTip:false
+        });
+      }
+    } catch (_) {}
+    labState.autoPlaying = false;
+    labState.autoPaused = false;
+    labState.freeMode = false;
+    freeEntrySnapshot = null;
+    setCollapsed(controlDock, controlBody, controlToggle, false);
+    setCollapsed(dataDock, dataBody, dataToggle, true);
+    syncModeControls();
+    fitDrawers();
+    if (statusTag) statusTag.textContent = "状态：待操作";
+  }
+
+  document.addEventListener("click", function(event){
+    var button = event.target.closest("button");
+    if (button === resetBtn) {
+      if (labState.autoPlaying) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toggleAutoPause();
+      } else if (labState.freeMode) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        restoreFreeEntry();
+      }
+      return;
+    }
+    if (button === freeBtn) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      toggleFreeMode();
+      return;
+    }
+    if (button === autoDemoBtn) {
+      if (labState.autoPlaying) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        exitAutoDemo();
+      } else {
+        setTimeout(function(){
+          labState.autoPaused = false;
+          setCollapsed(controlDock, controlBody, controlToggle, false);
+          setCollapsed(dataDock, dataBody, dataToggle, true);
+          syncModeControls();
+          fitDrawers();
+        }, 0);
+      }
+    }
+  }, true);
+
+  [controlDock, dataDock].filter(Boolean).forEach(function(drawer){
+    var header = $(".drawer-header", drawer);
+    if (header) {
+      header.addEventListener("pointerdown", function(){ bringToFront(drawer); });
+      header.addEventListener("click", function(){ bringToFront(drawer); });
+    }
+  });
+  [
+    { toggle:controlToggle, dock:controlDock, body:controlBody },
+    { toggle:dataToggle, dock:dataDock, body:dataBody }
+  ].filter(function(entry){ return !!entry.toggle; }).forEach(function(entry){
+    entry.toggle.addEventListener("click", function(){
+      setTimeout(function(){
+        var collapsed = entry.body
+          ? entry.body.classList.contains("collapsed")
+          : entry.dock.classList.contains("collapsed");
+        setCollapsed(entry.dock, entry.body, entry.toggle, collapsed);
+        bringToFront(entry.dock);
+        fitDrawers();
+      }, 0);
+    });
+  });
+
+  var audioState = { ctx:null, muted:false, unlocked:false };
+  function syncAudioToggle(){
+    if (!audioToggle) return;
+    audioToggle.classList.toggle("muted", audioState.muted);
+    audioToggle.classList.toggle("ready", audioState.unlocked && !audioState.muted);
+    audioToggle.textContent = audioState.muted ? "🔇" : "🔊";
+    audioToggle.setAttribute("aria-pressed", String(!audioState.muted));
+    audioToggle.setAttribute("aria-label", audioState.muted ? "开启音效" : "关闭音效");
+    audioToggle.title = audioState.muted ? "开启音效" : "关闭音效";
+  }
+  function ensureAudio(){
+    if (audioState.muted) return null;
+    if (!audioState.ctx) {
+      var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return null;
+      try { audioState.ctx = new AudioContextClass(); } catch (_) { return null; }
+    }
+    audioState.unlocked = true;
+    if (audioState.ctx.state === "suspended") audioState.ctx.resume().catch(function(){});
+    syncAudioToggle();
+    return audioState.ctx;
+  }
+  function tone(frequency, duration, type, gain, delay){
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var start = ctx.currentTime + (delay || 0);
+    var oscillator = ctx.createOscillator();
+    var envelope = ctx.createGain();
+    oscillator.type = type || "sine";
+    oscillator.frequency.setValueAtTime(frequency, start);
+    envelope.gain.setValueAtTime(.0001, start);
+    envelope.gain.exponentialRampToValueAtTime(gain || .035, start + .012);
+    envelope.gain.exponentialRampToValueAtTime(.0001, start + duration);
+    oscillator.connect(envelope).connect(ctx.destination);
+    oscillator.start(start);
+    oscillator.stop(start + duration + .03);
+  }
+  function playUiSound(kind, options){
+    options = options || {};
+    if (audioState.muted && !options.force) return;
+    window.dispatchEvent(new CustomEvent("lab-ui-sound", { detail:{ kind:kind } }));
+    if (kind === "warn") {
+      tone(190, .16, "sawtooth", .04, 0);
+      tone(145, .2, "sawtooth", .035, .11);
+    } else if (kind === "finish") {
+      tone(523, .18, "sine", .04, 0);
+      tone(659, .2, "sine", .04, .13);
+      tone(784, .28, "sine", .045, .27);
+    } else if (kind === "record") {
+      tone(460, .12, "triangle", .03, 0);
+      tone(620, .15, "triangle", .03, .08);
+    } else if (kind === "step") {
+      tone(520, .11, "sine", .03, 0);
+      tone(700, .16, "sine", .035, .07);
+    } else if (kind === "hint") {
+      tone(660, .12, "triangle", .028, 0);
+    } else {
+      tone(360, .07, "sine", .018, 0);
+    }
+  }
+  window.playUiSound = playUiSound;
+  window.labAudio = {
+    play:playUiSound,
+    isMuted:function(){ return audioState.muted; },
+    setMuted:function(value){
+      audioState.muted = !!value;
+      syncAudioToggle();
+      return audioState.muted;
+    }
+  };
+  document.addEventListener("pointerdown", function(){ ensureAudio(); }, { passive:true });
+  document.addEventListener("click", function(event){
+    var button = event.target.closest("button");
+    if (!button || button === audioToggle || button.disabled) return;
+    playUiSound("tap");
+  }, true);
+  if (audioToggle) {
+    audioToggle.addEventListener("click", function(event){
+      event.preventDefault();
+      event.stopPropagation();
+      window.labAudio.setMuted(!audioState.muted);
+      if (!audioState.muted) {
+        ensureAudio();
+        playUiSound("hint", { force:true });
+      }
+    });
+  }
+  if (recordBody) {
+    var lastRecordCount = recordBody.querySelectorAll("tr").length;
+    new MutationObserver(function(){
+      var count = recordBody.querySelectorAll("tr").length;
+      if (count > lastRecordCount) playUiSound("record");
+      lastRecordCount = count;
+    }).observe(recordBody, { childList:true, subtree:true });
+  }
+  var checkmark = $("#checkmark");
+  if (checkmark) {
+    new MutationObserver(function(){
+      if (checkmark.classList.contains("active")) playUiSound("step");
+    }).observe(checkmark, { attributes:true, attributeFilter:["class"] });
+  }
+  var hintLamp = $("#hintLamp");
+  if (hintLamp) {
+    new MutationObserver(function(){
+      if (hintLamp.classList.contains("flash")) playUiSound("warn");
+    }).observe(hintLamp, { attributes:true, attributeFilter:["class"] });
+  }
+  if (doneMask) {
+    var doneWasVisible = getComputedStyle(doneMask).display !== "none";
+    new MutationObserver(function(){
+      var visible = getComputedStyle(doneMask).display !== "none";
+      if (visible && !doneWasVisible) {
+        playUiSound("finish");
+        setCollapsed(controlDock, controlBody, controlToggle, false);
+        setCollapsed(dataDock, dataBody, dataToggle, true);
+        fitDrawers();
+      }
+      doneWasVisible = visible;
+    }).observe(doneMask, { attributes:true, attributeFilter:["class", "style"] });
+  }
+
+  getSim();
+  taskCard.dataset.mode = "challenge";
+  setCollapsed(controlDock, controlBody, controlToggle, true);
+  setCollapsed(dataDock, dataBody, dataToggle, true);
+  bringToFront(controlDock);
+  syncAudioToggle();
+  syncModeControls();
+  fitDrawers();
+  window.addEventListener("resize", function(){ setTimeout(fitDrawers, 80); });
+  setTimeout(fitDrawers, 220);
+  setInterval(function(){
+    syncModeControls();
+    if (window.innerWidth > 720 && stage.clientWidth > 720) fitDrawers();
+  }, 240);
 })();
 </script>
 </body>
