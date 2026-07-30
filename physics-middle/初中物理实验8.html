@@ -1808,15 +1808,169 @@
     }
   }
 </style>
+<style id="exp8-governance-style">
+  :root{
+    --drawer-collapsed-width:164px;
+    --drawer-stack-offset:26px;
+  }
+  #app{
+    width:100%;
+    max-width:980px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  .task-card.free-mode{
+    opacity:.42 !important;
+    filter:grayscale(.86) saturate(.42) !important;
+  }
+  .quiz-card{
+    width:100%;
+    max-width:980px;
+    margin-top:10px;
+    padding:9px 12px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:11px;
+    background:rgba(255,255,255,.055);
+    color:#dce9f8;
+    transition:opacity .2s, border-color .2s, background .2s;
+  }
+  .quiz-card.ready{
+    border-color:rgba(91,188,255,.34);
+    background:rgba(22,53,80,.38);
+  }
+  .quiz-card.free-locked{ opacity:.46; filter:grayscale(.75); }
+  .quiz-prompt{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-height:30px;
+    font-size:13px;
+    line-height:1.5;
+  }
+  .quiz-row{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    margin-top:8px;
+  }
+  .quiz-row:empty{ display:none; }
+  .quiz-row button{
+    min-height:42px;
+    padding:7px 10px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:9px;
+    background:rgba(255,255,255,.07);
+    color:#f3f8ff;
+    font-size:13px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .audio-toggle{
+    position:absolute;
+    left:52px;
+    top:56px;
+    z-index:44;
+    width:34px;
+    height:34px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:8px;
+    background:rgba(255,255,255,.08);
+    color:#dce9ff;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .audio-toggle.muted{ color:#9fb0c4; opacity:.72; }
+  .audio-toggle.ready{
+    border-color:rgba(61,220,151,.42);
+    box-shadow:0 0 12px rgba(61,220,151,.16);
+  }
+  #stage{
+    height:clamp(560px,64vw,620px) !important;
+    min-height:560px !important;
+    max-height:620px !important;
+  }
+  #stage.lab-demo-paused *{ animation-play-state:paused !important; }
+  #stage .lab-area{ padding:14px 16px 70px !important; }
+  #controlBody .btnRow{
+    display:grid !important;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    margin:0 !important;
+  }
+  #controlBody .btnRow + .btnRow{ margin-top:8px !important; }
+  #controlBody .btnRow:last-child{ grid-template-columns:1fr !important; }
+  #controlBody button{
+    min-height:42px;
+    padding:8px !important;
+  }
+  #dataDock .chartWrap{ display:none !important; }
+  .toolbar,
+  .explanation{ width:100%; max-width:980px; }
+  .explanation{
+    color:#e8f4ff !important;
+    font-size:15px !important;
+    line-height:1.66 !important;
+  }
+  .explanation h2{
+    color:#9bd3ff !important;
+    font-size:20px !important;
+    line-height:1.35 !important;
+  }
+  @media(min-width:721px){
+    #stage .mobile-tabs,
+    #stage .sheet-close{ display:none !important; }
+    #stage #controlDock,
+    #stage #dataDock{
+      position:absolute !important;
+      right:auto !important;
+      bottom:auto !important;
+      width:min(94%,380px) !important;
+      max-width:380px !important;
+      min-width:0 !important;
+      overflow:hidden !important;
+    }
+    #stage #controlDock.collapsed,
+    #stage #dataDock.collapsed{
+      width:var(--drawer-collapsed-width) !important;
+      max-width:var(--drawer-collapsed-width) !important;
+    }
+    #stage #controlDock.collapsed .drawer-body,
+    #stage #dataDock.collapsed .drawer-body,
+    #stage #controlDock .drawer-body.collapsed,
+    #stage #dataDock .drawer-body.collapsed{
+      display:none !important;
+    }
+    #stage #controlDock.collapsed .drawer-header,
+    #stage #dataDock.collapsed .drawer-header{
+      min-height:46px !important;
+      height:46px !important;
+      overflow:hidden !important;
+      flex-wrap:nowrap !important;
+    }
+  }
+  @media(max-width:720px){
+    #app{ max-width:100%; }
+    .quiz-card{ padding:8px 10px; }
+    .quiz-row{ grid-template-columns:1fr; }
+  }
+  @media(max-width:420px){
+    #stage .hint-lamp,
+    #stage .audio-toggle{ top:104px !important; }
+  }
+</style>
 </head>
 <body>
+<div id="app">
   <div id="spectrum"></div>
 
   <div class="task-card" id="taskCard">
     <div class="task-step" id="taskStep">关卡 1 / 3</div>
     <div class="task-text">
       <div id="taskText">将铁钉拖入导线缺口，观察灯泡是否发光。</div>
-      <div class="task-hint" id="taskHint">提示：金属通常容易导电，可先观察灯泡是否亮起。</div>
+      <div class="task-hint" id="taskHint">提示：接入后只根据灯泡是否发光记录现象。</div>
     </div>
     <div class="progress-dots">
       <span class="dot active" id="dot1"></span>
@@ -1825,14 +1979,27 @@
     </div>
   </div>
 
+  <div class="quiz-card" id="quizCard" aria-live="polite">
+    <div class="quiz-prompt">
+      <span aria-hidden="true">🧠</span>
+      <span id="quizText">完成三次观察并逐次点击“确认观察”后，再进行结论小测。</span>
+    </div>
+    <div class="quiz-row" id="quizRow"></div>
+  </div>
+
   <div id="stage">
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button>
+    </div>
     <div class="hud">
-      <span class="mode-strip" id="modeTag">闯关模式 · 关卡 1/3</span>
+      <span class="mode-strip tag" id="modeTag">闯关模式 · 关卡 1/3</span>
       <span class="tag" id="statusTag">状态：待操作</span>
     </div>
 
 
     <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
+    <button class="audio-toggle" id="audioToggle" type="button" aria-label="关闭音效" aria-pressed="true" title="关闭音效">🔊</button>
     <div class="hint-pop" id="hintPop"></div>
 <div class="lab-area" id="labArea">
       <div class="board-grid"></div>
@@ -1867,10 +2034,6 @@
 
       <div class="items-layer" id="itemsLayer"></div>
 
-      <div class="effect-tag"><span class="effect-dot"></span><span id="effectText">观察：等待接入材料</span></div>
-      <div class="lab-note" id="labNote">实验状态：请把材料放入导线缺口</div>
-      <div class="hint-card" id="hintCard">依次比较铁钉、塑料尺、铅笔芯。真正的结论来自灯泡是否发光，而不是名字提示。</div>
-
       <div class="checkmark" id="checkmark"><div></div></div>
     </div>
 
@@ -1880,23 +2043,12 @@
         <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
       </div>
       <div class="dockBody collapsed drawer-body" id="controlBody">
-        <div class="secTitle">过程读数</div>
-        <div class="mini">导电性判断以器材状态为准：材料接入缺口后，若灯泡发光则说明电路导通。</div>
-        <div class="readout">
-          <span class="pill">当前步骤：<b id="stepPill">铁钉</b></span>
-          <span class="pill">当前材料：<b id="itemPill">未接入</b></span>
-          <span class="pill">材料类型：<b id="typePill">--</b></span>
-          <span class="pill">电路状态：<b id="circuitPill">断开</b></span>
-          <span class="pill">灯泡状态：<b id="lampPill">未发光</b></span>
-          <span class="pill">结论：<b id="resultPill">等待观察</b></span>
-        </div>
         <div class="btnRow">
           <button id="removeBtn">取下当前材料</button>
-          <button id="checkBtn">确认观察 ✅</button>
+          <button id="trialResetBtn">重置本轮</button>
         </div>
         <div class="btnRow">
-          <button id="trialResetBtn">本步复位</button>
-          <button id="flashBtn">再次观察灯泡</button>
+          <button id="checkBtn">确认观察</button>
         </div>
       </div>
     </div>
@@ -1908,7 +2060,7 @@
       </div>
       <div class="dockBody collapsed drawer-body" id="dataBody">
         <div class="secTitle">数据记录</div>
-        <table class="table">
+        <table class="table record">
           <thead>
             <tr>
               <th>#</th>
@@ -1953,14 +2105,31 @@
     <h2>实验名：比较物质的导电性</h2>
     <ul>
       <li><b>实验说明</b>：把不同材料接入导线缺口，观察灯泡是否发光，并记录判断。</li>
-      <li><b>原理与结论</b>：能让电路导通的材料是导体，不易导通的材料是绝缘体；石墨也具有导电性。</li>
+      <li><b>实验结论</b>：<span id="conclusionText">完成三次观察和结论小测后显示。</span></li>
     </ul>
   </div>
+</div>
 
 <script>
 const $ = (s) => document.querySelector(s);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const AUTO_DEMO_FACTOR = 1.18;
+const AUTO_DEMO_TIMING = Object.freeze({
+  cursorPress:220,
+  panelReveal:180,
+  buttonAim:360,
+  dragSoft:720,
+  actionMotion:820,
+  selectFast:320,
+  selectCompare:560,
+  observePrimary:780,
+  observeSecondary:760,
+  observeComparison:700,
+  recordConfirm:420,
+  stepTransition:460,
+  analysisLead:620,
+  actionSettle:120
+});
+window.AUTO_DEMO_TIMING = AUTO_DEMO_TIMING;
 
 const ITEMS = [
   { id:'nail', name:'铁钉', type:'导体', conductive:true, cls:'nail' },
@@ -1970,9 +2139,9 @@ const ITEMS = [
 ];
 
 const TASKS = [
-  { id:'nail', text:'将铁钉拖入导线缺口，观察灯泡是否发光。', hint:'提示：金属通常容易导电，可先观察灯泡是否亮起。', expect:true, check:() => state.connectedItemId === 'nail' && state.circuitOn },
-  { id:'ruler', text:'将塑料尺拖入导线缺口，观察灯泡是否发光。', hint:'提示：塑料内部缺乏自由移动电荷。', expect:false, check:() => state.connectedItemId === 'ruler' && !state.circuitOn },
-  { id:'pencil', text:'将铅笔芯拖入导线缺口，观察它是否能使灯泡发光。', hint:'提示：铅笔芯中的石墨可以导电。', expect:true, check:() => state.connectedItemId === 'pencil' && state.circuitOn }
+  { id:'nail', text:'将铁钉拖入导线缺口，观察灯泡是否发光。', hint:'提示：接入后只根据灯泡是否发光记录现象。', expect:true, check:() => state.connectedItemId === 'nail' && state.circuitOn },
+  { id:'ruler', text:'将塑料尺拖入导线缺口，观察灯泡是否发光。', hint:'提示：保持电路其他部分不变，只更换被测材料。', expect:false, check:() => state.connectedItemId === 'ruler' && !state.circuitOn },
+  { id:'pencil', text:'将铅笔芯拖入导线缺口，观察灯泡是否发光。', hint:'提示：不要根据材料名称猜测，以灯泡现象作为证据。', expect:true, check:() => state.connectedItemId === 'pencil' && state.circuitOn }
 ];
 
 const state = {
@@ -1981,6 +2150,8 @@ const state = {
   demoCompleted: false,
   freeMode: false,
   autoPlaying: false,
+  autoPaused: false,
+  awaitingQuiz: false,
   draggingId: '',
   rafId: 0,
   timers: new Set(),
@@ -1997,9 +2168,9 @@ const state = {
   dockMoved: { control:false, data:false },
   connectedItemId: '',
   circuitOn: false,
-  activeFlash: false,
   itemPositions: {}
 };
+let challengeEntrySnapshot = null;
 
 const stage = $('#stage');
 const labArea = $('#labArea');
@@ -2015,9 +2186,11 @@ const taskHintEl = $('#taskHint');
 const dots = [$('#dot1'), $('#dot2'), $('#dot3')];
 const modeTag = $('#modeTag');
 const statusTag = $('#statusTag');
-const effectText = $('#effectText');
-const labNote = $('#labNote');
-const hintCard = $('#hintCard');
+const quizCard = $('#quizCard');
+const quizText = $('#quizText');
+const quizRow = $('#quizRow');
+const conclusionText = $('#conclusionText');
+const audioToggle = $('#audioToggle');
 
 const controlDock = $('#controlDock');
 const controlHead = $('#controlHead');
@@ -2030,17 +2203,9 @@ const dataToggleBtn = $('#dataToggleBtn');
 const dataNotice = $('#dataNotice');
 const recordBody = $('#recordBody');
 
-const stepPill = $('#stepPill');
-const itemPill = $('#itemPill');
-const typePill = $('#typePill');
-const circuitPill = $('#circuitPill');
-const lampPill = $('#lampPill');
-const resultPill = $('#resultPill');
-
 const removeBtn = $('#removeBtn');
 const checkBtn = $('#checkBtn');
 const trialResetBtn = $('#trialResetBtn');
-const flashBtn = $('#flashBtn');
 const resetBtn = $('#resetBtn');
 const autoDemoBtn = $('#autoDemoBtn');
 const freeBtn = $('#freeBtn');
@@ -2065,15 +2230,27 @@ function wait(ms){
   });
 }
 async function waitAuto(ms, runId){
-  await wait(Math.round(ms * AUTO_DEMO_FACTOR));
-  if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+  let remaining = Math.max(0, Number(ms) || 0);
+  while(remaining > 0){
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    if(state.autoPaused){
+      await new Promise((resolve)=>setTimeout(resolve, 16));
+      continue;
+    }
+    const slice = Math.min(remaining, 16);
+    await new Promise((resolve)=>setTimeout(resolve, slice));
+    if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
+    if(!state.autoPaused) remaining -= slice;
+  }
 }
 async function waitForAutoCondition(check, timeoutMs, runId, errorCode){
-  const start = performance.now();
-  while(performance.now() - start < timeoutMs){
+  let remaining = Math.max(0, timeoutMs);
+  while(remaining > 0){
     if(runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
     if(check()) return;
-    await waitAuto(80, runId);
+    const slice = Math.min(80, remaining);
+    await waitAuto(slice, runId);
+    remaining -= slice;
   }
   throw new Error(errorCode);
 }
@@ -2111,18 +2288,31 @@ function showCheck(){
 }
 showCheck.t = 0;
 
+function getStatusEvidence(){
+  if(state.completed) return '三种材料比较完成';
+  if(state.awaitingQuiz) return '三组记录完成';
+  const meta = state.connectedItemId ? getItemMeta(state.connectedItemId) : null;
+  return meta
+    ? `${meta.name} · 灯泡${state.circuitOn ? '发光' : '未发光'}`
+    : '未接入材料 · 灯泡未发光';
+}
 function setStatus(text){
-  statusTag.textContent = `状态：${text || '待操作'}`;
+  const base = text || '待操作';
+  statusTag.textContent = `状态：${base} · ${getStatusEvidence()}`;
 }
 function updateModeHud(){
   modeTag.classList.remove('mode-auto');
   if(state.autoPlaying){
-    modeTag.textContent = state.completed ? '演示模式 · 演示完成' : '演示模式 · 自动运行';
+    modeTag.textContent = state.autoPaused
+      ? '模式：演示模式 · 已暂停'
+      : (state.completed ? '模式：演示模式 · 演示完成' : '模式：演示模式 · 自动运行');
     modeTag.classList.add('mode-auto');
   }else if(state.freeMode){
-    modeTag.textContent = '自由模式 · 自主探索';
+    modeTag.textContent = '模式：自由模式 · 自主探索';
   }else{
-    modeTag.textContent = state.completed ? (state.demoCompleted ? '演示模式 · 演示完成' : '闯关模式 · 已通关') : `闯关模式 · 关卡 ${state.currentTask + 1}/3`;
+    modeTag.textContent = state.completed
+      ? (state.demoCompleted ? '模式：演示模式 · 演示完成' : '模式：闯关模式 · 已通关')
+      : (state.awaitingQuiz ? '模式：闯关模式 · 结论小测' : `模式：闯关模式 · 关卡 ${state.currentTask + 1}/3`);
   }
 }
 
@@ -2140,10 +2330,21 @@ function setStepUI(i){
   state.currentTask = clamp(i, 0, TASKS.length - 1);
   if(state.warningStep !== state.currentTask) state.warningStep = -1;
   const t = TASKS[state.currentTask];
-  taskStepEl.textContent = `关卡 ${state.currentTask + 1} / ${TASKS.length}`;
-  taskTextEl.textContent = t.text;
-  taskHintEl.textContent = t.hint;
+  if(state.completed){
+    taskStepEl.textContent = `完成 ${TASKS.length}/${TASKS.length}`;
+    taskTextEl.textContent = '三次材料观察和结论小测已完成。';
+    taskHintEl.textContent = '可打开数据面板复核三次实验记录。';
+  }else if(state.awaitingQuiz){
+    taskStepEl.textContent = '结论小测';
+    taskTextEl.textContent = '根据三次灯泡现象，判断三种材料的导电性。';
+    taskHintEl.textContent = '提示：只依据灯泡是否发光和数据记录作答。';
+  }else{
+    taskStepEl.textContent = `关卡 ${state.currentTask + 1} / ${TASKS.length}`;
+    taskTextEl.textContent = t.text;
+    taskHintEl.textContent = t.hint;
+  }
   renderStepDots();
+  renderQuiz();
   refreshReadouts();
   updateModeHud();
 }
@@ -2151,6 +2352,7 @@ function warnCurrentStep(msg){
   if(state.freeMode || state.completed) return;
   state.warningStep = state.currentTask;
   renderStepDots();
+  playUiSound('warn');
   showToast(msg);
 }
 
@@ -2212,8 +2414,8 @@ function isOverDropZone(el){
 
 function setCircuitState(on){
   state.circuitOn = !!on;
-  bulb.classList.toggle('lit', state.circuitOn || state.activeFlash);
-  wires.forEach((w)=>w.classList.toggle('on', state.circuitOn || state.activeFlash));
+  bulb.classList.toggle('lit', state.circuitOn);
+  wires.forEach((w)=>w.classList.toggle('on', state.circuitOn));
 }
 
 function applyCurrentConnection(){
@@ -2227,7 +2429,7 @@ function applyCurrentConnection(){
   refreshReadouts();
 }
 
-function connectItem(itemId){
+function connectItem(itemId, silent = false){
   state.connectedItemId = itemId;
   const pos = getDropTargetPos(itemId);
   ITEMS.forEach((item)=>{
@@ -2240,6 +2442,7 @@ function connectItem(itemId){
   });
   placeItem(itemId, pos.x, pos.y, false);
   applyCurrentConnection();
+  if(!silent) playUiSound(state.circuitOn ? 'circuit' : 'tap');
 }
 
 function removeCurrentConnection(showTip = false){
@@ -2255,57 +2458,17 @@ function removeCurrentConnection(showTip = false){
   if(showTip) showToast('已取下当前材料。');
 }
 
-function pulseLamp(){
-  if(state.activeFlash) return;
-  state.activeFlash = true;
-  bulb.classList.add('lit');
-  wires.forEach((w)=>w.classList.add('on'));
-  const id = setTimeout(()=>{
-    state.activeFlash = false;
-    applyCurrentConnection();
-    untrackTimer(id);
-  }, 520);
-  trackTimer(id);
-}
-
 function refreshReadouts(){
-  const currentTask = TASKS[state.currentTask];
-  const meta = state.connectedItemId ? getItemMeta(state.connectedItemId) : null;
-  stepPill.textContent = getItemMeta(currentTask.id).name;
-  itemPill.textContent = meta ? meta.name : '未接入';
-  typePill.textContent = meta ? meta.type : '--';
-  circuitPill.textContent = state.circuitOn ? '闭合' : '断开';
-  lampPill.textContent = state.circuitOn ? '发光' : '未发光';
-  if(!meta) resultPill.textContent = '等待观察';
-  else resultPill.textContent = state.circuitOn ? '该材料能导电' : '该材料不导电';
-
-  if(state.completed){
-    labNote.textContent = '实验状态：挑战完成';
-    effectText.textContent = '观察：已完成全部比较';
-  }else if(state.freeMode){
-    labNote.textContent = meta ? `实验状态：正在测试 ${meta.name}` : '实验状态：自由探索中';
-    effectText.textContent = meta ? `观察：${state.circuitOn ? '灯泡发光，电路导通' : '灯泡不发光，电路不导通'}` : '观察：等待接入材料';
-  }else if(meta){
-    labNote.textContent = `实验状态：已接入 ${meta.name}，请确认观察`;
-    effectText.textContent = `观察：${state.circuitOn ? '灯泡发光，电路导通' : '灯泡不发光，电路不导通'}`;
-  }else{
-    labNote.textContent = '实验状态：请把材料放入导线缺口';
-    effectText.textContent = '观察：等待接入材料';
-  }
-
-  if(state.currentTask === 0) hintCard.textContent = '步骤 1 先比较铁钉。导电性判断一定要看灯泡是否发光。';
-  else if(state.currentTask === 1) hintCard.textContent = '步骤 2 观察塑料尺接入后灯泡为什么不亮，再确认。';
-  else if(state.currentTask === 2) hintCard.textContent = '步骤 3 观察铅笔芯接入后灯泡能否发光，体会石墨也能导电。';
-
-  if(state.autoPlaying) setStatus('演示中');
+  if(state.autoPaused) setStatus('演示已暂停');
+  else if(state.autoPlaying) setStatus('演示中');
   else if(state.freeMode) setStatus('自由探索');
   else if(state.completed) setStatus('挑战完成');
+  else if(state.awaitingQuiz) setStatus('等待结论小测');
   else if(state.draggingId) setStatus('拖动接线中');
   else setStatus('待操作');
 
-  removeBtn.disabled = !state.connectedItemId || state.autoPlaying;
-  checkBtn.disabled = state.autoPlaying;
-  flashBtn.disabled = state.autoPlaying || !state.connectedItemId;
+  removeBtn.disabled = !state.connectedItemId || state.autoPlaying || state.awaitingQuiz;
+  checkBtn.disabled = state.autoPlaying || state.awaitingQuiz;
 }
 
 function addRecord(step, itemName, phenomenon){
@@ -2339,8 +2502,70 @@ function lockSuccess(){
   trackTimer(id);
 }
 
+const CONCLUSION_TEXT = '铁钉和铅笔芯能使电路导通，是导体；塑料尺不能使电路导通，是绝缘体。';
+const QUIZ_OPTIONS = [
+  { text:'铁钉和铅笔芯是导体，塑料尺是绝缘体', correct:true },
+  { text:'只有铁钉是导体，铅笔芯和塑料尺都是绝缘体', correct:false },
+  { text:'灯泡是否发光与材料导电性无关', correct:false }
+];
+
+function renderQuiz(){
+  quizCard.classList.toggle('ready', state.awaitingQuiz && !state.freeMode);
+  quizCard.classList.toggle('free-locked', state.freeMode);
+  quizRow.innerHTML = '';
+  if(state.freeMode){
+    quizText.textContent = '自由模式不进行结论判定；退出后继续原闯关进度。';
+    return;
+  }
+  if(state.completed){
+    quizText.textContent = '结论小测已完成，可结合数据记录复核判断。';
+    return;
+  }
+  if(!state.awaitingQuiz){
+    quizText.textContent = '完成三次观察并逐次点击“确认观察”后，再进行结论小测。';
+    return;
+  }
+  quizText.textContent = '根据三次灯泡现象，哪项结论正确？';
+  QUIZ_OPTIONS.forEach((option)=>{
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = option.text;
+    button.dataset.correct = String(option.correct);
+    button.addEventListener('click', ()=>answerQuiz(option.correct, false));
+    quizRow.appendChild(button);
+  });
+}
+
+function finishExperiment(fromAuto = false){
+  state.awaitingQuiz = false;
+  state.completed = true;
+  state.demoCompleted = !!fromAuto || state.autoPlaying;
+  conclusionText.textContent = CONCLUSION_TEXT;
+  renderStepDots();
+  setStepUI(TASKS.length - 1);
+  setStatus('挑战完成');
+  setControlCollapsed(false);
+  setDataCollapsed(true);
+  defaultDockPositions(true);
+  doneMask.style.display = 'flex';
+  playUiSound('finish');
+  refreshInteractionLocks();
+}
+
+function answerQuiz(correct, fromAuto = false){
+  if(!state.awaitingQuiz || state.freeMode) return false;
+  if(!correct){
+    playUiSound('warn');
+    showToast('再看一次三组灯泡现象后作答。');
+    return false;
+  }
+  finishExperiment(fromAuto);
+  return true;
+}
+
 function passCurrentTask(fromAuto = false){
   if(state.successCooldown || state.completed) return false;
+  if(state.awaitingQuiz) return false;
   if(state.freeMode && !fromAuto){
     showToast('自由模式下可继续测试，不进入闯关判定。');
     return false;
@@ -2363,20 +2588,16 @@ function passCurrentTask(fromAuto = false){
   const phenomenon = state.circuitOn ? '灯泡发光，判定为导体' : '灯泡不发光，判定为绝缘体';
   addRecord(`步骤${state.currentTask + 1}`, meta.name, phenomenon);
   showCheck();
+  playUiSound('step');
   lockSuccess();
 
   if(state.currentTask >= TASKS.length - 1){
-    state.completed = true;
-    if (state.autoPlaying) state.demoCompleted = true;
+    state.awaitingQuiz = true;
     renderStepDots();
+    setStepUI(TASKS.length - 1);
     refreshReadouts();
-    setStatus('挑战完成');
-    if(fromAuto && state.autoPlaying){
-      state.autoPlaying = false;
-      updateModeHud();
-      refreshInteractionLocks();
-    }
-    doneMask.style.display = 'flex';
+    setStatus('等待结论小测');
+    if(!fromAuto) showToast('三次观察已记录，请完成结论小测。');
   } else {
     setStepUI(state.currentTask + 1);
     removeCurrentConnection(false);
@@ -2388,7 +2609,7 @@ function passCurrentTask(fromAuto = false){
 function bindItemDrag(el){
   el.addEventListener('pointerdown', (e)=>{
     if(e.button !== 0) return;
-    if(state.autoPlaying || state.completed) return;
+    if(state.autoPlaying || state.completed || state.awaitingQuiz) return;
     state.draggingId = el.dataset.itemId;
     state.dragPointerId = e.pointerId;
     const rect = el.getBoundingClientRect();
@@ -2437,25 +2658,30 @@ removeBtn.onclick = () => {
 checkBtn.onclick = () => { passCurrentTask(false); };
 trialResetBtn.onclick = () => {
   if(state.autoPlaying) return;
+  if(state.freeMode){
+    resetFreeOperation();
+    showToast('自由模式操作已重置。');
+    return;
+  }
   removeCurrentConnection(false);
   showToast(state.freeMode ? '自由场景已复位。' : `已复位当前步骤：${getItemMeta(TASKS[state.currentTask].id).name}。`);
-};
-flashBtn.onclick = () => {
-  if(state.autoPlaying || !state.connectedItemId) return;
-  pulseLamp();
 };
 
 function setControlCollapsed(on){
   state.panelCollapsed = !!on;
+  controlDock.classList.toggle('collapsed', state.panelCollapsed);
   controlBody.classList.toggle('collapsed', state.panelCollapsed);
   controlToggleBtn.textContent = state.panelCollapsed ? '展开' : '收起';
+  scheduleDockClamp(controlDock);
 }
 function setDataCollapsed(on){
   state.dataCollapsed = !!on;
+  dataDock.classList.toggle('collapsed', state.dataCollapsed);
   dataBody.classList.toggle('collapsed', state.dataCollapsed);
   dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
   if(!state.dataCollapsed) state.unseenRecordCount = 0;
   refreshDataNotice();
+  scheduleDockClamp(dataDock);
 }
 controlToggleBtn.onclick = () => {
   setControlCollapsed(!state.panelCollapsed);
@@ -2472,6 +2698,22 @@ function setDockPos(el, x, y){
   el.style.top = `${y}px`;
   el.style.right = 'auto';
   el.style.bottom = 'auto';
+}
+function clampDockInsideStage(el){
+  if(!el) return;
+  const s = getStageRect();
+  const r = el.getBoundingClientRect();
+  if(!r.width || !r.height) return;
+  const next = clampDockPos(el, r.left - s.left, r.top - s.top);
+  setDockPos(el, next.x, next.y);
+}
+function scheduleDockClamp(el){
+  requestAnimationFrame(()=>clampDockInsideStage(el));
+  const id = setTimeout(()=>{
+    clampDockInsideStage(el);
+    untrackTimer(id);
+  }, 80);
+  trackTimer(id);
 }
 function clampDockPos(el, x, y){
   const s = getStageRect();
@@ -2592,41 +2834,106 @@ bindDockDrag(dataDock, dataHead, 'data');
 
 function refreshInteractionLocks(){
   const autoLocked = state.autoPlaying;
-  removeBtn.disabled = autoLocked || !state.connectedItemId;
-  checkBtn.disabled = autoLocked;
-  trialResetBtn.disabled = autoLocked;
-  flashBtn.disabled = autoLocked || !state.connectedItemId;
-  resetBtn.disabled = autoLocked;
+  const taskLocked = state.awaitingQuiz || state.completed;
+  removeBtn.disabled = autoLocked || taskLocked || !state.connectedItemId;
+  checkBtn.disabled = autoLocked || taskLocked;
+  trialResetBtn.disabled = autoLocked || taskLocked;
+  resetBtn.disabled = false;
+  resetBtn.textContent = autoLocked
+    ? (state.autoPaused ? '继续演示' : '暂停演示')
+    : (state.freeMode ? '重置操作' : '重置关卡');
+  autoDemoBtn.textContent = autoLocked ? '退出演示' : '演示模式';
+  autoDemoBtn.disabled = state.freeMode && !autoLocked;
   freeBtn.disabled = autoLocked;
-  if(autoLocked){
-    autoDemoBtn.textContent = '退出演示';
-    autoDemoBtn.disabled = false;
-  }else{
-    autoDemoBtn.textContent = '演示模式';
-    autoDemoBtn.disabled = state.freeMode;
-  }
   freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+  renderQuiz();
+}
+
+function cloneData(value){
+  return JSON.parse(JSON.stringify(value));
+}
+
+function captureChallengeState(){
+  return {
+    currentTask:state.currentTask,
+    completed:state.completed,
+    demoCompleted:state.demoCompleted,
+    awaitingQuiz:state.awaitingQuiz,
+    warningStep:state.warningStep,
+    records:cloneData(state.records),
+    unseenRecordCount:state.unseenRecordCount,
+    connectedItemId:state.connectedItemId,
+    panelCollapsed:state.panelCollapsed,
+    dataCollapsed:state.dataCollapsed,
+    conclusion:conclusionText.textContent,
+    doneDisplay:doneMask.style.display
+  };
+}
+
+function restoreChallengeState(snapshot){
+  if(!snapshot) return;
+  state.currentTask = snapshot.currentTask;
+  state.completed = snapshot.completed;
+  state.demoCompleted = snapshot.demoCompleted;
+  state.awaitingQuiz = snapshot.awaitingQuiz;
+  state.warningStep = snapshot.warningStep;
+  state.records = cloneData(snapshot.records);
+  state.unseenRecordCount = snapshot.unseenRecordCount;
+  state.connectedItemId = '';
+  state.circuitOn = false;
+  state.freeMode = false;
+  taskCard.classList.remove('free-mode');
+  taskCard.dataset.mode = 'challenge';
+  conclusionText.textContent = snapshot.conclusion;
+  doneMask.style.display = snapshot.doneDisplay || 'none';
+  createItems();
+  if(snapshot.connectedItemId) connectItem(snapshot.connectedItemId, true);
+  else setCircuitState(false);
+  setControlCollapsed(snapshot.panelCollapsed);
+  setDataCollapsed(snapshot.dataCollapsed);
+  renderRecordTable();
+  refreshDataNotice();
+  setStepUI(snapshot.currentTask);
+  updateModeHud();
+  refreshInteractionLocks();
+  refreshReadouts();
+}
+
+function resetFreeOperation(){
+  removeCurrentConnection(false);
+  state.connectedItemId = '';
+  state.circuitOn = false;
+  createItems();
+  setCircuitState(false);
+  refreshReadouts();
 }
 
 function setFreeMode(on){
   if(state.autoPlaying) return;
-  state.freeMode = !!on;
   state.warningStep = -1;
   doneMask.style.display = 'none';
-  if(state.freeMode){
-    taskCard.style.opacity = '.28';
-    taskCard.style.filter = 'grayscale(.6)';
+  if(on && !state.freeMode){
+    challengeEntrySnapshot = captureChallengeState();
+    state.freeMode = true;
+    state.completed = false;
+    state.awaitingQuiz = false;
+    taskCard.classList.add('free-mode');
+    taskCard.dataset.mode = 'free';
+    resetFreeOperation();
     setStatus('自由探索');
     showToast('自由模式：可任意比较材料的导电性。');
-  }else{
-    taskCard.style.opacity = '1';
-    taskCard.style.filter = 'none';
-    setStatus('待操作');
+  }else if(!on && state.freeMode){
+    const snapshot = challengeEntrySnapshot;
+    challengeEntrySnapshot = null;
+    restoreChallengeState(snapshot);
+    setStatus(state.awaitingQuiz ? '等待结论小测' : '待操作');
+    showToast('已回到闯关模式。');
+    return;
   }
   updateModeHud();
   refreshInteractionLocks();
-  removeCurrentConnection(false);
   renderStepDots();
+  renderQuiz();
   refreshReadouts();
 }
 
@@ -2637,10 +2944,12 @@ function resetAll(opts = {}){
 
   if(!preserveAuto){
     state.autoPlaying = false;
+    state.autoPaused = false;
     state.demoRunId += 1;
   }
 
   state.completed = false; state.demoCompleted = false;
+  state.awaitingQuiz = false;
   state.successCooldown = false;
   state.warningStep = -1;
   state.currentTask = 0;
@@ -2650,8 +2959,8 @@ function resetAll(opts = {}){
   state.dragPointerId = -1;
   state.connectedItemId = '';
   state.circuitOn = false;
-  state.activeFlash = false;
   doneMask.style.display = 'none';
+  conclusionText.textContent = '完成三次观察和结论小测后显示。';
 
   setControlCollapsed(true);
   setDataCollapsed(true);
@@ -2660,8 +2969,8 @@ function resetAll(opts = {}){
   defaultDockPositions(true);
 
   state.freeMode = !!keepFree;
-  taskCard.style.opacity = keepFree ? '.28' : '1';
-  taskCard.style.filter = keepFree ? 'grayscale(.6)' : 'none';
+  taskCard.classList.toggle('free-mode', keepFree);
+  taskCard.dataset.mode = keepFree ? 'free' : 'challenge';
   setCircuitState(false);
   createItems();
   renderRecordTable();
@@ -2670,6 +2979,7 @@ function resetAll(opts = {}){
   updateModeHud();
   refreshInteractionLocks();
   refreshReadouts();
+  renderQuiz();
   if(showTip && !state.autoPlaying) showToast(keepFree ? '自由模式场景已重置。' : '已重置：回到步骤1。');
 }
 
@@ -2720,11 +3030,11 @@ function elemCenterInStage(el){
 async function demoClickElement(el, runId, action = null){
   const p = elemCenterInStage(el);
   setDemoCursor(p.x, p.y);
-  await waitAuto(220, runId);
-  await clickDemoCursor(150, runId);
+  await waitAuto(AUTO_DEMO_TIMING.buttonAim, runId);
+  await clickDemoCursor(AUTO_DEMO_TIMING.cursorPress, runId);
   if(action) await action();
   else el.click();
-  await waitAuto(180, runId);
+  await waitAuto(AUTO_DEMO_TIMING.recordConfirm, runId);
 }
 async function demoDragItemToZone(itemId, runId){
   const el = $(`#item-${itemId}`);
@@ -2734,8 +3044,8 @@ async function demoDragItemToZone(itemId, runId){
   let x = startRect.left - lab.left;
   let y = startRect.top - lab.top;
   setDemoCursor(x + el.offsetWidth / 2, y + el.offsetHeight / 2);
-  await waitAuto(180, runId);
-  await clickDemoCursor(130, runId);
+  await waitAuto(AUTO_DEMO_TIMING.buttonAim, runId);
+  await clickDemoCursor(AUTO_DEMO_TIMING.cursorPress, runId);
 
   const steps = 28;
   for(let i = 1; i <= steps; i++){
@@ -2745,27 +3055,36 @@ async function demoDragItemToZone(itemId, runId){
     placeItem(itemId, nx, ny, false);
     dropZone.classList.toggle('ready', i > steps - 5);
     setDemoCursor(nx + el.offsetWidth / 2, ny + el.offsetHeight / 2);
-    await waitAuto(20, runId);
+    await waitAuto(AUTO_DEMO_TIMING.dragSoft / steps, runId);
   }
   dropZone.classList.remove('ready');
   connectItem(itemId);
-  await waitAuto(220, runId);
+  await waitAuto(AUTO_DEMO_TIMING.observePrimary, runId);
 }
 
 function stopAutoDemo(byUser = false){
   if(!state.autoPlaying) return;
   state.demoRunId += 1;
   state.autoPlaying = false;
+  state.autoPaused = false;
+  stage.classList.remove('lab-demo-paused');
+  clearTrackedTimers();
   hideDemoCursor();
+  resetAll({ preserveAuto:false, showTip:false });
+  setControlCollapsed(false);
+  setDataCollapsed(true);
+  defaultDockPositions(true);
   updateModeHud();
   refreshInteractionLocks();
-  if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
+  setStatus('待操作');
   if(byUser) showToast('已退出演示模式。');
 }
 
 async function startAutoDemo(){
   if(state.autoPlaying || state.freeMode) return;
   state.autoPlaying = true;
+  state.autoPaused = false;
+  stage.classList.remove('lab-demo-paused');
   const runId = ++state.demoRunId;
   updateModeHud();
   refreshInteractionLocks();
@@ -2780,8 +3099,17 @@ async function startAutoDemo(){
       const before = state.records.length;
       await demoClickElement(checkBtn, runId, async () => { passCurrentTask(true); });
       assertAutoRecorded(before);
-      await waitAuto(720, runId);
+      await waitAuto(AUTO_DEMO_TIMING.stepTransition, runId);
     }
+    if(!state.awaitingQuiz) throw new Error('AUTO_QUIZ_NOT_READY');
+    await waitAuto(AUTO_DEMO_TIMING.analysisLead, runId);
+    const correctQuizButton = quizRow.querySelector('button[data-correct="true"]');
+    if(!correctQuizButton) throw new Error('AUTO_QUIZ_OPTION_MISSING');
+    await demoClickElement(
+      correctQuizButton,
+      runId,
+      async ()=>answerQuiz(true, true)
+    );
     if(!state.completed) throw new Error('AUTO_NOT_COMPLETED');
     setStatus('挑战完成');
   } catch (err) {
@@ -2796,6 +3124,8 @@ async function startAutoDemo(){
     hideDemoCursor();
     if(runId === state.demoRunId){
       state.autoPlaying = false;
+      state.autoPaused = false;
+      stage.classList.remove('lab-demo-paused');
       updateModeHud();
       refreshInteractionLocks();
       if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
@@ -2803,9 +3133,28 @@ async function startAutoDemo(){
   }
 }
 
+function toggleAutoPause(){
+  if(!state.autoPlaying) return;
+  state.autoPaused = !state.autoPaused;
+  stage.classList.toggle('lab-demo-paused', state.autoPaused);
+  setStatus(state.autoPaused ? '演示已暂停' : '演示中');
+  updateModeHud();
+  refreshInteractionLocks();
+  showToast(state.autoPaused ? '演示已暂停。' : '演示继续。');
+}
+
 resetBtn.onclick = () => {
-  if(state.autoPlaying) return;
-  resetAll({ preserveAuto:false, showTip:true, preserveFreeMode:state.freeMode });
+  if(state.autoPlaying){
+    toggleAutoPause();
+    return;
+  }
+  if(state.freeMode){
+    resetFreeOperation();
+    showToast('自由模式操作已重置。');
+    refreshInteractionLocks();
+    return;
+  }
+  resetAll({ preserveAuto:false, showTip:true });
 };
 freeBtn.onclick = () => setFreeMode(!state.freeMode);
 autoDemoBtn.onclick = () => {
@@ -2820,10 +3169,103 @@ autoDemoBtn.onclick = () => {
 };
 okBtn.onclick = () => { doneMask.style.display = 'none'; };
 
+const audioState = { ctx:null, muted:false, unlocked:false };
+function syncAudioToggle(){
+  audioToggle.classList.toggle('muted', audioState.muted);
+  audioToggle.classList.toggle('ready', audioState.unlocked && !audioState.muted);
+  audioToggle.textContent = audioState.muted ? '🔇' : '🔊';
+  audioToggle.setAttribute('aria-pressed', String(!audioState.muted));
+  audioToggle.setAttribute('aria-label', audioState.muted ? '开启音效' : '关闭音效');
+  audioToggle.title = audioState.muted ? '开启音效' : '关闭音效';
+}
+function ensureAudio(){
+  if(audioState.muted) return null;
+  if(!audioState.ctx){
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if(!AudioContextClass) return null;
+    try {
+      audioState.ctx = new AudioContextClass();
+    } catch (error) {
+      console.warn('AudioContext unavailable', error);
+      return null;
+    }
+  }
+  audioState.unlocked = true;
+  if(audioState.ctx.state === 'suspended'){
+    audioState.ctx.resume().catch((error)=>console.warn('AudioContext resume failed', error));
+  }
+  syncAudioToggle();
+  return audioState.ctx;
+}
+function tone(frequency, duration, type = 'sine', gain = .03, delay = 0){
+  const ctx = ensureAudio();
+  if(!ctx) return;
+  const start = ctx.currentTime + delay;
+  const oscillator = ctx.createOscillator();
+  const envelope = ctx.createGain();
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, start);
+  envelope.gain.setValueAtTime(.0001, start);
+  envelope.gain.exponentialRampToValueAtTime(gain, start + .012);
+  envelope.gain.exponentialRampToValueAtTime(.0001, start + duration);
+  oscillator.connect(envelope).connect(ctx.destination);
+  oscillator.start(start);
+  oscillator.stop(start + duration + .03);
+}
+function playUiSound(kind){
+  if(audioState.muted) return;
+  window.dispatchEvent(new CustomEvent('lab-ui-sound', { detail:{ kind } }));
+  if(kind === 'warn'){
+    tone(190, .16, 'sawtooth', .04);
+    tone(145, .2, 'sawtooth', .035, .11);
+  }else if(kind === 'finish'){
+    tone(523, .18, 'sine', .04);
+    tone(659, .2, 'sine', .04, .13);
+    tone(784, .28, 'sine', .045, .27);
+  }else if(kind === 'step'){
+    tone(480, .11, 'triangle', .03);
+    tone(660, .16, 'triangle', .032, .08);
+  }else if(kind === 'circuit'){
+    tone(220, .08, 'square', .018);
+    tone(440, .16, 'sine', .026, .05);
+  }else if(kind === 'hint'){
+    tone(660, .12, 'triangle', .028);
+  }else{
+    tone(360, .07, 'sine', .018);
+  }
+}
+window.playUiSound = playUiSound;
+window.labAudio = {
+  play:playUiSound,
+  isMuted:()=>audioState.muted,
+  setMuted(value){
+    audioState.muted = !!value;
+    syncAudioToggle();
+    return audioState.muted;
+  }
+};
+document.addEventListener('pointerdown', ()=>ensureAudio(), { passive:true });
+document.addEventListener('click', (event)=>{
+  const button = event.target.closest('button');
+  if(!button || button === audioToggle || button.disabled) return;
+  playUiSound('tap');
+}, true);
+audioToggle.addEventListener('click', (event)=>{
+  event.preventDefault();
+  event.stopPropagation();
+  window.labAudio.setMuted(!audioState.muted);
+  if(!audioState.muted){
+    ensureAudio();
+    playUiSound('hint');
+  }
+});
+
 function init(){
   renderRecordTable();
   refreshDataNotice();
   resetAll({ preserveAuto:false, showTip:false });
+  syncAudioToggle();
+  renderQuiz();
 }
 
 const relayout = (() => {
@@ -2994,6 +3436,10 @@ init();
     if (dock) dock.classList.toggle("collapsed", collapsed);
     if (body) body.classList.toggle("collapsed", collapsed);
     if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+    try {
+      if (window.state && dock === controlDock) window.state.panelCollapsed = collapsed;
+      if (window.state && dock === dataDock) window.state.dataCollapsed = collapsed;
+    } catch (_) {}
   }
 
   function placeDock(dock, left, top){
@@ -3028,8 +3474,8 @@ init();
 
     if (isMobile()) {
       if (!mobileCompletionOpened) {
-        setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-        setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+        setPanelCollapsed(controlDock, controlBody, controlToggle, false);
+        setPanelCollapsed(dataDock, dataBody, dataToggle, true);
         syncMobileShell();
         mobileCompletionOpened = true;
       }
@@ -3037,8 +3483,8 @@ init();
     }
 
     mobileCompletionOpened = false;
-    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    setPanelCollapsed(controlDock, controlBody, controlToggle, false);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, true);
     var sw = stage.clientWidth;
     var controlW = controlDock.offsetWidth || 160;
     var dataW = dataDock.offsetWidth || 260;
@@ -3329,7 +3775,7 @@ init();
   function setInitialMobileState(){
     if (!isMobile()) return;
     forceClassState('data', false);
-    forceClassState('control', true);
+    forceClassState('control', false);
     syncMobileShell();
   }
   function dataNoticeCount(){
