@@ -1696,6 +1696,109 @@
     .explanation h2{ font-size:20px !important; }
   }
 </style>
+<style id="exp5-observation-flow-style">
+  .exp5-observation-panel{
+    position:absolute;
+    left:82px;
+    top:8px;
+    z-index:18;
+    width:min(520px, calc(100% - 272px));
+    padding:8px 10px;
+    border:1px solid rgba(155,211,255,.22);
+    border-radius:11px;
+    background:rgba(7,14,24,.3);
+    box-shadow:0 10px 24px rgba(0,0,0,.18);
+    pointer-events:none;
+  }
+  .exp5-observation-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    color:#dcecff;
+    font-size:11px;
+    line-height:1.3;
+  }
+  .exp5-observation-head strong{
+    flex:0 0 auto;
+    color:#9bd3ff;
+    font-size:12px;
+  }
+  .exp5-observation-panel .lab-note{
+    position:static;
+    min-width:0;
+    padding:0;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    overflow:hidden;
+    color:#d5e6ff;
+    font-size:11px;
+    text-align:right;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .exp5-observation-panel .readout{
+    display:grid;
+    grid-template-columns:repeat(5, minmax(0, 1fr));
+    gap:5px;
+    margin-top:6px;
+  }
+  .exp5-observation-panel .pill{
+    min-width:0;
+    justify-content:center;
+    gap:4px;
+    padding:4px 5px;
+    border-radius:8px;
+    overflow:hidden;
+    font-size:10px;
+    text-overflow:ellipsis;
+  }
+  #controlBody > .btnRow{ margin:0 !important; }
+  @media(min-width:721px) and (max-width:840px){
+    .exp5-observation-panel{
+      width:calc(100% - 316px);
+    }
+  }
+  @media(min-width:721px){
+    #stage:has(#controlBody:not(.collapsed)) .exp5-observation-panel,
+    #stage:has(#dataBody:not(.collapsed)) .exp5-observation-panel{
+      top:112px;
+    }
+  }
+  @media(max-width:720px){
+    .exp5-observation-panel{
+      left:82px;
+      top:8px;
+      width:calc(100% - 90px);
+      padding:6px 7px;
+      background:rgba(7,14,24,.4);
+    }
+    .exp5-observation-head{
+      gap:6px;
+      font-size:10px;
+    }
+    .exp5-observation-head strong{ font-size:11px; }
+    .exp5-observation-panel .lab-note{ font-size:10px; }
+    .exp5-observation-panel .readout{
+      grid-template-columns:repeat(5, minmax(0, 1fr));
+      gap:4px;
+      margin-top:5px;
+    }
+    .exp5-observation-panel .pill{
+      display:block;
+      padding:3px 2px;
+      text-align:center;
+      font-size:9px;
+      white-space:nowrap;
+    }
+    .exp5-observation-panel .pill b{
+      display:block;
+      margin-top:1px;
+      font-size:10px;
+    }
+  }
+</style>
 </head>
 <body>
 <div id="app">
@@ -1730,6 +1833,20 @@
     <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
     <div class="hint-pop" id="hintPop"></div>
 <div class="lab-area" id="labArea">
+      <section class="exp5-observation-panel" id="exp5ObservationPanel" aria-label="蒸发过程实时观察">
+        <div class="exp5-observation-head">
+          <strong>过程观察</strong>
+          <span class="lab-note" id="labNote">实验状态：待开始</span>
+        </div>
+        <div class="readout">
+          <span class="pill">A剩余：<b id="massAPill">0.0</b>%</span>
+          <span class="pill">B剩余：<b id="massBPill">0.0</b>%</span>
+          <span class="pill">A-B差：<b id="diffPill">0.0</b>%</span>
+          <span class="pill">时长：<b id="timePill">0.0</b>s</span>
+          <span class="pill">条件：<b id="condPill">无</b></span>
+        </div>
+      </section>
+
       <div class="slide-group" id="groupA">
         <div class="slide">
           <div class="thermometer"><div class="thermometer-fill" id="tempA"></div></div>
@@ -1758,7 +1875,6 @@
         <button class="tool-btn" id="btnFan" disabled><span>💨</span><span class="tool-tip">吹风（气流）</span></button>
       </div>
 
-      <div class="lab-note" id="labNote">实验状态：待开始</div>
       <div class="checkmark" id="checkmark"><div></div></div>
     </div>
 
@@ -1768,16 +1884,6 @@
         <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
       </div>
       <div class="dockBody collapsed drawer-body" id="controlBody">
-        <div class="secTitle">过程读数</div>
-        <div class="mini">对比参照组与实验组的蒸发差异，验证温度/表面积/气流影响。</div>
-        <div class="readout">
-          <span class="pill">A剩余：<b id="massAPill">0.0</b>%</span>
-          <span class="pill">B剩余：<b id="massBPill">0.0</b>%</span>
-          <span class="pill">A-B差：<b id="diffPill">0.0</b>%</span>
-          <span class="pill">观察时长：<b id="timePill">0.0</b>s</span>
-          <span class="pill">条件：<b id="condPill">无</b></span>
-        </div>
-
         <div class="btnRow">
           <button class="warn" id="dripBtn">滴水开始 💧</button>
           <button id="checkBtn">确认观察 ✅</button>
@@ -2142,6 +2248,7 @@ function setCondition(next, fromAuto = false){
   if(next === 'fan') sim.fan = true;
 
   applySceneEffects();
+  refreshReadouts();
   if(!fromAuto) showToast(`已选择条件：${conditionLabel()}`);
 }
 
