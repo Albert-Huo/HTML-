@@ -280,7 +280,7 @@
 
   .graphCanvasWrap{
     position:relative;
-    height:100%;
+    height:470px;
     min-height:470px;
     border-radius:16px;
     border:1px solid rgba(255,255,255,.08);
@@ -966,8 +966,163 @@
     }
   }
 </style>
+
+<style id="batch-11-15-governance-style">
+  :root{ --drawer-collapsed-width:164px; }
+  #app{
+    width:100%;
+    max-width:980px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  #app > #spectrum,
+  #app > .task-card,
+  #app > .quiz-card,
+  #app > #stage,
+  #app > .toolbar,
+  #app > .explanation{ width:100%; }
+  .task-card.free-mode{
+    opacity:.42 !important;
+    filter:grayscale(.86) saturate(.42) !important;
+  }
+  .quiz-card{
+    display:block;
+    width:100%;
+    max-width:940px;
+    margin-top:10px;
+    padding:9px 12px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:11px;
+    background:rgba(255,255,255,.055);
+    color:#dce9f8;
+  }
+  .quiz-card.ready{
+    border-color:rgba(91,188,255,.34);
+    background:rgba(22,53,80,.38);
+  }
+  .quiz-card.free-locked{ opacity:.46; filter:grayscale(.75); }
+  .quiz-prompt{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-height:30px;
+    font-size:13px;
+    line-height:1.5;
+  }
+  .quiz-row{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    margin-top:8px;
+  }
+  .quiz-row:empty{ display:none; }
+  .quiz-row button{
+    min-height:42px;
+    padding:7px 10px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:9px;
+    background:rgba(255,255,255,.07);
+    color:#f3f8ff;
+    font-size:13px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .audio-toggle{
+    position:absolute;
+    left:52px;
+    top:56px;
+    z-index:44;
+    width:34px;
+    height:34px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:8px;
+    background:rgba(255,255,255,.08);
+    color:#dce9ff;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .audio-toggle.muted{ color:#9fb0c4; opacity:.72; }
+  .audio-toggle.ready{
+    border-color:rgba(61,220,151,.42);
+    box-shadow:0 0 12px rgba(61,220,151,.16);
+  }
+  #stage.lab-demo-paused *{ animation-play-state:paused !important; }
+  .observation-panel{
+    position:absolute;
+    left:50%;
+    top:62px;
+    z-index:16;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    transform:translateX(-50%);
+    pointer-events:none;
+  }
+  .observation-panel span{
+    padding:7px 10px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:999px;
+    background:rgba(0,0,0,.48);
+    color:#dce7f5;
+    font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+    white-space:nowrap;
+  }
+  #doneMask{ z-index:320 !important; }
+  .explanation{
+    color:#e8f4ff !important;
+    font-size:15px !important;
+    line-height:1.66 !important;
+  }
+  .explanation h2{
+    color:#9bd3ff !important;
+    font-size:20px !important;
+    line-height:1.35 !important;
+  }
+  @media(min-width:721px){
+    #stage .observation-panel{ left:34%; }
+    #stage #controlDock.collapsed,
+    #stage #dataDock.collapsed{
+      width:var(--drawer-collapsed-width) !important;
+      max-width:var(--drawer-collapsed-width) !important;
+    }
+  }
+  @media(max-width:720px){
+    #app{ max-width:100%; }
+    .quiz-row{ grid-template-columns:1fr; }
+    #stage .observation-panel{
+      top:104px;
+      left:96px;
+      width:calc(100% - 106px);
+      gap:4px;
+      transform:none;
+    }
+    #stage .observation-panel span{
+      flex:1 1 0;
+      min-width:0;
+      padding:6px 4px;
+      overflow:hidden;
+      text-align:center;
+      text-overflow:ellipsis;
+      font-size:10px;
+    }
+  }
+  @media(max-width:420px){
+    #stage .hint-lamp,
+    #stage .audio-toggle{ top:104px !important; }
+  }
+  #controlBody > .secTitle,
+  #controlBody > .mini,
+  #controlBody > .readout{ display:none !important; }
+  #controlBody > .matRow{ margin-top:0; }
+</style>
 </head>
 <body>
+<div id="app">
   <div id="spectrum"></div>
 
   <div class="task-card" id="taskCard">
@@ -984,7 +1139,29 @@
     </div>
   </div>
 
+  <div class="quiz-card" id="quizCard" aria-live="polite">
+    <div class="quiz-prompt">
+      <span aria-hidden="true">🧠</span>
+      <span id="quizText">完成观察与记录后，再进行结论小测。</span>
+    </div>
+    <div class="quiz-row" id="quizRow"></div>
+  </div>
+
+
   <div id="stage">
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button>
+    </div>
+    <button class="audio-toggle" id="audioToggle" type="button" aria-label="关闭音效" aria-pressed="true" title="关闭音效">🔊</button>
+    <div class="observation-panel" id="exp11ObservationPanel" aria-live="polite">
+      <span data-reading>材料 <b id="obsMaterial">铝块</b></span>
+      <span data-reading>V <b id="obsVolume">20 cm³</b></span>
+      <span data-reading>m <b id="obsMass">54.0 g</b></span>
+      <span data-reading>点数 <b id="obsCount">0</b></span>
+      <span data-reading>拟合 <b id="obsFit">未拟合</b></span>
+    </div>
+
     <div class="board-grid"></div>
     <div class="hud">
       <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/4</span>
@@ -1143,6 +1320,7 @@
       <li><b>原理与结论</b>：同一种物质的质量与体积成正比，图像近似为过原点的直线；不同物质的斜率不同，说明密度不同。</li>
     </ul>
   </div>
+</div>
 
 <script>
 const MATERIALS = {
@@ -1178,6 +1356,10 @@ const state = {
   completed:false,
   freeMode:false,
   autoPlaying:false,
+  autoPaused:false,
+  freeSnapshot:null,
+  awaitingQuiz:false,
+  quizPassed:false,
   draggingId:null,
   rafId:0,
   timers:new Set(),
@@ -1247,6 +1429,14 @@ const autoDemoBtn = $('#autoDemoBtn');
 const freeBtn = $('#freeBtn');
 const recordBody = $('#recordBody');
 const dataNotice = $('#dataNotice');
+const quizCard = $('#quizCard');
+const quizText = $('#quizText');
+const quizRow = $('#quizRow');
+const obsMaterial = $('#obsMaterial');
+const obsVolume = $('#obsVolume');
+const obsMass = $('#obsMass');
+const obsCount = $('#obsCount');
+const obsFit = $('#obsFit');
 const controlDock = $('#controlDock');
 const dataDock = $('#dataDock');
 const controlHead = $('#controlHead');
@@ -1281,7 +1471,10 @@ function getGraphMaxY(){
 function setStatus(text){ statusTag.textContent = `状态：${text || '待操作'}`; }
 function updateModeHud(){
   modeTag.classList.remove('mode-auto');
-  if(state.autoPlaying){ modeTag.textContent = '模式：演示模式 · 自动运行'; modeTag.classList.add('mode-auto'); }
+  if(state.autoPlaying){
+    modeTag.textContent = state.autoPaused ? '模式：演示模式 · 已暂停' : '模式：演示模式 · 自动运行';
+    modeTag.classList.add('mode-auto');
+  }
   else if(state.freeMode){ modeTag.textContent = '模式：自由模式 · 自主探索'; }
   else modeTag.textContent = `模式：闯关模式 · 关卡 ${state.currentTask + 1}/${TASKS.length}`;
 }
@@ -1299,7 +1492,7 @@ function setStepUI(idx){
   state.currentTask = clamp(idx, 0, TASKS.length - 1);
   if(state.warningStep !== state.currentTask) state.warningStep = -1;
   const task = TASKS[state.currentTask];
-  taskStepEl.textContent = `步骤 ${state.currentTask + 1} / ${TASKS.length}`;
+  taskStepEl.textContent = `关卡 ${state.currentTask + 1} / ${TASKS.length}`;
   taskTextEl.textContent = task.text;
   taskHintEl.textContent = task.hint;
   renderStepDots();
@@ -1553,6 +1746,11 @@ function refreshReadouts(){
   massPill.textContent = `${currentMass().toFixed(1)} g`;
   countPill.textContent = `${getMeasureRecords().length}`;
   analysisPill.textContent = state.analysisOk ? '已完成' : (state.fitVisible ? '已拟合' : '未拟合');
+  obsMaterial.textContent = meta.label;
+  obsVolume.textContent = `${state.volume} cm³`;
+  obsMass.textContent = `${currentMass().toFixed(1)} g`;
+  obsCount.textContent = `${getMeasureRecords().length}`;
+  obsFit.textContent = state.analysisOk ? '已完成' : (state.fitVisible ? '已拟合' : '未拟合');
   if(state.analysisOk){
     effectText.textContent = '观察：同种材料点几乎共线，不同材料斜率不同';
     labNote.textContent = '实验状态：分析结论成立';
@@ -1611,6 +1809,56 @@ function refreshDataNotice(){
   const n = state.unseenRecordCount;
   dataNotice.textContent = n > 99 ? '99+' : String(n);
   dataNotice.classList.toggle('show', state.dataCollapsed && n > 0);
+}
+
+function renderConclusionQuiz(message = ''){
+  quizCard.classList.toggle('ready', state.awaitingQuiz && !state.freeMode && !state.completed);
+  quizCard.classList.toggle('free-locked', state.freeMode);
+  if(state.completed){
+    quizText.textContent = '结论小测已完成：m-V 图像斜率表示物质密度。';
+    quizRow.innerHTML = '';
+    return;
+  }
+  if(state.freeMode){
+    quizText.textContent = '自由模式不进行结论判定，可继续改变材料和体积。';
+    quizRow.innerHTML = '';
+    return;
+  }
+  if(!state.awaitingQuiz){
+    quizText.textContent = '完成两种材料的测量与拟合后，再进行结论小测。';
+    quizRow.innerHTML = '';
+    return;
+  }
+  quizText.textContent = message || 'm-V 图像中，哪一个量表示物质的密度？';
+  if(!quizRow.children.length){
+    [
+      ['slope', '斜率表示密度'],
+      ['intercept', '截距表示密度'],
+      ['count', '点数表示密度']
+    ].forEach(([answer, label])=>{
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.answer = answer;
+      button.textContent = label;
+      quizRow.appendChild(button);
+    });
+  }
+}
+
+function answerConclusionQuiz(answer, fromAuto = false){
+  if(!state.awaitingQuiz || state.freeMode || state.completed) return false;
+  if(answer !== 'slope'){
+    renderConclusionQuiz('再观察两条拟合直线：质量与体积的比值体现在斜率中。');
+    if(!fromAuto) showToast('答案不正确，请结合 m=ρV 再想一想。');
+    window.playLabTone?.(210, .12, .03);
+    return false;
+  }
+  state.awaitingQuiz = false;
+  state.quizPassed = true;
+  quizRow.innerHTML = '';
+  quizText.textContent = '回答正确：m=ρV，因此 m-V 图像斜率表示密度。';
+  window.playLabTone?.(720, .09, .03);
+  return passCurrentTask(true);
 }
 
 function guidedMeasureAllowed(){
@@ -1720,6 +1968,12 @@ function passCurrentTask(fromAuto = false){
     }
     return false;
   }
+  if(state.currentTask >= TASKS.length - 1 && !state.quizPassed){
+    state.awaitingQuiz = true;
+    renderConclusionQuiz();
+    if(!fromAuto) showToast('观察已确认，请完成结论小测。');
+    return true;
+  }
   state.warningStep = -1;
   let row;
   if(state.currentTask === 0) row = { kind:'analysis', note:'已完成铝块 20 cm³ 首次测量' };
@@ -1737,6 +1991,9 @@ function passCurrentTask(fromAuto = false){
     refreshReadouts();
     doneText.textContent = '你已完成“探究物体的质量与体积之间的关系”的测量、比较与图像分析。';
     setStatus('挑战完成');
+    setControlCollapsed(false);
+    setDataCollapsed(true);
+    renderConclusionQuiz();
     if(fromAuto && state.autoPlaying){ state.autoPlaying = false; updateModeHud(); refreshInteractionLocks(); }
     doneMask.style.display = 'flex';
   }else{
@@ -1876,33 +2133,95 @@ function refreshInteractionLocks(){
   fitBtn.disabled = autoLocked;
   checkBtn.disabled = autoLocked;
   volumeResetBtn.disabled = autoLocked;
-  resetBtn.disabled = autoLocked;
+  resetBtn.disabled = false;
   freeBtn.disabled = autoLocked;
-  if(autoLocked){ autoDemoBtn.textContent = '退出自动演示'; autoDemoBtn.disabled = false; }
-  else { autoDemoBtn.textContent = '自动演示'; autoDemoBtn.disabled = state.freeMode; }
+  if(autoLocked){
+    resetBtn.textContent = state.autoPaused ? '继续演示' : '暂停演示';
+    autoDemoBtn.textContent = '退出演示';
+    autoDemoBtn.disabled = false;
+  }else{
+    resetBtn.textContent = state.freeMode ? '重置操作' : '重置关卡';
+    autoDemoBtn.textContent = '演示模式';
+    autoDemoBtn.disabled = state.freeMode;
+  }
   freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+}
+
+function captureFreeSnapshot(){
+  return {
+    currentTask:state.currentTask,
+    completed:state.completed,
+    warningStep:state.warningStep,
+    records:state.records.map((row)=>({...row})),
+    unseenRecordCount:state.unseenRecordCount,
+    material:state.material,
+    volume:state.volume,
+    fitVisible:state.fitVisible,
+    analysisOk:state.analysisOk,
+    fitSummary:state.fitSummary,
+    measuredAtCurrent:state.measuredAtCurrent,
+    awaitingQuiz:state.awaitingQuiz,
+    quizPassed:state.quizPassed
+  };
+}
+function restoreFreeSnapshot(){
+  const snapshot = state.freeSnapshot;
+  if(!snapshot) return;
+  Object.assign(state, {
+    currentTask:snapshot.currentTask,
+    completed:snapshot.completed,
+    warningStep:snapshot.warningStep,
+    records:snapshot.records.map((row)=>({...row})),
+    unseenRecordCount:snapshot.unseenRecordCount,
+    material:snapshot.material,
+    volume:snapshot.volume,
+    fitVisible:snapshot.fitVisible,
+    analysisOk:snapshot.analysisOk,
+    fitSummary:snapshot.fitSummary,
+    measuredAtCurrent:snapshot.measuredAtCurrent,
+    awaitingQuiz:snapshot.awaitingQuiz,
+    quizPassed:snapshot.quizPassed
+  });
+  doneMask.style.display = 'none';
+  matButtons.forEach((btn)=>btn.classList.toggle('active', btn.dataset.key === state.material));
+  renderRecordTable();
+  refreshDataNotice();
+  setStepUI(state.currentTask);
+  renderVolume();
+  updateSampleVisual();
+  drawGraph();
+  renderConclusionQuiz();
 }
 function setFreeMode(on){
   if(state.autoPlaying) return;
-  state.freeMode = !!on;
+  const entering = !!on;
+  if(entering && !state.freeMode) state.freeSnapshot = captureFreeSnapshot();
+  if(!entering && state.freeMode){
+    restoreFreeSnapshot();
+    state.freeSnapshot = null;
+  }
+  state.freeMode = entering;
   state.warningStep = -1;
   doneMask.style.display = 'none';
   if(state.freeMode){
-    taskCard.style.opacity = '.28';
-    taskCard.style.filter = 'grayscale(.6)';
+    taskCard.classList.add('free-mode');
+    taskCard.dataset.mode = 'free';
     showToast('自由模式：可自由切换材料、调体积、测量和拟合。');
   }else{
-    taskCard.style.opacity = '1';
-    taskCard.style.filter = 'none';
+    taskCard.classList.remove('free-mode');
+    taskCard.removeAttribute('data-mode');
   }
   updateModeHud();
   refreshReadouts();
+  renderConclusionQuiz();
 }
 function resetAll(opts = {}){
   const { preserveAuto = false, preserveFreeMode = state.freeMode, showTip = false } = opts;
   clearTrackedTimers();
   state.currentTask = 0;
   state.completed = false;
+  state.autoPaused = false;
+  stage.classList.remove('lab-demo-paused');
   state.warningStep = -1;
   state.successCooldown = false;
   state.records = [];
@@ -1911,6 +2230,8 @@ function resetAll(opts = {}){
   state.volume = 20;
   state.fitVisible = false;
   state.analysisOk = false;
+  state.awaitingQuiz = false;
+  state.quizPassed = false;
   state.fitSummary = '';
   state.measuredAtCurrent = false;
   state.pointerDrag = null;
@@ -1921,15 +2242,18 @@ function resetAll(opts = {}){
   refreshDataNotice();
   setStepUI(0);
   matButtons.forEach((btn)=>btn.classList.toggle('active', btn.dataset.key === 'aluminum'));
-  taskCard.style.opacity = preserveFreeMode ? '.28' : '1';
-  taskCard.style.filter = preserveFreeMode ? 'grayscale(.6)' : 'none';
+  taskCard.classList.toggle('free-mode', preserveFreeMode);
+  if(preserveFreeMode) taskCard.dataset.mode = 'free';
+  else taskCard.removeAttribute('data-mode');
   state.freeMode = !!preserveFreeMode;
+  if(!preserveFreeMode) state.freeSnapshot = null;
   if(!preserveAuto){ state.autoPlaying = false; hideDemoCursor(); }
   updateModeHud();
   renderVolume();
   updateSampleVisual();
   scheduleGraphResize();
   refreshReadouts();
+  renderConclusionQuiz();
   if(showTip) showToast('实验已重置。');
   state.dockMoved.control = false;
   state.dockMoved.data = false;
@@ -1940,8 +2264,18 @@ function assertAutoRecorded(beforeLen){ if(state.records.length <= beforeLen) th
 function waitAuto(ms, runId = state.demoRunId){
   return new Promise((resolve, reject)=>{
     if(runId !== state.demoRunId) return reject(new Error('AUTO_DEMO_CANCELLED'));
-    const id = setTimeout(()=>{ untrackTimer(id); if(runId !== state.demoRunId) reject(new Error('AUTO_DEMO_CANCELLED')); else resolve(); }, ms);
-    trackTimer(id);
+    let remaining = ms;
+    let last = performance.now();
+    const tick = ()=>{
+      if(runId !== state.demoRunId) return reject(new Error('AUTO_DEMO_CANCELLED'));
+      const now = performance.now();
+      if(!state.autoPaused) remaining -= now - last;
+      last = now;
+      if(remaining <= 0) return resolve();
+      const id = setTimeout(()=>{ untrackTimer(id); tick(); }, Math.min(40, remaining));
+      trackTimer(id);
+    };
+    tick();
   });
 }
 async function waitForAutoCondition(fn, timeoutMs, runId, code){
@@ -2013,14 +2347,25 @@ async function demoConfirmTask(runId, expectedTask){
 }
 async function demoFitAndFinish(runId){
   if(shouldUseMobileAutoProgress()){
+    const before = state.records.length;
+    await waitForAutoCondition(() => state.awaitingQuiz || state.completed, 2200, runId, 'AUTO_MOBILE_QUIZ_NOT_READY');
+    if(state.awaitingQuiz){
+      await waitAuto(480, runId);
+      answerConclusionQuiz('slope', true);
+    }
     await waitForAutoCondition(() => state.completed, 2200, runId, 'AUTO_MOBILE_NOT_COMPLETED');
+    assertAutoRecorded(before);
     return;
   }
-  let before = state.records.length;
+  const before = state.records.length;
   await demoClickElement(fitBtn, runId, async ()=>{ runFitAnalysis(true); });
   await waitForAutoCondition(() => state.analysisOk, 1200, runId, 'AUTO_STEP4_NOT_READY');
-  before = state.records.length;
   await demoClickElement(checkBtn, runId, async ()=>{ passCurrentTask(true); });
+  if(state.awaitingQuiz){
+    await waitAuto(480, runId);
+    const correct = quizRow.querySelector('[data-answer="slope"]');
+    await demoClickElement(correct, runId, async ()=>{ answerConclusionQuiz('slope', true); });
+  }
   assertAutoRecorded(before);
 }
 async function demoDragVolumeTo(value, runId){
@@ -2049,15 +2394,28 @@ function stopAutoDemo(byUser = false){
   if(!state.autoPlaying) return;
   state.demoRunId += 1;
   state.autoPlaying = false;
+  state.autoPaused = false;
+  stage.classList.remove('lab-demo-paused');
   hideDemoCursor();
+  if(byUser) resetAll({ preserveAuto:false, preserveFreeMode:false, showTip:false });
   updateModeHud();
   refreshInteractionLocks();
   if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
-  if(byUser) showToast('已退出自动演示。');
+  if(byUser) showToast('已退出演示并回到关卡 1。');
+}
+function toggleAutoPause(){
+  if(!state.autoPlaying) return;
+  state.autoPaused = !state.autoPaused;
+  stage.classList.toggle('lab-demo-paused', state.autoPaused);
+  updateModeHud();
+  setStatus(state.autoPaused ? '演示已暂停' : '自动演示中');
+  refreshInteractionLocks();
 }
 async function startAutoDemo(){
   if(state.autoPlaying || state.freeMode) return;
   state.autoPlaying = true;
+  state.autoPaused = false;
+  stage.classList.remove('lab-demo-paused');
   const runId = ++state.demoRunId;
   updateModeHud();
   refreshInteractionLocks();
@@ -2148,7 +2506,20 @@ function initHandlers(){
   fitBtn.addEventListener('click', ()=>{ runFitAnalysis(false); });
   checkBtn.addEventListener('click', ()=>{ passCurrentTask(false); });
   volumeResetBtn.addEventListener('click', ()=>{ updateVolume(20); });
-  resetBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) resetAll({ preserveAuto:false, preserveFreeMode:state.freeMode, showTip:true }); });
+  resetBtn.addEventListener('click', ()=>{
+    if(state.autoPlaying){ toggleAutoPause(); return; }
+    if(state.freeMode){
+      restoreFreeSnapshot();
+      state.freeMode = true;
+      taskCard.classList.add('free-mode');
+      taskCard.dataset.mode = 'free';
+      updateModeHud();
+      refreshInteractionLocks();
+      showToast('已恢复进入自由模式时的状态。');
+      return;
+    }
+    resetAll({ preserveAuto:false, preserveFreeMode:false, showTip:true });
+  });
   freeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setFreeMode(!state.freeMode); });
   autoDemoBtn.addEventListener('click', ()=>{
     if(state.autoPlaying) stopAutoDemo(true);
@@ -2156,6 +2527,10 @@ function initHandlers(){
       if(state.freeMode){ showToast('请先退出自由模式，再启动自动演示。'); return; }
       startAutoDemo();
     }
+  });
+  quizRow.addEventListener('click', (event)=>{
+    const button = event.target.closest('button[data-answer]');
+    if(button) answerConclusionQuiz(button.dataset.answer, false);
   });
   okBtn.addEventListener('click', ()=>{ doneMask.style.display = 'none'; });
 }
@@ -2310,7 +2685,7 @@ init();
   var controlToggle = $("#controlToggleBtn") || $('[data-toggle="controlDock"]');
   var dataToggle = $("#dataToggleBtn") || $('[data-toggle="dataDock"]');
   var doneMask = $("#doneMask");
-  var mobileCompletionOpened = false;
+  var completionLayoutMode = "";
 
   function isDone(){
     var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
@@ -2329,10 +2704,28 @@ init();
     if (typeof window.codexExp11GraphRelayout === "function") window.codexExp11GraphRelayout();
   }
 
+  function isPanelCollapsed(dock, body){
+    return !!((dock && dock.classList.contains("collapsed")) || (body && body.classList.contains("collapsed")));
+  }
+
   function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (toggle && isPanelCollapsed(dock, body) !== collapsed) toggle.click();
     if (dock) dock.classList.toggle("collapsed", collapsed);
     if (body) body.classList.toggle("collapsed", collapsed);
     if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function bindPanelToggleSync(dock, body, toggle){
+    if (!toggle) return;
+    toggle.addEventListener("click", function(){
+      requestAnimationFrame(function(){
+        var label = (toggle.textContent || "").trim();
+        var collapsed = label === "展开" ? true : label === "收起" ? false : isPanelCollapsed(dock, body);
+        if (dock) dock.classList.toggle("collapsed", collapsed);
+        if (body) body.classList.toggle("collapsed", collapsed);
+        syncMobileShell();
+      });
+    });
   }
 
   function placeDock(dock, left, top){
@@ -2360,24 +2753,24 @@ init();
   function fitCompletionDrawers(){
     if (!stage || !controlDock || !dataDock) return;
     if (!isDone()) {
-      mobileCompletionOpened = false;
+      completionLayoutMode = "";
       keepNarrowDrawersExclusive();
       return;
     }
 
-    if (isMobile()) {
-      if (!mobileCompletionOpened) {
-        setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-        setPanelCollapsed(dataDock, dataBody, dataToggle, false);
-        syncMobileShell();
-        mobileCompletionOpened = true;
-      }
+    var nextLayoutMode = isMobile() ? "mobile" : "desktop";
+    if (completionLayoutMode === nextLayoutMode) return;
+    completionLayoutMode = nextLayoutMode;
+
+    if (nextLayoutMode === "mobile") {
+      setPanelCollapsed(controlDock, controlBody, controlToggle, false);
+      setPanelCollapsed(dataDock, dataBody, dataToggle, true);
+      syncMobileShell();
       return;
     }
 
-    mobileCompletionOpened = false;
-    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    setPanelCollapsed(controlDock, controlBody, controlToggle, false);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, true);
     var sw = stage.clientWidth;
     var controlW = controlDock.offsetWidth || 160;
     var dataW = dataDock.offsetWidth || 260;
@@ -2388,7 +2781,12 @@ init();
   }
 
   if (!stage || !controlDock || !dataDock) return;
-  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  bindPanelToggleSync(controlDock, controlBody, controlToggle);
+  bindPanelToggleSync(dataDock, dataBody, dataToggle);
+  window.addEventListener("resize", function(){
+    completionLayoutMode = "";
+    requestAnimationFrame(fitCompletionDrawers);
+  });
   setInterval(fitCompletionDrawers, 450);
 })();
 </script>
@@ -2585,6 +2983,107 @@ init();
   requestAnimationFrame(setInitialMobileState);
   setTimeout(setInitialMobileState, 160);
   setTimeout(syncMobileShell, 600);
+})();
+</script>
+
+<script id="batch-11-15-governance-runtime">
+(() => {
+  "use strict";
+  const AUTO_DEMO_TIMING = Object.freeze({
+    cursorPress:220,
+    panelReveal:180,
+    buttonAim:360,
+    dragSoft:720,
+    actionMotion:820,
+    selectFast:320,
+    selectCompare:560,
+    observePrimary:780,
+    observeSecondary:760,
+    observeComparison:700,
+    recordConfirm:420,
+    stepTransition:460,
+    analysisLead:620,
+    actionSettle:120
+  });
+  window.AUTO_DEMO_TIMING = AUTO_DEMO_TIMING;
+
+  const governanceState = {
+    autoPaused:false,
+    freeSnapshot:null,
+    audioMuted:false,
+    audioUnlocked:false
+  };
+  const labState = window.state;
+  if(labState && typeof labState === "object"){
+    if(!Object.hasOwn(labState, "autoPaused")) labState.autoPaused = false;
+    if(!Object.hasOwn(labState, "freeSnapshot")) labState.freeSnapshot = null;
+  }
+
+  function snapshotValue(value){
+    if(value instanceof Set) return [...value];
+    if(value && typeof value === "object"){
+      const out = Array.isArray(value) ? [] : {};
+      for(const [key, child] of Object.entries(value)){
+        if(["timers", "rafId", "pointerDrag", "volumeDrag", "draggingId"].includes(key)) continue;
+        if(typeof child !== "function") out[key] = snapshotValue(child);
+      }
+      return out;
+    }
+    return value;
+  }
+
+  window.getLabPauseSnapshot = () => snapshotValue(window.state || governanceState);
+  window.assertGovernedAutoRecord = (beforeLen, records) => {
+    if(!Array.isArray(records) || records.length <= beforeLen){
+      throw new Error("AUTO_RECORD_NOT_PERSISTED");
+    }
+  };
+
+  const audioToggle = document.querySelector("#audioToggle");
+  let audioContext = null;
+  function unlockAudio(){
+    if(governanceState.audioMuted) return null;
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if(!Context) return null;
+    if(!audioContext) audioContext = new Context();
+    if(audioContext.state === "suspended") audioContext.resume().catch((error) => console.warn("[audio] resume failed", error));
+    governanceState.audioUnlocked = true;
+    audioToggle?.classList.add("ready");
+    return audioContext;
+  }
+  function tone(freq = 520, duration = .055, gain = .025){
+    const ctx = unlockAudio();
+    if(!ctx || governanceState.audioMuted) return;
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+    osc.frequency.value = freq;
+    amp.gain.setValueAtTime(gain, ctx.currentTime);
+    amp.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + duration);
+    osc.connect(amp).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  }
+  window.playLabTone = tone;
+  function syncAudioButton(){
+    if(!audioToggle) return;
+    audioToggle.classList.toggle("muted", governanceState.audioMuted);
+    audioToggle.textContent = governanceState.audioMuted ? "🔇" : "🔊";
+    audioToggle.setAttribute("aria-pressed", String(!governanceState.audioMuted));
+    audioToggle.setAttribute("aria-label", governanceState.audioMuted ? "开启音效" : "关闭音效");
+    audioToggle.title = governanceState.audioMuted ? "开启音效" : "关闭音效";
+  }
+  audioToggle?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    governanceState.audioMuted = !governanceState.audioMuted;
+    syncAudioButton();
+    if(!governanceState.audioMuted) tone(620, .07, .028);
+  });
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if(!button || button === audioToggle || button.disabled) return;
+    tone(420, .035, .014);
+  }, true);
+  syncAudioButton();
 })();
 </script>
 </body>

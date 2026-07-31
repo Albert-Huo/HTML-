@@ -830,8 +830,159 @@
     .toolbar button#resetBtn{background:rgba(255,255,255,.06) !important}
   }
 </style>
+
+<style id="batch-11-15-governance-style">
+  :root{ --drawer-collapsed-width:164px; }
+  #app{
+    width:100%;
+    max-width:980px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+  }
+  #app > #spectrum,
+  #app > .task-card,
+  #app > .quiz-card,
+  #app > #stage,
+  #app > .toolbar,
+  #app > .explanation{ width:100%; }
+  .task-card.free-mode{
+    opacity:.42 !important;
+    filter:grayscale(.86) saturate(.42) !important;
+  }
+  .quiz-card{
+    display:block;
+    width:100%;
+    max-width:940px;
+    margin-top:10px;
+    padding:9px 12px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:11px;
+    background:rgba(255,255,255,.055);
+    color:#dce9f8;
+  }
+  .quiz-card.ready{
+    border-color:rgba(91,188,255,.34);
+    background:rgba(22,53,80,.38);
+  }
+  .quiz-card.free-locked{ opacity:.46; filter:grayscale(.75); }
+  .quiz-prompt{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-height:30px;
+    font-size:13px;
+    line-height:1.5;
+  }
+  .quiz-row{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    margin-top:8px;
+  }
+  .quiz-row:empty{ display:none; }
+  .quiz-row button{
+    min-height:42px;
+    padding:7px 10px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:9px;
+    background:rgba(255,255,255,.07);
+    color:#f3f8ff;
+    font-size:13px;
+    font-weight:800;
+    cursor:pointer;
+  }
+  .audio-toggle{
+    position:absolute;
+    left:52px;
+    top:56px;
+    z-index:44;
+    width:34px;
+    height:34px;
+    display:grid;
+    place-items:center;
+    padding:0;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:8px;
+    background:rgba(255,255,255,.08);
+    color:#dce9ff;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .audio-toggle.muted{ color:#9fb0c4; opacity:.72; }
+  .audio-toggle.ready{
+    border-color:rgba(61,220,151,.42);
+    box-shadow:0 0 12px rgba(61,220,151,.16);
+  }
+  #stage.lab-demo-paused *{ animation-play-state:paused !important; }
+  .observation-panel{
+    position:absolute;
+    left:50%;
+    top:62px;
+    z-index:16;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    transform:translateX(-50%);
+    pointer-events:none;
+  }
+  .observation-panel span{
+    padding:7px 10px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:999px;
+    background:rgba(0,0,0,.48);
+    color:#dce7f5;
+    font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+    white-space:nowrap;
+  }
+  #doneMask{ z-index:320 !important; }
+  .explanation{
+    color:#e8f4ff !important;
+    font-size:15px !important;
+    line-height:1.66 !important;
+  }
+  .explanation h2{
+    color:#9bd3ff !important;
+    font-size:20px !important;
+    line-height:1.35 !important;
+  }
+  @media(min-width:721px){
+    #stage .observation-panel{ left:34%; }
+    #stage #controlDock.collapsed,
+    #stage #dataDock.collapsed{
+      width:var(--drawer-collapsed-width) !important;
+      max-width:var(--drawer-collapsed-width) !important;
+    }
+  }
+  @media(max-width:720px){
+    #app{ max-width:100%; }
+    .quiz-row{ grid-template-columns:1fr; }
+    #stage .observation-panel{
+      top:104px;
+      left:96px;
+      width:calc(100% - 106px);
+      gap:4px;
+      transform:none;
+    }
+    #stage .observation-panel span{
+      flex:1 1 0;
+      min-width:0;
+      padding:6px 4px;
+      overflow:hidden;
+      text-align:center;
+      text-overflow:ellipsis;
+      font-size:10px;
+    }
+  }
+  @media(max-width:420px){
+    #stage .hint-lamp,
+    #stage .audio-toggle{ top:104px !important; }
+  }
+</style>
 </head>
 <body>
+<div id="app">
   <div id="spectrum"></div>
 
   <div class="task-card" id="taskCard">
@@ -843,7 +994,29 @@
     <div class="progress-dots" id="dots"></div>
   </div>
 
+  <div class="quiz-card" id="quizCard" aria-live="polite">
+    <div class="quiz-prompt">
+      <span aria-hidden="true">🧠</span>
+      <span id="quizText">完成观察与记录后，再进行结论小测。</span>
+    </div>
+    <div class="quiz-row" id="quizRow"></div>
+  </div>
+
+
   <div id="stage">
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button>
+    </div>
+    <button class="audio-toggle" id="audioToggle" type="button" aria-label="关闭音效" aria-pressed="true" title="关闭音效">🔊</button>
+    <div class="observation-panel" id="exp13ObservationPanel" aria-live="polite">
+      <span data-reading>冷水 <b id="obsColdDiffusion">0.0%</b></span>
+      <span data-reading>热水 <b id="obsHotDiffusion">0.0%</b></span>
+      <span data-reading>冷水60% <b id="obsColdT60">--</b></span>
+      <span data-reading>热水60% <b id="obsHotT60">--</b></span>
+      <span data-reading>比较 <b id="obsDiffusionTrend">待观察</b></span>
+    </div>
+
     <div class="hud">
       <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/4</span>
       <span class="tag" id="statusTag">状态：待操作</span>
@@ -970,6 +1143,7 @@
       <li>原理与结论：扩散现象说明分子在不停地做无规则运动；温度越高，分子热运动越剧烈，扩散越快。</li>
     </ul>
   </div>
+</div>
 
   <script>
     const BEAKER_CONFIG = {
@@ -1062,12 +1236,23 @@
     const demoCursorPulseEl = $('#demoCursorPulse');
     const doneMaskEl = $('#doneMask');
     const okBtn = $('#okBtn');
+    const quizCard = $('#quizCard');
+    const quizText = $('#quizText');
+    const quizRow = $('#quizRow');
+    const obsColdDiffusion = $('#obsColdDiffusion');
+    const obsHotDiffusion = $('#obsHotDiffusion');
+    const obsColdT60 = $('#obsColdT60');
+    const obsHotT60 = $('#obsHotT60');
+    const obsDiffusionTrend = $('#obsDiffusionTrend');
 
     const state = {
       currentTask:0,
       completed:false,
+      awaitingQuiz:false,
+      quizPassed:false,
       freeMode:false,
       autoPlaying:false,
+      autoPaused:false,
       autoRunId:0,
       successCooldown:false,
       stepWarnIdx:-1,
@@ -1125,7 +1310,9 @@
     }
 
     function updateModeHud(){
-      const modeText = state.autoPlaying ? '自动演示' : (state.freeMode ? '自由' : '引导');
+      const modeText = state.autoPlaying
+        ? (state.autoPaused ? '自动演示 · 已暂停' : '自动演示')
+        : (state.freeMode ? '自由' : '引导');
       modeTag.textContent = `模式：${modeText}`;
       freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
     }
@@ -1133,6 +1320,9 @@
     function updateAutoDemoBtn(){
       autoDemoBtn.textContent = state.autoPlaying ? '退出自动演示' : '自动演示';
       autoDemoBtn.disabled = state.freeMode && !state.autoPlaying;
+      resetBtn.textContent = state.autoPlaying
+        ? (state.autoPaused ? '继续演示' : '暂停演示')
+        : (state.freeMode ? '重置操作' : '重置关卡');
     }
 
     function updateBadge(){
@@ -1281,6 +1471,55 @@
         taskCard.style.filter = 'none';
         setStatus(state.completed ? '挑战完成' : '待操作');
       }
+      renderConclusionQuiz();
+    }
+
+    function renderConclusionQuiz(message=''){
+      quizCard.classList.toggle('ready', state.awaitingQuiz && !state.freeMode && !state.completed);
+      quizCard.classList.toggle('free-locked', state.freeMode);
+      if(state.completed){
+        quizText.textContent = '结论小测已完成：温度越高，分子热运动越剧烈，扩散越快。';
+        quizRow.innerHTML = '';
+        return;
+      }
+      if(state.freeMode){
+        quizText.textContent = '自由模式不进行结论判定，可继续比较不同温度下的扩散。';
+        quizRow.innerHTML = '';
+        return;
+      }
+      if(!state.awaitingQuiz){
+        quizText.textContent = '完成冷、热水扩散对比与分析后，再进行结论小测。';
+        quizRow.innerHTML = '';
+        return;
+      }
+      quizText.textContent = message || '比较两杯染液达到相同扩散程度的时间，可得出什么结论？';
+      if(!quizRow.children.length){
+        [
+          ['faster','温度越高，扩散越快'],
+          ['slower','温度越高，扩散越慢'],
+          ['same','温度不影响扩散']
+        ].forEach(([answer,label])=>{
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.dataset.answer = answer;
+          button.textContent = label;
+          quizRow.appendChild(button);
+        });
+      }
+    }
+
+    function answerConclusionQuiz(answer, fromAuto=false){
+      if(!state.awaitingQuiz || state.freeMode || state.completed) return false;
+      if(answer !== 'faster'){
+        renderConclusionQuiz('再比较达到60%扩散所需时间：用时越短，扩散越快。');
+        if(!fromAuto) showToast('答案不正确，请结合冷、热水的计时结果判断。');
+        return false;
+      }
+      state.awaitingQuiz = false;
+      state.quizPassed = true;
+      quizRow.innerHTML = '';
+      quizText.textContent = '回答正确：温度越高，分子热运动越剧烈，扩散越快。';
+      return tryPassStep(false, fromAuto);
     }
 
     function tryPassStep(showFailToast=true, fromAuto=false){
@@ -1290,6 +1529,12 @@
       if(!current || !current.check(state)){
         if(showFailToast) warnCurrentStep('当前步骤条件还未满足，请先完成操作、记录数据，再点击“确认观察”');
         return false;
+      }
+      if(state.currentTask === tasks.length - 1 && !state.quizPassed){
+        state.awaitingQuiz = true;
+        renderConclusionQuiz();
+        if(!fromAuto) showToast('对比完成，请回答结论小测。');
+        return true;
       }
       state.successCooldown = true;
       state.stepWarnIdx = -1;
@@ -1311,6 +1556,7 @@
       updateDots();
       setStatus('挑战完成');
       doneMaskEl.style.display = 'flex';
+      renderConclusionQuiz();
     }
 
     function buildBeakerScales(){
@@ -1453,6 +1699,7 @@
     function updateOneBeaker(key, dt){
       const beaker = state.beakers[key];
       if(!beaker.injected) return;
+      const motionDt = dt * (state.autoPlaying ? 2.4 : 1);
       const canvas = key==='cold' ? canvasCold : canvasHot;
       const rect = canvas.getBoundingClientRect();
       const W = rect.width;
@@ -1470,8 +1717,8 @@
       const cells = new Set();
 
       for(const p of beaker.particles){
-        p.vx += (Math.random()*2-1) * noise * dt;
-        p.vy += (Math.random()*2-1) * noise * dt;
+        p.vx += (Math.random()*2-1) * noise * motionDt;
+        p.vy += (Math.random()*2-1) * noise * motionDt;
 
         const vmax = cfg.speed;
         const speed = Math.hypot(p.vx, p.vy);
@@ -1480,8 +1727,8 @@
           p.vy = p.vy / speed * vmax;
         }
 
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
+        p.x += p.vx * motionDt;
+        p.y += p.vy * motionDt;
 
         if(p.x < 2){ p.x = 2; p.vx *= -0.75; }
         if(p.x > W-2){ p.x = W-2; p.vx *= -0.75; }
@@ -1538,6 +1785,14 @@
       hotPill.textContent = `热水扩散：${state.beakers.hot.diffusion.toFixed(1)}%`;
       coldT60Pill.textContent = `冷水达60%：${state.beakers.cold.timeTo60===null ? '--' : state.beakers.cold.timeTo60.toFixed(2)+'s'}`;
       hotT60Pill.textContent = `热水达60%：${state.beakers.hot.timeTo60===null ? '--' : state.beakers.hot.timeTo60.toFixed(2)+'s'}`;
+      obsColdDiffusion.textContent = `${state.beakers.cold.diffusion.toFixed(1)}%`;
+      obsHotDiffusion.textContent = `${state.beakers.hot.diffusion.toFixed(1)}%`;
+      obsColdT60.textContent = state.beakers.cold.timeTo60===null ? '--' : `${state.beakers.cold.timeTo60.toFixed(2)}s`;
+      obsHotT60.textContent = state.beakers.hot.timeTo60===null ? '--' : `${state.beakers.hot.timeTo60.toFixed(2)}s`;
+      obsDiffusionTrend.textContent =
+        state.beakers.cold.timeTo60 !== null && state.beakers.hot.timeTo60 !== null
+          ? (state.beakers.hot.timeTo60 < state.beakers.cold.timeTo60 ? '热水更快' : '继续观察')
+          : '待观察';
     }
 
     function updateLoop(now){
@@ -1545,8 +1800,10 @@
       const dt = clamp((now - state.lastTick) / 1000, 0, 0.04);
       state.lastTick = now;
 
-      updateOneBeaker('cold', dt);
-      updateOneBeaker('hot', dt);
+      if(!state.autoPaused){
+        updateOneBeaker('cold', dt);
+        updateOneBeaker('hot', dt);
+      }
       renderBeaker('cold');
       renderBeaker('hot');
       updateHudReadings();
@@ -1945,10 +2202,16 @@
     }
 
     async function waitDiffusion(key, target, maxMs=22000){
-      const t0 = performance.now();
-      while(performance.now() - t0 < maxMs){
+      let activeMs = 0;
+      while(activeMs < maxMs){
+        if(!state.autoPlaying) return false;
+        if(state.autoPaused){
+          await sleep(60);
+          continue;
+        }
         if(state.beakers[key].diffusion >= target) return true;
         await sleep(180);
+        activeMs += 180;
       }
       return false;
     }
@@ -1956,6 +2219,7 @@
     function requestStopAutoDemo(){
       if(!state.autoPlaying) return;
       state.autoPlaying = false;
+      state.autoPaused = false;
       state.autoRunId += 1;
       autoDemoBtn.textContent = '正在退出...';
       autoDemoBtn.disabled = true;
@@ -1968,20 +2232,29 @@
       if(state.autoPlaying || state.freeMode) return;
       const runId = ++state.autoRunId;
       state.autoPlaying = true;
+      state.autoPaused = false;
       updateModeHud();
       updateAutoDemoBtn();
       injectBtn.disabled = true;
       recordBtn.disabled = true;
       checkBtn.disabled = true;
       analyzeBtn.disabled = true;
-      resetBtn.disabled = true;
+      resetBtn.disabled = false;
       freeBtn.disabled = true;
 
       try{
         const ensureActive = ()=>{
           if(!state.autoPlaying || runId !== state.autoRunId) throw new Error('auto-demo-cancelled');
         };
-        const pause = async (ms)=>{ await sleep(ms); ensureActive(); };
+        const pause = async (ms)=>{
+          let left = ms;
+          while(left > 0){
+            await sleep(Math.min(60, left));
+            ensureActive();
+            if(state.autoPaused) continue;
+            left -= Math.min(60, left);
+          }
+        };
         const clickEl = async (el, ms=260)=>{
           const p = centerOf(el);
           await moveDemoCursorTo(p.x, p.y, ms);
@@ -2078,6 +2351,7 @@
         await pause(260);
         await clickEl(checkBtn, 240);
         tryPassStep(false, true);
+        if(state.awaitingQuiz) answerConclusionQuiz('faster', true);
         await pause(700);
       }catch(err){
         if(err && err.message !== 'auto-demo-cancelled'){
@@ -2086,7 +2360,10 @@
           showToast('自动演示失败，请重试');
         }
       }finally{
+        const stopped = runId !== state.autoRunId;
         state.autoPlaying = false;
+        state.autoPaused = false;
+        stageEl.classList.remove('lab-demo-paused');
         injectBtn.disabled = false;
         recordBtn.disabled = false;
         checkBtn.disabled = false;
@@ -2096,7 +2373,12 @@
         setDemoCursorVisible(false);
         updateModeHud();
         updateAutoDemoBtn();
-        if(!state.completed) setStatus(state.freeMode ? '自由探索' : '待操作');
+        if(stopped){
+          resetFlow(false);
+          setStatus('已退出自动演示');
+        }else if(!state.completed){
+          setStatus(state.freeMode ? '自由探索' : '待操作');
+        }
       }
     }
 
@@ -2107,6 +2389,9 @@
     function resetFlow(announce=true){
       clearAllTimers();
       state.completed = false;
+      state.autoPaused = false;
+      state.awaitingQuiz = false;
+      state.quizPassed = false;
       state.successCooldown = false;
       state.stepWarnIdx = -1;
       setDemoCursorVisible(false);
@@ -2122,6 +2407,7 @@
       updateHudReadings();
       scheduleChart();
       setStatus(state.freeMode ? '自由探索' : '待操作');
+      renderConclusionQuiz();
       if(announce) showToast('实验已重置');
     }
 
@@ -2154,8 +2440,22 @@
       recordBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) addRecord(); });
       checkBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) tryPassStep(true); });
       analyzeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) analyzeConclusion(true); });
+      quizRow.addEventListener('click', event=>{
+        const button = event.target.closest('button[data-answer]');
+        if(button) answerConclusionQuiz(button.dataset.answer, false);
+      });
 
-      resetBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) resetFlow(true); });
+      resetBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying){
+          state.autoPaused = !state.autoPaused;
+          stageEl.classList.toggle('lab-demo-paused', state.autoPaused);
+          setStatus(state.autoPaused ? '自动演示已暂停' : '自动演示中');
+          updateModeHud();
+          updateAutoDemoBtn();
+          return;
+        }
+        resetFlow(true);
+      });
       autoDemoBtn.addEventListener('click', ()=>{ if(state.autoPlaying) requestStopAutoDemo(); else autoDemo(); });
       freeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setFreeMode(!state.freeMode); });
 
@@ -2314,7 +2614,7 @@
   var controlToggle = $("#controlToggleBtn") || $('[data-toggle="controlDock"]');
   var dataToggle = $("#dataToggleBtn") || $('[data-toggle="dataDock"]');
   var doneMask = $("#doneMask");
-  var mobileCompletionOpened = false;
+  var completionLayoutMode = "";
 
   function isDone(){
     var modalDone = doneMask && getComputedStyle(doneMask).display !== "none";
@@ -2333,10 +2633,28 @@
     if (typeof window.codexExp11GraphRelayout === "function") window.codexExp11GraphRelayout();
   }
 
+  function isPanelCollapsed(dock, body){
+    return !!((dock && dock.classList.contains("collapsed")) || (body && body.classList.contains("collapsed")));
+  }
+
   function setPanelCollapsed(dock, body, toggle, collapsed){
+    if (toggle && isPanelCollapsed(dock, body) !== collapsed) toggle.click();
     if (dock) dock.classList.toggle("collapsed", collapsed);
     if (body) body.classList.toggle("collapsed", collapsed);
     if (toggle) toggle.textContent = collapsed ? "展开" : "收起";
+  }
+
+  function bindPanelToggleSync(dock, body, toggle){
+    if (!toggle) return;
+    toggle.addEventListener("click", function(){
+      requestAnimationFrame(function(){
+        var label = (toggle.textContent || "").trim();
+        var collapsed = label === "展开" ? true : label === "收起" ? false : isPanelCollapsed(dock, body);
+        if (dock) dock.classList.toggle("collapsed", collapsed);
+        if (body) body.classList.toggle("collapsed", collapsed);
+        syncMobileShell();
+      });
+    });
   }
 
   function placeDock(dock, left, top){
@@ -2364,24 +2682,24 @@
   function fitCompletionDrawers(){
     if (!stage || !controlDock || !dataDock) return;
     if (!isDone()) {
-      mobileCompletionOpened = false;
+      completionLayoutMode = "";
       keepNarrowDrawersExclusive();
       return;
     }
 
-    if (isMobile()) {
-      if (!mobileCompletionOpened) {
-        setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-        setPanelCollapsed(dataDock, dataBody, dataToggle, false);
-        syncMobileShell();
-        mobileCompletionOpened = true;
-      }
+    var nextLayoutMode = isMobile() ? "mobile" : "desktop";
+    if (completionLayoutMode === nextLayoutMode) return;
+    completionLayoutMode = nextLayoutMode;
+
+    if (nextLayoutMode === "mobile") {
+      setPanelCollapsed(controlDock, controlBody, controlToggle, false);
+      setPanelCollapsed(dataDock, dataBody, dataToggle, true);
+      syncMobileShell();
       return;
     }
 
-    mobileCompletionOpened = false;
-    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    setPanelCollapsed(controlDock, controlBody, controlToggle, false);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, true);
     var sw = stage.clientWidth;
     var controlW = controlDock.offsetWidth || 160;
     var dataW = dataDock.offsetWidth || 260;
@@ -2392,7 +2710,12 @@
   }
 
   if (!stage || !controlDock || !dataDock) return;
-  window.addEventListener("resize", function(){ requestAnimationFrame(fitCompletionDrawers); });
+  bindPanelToggleSync(controlDock, controlBody, controlToggle);
+  bindPanelToggleSync(dataDock, dataBody, dataToggle);
+  window.addEventListener("resize", function(){
+    completionLayoutMode = "";
+    requestAnimationFrame(fitCompletionDrawers);
+  });
   setInterval(fitCompletionDrawers, 450);
 })();
 </script>
@@ -2586,6 +2909,107 @@
   requestAnimationFrame(setInitialMobileState);
   setTimeout(setInitialMobileState, 160);
   setTimeout(syncMobileShell, 600);
+})();
+</script>
+
+<script id="batch-11-15-governance-runtime">
+(() => {
+  "use strict";
+  const AUTO_DEMO_TIMING = Object.freeze({
+    cursorPress:220,
+    panelReveal:180,
+    buttonAim:360,
+    dragSoft:720,
+    actionMotion:820,
+    selectFast:320,
+    selectCompare:560,
+    observePrimary:780,
+    observeSecondary:760,
+    observeComparison:700,
+    recordConfirm:420,
+    stepTransition:460,
+    analysisLead:620,
+    actionSettle:120
+  });
+  window.AUTO_DEMO_TIMING = AUTO_DEMO_TIMING;
+
+  const governanceState = {
+    autoPaused:false,
+    freeSnapshot:null,
+    audioMuted:false,
+    audioUnlocked:false
+  };
+  const labState = window.state;
+  if(labState && typeof labState === "object"){
+    if(!Object.hasOwn(labState, "autoPaused")) labState.autoPaused = false;
+    if(!Object.hasOwn(labState, "freeSnapshot")) labState.freeSnapshot = null;
+  }
+
+  function snapshotValue(value){
+    if(value instanceof Set) return [...value];
+    if(value && typeof value === "object"){
+      const out = Array.isArray(value) ? [] : {};
+      for(const [key, child] of Object.entries(value)){
+        if(["timers", "rafId", "pointerDrag", "volumeDrag", "draggingId"].includes(key)) continue;
+        if(typeof child !== "function") out[key] = snapshotValue(child);
+      }
+      return out;
+    }
+    return value;
+  }
+
+  window.getLabPauseSnapshot = () => snapshotValue(window.state || governanceState);
+  window.assertGovernedAutoRecord = (beforeLen, records) => {
+    if(!Array.isArray(records) || records.length <= beforeLen){
+      throw new Error("AUTO_RECORD_NOT_PERSISTED");
+    }
+  };
+
+  const audioToggle = document.querySelector("#audioToggle");
+  let audioContext = null;
+  function unlockAudio(){
+    if(governanceState.audioMuted) return null;
+    const Context = window.AudioContext || window.webkitAudioContext;
+    if(!Context) return null;
+    if(!audioContext) audioContext = new Context();
+    if(audioContext.state === "suspended") audioContext.resume().catch((error) => console.warn("[audio] resume failed", error));
+    governanceState.audioUnlocked = true;
+    audioToggle?.classList.add("ready");
+    return audioContext;
+  }
+  function tone(freq = 520, duration = .055, gain = .025){
+    const ctx = unlockAudio();
+    if(!ctx || governanceState.audioMuted) return;
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+    osc.frequency.value = freq;
+    amp.gain.setValueAtTime(gain, ctx.currentTime);
+    amp.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + duration);
+    osc.connect(amp).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  }
+  window.playLabTone = tone;
+  function syncAudioButton(){
+    if(!audioToggle) return;
+    audioToggle.classList.toggle("muted", governanceState.audioMuted);
+    audioToggle.textContent = governanceState.audioMuted ? "🔇" : "🔊";
+    audioToggle.setAttribute("aria-pressed", String(!governanceState.audioMuted));
+    audioToggle.setAttribute("aria-label", governanceState.audioMuted ? "开启音效" : "关闭音效");
+    audioToggle.title = governanceState.audioMuted ? "开启音效" : "关闭音效";
+  }
+  audioToggle?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    governanceState.audioMuted = !governanceState.audioMuted;
+    syncAudioButton();
+    if(!governanceState.audioMuted) tone(620, .07, .028);
+  });
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if(!button || button === audioToggle || button.disabled) return;
+    tone(420, .035, .014);
+  }, true);
+  syncAudioButton();
 })();
 </script>
 </body>
