@@ -1625,6 +1625,7 @@
     gap:10px;
     padding:8px 10px;
   }
+  #quizCard[hidden]{ display:none !important; }
   .exp3-quiz-strip.locked{
     grid-template-columns:1fr;
     opacity:.72;
@@ -1748,7 +1749,7 @@
   </div>
 
   <div class="exp3-learning-bar" id="exp3LearningBar">
-    <div class="exp3-quiz-strip" id="quizCard">
+    <div class="exp3-quiz-strip" id="quizCard" aria-live="polite" hidden>
       <div class="mini" id="quizText">🧠 <b>关卡小测</b>：先完成观察并点击“确认观察”。</div>
       <div class="btnRow" id="quizRow"></div>
     </div>
@@ -2112,9 +2113,11 @@ const tasks = [
 
 function renderQuiz() {
   const unlocked = state.observationConfirmedByTask[state.currentTask];
-  quizCard.classList.toggle('locked', !unlocked);
+  const quizVisible = unlocked && !state.freeMode && !state.completed;
+  quizCard.hidden = !quizVisible;
+  quizCard.classList.toggle('locked', !quizVisible);
   quizRow.innerHTML = '';
-  if (!unlocked) {
+  if (!quizVisible) {
     quizText.innerHTML = '🧠 <b>关卡小测</b>：先完成本关观察并点击“确认观察”，随后出现小测。';
     return;
   }

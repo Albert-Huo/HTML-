@@ -1637,6 +1637,7 @@
     color:#dce9f8;
     transition:opacity .2s, border-color .2s, background .2s;
   }
+  .quiz-card[hidden]{ display:none !important; }
   .quiz-card.ready{
     border-color:rgba(91,188,255,.34);
     background:rgba(22,53,80,.38);
@@ -1781,7 +1782,7 @@
     </div>
   </div>
 
-  <div class="quiz-card" id="quizCard" aria-live="polite">
+  <div class="quiz-card" id="quizCard" aria-live="polite" hidden>
     <div class="quiz-prompt">
       <span aria-hidden="true">🧠</span>
       <span id="quizText">完成三次观察并逐次点击“确认观察”后，再进行结论小测。</span>
@@ -2585,9 +2586,10 @@ function refreshDataNotice(){
 }
 
 function renderQuiz(){
-  const ready = state.awaitingQuiz && !state.completed;
+  const ready = state.awaitingQuiz && !state.freeMode && !state.completed;
+  quizCard.hidden = !ready;
   quizCard.classList.toggle('ready', ready);
-  quizCard.classList.toggle('free-locked', state.freeMode);
+  quizCard.classList.remove('free-locked');
   if(!ready){
     quizText.textContent = state.completed
       ? '结论小测已完成。'

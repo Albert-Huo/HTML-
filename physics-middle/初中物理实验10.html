@@ -1676,6 +1676,8 @@
     background:rgba(255,255,255,.055) !important;
     color:#dce9f8 !important;
   }
+  .quiz-card[hidden]{ display:none !important; }
+  #app > .quiz-card[hidden]{ display:none !important; }
   #app > .quiz-card.ready{
     border-color:rgba(91,188,255,.34) !important;
     background:rgba(22,53,80,.38) !important;
@@ -1885,7 +1887,7 @@
     </div>
   </div>
 
-  <div class="quiz-card" id="quizCard" aria-live="polite">
+  <div class="quiz-card" id="quizCard" aria-live="polite" hidden>
     <div class="quiz-prompt">
       <span aria-hidden="true">🧠</span>
       <span id="quizText">完成称量与读数后，再进行结论小测。</span>
@@ -2328,8 +2330,10 @@ function refreshReadouts(){
 }
 
 function renderQuiz(){
-  quizCard.classList.toggle('ready', state.awaitingQuiz && !state.freeMode && !state.completed);
-  quizCard.classList.toggle('free-locked', state.freeMode);
+  const quizVisible = state.awaitingQuiz && !state.freeMode && !state.completed;
+  quizCard.hidden = !quizVisible;
+  quizCard.classList.toggle('ready', quizVisible);
+  quizCard.classList.remove('free-locked');
   if(state.completed){
     quizText.textContent = '结论小测已完成，可在下方查看实验结论。';
     quizRow.replaceChildren();
