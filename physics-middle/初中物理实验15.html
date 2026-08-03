@@ -173,6 +173,7 @@
     .row{ margin-bottom:8px; font-size:12px; }
     .lab-hint{ color:#dce9ff; line-height:1.55; }
     .status-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+    .status-grid[hidden]{ display:none !important; }
     .pill{ border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:4px 8px; font-size:11px; color:#e8f1ff; background:rgba(0,0,0,.28); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
     .field{ border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:8px; background:rgba(0,0,0,.2); margin-bottom:8px; }
@@ -529,6 +530,7 @@
     background:rgba(255,255,255,.055);
     color:#dce9f8;
   }
+  .quiz-card[hidden]{ display:none !important; }
   .quiz-card.ready{
     border-color:rgba(91,188,255,.34);
     background:rgba(22,53,80,.38);
@@ -665,7 +667,7 @@
     <div class="progress-dots" id="dots"></div>
   </div>
 
-  <div class="quiz-card" id="quizCard" aria-live="polite">
+  <div class="quiz-card" id="quizCard" aria-live="polite" hidden>
     <div class="quiz-prompt">
       <span aria-hidden="true">🧠</span>
       <span id="quizText">完成观察与记录后，再进行结论小测。</span>
@@ -707,7 +709,7 @@
       </div>
       <div class="dockBody drawer-body" id="controlBody">
         <div class="row lab-hint" id="apparatusHint"></div>
-        <div class="status-grid">
+        <div class="status-grid" hidden aria-hidden="true">
           <div class="pill" id="pillA">关键状态A</div>
           <div class="pill" id="pillB">关键状态B</div>
           <div class="pill" id="pillC">关键状态C</div>
@@ -1305,8 +1307,10 @@
     }
 
     function renderConclusionQuiz(message=''){
-      quizCard.classList.toggle('ready', state.awaitingQuiz && !state.freeMode && !state.completed);
-      quizCard.classList.toggle('free-locked', state.freeMode);
+      const quizVisible = state.awaitingQuiz && !state.freeMode && !state.completed;
+      quizCard.hidden = !quizVisible;
+      quizCard.classList.toggle('ready', quizVisible);
+      quizCard.classList.remove('free-locked');
       if(state.completed){
         quizText.textContent = '结论小测已完成：处理并压紧的金属块不易分开，说明分子之间存在引力。';
         quizRow.innerHTML = '';

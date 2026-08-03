@@ -425,6 +425,7 @@
 
     .row{ margin-bottom:8px; }
     .status-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+    .status-grid[hidden]{ display:none !important; }
     .pill{
       border:1px solid rgba(255,255,255,.2);
       border-radius:999px;
@@ -862,6 +863,7 @@
     background:rgba(255,255,255,.055);
     color:#dce9f8;
   }
+  .quiz-card[hidden]{ display:none !important; }
   .quiz-card.ready{
     border-color:rgba(91,188,255,.34);
     background:rgba(22,53,80,.38);
@@ -919,23 +921,27 @@
   #stage.lab-demo-paused *{ animation-play-state:paused !important; }
   .observation-panel{
     position:absolute;
-    left:50%;
-    top:62px;
+    left:96px;
+    right:370px;
+    top:60px;
     z-index:16;
-    display:flex;
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
     align-items:center;
-    justify-content:center;
-    gap:6px;
-    transform:translateX(-50%);
+    gap:4px;
     pointer-events:none;
   }
   .observation-panel span{
-    padding:7px 10px;
+    min-width:0;
+    padding:6px 5px;
     border:1px solid rgba(255,255,255,.12);
     border-radius:999px;
     background:rgba(0,0,0,.48);
     color:#dce7f5;
-    font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
+    overflow:hidden;
+    text-align:center;
+    text-overflow:ellipsis;
+    font:700 10px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;
     white-space:nowrap;
   }
   #doneMask{ z-index:320 !important; }
@@ -950,11 +956,22 @@
     line-height:1.35 !important;
   }
   @media(min-width:721px){
-    #stage .observation-panel{ left:34%; }
+    #stage .lab-area{ top:124px; }
     #stage #controlDock.collapsed,
     #stage #dataDock.collapsed{
       width:var(--drawer-collapsed-width) !important;
       max-width:var(--drawer-collapsed-width) !important;
+    }
+  }
+  @media(min-width:960px){
+    #stage .lab-area{ top:104px; }
+    #stage .observation-panel{
+      grid-template-columns:repeat(5,max-content);
+      justify-content:start;
+    }
+    #stage .observation-panel span{
+      padding:7px 10px;
+      font-size:12px;
     }
   }
   @media(max-width:720px){
@@ -962,26 +979,21 @@
     .quiz-card{ padding:12px; }
     .quiz-row{ grid-template-columns:1fr; }
     .quiz-row button{ min-height:48px; font-size:15px; }
+    #stage .lab-area{ top:118px !important; }
     #stage .observation-panel{
-      top:104px;
+      top:56px;
       left:96px;
-      width:calc(100% - 106px);
+      right:10px;
+      width:auto;
+      grid-template-columns:repeat(3,minmax(0,1fr));
       gap:4px;
-      transform:none;
     }
     #stage .observation-panel span{
-      flex:1 1 0;
-      min-width:0;
       padding:6px 4px;
-      overflow:hidden;
-      text-align:center;
-      text-overflow:ellipsis;
       font-size:10px;
     }
-  }
-  @media(max-width:420px){
     #stage .hint-lamp,
-    #stage .audio-toggle{ top:104px !important; }
+    #stage .audio-toggle{ top:56px !important; }
   }
 </style>
 </head>
@@ -998,7 +1010,7 @@
     <div class="progress-dots" id="dots"></div>
   </div>
 
-  <div class="quiz-card" id="quizCard" aria-live="polite">
+  <div class="quiz-card" id="quizCard" aria-live="polite" hidden>
     <div class="quiz-prompt">
       <span aria-hidden="true">🧠</span>
       <span id="quizText">完成观察与记录后，再进行结论小测。</span>
@@ -1073,7 +1085,7 @@
       </div>
       <div class="dockBody collapsed drawer-body" id="controlBody">
         <div class="row"><b style="font-size:13px;color:#dce9ff;">操作链：选择烧杯 -> 拖动滴管到烧杯上方 -> 滴加染液 -> 记录当前数据 -> 点击“确认观察”</b></div>
-        <div class="status-grid">
+        <div class="status-grid" hidden aria-hidden="true">
           <div class="pill" id="targetTag">当前烧杯：未选择</div>
           <div class="pill" id="timerTag">当前计时：0.0 s</div>
           <div class="pill" id="diffTag">当前扩散指数：0.0%</div>
@@ -1479,8 +1491,10 @@
     }
 
     function renderConclusionQuiz(message=''){
-      quizCard.classList.toggle('ready', state.awaitingQuiz && !state.freeMode && !state.completed);
-      quizCard.classList.toggle('free-locked', state.freeMode);
+      const quizVisible = state.awaitingQuiz && !state.freeMode && !state.completed;
+      quizCard.hidden = !quizVisible;
+      quizCard.classList.toggle('ready', quizVisible);
+      quizCard.classList.remove('free-locked');
       if(state.completed){
         quizText.textContent = '结论小测已完成：温度越高，分子热运动越剧烈，扩散越快。';
         quizRow.innerHTML = '';

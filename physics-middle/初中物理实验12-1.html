@@ -1317,6 +1317,7 @@
     background:rgba(255,255,255,.055);
     color:#dce9f8;
   }
+  .quiz-card[hidden]{ display:none !important; }
   .quiz-card.ready{
     border-color:rgba(91,188,255,.34);
     background:rgba(22,53,80,.38);
@@ -1453,7 +1454,7 @@
     <div id="dots" class="progress-dots"></div>
   </div>
 
-  <div class="quiz-card" id="quizCard" aria-live="polite">
+  <div class="quiz-card" id="quizCard" aria-live="polite" hidden>
     <div class="quiz-prompt">
       <span aria-hidden="true">🧠</span>
       <span id="quizText">完成观察与记录后，再进行结论小测。</span>
@@ -2255,8 +2256,10 @@
     }
 
     function renderConclusionQuiz(message=''){
-      quizCard.classList.toggle('ready', state.awaitingQuiz && !state.freeMode && !state.completed);
-      quizCard.classList.toggle('free-locked', state.freeMode);
+      const quizVisible = state.awaitingQuiz && !state.freeMode && !state.completed;
+      quizCard.hidden = !quizVisible;
+      quizCard.classList.toggle('ready', quizVisible);
+      quizCard.classList.remove('free-locked');
       if(state.completed){
         quizText.textContent = '结论小测已完成：烧杯中减少的盐水正是进入量筒的盐水。';
         quizRow.innerHTML = '';
