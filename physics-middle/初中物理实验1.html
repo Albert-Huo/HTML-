@@ -1752,9 +1752,14 @@
     #stage #controlDock.collapsed .drawer-title,
     #stage #dataDock.collapsed .drawer-title{
       min-width:0 !important;
+      flex:1 1 auto !important;
       white-space:nowrap !important;
       overflow:hidden !important;
       text-overflow:ellipsis !important;
+    }
+    #stage #controlDock.collapsed .drawer-header .iconBtn,
+    #stage #dataDock.collapsed .drawer-header .iconBtn{
+      flex:0 0 auto !important;
     }
   }
   @media (max-width:720px){
@@ -1871,50 +1876,42 @@
     <!-- 实验面板（可拖动、可折叠） -->
     <div class="dock panelDock drawer control" id="controlDock">
       <div class="panelHead drawer-header" id="controlHead" data-drag-handle>
-        <div class="title">实验面板 <span class="chip" style="font-weight:900;">量程 -10~110℃</span></div>
+        <div class="title drawer-title">实验面板</div>
         <button class="iconBtn" id="controlToggleBtn" title="折叠/展开">展开</button>
       </div>
 
       <div class="panelBody collapsed drawer-body" id="controlBody">
-        <div class="row">
-          <label>冷水温度</label>
-          <input id="tCold" type="range" min="-5" max="20" step="0.5" value="10">
-          <div class="val" id="tColdVal">10.0℃</div>
-        </div>
+        <div id="freeModeSettings" hidden aria-label="自由模式设置">
+          <div class="row">
+            <label>冷水温度</label>
+            <input id="tCold" type="range" min="-5" max="20" step="0.5" value="10">
+            <div class="val" id="tColdVal">10.0℃</div>
+          </div>
 
-        <div class="row">
-          <label>室温温度</label>
-          <input id="tRoom" type="range" min="15" max="35" step="0.5" value="25">
-          <div class="val" id="tRoomVal">25.0℃</div>
-        </div>
+          <div class="row">
+            <label>室温温度</label>
+            <input id="tRoom" type="range" min="15" max="35" step="0.5" value="25">
+            <div class="val" id="tRoomVal">25.0℃</div>
+          </div>
 
-        <div class="row">
-          <label>热水温度</label>
-          <input id="tHot" type="range" min="35" max="90" step="0.5" value="60">
-          <div class="val" id="tHotVal">60.0℃</div>
-        </div>
+          <div class="row">
+            <label>热水温度</label>
+            <input id="tHot" type="range" min="35" max="90" step="0.5" value="60">
+            <div class="val" id="tHotVal">60.0℃</div>
+          </div>
 
-        <div class="row">
-          <label>稳定速度</label>
-          <input id="tau" type="range" min="0.6" max="3.2" step="0.1" value="1.6">
-          <div class="val" id="tauVal">中等</div>
-        </div>
-
-        <div style="margin-top:8px;">
-          <div style="font-size:12.5px; color:#9bd3ff; font-weight:900; margin-bottom:6px;">当前测量</div>
-          <div id="pills"></div>
-          <div style="margin-top:6px; font-size:12px; opacity:.78;">
-            目标：先正确放置，再等稳定，最后记录。
+          <div class="row">
+            <label>稳定速度</label>
+            <input id="tau" type="range" min="0.6" max="3.2" step="0.1" value="1.6">
+            <div class="val" id="tauVal">中等</div>
           </div>
         </div>
 
+        <div id="pills" hidden aria-hidden="true"></div>
+
         <div id="challengeBlock" style="display:none; margin-top:10px; font-size:12.5px; line-height:1.65; color:#dbe7ff;">
-          <div style="padding:10px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.28);">
-            <div style="font-weight:900; color:#9bd3ff;">挑战判定</div>
-            <div style="margin-top:6px; opacity:.9;">
-              至少记录 <b>3 次</b>（冷/室温/热 各一次），并让其中 <b>2 次</b>读数误差 ≤ <b>0.8℃</b>。
-            </div>
-            <div style="margin-top:8px;">
+          <div style="padding:8px 10px; border-radius:12px; border:1px solid rgba(255,255,255,0.12); background:rgba(0,0,0,0.28);">
+            <div>
               <span class="pill"><span class="k">已记录</span><span id="statN">0</span></span>
               <span class="pill"><span class="k">达标次数</span><span id="statGood">0</span></span>
             </div>
@@ -1922,7 +1919,7 @@
         </div>
 
         <div class="miniBtns">
-          <button id="readingRuleBtn" title="量程 -10～110℃；分度值 5℃；视线与液柱顶端齐平">确认量程与平视</button>
+          <button id="readingRuleBtn" title="先确认量程与分度值，读数时视线与液柱顶端齐平">确认读数规范</button>
           <button class="primary" id="recordBtn">记录一次</button>
           <button class="ghost" id="clearBtn">清空记录</button>
           <button id="hintBtn">开启/关闭指引线</button>
@@ -2114,7 +2111,7 @@
     }
 
     const steps = [
-      { text: '先确认温度计的<b>量程 -10～110℃、分度值 5℃</b>和<b>平视液柱顶端</b>的读数规则，再把玻璃泡浸入液体。', hint: '提示：先点击“确认量程与平视”，再将玻璃泡完全浸入且不碰杯壁、杯底。' },
+      { text: '先确认温度计的<b>量程、分度值</b>和<b>平视液柱顶端</b>的读数规则，再把玻璃泡浸入液体。', hint: '提示：先点击“确认读数规范”，再将玻璃泡完全浸入且不碰杯壁、杯底。' },
       { text: '等待读数<b>接近稳定</b>（变化变慢），再读出温度。', hint: '提示：看右侧“状态”：已浸入；读数变化越来越慢。' },
       { text: '分别测<b>冷水/室温/热水</b>，每测一次点击<b>记录一次</b>。', hint: '提示：至少记录 3 次（每杯一次）。' },
       { text: '挑战：让至少 <b>2 次</b>记录的误差 ≤ <b>0.8℃</b>，即可通关！', hint: '提示：读数没稳定就记录，误差通常会更大。' }
@@ -2464,9 +2461,11 @@
     function updateReadout() {
       readChip.textContent = `读数：${fmt(state.Tread)}℃`;
       let st = '未浸入';
-      if (state.immersedKind === 'cold') st = '已浸入（冷水杯）';
-      if (state.immersedKind === 'room') st = '已浸入（室温杯）';
-      if (state.immersedKind === 'hot') st = '已浸入（热水杯）';
+      if (state.immersedKind) {
+        const names = { cold: '冷水杯', room: '室温杯', hot: '热水杯' };
+        const trend = Math.abs(state.Tread - currentTarget()) < 0.35 ? '接近稳定' : '变化中';
+        st = `${names[state.immersedKind]} · ${trend}`;
+      }
       stateChip.textContent = `状态：${st}`;
       setMercuryByTemp(state.Tread);
     }
@@ -2706,7 +2705,7 @@
       readingRuleBtn.classList.add('primary');
       renderPills();
       if (!state.freeMode && state.currentTask === 0 && state.immersedKind) passCurrentStep();
-      showToast('已确认：量程 -10～110℃，分度值 5℃，视线与液柱顶端齐平。');
+      showToast('已确认：已检查量程和分度值，读数时视线与液柱顶端齐平。');
     });
     clearBtn.addEventListener('click', () => {
       state.records = [];
@@ -2810,7 +2809,7 @@
       updateBeakerVisual();
       updateTauLabel();
       updateReadout();
-      readingRuleBtn.textContent = '确认量程与平视';
+      readingRuleBtn.textContent = '确认读数规范';
       readingRuleBtn.classList.remove('primary');
 
       renderTable();
@@ -3441,6 +3440,7 @@
   var dataToggle = $("#dataToggleBtn");
   var doneMask = $("#doneMask");
   var recordBody = $("#recordBody");
+  var freeModeSettings = $("#freeModeSettings");
   var controlBody = $("#controlBody") || $("#panelBody") || $(".drawer-body", controlDock);
   var dataBody = $("#dataBody") || $("#resultsBody") || $(".drawer-body", dataDock);
   if (!stage || !taskCard || !resetBtn || !autoDemoBtn || !freeBtn) return;
@@ -3615,21 +3615,21 @@
     var stageWidth = stage.clientWidth;
     var controlOpen = !isCollapsed(controlDock, controlBody);
     var dataOpen = !isCollapsed(dataDock, dataBody);
-    var place = function(drawer, top){
+    var place = function(drawer, top, left){
       var width = drawer.offsetWidth || 164;
-      drawer.style.left = Math.max(12, stageWidth - width - 12) + "px";
+      drawer.style.left = Math.max(12, typeof left === "number" ? left : stageWidth - width - 12) + "px";
       drawer.style.top = Math.max(58, top) + "px";
       drawer.style.right = "auto";
       drawer.style.bottom = "auto";
     };
-    if (controlOpen !== dataOpen) {
-      var expanded = controlOpen ? controlDock : dataDock;
-      var compact = controlOpen ? dataDock : controlDock;
-      place(expanded, 58);
-      place(compact, 58 + (expanded.offsetHeight || 120) - 12);
+    var gap = 12;
+    var combinedWidth = controlDock.offsetWidth + dataDock.offsetWidth + gap * 3;
+    if ((controlOpen || dataOpen) && combinedWidth <= stageWidth) {
+      place(controlDock, 58, gap);
+      place(dataDock, 58);
     } else {
       place(controlDock, 58);
-      place(dataDock, 58 + acceptedTiming.panelReveal / 7);
+      place(dataDock, 58 + (controlDock.offsetHeight || 48) + gap);
     }
   }
 
@@ -3649,6 +3649,7 @@
     freeBtn.disabled = auto;
     if (auto || free) resetBtn.disabled = false;
     freeBtn.textContent = free ? "退出自由模式" : "自由模式";
+    if (freeModeSettings) freeModeSettings.hidden = !free;
     resetBtn.setAttribute("aria-pressed", paused ? "true" : "false");
     taskCard.classList.toggle("free-mode", free);
     taskCard.dataset.mode = free ? "free" : "challenge";
@@ -4017,7 +4018,6 @@
   setTimeout(fitDrawers, 220);
   setInterval(function(){
     syncModeControls();
-    if (window.innerWidth > 720 && stage.clientWidth > 720) fitDrawers();
   }, 240);
 })();
 </script>
