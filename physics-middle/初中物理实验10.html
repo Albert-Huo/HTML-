@@ -286,8 +286,8 @@
     gap:6px;
     padding:4px 8px 6px;
   }
-  .pan.left{ left:-138px; }
-  .pan.right{ left:138px; }
+  .pan.left,
+  .pan.right{ left:0; }
   .pan-label{
     position:absolute;
     top:128px;
@@ -2664,14 +2664,17 @@ function updateItemDrag(clientX, clientY){
   el.style.top = `${y}px`;
 }
 function detectDropTarget(clientX, clientY, itemId){
-  const point = { x:clientX, y:clientY };
+  const itemRect = document.getElementById(itemId)?.getBoundingClientRect();
+  const point = itemRect
+    ? { x:itemRect.left + itemRect.width / 2, y:itemRect.top + itemRect.height / 2 }
+    : { x:clientX, y:clientY };
   const leftRect = leftPan.getBoundingClientRect();
   const rightRect = rightPan.getBoundingClientRect();
   const oreRect = oreShelf.getBoundingClientRect();
   const boxRect = weightBox.getBoundingClientRect();
-  const inside = (rect) => point.x >= rect.left && point.x <= rect.right && point.y >= rect.top && point.y <= rect.bottom;
-  if(inside(leftRect)) return itemId === 'ore' ? 'left' : 'left';
-  if(inside(rightRect)) return itemId === 'ore' ? 'right' : 'right';
+  const inside = (rect, padX = 0, padY = 0) => point.x >= rect.left - padX && point.x <= rect.right + padX && point.y >= rect.top - padY && point.y <= rect.bottom + padY;
+  if(inside(leftRect, 18, 24)) return 'left';
+  if(inside(rightRect, 18, 24)) return 'right';
   if(itemId === 'ore' && inside(oreRect)) return 'shelf';
   if(itemId !== 'ore' && inside(boxRect)) return 'box';
   return itemId === 'ore' ? state.itemsPos.ore : 'box';
@@ -2709,8 +2712,8 @@ function commitItemDrop(id, target, fromAuto = false){
   playUiSound('place');
   return true;
 }
-function finishItemDrag(clientX, clientY){
-  if(!state.pointerDrag || state.pointerDrag.kind !== 'item') return;
+function finishItemDrag(clientX, clientY, fromAuto = false){
+  if(!state.pointerDrag || state.pointerDrag.kind !== 'item') return false;
   const { id, pointerId } = state.pointerDrag;
   const el = document.getElementById(id);
   const target = detectDropTarget(clientX, clientY, id);
@@ -2719,7 +2722,7 @@ function finishItemDrag(clientX, clientY){
     catch (err) { console.warn('releasePointerCapture failed', err); }
   }
   state.pointerDrag = null;
-  commitItemDrop(id, target, false);
+  return commitItemDrop(id, target, fromAuto);
 }
 
 function beginRiderDrag(pointerId){
@@ -3090,8 +3093,8 @@ async function demoDragItemTo(id, targetEl, runId){
     setDemoCursor(cx - getStageRect().left, cy - getStageRect().top);
     await waitAuto(26, runId);
   }
-  commitItemDrop(id, targetName, true);
-  state.pointerDrag = null;
+  const dropped = finishItemDrag(endX, endY, true);
+  if(!dropped || state.itemsPos[id] !== targetName) throw new Error('AUTO_ITEM_DROP_NOT_PERSISTED');
   await waitAuto(180, runId);
 }
 async function demoDragRiderTo(value, runId){
