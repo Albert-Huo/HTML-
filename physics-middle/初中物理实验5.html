@@ -3408,24 +3408,25 @@ init();
     }
     controlDock.classList.remove("mobile-sheet");
     dataDock.classList.remove("mobile-sheet");
+    if (labState.dockMoved && (labState.dockMoved.control || labState.dockMoved.data)) return;
     var stageWidth = stage.clientWidth;
     var controlOpen = !isCollapsed(controlDock, controlBody);
     var dataOpen = !isCollapsed(dataDock, dataBody);
-    var place = function(drawer, top){
+    var place = function(drawer, top, left){
       var width = drawer.offsetWidth || 164;
-      drawer.style.left = Math.max(12, stageWidth - width - 12) + "px";
+      drawer.style.left = Math.max(12, typeof left === "number" ? left : stageWidth - width - 12) + "px";
       drawer.style.top = Math.max(58, top) + "px";
       drawer.style.right = "auto";
       drawer.style.bottom = "auto";
     };
-    if (controlOpen !== dataOpen) {
-      var expanded = controlOpen ? controlDock : dataDock;
-      var compact = controlOpen ? dataDock : controlDock;
-      place(expanded, 58);
-      place(compact, 58 + (expanded.offsetHeight || 120) - 12);
+    var gap = 12;
+    var combinedWidth = controlDock.offsetWidth + dataDock.offsetWidth + gap * 3;
+    if ((controlOpen || dataOpen) && combinedWidth <= stageWidth) {
+      place(controlDock, 58, gap);
+      place(dataDock, 58);
     } else {
       place(controlDock, 58);
-      place(dataDock, 58 + acceptedTiming.panelReveal / 7);
+      place(dataDock, 58 + (controlDock.offsetHeight || 48) + gap);
     }
   }
 
@@ -3813,7 +3814,6 @@ init();
   setTimeout(fitDrawers, 220);
   setInterval(function(){
     syncModeControls();
-    if (window.innerWidth > 720 && stage.clientWidth > 720) fitDrawers();
   }, 240);
 })();
 </script>

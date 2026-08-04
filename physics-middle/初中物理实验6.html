@@ -1503,7 +1503,6 @@
 <style id="exp6-governance-style">
   :root{
     --drawer-collapsed-width:164px;
-    --drawer-stack-offset:26px;
   }
   #app{
     width:100%;
@@ -2747,18 +2746,17 @@ function defaultDockPositions(force = false){
   const cr = controlDock.getBoundingClientRect();
   const dr = dataDock.getBoundingClientRect();
   const top = 58;
-  if(force || !state.dockMoved.control){
-    setDockPos(controlDock, s.width - cr.width - pad, top);
-  }
-  if(force || !state.dockMoved.data){
-    let dataTop = top + 26;
-    if(!state.panelCollapsed && state.dataCollapsed){
-      dataTop = top + Math.max(24, cr.height - 12);
-    }else if(state.panelCollapsed && !state.dataCollapsed){
-      dataTop = top;
-      if(force || !state.dockMoved.control) setDockPos(controlDock, s.width - cr.width - pad, top + Math.max(24, dr.height - 12));
+  const gap = 12;
+  const hasExpandedDrawer = !state.panelCollapsed || !state.dataCollapsed;
+  const canUseTwoColumns = hasExpandedDrawer && cr.width + dr.width + gap * 3 <= s.width;
+  if(canUseTwoColumns){
+    if(force || !state.dockMoved.control) setDockPos(controlDock, gap, top);
+    if(force || !state.dockMoved.data) setDockPos(dataDock, s.width - dr.width - gap, top);
+  }else{
+    if(force || !state.dockMoved.control) setDockPos(controlDock, s.width - cr.width - pad, top);
+    if(force || !state.dockMoved.data){
+      setDockPos(dataDock, s.width - dr.width - pad, top + cr.height + 8);
     }
-    setDockPos(dataDock, s.width - dr.width - pad, dataTop);
   }
 }
 function bindDockDrag(el, headEl, kind){
