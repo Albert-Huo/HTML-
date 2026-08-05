@@ -115,7 +115,7 @@
     :root[data-theme="light"] body #app .task-card .dot::after{
       content:"";position:absolute;inset:-4px;border:1px solid #475467;border-radius:inherit;pointer-events:none;
     }
-    :root[data-theme="light"] body #app #stage{color:var(--ink,var(--fg,#eaf2ff))!important}
+    :root[data-theme="light"] body #app #stage{color:var(--theme-stage-ink,var(--ink,var(--fg,#eaf2ff)))!important}
     :root[data-theme="light"] body #app .toolbar{
       background:rgba(255,255,255,.78)!important;border-color:var(--theme-border)!important;
       box-shadow:0 8px 24px rgba(31,41,55,.06)!important;
@@ -1049,6 +1049,16 @@
         return;
       }
       const normalizeTheme = (value) => value === "light" ? "light" : "dark";
+      const stage = document.getElementById("stage");
+      if (stage) {
+        const activeTheme = normalizeTheme(root.dataset.theme);
+        try {
+          root.dataset.theme = "dark";
+          stage.style.setProperty("--theme-stage-ink", getComputedStyle(stage).color);
+        } finally {
+          root.dataset.theme = activeTheme;
+        }
+      }
       const syncButton = (theme) => {
         const lightEnabled = theme === "light";
         const nextLabel = lightEnabled ? "切换到黑夜模式" : "切换到白天模式";
