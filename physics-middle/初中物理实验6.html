@@ -4331,6 +4331,7 @@ init();
       let panelLastTransaction = null;
       const panelToggleSettleMs = 280;
       let mutationObserver = null;
+      let positionedParentObserver = null;
       let resizeObserver = null;
       let lifecycleObserver = null;
       const panelCleanupCallbacks = [];
@@ -4435,8 +4436,15 @@ init();
           x:clampPanelValue(nextAnchor.x, panelSafe, maximumX),
           y:clampPanelValue(nextAnchor.y, panelSafe, maximumY),
         };
-        panel.wrapper.style.setProperty("--codex-panel-left", `${panel.anchor.x}px`);
-        panel.wrapper.style.setProperty("--codex-panel-top", `${panel.anchor.y}px`);
+        const offsetParent = panel.wrapper.offsetParent;
+        const stageRect = stage.getBoundingClientRect();
+        const offsetParentRect = offsetParent?.getBoundingClientRect?.() || stageRect;
+        const containingBlockOffset = offsetParent && offsetParent !== stage ? {
+          x:offsetParentRect.left + offsetParent.clientLeft - stageRect.left - stage.clientLeft,
+          y:offsetParentRect.top + offsetParent.clientTop - stageRect.top - stage.clientTop,
+        } : { x:0, y:0 };
+        panel.wrapper.style.setProperty("--codex-panel-left", `${panel.anchor.x - containingBlockOffset.x}px`);
+        panel.wrapper.style.setProperty("--codex-panel-top", `${panel.anchor.y - containingBlockOffset.y}px`);
       };
       const fitAvailableDimension = (desired, available, minimum, maximum) => {
         const safeAvailable = Math.max(0, available);
@@ -4919,9 +4927,11 @@ init();
           cancelPanelFrames(panel);
         });
         if (mutationObserver) mutationObserver.disconnect();
+        if (positionedParentObserver) positionedParentObserver.disconnect();
         if (resizeObserver) resizeObserver.disconnect();
         if (lifecycleObserver) lifecycleObserver.disconnect();
         mutationObserver = null;
+        positionedParentObserver = null;
         resizeObserver = null;
         lifecycleObserver = null;
         panelCleanupCallbacks.splice(0).reverse().forEach((cleanup) => cleanup());
@@ -4945,10 +4955,20 @@ init();
             attributeFilter:["class"],
           });
         });
+        const positionedParents = [...new Set(desktopPanels.map((panel) => panel.wrapper.offsetParent))]
+          .filter((parent) => parent && parent !== stage);
+        if (positionedParents.length) {
+          positionedParentObserver = new MutationObserver(schedulePanelResize);
+          positionedParents.forEach((parent) => positionedParentObserver.observe(parent, {
+            attributes:true,
+            attributeFilter:["class", "style"],
+          }));
+        }
         bindPanelListener(window, "resize", schedulePanelResize);
         if ("ResizeObserver" in window) {
           resizeObserver = new ResizeObserver(schedulePanelResize);
           resizeObserver.observe(stage);
+          positionedParents.forEach((parent) => resizeObserver.observe(parent));
         }
         lifecycleObserver = new MutationObserver(() => {
           if (!managedPanelNodesConnected()) teardownDesktopPanels();
