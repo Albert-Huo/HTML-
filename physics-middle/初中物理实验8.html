@@ -4579,15 +4579,32 @@ init();
           applyPanelToggleTransaction(generation, reason);
         });
       };
+      const armPanelToggleTransaction = (generation) => {
+        panelToggleTimer = setTimeout(() => {
+          panelToggleTimer = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          applyPanelToggleTransaction(generation, "settle-expiry");
+          panelLastTransaction = snapshotPanelToggleTransaction(
+            panelToggleTransaction,
+            panelToggleTransaction.commitStatus || "committed",
+          );
+          panelToggleTransaction = null;
+        }, panelToggleSettleMs);
+      };
       const beginPanelToggleTransaction = (panel) => {
+        const previousTargets = panelToggleTransaction?.targets || null;
         if (panelToggleTransaction) {
           panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "superseded");
         }
         clearPanelToggleHandles();
         const generation = ++panelToggleGeneration;
         const peer = desktopPanels.find((candidate) => candidate !== panel) || null;
-        const panelWasOpen = panelIsOpen(panel);
-        const peerWasOpen = peer ? panelIsOpen(peer) : false;
+        const panelWasOpen = previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, panel.id)
+          ? previousTargets[panel.id]
+          : panelIsOpen(panel);
+        const peerWasOpen = peer && previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, peer.id)
+          ? previousTargets[peer.id]
+          : peer ? panelIsOpen(peer) : false;
         panelToggleTransaction = {
           generation,
           sourceId:panel.id,
@@ -4600,13 +4617,28 @@ init();
           applications:0,
           lastReason:"captured",
         };
-        panelToggleTimer = setTimeout(() => {
-          panelToggleTimer = 0;
-          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
-          applyPanelToggleTransaction(generation, "settle-expiry");
-          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "committed");
-          panelToggleTransaction = null;
-        }, panelToggleSettleMs);
+        armPanelToggleTransaction(generation);
+        return generation;
+      };
+      const beginPanelResetTransaction = () => {
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "reset-requested");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const [panel, peer] = desktopPanels;
+        panelToggleTransaction = {
+          generation,
+          sourceId:"resetBtn",
+          panelWasOpen:panel ? panelIsOpen(panel) : false,
+          peerWasOpen:peer ? panelIsOpen(peer) : false,
+          targets:Object.fromEntries(desktopPanels.map((candidate) => [candidate.id, false])),
+          applications:0,
+          lastReason:"captured",
+          commitStatus:"reset-committed",
+        };
+        applyPanelToggleTransaction(generation, "reset-capture");
+        armPanelToggleTransaction(generation);
         return generation;
       };
       const panelToggleDebugSnapshot = () => ({
@@ -4708,17 +4740,23 @@ init();
         panel.measureRetried = false;
         panel.measureWarned = false;
       };
-      const resetDesktopPanels = (cancelTransaction = true) => {
+      const resetDesktopPanelLayout = () => {
         if (!desktopActive) return;
-        if (cancelTransaction) cancelPanelToggleTransaction("reset");
         const anchors = getDefaultAnchors();
         desktopPanels.forEach((panel, index) => {
           cancelPanelDrag(panel);
           cancelPanelFrames(panel);
-          setPanelOpen(panel, false);
           panel.zIndex = index === 0 ? 36 : 30;
           applyAnchor(panel, anchors[index]);
           applyPanelLayer(panel);
+        });
+      };
+      const resetDesktopPanels = (cancelTransaction = true) => {
+        if (!desktopActive) return;
+        if (cancelTransaction) cancelPanelToggleTransaction("reset");
+        resetDesktopPanelLayout();
+        desktopPanels.forEach((panel) => {
+          setPanelOpen(panel, false);
           syncPanel(panel);
         });
       };
@@ -4867,17 +4905,16 @@ init();
           const resetButton = document.getElementById("resetBtn");
           const onResetClick = () => {
             if (!isResetIntent(resetButton)) return;
-            const generation = cancelPanelToggleTransaction("reset-requested");
-            requestAnimationFrame(() => {
-              if (panelToggleGeneration !== generation) return;
-              resetDesktopPanels(false);
-            });
+            resetDesktopPanelLayout();
+            beginPanelResetTransaction();
           };
           bindPanelListener(resetButton, "click", onResetClick, true);
         } else {
           console.warn("[desktop-panels] expected one reset button", "resetBtn");
         }
-        window.__codexDesktopPanels = Object.freeze({ version:panelStandardVersion, getTransactionState:panelToggleDebugSnapshot });
+        const panelCoordinatorApi = { version:panelStandardVersion };
+        if (window.__CODEX_PHYSICS_PANEL_TEST__ === true) panelCoordinatorApi.getTransactionState = panelToggleDebugSnapshot;
+        window.__codexDesktopPanels = Object.freeze(panelCoordinatorApi);
         syncDesktopPanelMode();
       };
       const isolateThemePointer = (event) => {
