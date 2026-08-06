@@ -523,11 +523,18 @@
         overflow:visible!important;background:transparent!important;box-shadow:none!important;transition:none!important;
       }
       body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{
-        width:164px!important;min-width:164px!important;max-width:164px!important;min-height:44px!important;
-        position:relative!important;z-index:2!important;box-sizing:border-box!important;
+        width:164px!important;min-width:164px!important;max-width:164px!important;
+        height:44px!important;min-height:44px!important;max-height:44px!important;box-sizing:border-box!important;
+        display:flex!important;align-items:center!important;flex-flow:row nowrap!important;gap:8px!important;
+        padding-top:0!important;padding-bottom:0!important;padding-left:10px!important;padding-right:10px!important;overflow:hidden!important;
+        position:relative!important;z-index:2!important;
         touch-action:none!important;border:1px solid rgba(148,163,184,.32)!important;border-radius:12px!important;
         background:rgba(15,23,42,.90)!important;box-shadow:0 8px 22px rgba(0,0,0,.28)!important;
       }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*{min-height:0!important;max-height:40px!important;box-sizing:border-box!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:first-child{flex:1 1 auto!important;min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:last-child{flex:0 0 auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"] button{max-height:40px!important}
       body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{
         position:absolute!important;z-index:1!important;display:none!important;box-sizing:border-box!important;
         width:var(--codex-panel-body-width)!important;max-width:var(--codex-panel-body-width)!important;
@@ -1398,6 +1405,7 @@
       const setPanelOpen = (panel, open) => {
         if (panel.kind === "dock") panel.wrapper.classList.toggle("collapsed", !open);
         else panel.wrapper.classList.toggle("open", open);
+        panel.body.classList.toggle("collapsed", !open);
       };
       const setPanelDragging = (panel, dragging) => {
         panel.wrapper.dataset.codexPanelDragging = dragging ? "1" : "0";
@@ -1589,14 +1597,13 @@
           promotePanel(panel);
         };
         const onWrapperClick = () => promotePanel(panel);
-        const restoreLegacyPeer = () => {
+        const restoreLegacyToggle = () => {
           panel.toggleRestoreFrame = 0;
           const snapshot = panel.togglePeerSnapshot;
           panel.togglePeerSnapshot = null;
           if (!desktopActive || !snapshot) return;
-          const panelOpened = !snapshot.panelWasOpen && panelIsOpen(panel);
-          const peerWasForcedClosed = snapshot.peerWasOpen && !panelIsOpen(snapshot.peer);
-          if (panelOpened && peerWasForcedClosed) setPanelOpen(snapshot.peer, true);
+          setPanelOpen(panel, !snapshot.panelWasOpen);
+          if (snapshot.peerWasOpen) setPanelOpen(snapshot.peer, true);
           syncPanel(snapshot.peer);
           syncPanel(panel);
         };
@@ -1610,7 +1617,7 @@
           if (panel.toggleSnapshotExpiryFrame) cancelAnimationFrame(panel.toggleSnapshotExpiryFrame);
           panel.toggleSnapshotExpiryFrame = 0;
           if (panel.toggleRestoreFrame) cancelAnimationFrame(panel.toggleRestoreFrame);
-          panel.toggleRestoreFrame = requestAnimationFrame(restoreLegacyPeer);
+          panel.toggleRestoreFrame = requestAnimationFrame(restoreLegacyToggle);
         };
         const onTogglePointerEnd = (event) => {
           if (panel.togglePointerId !== event.pointerId) return;
