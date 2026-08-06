@@ -4700,6 +4700,15 @@ init();
           height:stage.clientHeight || rect.height,
         };
       };
+      const desktopPanelMutationAllowed = () => {
+        if (!desktopActive) return false;
+        const { width } = getStageSize();
+        if (width && width <= desktopBreakpoint) {
+          syncDesktopPanelMode();
+          return false;
+        }
+        return true;
+      };
       const resolveDesktopPanels = () => {
         if (!stage) {
           panelVariants.forEach((variant) => variant.panels.forEach((panel) => {
@@ -4784,6 +4793,7 @@ init();
         return [control, { x:control.x, y:control.y + panelHeaderHeight + 10 }];
       };
       const applyAnchor = (panel, nextAnchor) => {
+        if (!desktopPanelMutationAllowed()) return false;
         const { width, height } = getStageSize();
         const maximumX = Math.max(panelSafe, width - panelWidth - panelSafe);
         const maximumY = Math.max(panelSafe, height - panelHeaderHeight - panelSafe);
@@ -4800,6 +4810,7 @@ init();
         } : { x:0, y:0 };
         panel.wrapper.style.setProperty("--codex-panel-left", `${panel.anchor.x - containingBlockOffset.x}px`);
         panel.wrapper.style.setProperty("--codex-panel-top", `${panel.anchor.y - containingBlockOffset.y}px`);
+        return true;
       };
       const fitAvailableDimension = (desired, available, minimum, maximum) => {
         const safeAvailable = Math.max(0, available);
@@ -4884,10 +4895,10 @@ init();
         if (wrapper.dataset.moved !== "1") wrapper.dataset.moved = "1";
       };
       const syncPanel = (panel) => {
-        if (!desktopActive) return;
+        if (!desktopPanelMutationAllowed()) return;
         assertPanelManaged(panel);
         const defaults = getDefaultAnchors();
-        applyAnchor(panel, panel.anchor || defaults[panel.index]);
+        if (!applyAnchor(panel, panel.anchor || defaults[panel.index])) return;
         applyPanelLayer(panel);
         const open = panelIsOpen(panel);
         panel.wrapper.dataset.codexPanelOpen = open ? "1" : "0";
@@ -4975,8 +4986,9 @@ init();
         return panelToggleGeneration;
       };
       const applyPanelToggleTransaction = (generation, reason) => {
+        if (!desktopPanelMutationAllowed()) return false;
         const transaction = panelToggleTransaction;
-        if (!desktopActive || !transaction || transaction.generation !== generation || panelToggleGeneration !== generation) return false;
+        if (!transaction || transaction.generation !== generation || panelToggleGeneration !== generation) return false;
         desktopPanels.forEach((candidate) => {
           if (Object.prototype.hasOwnProperty.call(transaction.targets, candidate.id)) {
             setPanelOpen(candidate, transaction.targets[candidate.id]);
@@ -5000,7 +5012,7 @@ init();
         panelToggleTimer = setTimeout(() => {
           panelToggleTimer = 0;
           if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
-          applyPanelToggleTransaction(generation, "settle-expiry");
+          if (!applyPanelToggleTransaction(generation, "settle-expiry")) return;
           panelLastTransaction = snapshotPanelToggleTransaction(
             panelToggleTransaction,
             panelToggleTransaction.commitStatus || "committed",
@@ -5009,6 +5021,7 @@ init();
         }, panelToggleSettleMs);
       };
       const beginPanelToggleTransaction = (panel) => {
+        if (!desktopPanelMutationAllowed()) return null;
         const previousTargets = panelToggleTransaction?.targets || null;
         if (panelToggleTransaction) {
           panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "superseded");
@@ -5038,6 +5051,7 @@ init();
         return generation;
       };
       const beginPanelResetTransaction = () => {
+        if (!desktopPanelMutationAllowed()) return null;
         if (panelToggleTransaction) {
           panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "reset-requested");
         }
@@ -5115,10 +5129,10 @@ init();
           drag.active = true;
           setPanelDragging(panel, true);
           const stageRect = stage.getBoundingClientRect();
-          applyAnchor(panel, {
+          if (!applyAnchor(panel, {
             x:event.clientX - stageRect.left - drag.offsetX,
             y:event.clientY - stageRect.top - drag.offsetY,
-          });
+          })) return;
           layoutPanel(panel);
           event.preventDefault();
         };
@@ -5158,13 +5172,13 @@ init();
         panel.measureWarned = false;
       };
       const resetDesktopPanelLayout = () => {
-        if (!desktopActive) return;
+        if (!desktopPanelMutationAllowed()) return;
         const anchors = getDefaultAnchors();
         desktopPanels.forEach((panel, index) => {
           cancelPanelDrag(panel);
           cancelPanelFrames(panel);
           panel.zIndex = index === 0 ? 36 : 30;
-          applyAnchor(panel, anchors[index]);
+          if (!applyAnchor(panel, anchors[index])) return;
           applyPanelLayer(panel);
         });
       };
@@ -5202,7 +5216,7 @@ init();
         }
         const defaults = getDefaultAnchors();
         desktopPanels.forEach((panel, index) => {
-          applyAnchor(panel, panel.anchor || defaults[index]);
+          if (!applyAnchor(panel, panel.anchor || defaults[index])) return;
           applyPanelLayer(panel);
           syncPanel(panel);
         });
@@ -5243,23 +5257,24 @@ init();
           return;
         }
         desktopPanels.forEach((panel) => {
-          applyAnchor(panel, panel.anchor);
+          if (!applyAnchor(panel, panel.anchor)) return;
           applyPanelLayer(panel);
           syncPanel(panel);
         });
       };
       const queuePanelSync = (records = []) => {
+        if (!desktopPanelMutationAllowed()) return;
         const transaction = panelToggleTransaction;
         const panelClassChanged = records.some((record) => record.type === "attributes" && record.attributeName === "class");
-        if (desktopActive && transaction && panelClassChanged) {
+        if (transaction && panelClassChanged) {
           schedulePanelToggleTransaction(transaction.generation, "class-mutation");
           return;
         }
-        if (!desktopActive || panelMutationFrame) return;
+        if (panelMutationFrame) return;
         const generation = panelToggleGeneration;
         panelMutationFrame = requestAnimationFrame(() => {
           panelMutationFrame = 0;
-          if (!desktopActive || generation !== panelToggleGeneration) return;
+          if (!desktopPanelMutationAllowed() || generation !== panelToggleGeneration) return;
           desktopPanels.forEach(syncPanel);
         });
       };
