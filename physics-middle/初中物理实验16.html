@@ -669,6 +669,7 @@
     :root[data-theme="light"] body #app #stage .record-cue.ready,
     :root[data-theme="light"] body #app #stage .record-cue.done{background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important}
     :root[data-theme="light"] body #app #stage .record-cue.warn{background:#fff4d6!important;border-color:#e0a44c!important;color:#7a4d00!important}
+    :root[data-theme="light"] body #app #stage #dataNotice,
     :root[data-theme="light"] body #app #stage .dataNotice,
     :root[data-theme="light"] body #app #stage .dockNotice,
     :root[data-theme="light"] body #app #stage .notice-badge,
@@ -754,6 +755,24 @@
       body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:first-child{flex:1 1 auto!important;min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
       body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:last-child{flex:0 0 auto!important}
       body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"] button{max-height:40px!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)){
+        gap:4px!important;
+        padding-left:6px!important;padding-right:6px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :first-child{
+        gap:2px!important;overflow:visible!important;text-overflow:clip!important;font-size:12px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) #dataNotice{
+        position:relative!important;z-index:3!important;flex:0 0 auto!important;
+        min-width:14px!important;height:16px!important;padding:0 2px!important;
+        font-size:10px!important;line-height:16px!important;box-sizing:border-box!important;pointer-events:auto!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child{
+        gap:3px!important;min-width:0!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child > button{
+        min-width:0!important;padding-left:4px!important;padding-right:4px!important;font-size:10px!important;
+      }
       body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{
         position:absolute!important;z-index:1!important;display:none!important;box-sizing:border-box!important;
         width:var(--codex-panel-body-width)!important;max-width:var(--codex-panel-body-width)!important;
@@ -3640,6 +3659,12 @@
       let panelCoordinatorInstalled = false;
       let panelMutationFrame = 0;
       let panelResizeTimer = 0;
+      let panelToggleGeneration = 0;
+      let panelToggleTransaction = null;
+      let panelToggleFrame = 0;
+      let panelToggleTimer = 0;
+      let panelLastTransaction = null;
+      const panelToggleSettleMs = 280;
       let mutationObserver = null;
       let resizeObserver = null;
       let lifecycleObserver = null;
@@ -3717,10 +3742,6 @@
             measureFrame:0,
             measureRetried:false,
             measureWarned:false,
-            togglePeerSnapshot:null,
-            togglePointerId:null,
-            toggleSnapshotExpiryFrame:0,
-            toggleRestoreFrame:0,
           };
         });
         return valid ? panels : null;
@@ -3900,65 +3921,107 @@
         target.addEventListener(type, listener, options);
         panelCleanupCallbacks.push(() => target.removeEventListener(type, listener, options));
       };
+      const snapshotPanelToggleTransaction = (transaction, status) => transaction ? {
+        generation:transaction.generation,
+        sourceId:transaction.sourceId,
+        panelWasOpen:transaction.panelWasOpen,
+        peerWasOpen:transaction.peerWasOpen,
+        targets:{ ...transaction.targets },
+        applications:transaction.applications,
+        lastReason:transaction.lastReason,
+        status,
+      } : null;
+      const clearPanelToggleHandles = () => {
+        if (panelToggleFrame) cancelAnimationFrame(panelToggleFrame);
+        if (panelToggleTimer) clearTimeout(panelToggleTimer);
+        panelToggleFrame = 0;
+        panelToggleTimer = 0;
+      };
+      const cancelPanelToggleTransaction = (reason = "cancelled") => {
+        panelToggleGeneration += 1;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, reason);
+        }
+        clearPanelToggleHandles();
+        panelToggleTransaction = null;
+        return panelToggleGeneration;
+      };
+      const applyPanelToggleTransaction = (generation, reason) => {
+        const transaction = panelToggleTransaction;
+        if (!desktopActive || !transaction || transaction.generation !== generation || panelToggleGeneration !== generation) return false;
+        desktopPanels.forEach((candidate) => {
+          if (Object.prototype.hasOwnProperty.call(transaction.targets, candidate.id)) {
+            setPanelOpen(candidate, transaction.targets[candidate.id]);
+          }
+        });
+        desktopPanels.forEach(syncPanel);
+        transaction.applications += 1;
+        transaction.lastReason = reason;
+        return true;
+      };
+      const schedulePanelToggleTransaction = (generation, reason) => {
+        if (!desktopActive || !panelToggleTransaction || panelToggleTransaction.generation !== generation || panelToggleGeneration !== generation) return;
+        if (panelToggleFrame) return;
+        panelToggleFrame = requestAnimationFrame(() => {
+          panelToggleFrame = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          applyPanelToggleTransaction(generation, reason);
+        });
+      };
+      const beginPanelToggleTransaction = (panel) => {
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "superseded");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const peer = desktopPanels.find((candidate) => candidate !== panel) || null;
+        const panelWasOpen = panelIsOpen(panel);
+        const peerWasOpen = peer ? panelIsOpen(peer) : false;
+        panelToggleTransaction = {
+          generation,
+          sourceId:panel.id,
+          panelWasOpen,
+          peerWasOpen,
+          targets:{
+            [panel.id]:!panelWasOpen,
+            ...(peer ? { [peer.id]:peerWasOpen } : {}),
+          },
+          applications:0,
+          lastReason:"captured",
+        };
+        panelToggleTimer = setTimeout(() => {
+          panelToggleTimer = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          applyPanelToggleTransaction(generation, "settle-expiry");
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "committed");
+          panelToggleTransaction = null;
+        }, panelToggleSettleMs);
+        return generation;
+      };
+      const panelToggleDebugSnapshot = () => ({
+        generation:panelToggleGeneration,
+        settleMs:panelToggleSettleMs,
+        pending:Number(Boolean(panelToggleFrame)) + Number(Boolean(panelToggleTimer)),
+        active:desktopActive,
+        current:snapshotPanelToggleTransaction(panelToggleTransaction, "active"),
+        last:panelLastTransaction ? { ...panelLastTransaction, targets:{ ...panelLastTransaction.targets } } : null,
+      });
       const bindPanelDrag = (panel) => {
         const { wrapper, header, toggle } = panel;
-        const peerPanel = () => desktopPanels.find((candidate) => candidate !== panel);
-        const captureTogglePeerSnapshot = () => {
-          const peer = peerPanel();
-          panel.togglePeerSnapshot = peer ? {
-            panelWasOpen:panelIsOpen(panel),
-            peer,
-            peerWasOpen:panelIsOpen(peer),
-          } : null;
-        };
         const onWrapperPointerDown = (event) => {
           if (!desktopActive) return;
-          if (toggle.contains(event.target)) {
-            wrapper.dataset.moved = "1";
-            panel.togglePointerId = event.pointerId;
-            if (panel.toggleSnapshotExpiryFrame) cancelAnimationFrame(panel.toggleSnapshotExpiryFrame);
-            panel.toggleSnapshotExpiryFrame = 0;
-            captureTogglePeerSnapshot();
-          }
+          if (toggle.contains(event.target)) wrapper.dataset.moved = "1";
           promotePanel(panel);
         };
         const onWrapperClick = () => promotePanel(panel);
-        const restoreLegacyToggle = () => {
-          panel.toggleRestoreFrame = 0;
-          const snapshot = panel.togglePeerSnapshot;
-          panel.togglePeerSnapshot = null;
-          if (!desktopActive || !snapshot) return;
-          setPanelOpen(panel, !snapshot.panelWasOpen);
-          if (snapshot.peerWasOpen) setPanelOpen(snapshot.peer, true);
-          syncPanel(snapshot.peer);
-          syncPanel(panel);
-        };
         const onToggleClickCapture = () => {
-          if (!desktopActive || panel.togglePeerSnapshot) return;
-          captureTogglePeerSnapshot();
+          if (!desktopActive) return;
+          beginPanelToggleTransaction(panel);
         };
         const onToggleClick = () => {
-          if (!desktopActive || !panel.togglePeerSnapshot) return;
-          panel.togglePointerId = null;
-          if (panel.toggleSnapshotExpiryFrame) cancelAnimationFrame(panel.toggleSnapshotExpiryFrame);
-          panel.toggleSnapshotExpiryFrame = 0;
-          if (panel.toggleRestoreFrame) cancelAnimationFrame(panel.toggleRestoreFrame);
-          panel.toggleRestoreFrame = requestAnimationFrame(restoreLegacyToggle);
-        };
-        const onTogglePointerEnd = (event) => {
-          if (panel.togglePointerId !== event.pointerId) return;
-          panel.togglePointerId = null;
-          if (!panel.togglePeerSnapshot) return;
-          if (panel.toggleSnapshotExpiryFrame) cancelAnimationFrame(panel.toggleSnapshotExpiryFrame);
-          if (event.type === "pointercancel" || !toggle.contains(event.target)) {
-            panel.toggleSnapshotExpiryFrame = 0;
-            panel.togglePeerSnapshot = null;
-            return;
-          }
-          panel.toggleSnapshotExpiryFrame = requestAnimationFrame(() => {
-            panel.toggleSnapshotExpiryFrame = 0;
-            if (!panel.toggleRestoreFrame) panel.togglePeerSnapshot = null;
-          });
+          const generation = panelToggleTransaction?.generation;
+          if (!desktopActive || !generation || panelToggleTransaction.sourceId !== panel.id) return;
+          schedulePanelToggleTransaction(generation, "click-bubble");
         };
         const onHeaderPointerDown = (event) => {
           if (!desktopActive || event.target.closest?.("button")) return;
@@ -4022,8 +4085,6 @@
         bindPanelListener(wrapper, "click", onWrapperClick, true);
         bindPanelListener(toggle, "click", onToggleClickCapture, true);
         bindPanelListener(toggle, "click", onToggleClick);
-        bindPanelListener(window, "pointerup", onTogglePointerEnd, true);
-        bindPanelListener(window, "pointercancel", onTogglePointerEnd, true);
         bindPanelListener(header, "pointerdown", onHeaderPointerDown, true);
         bindPanelListener(header, "pointermove", onHeaderPointerMove, true);
         bindPanelListener(header, "pointerup", finishDrag, true);
@@ -4032,18 +4093,13 @@
       };
       const cancelPanelFrames = (panel) => {
         if (panel.measureFrame) cancelAnimationFrame(panel.measureFrame);
-        if (panel.toggleSnapshotExpiryFrame) cancelAnimationFrame(panel.toggleSnapshotExpiryFrame);
-        if (panel.toggleRestoreFrame) cancelAnimationFrame(panel.toggleRestoreFrame);
         panel.measureFrame = 0;
         panel.measureRetried = false;
         panel.measureWarned = false;
-        panel.togglePointerId = null;
-        panel.toggleSnapshotExpiryFrame = 0;
-        panel.toggleRestoreFrame = 0;
-        panel.togglePeerSnapshot = null;
       };
-      const resetDesktopPanels = () => {
+      const resetDesktopPanels = (cancelTransaction = true) => {
         if (!desktopActive) return;
+        if (cancelTransaction) cancelPanelToggleTransaction("reset");
         const anchors = getDefaultAnchors();
         desktopPanels.forEach((panel, index) => {
           cancelPanelDrag(panel);
@@ -4087,6 +4143,7 @@
       };
       const deactivateDesktopPanels = () => {
         if (!desktopActive) return;
+        cancelPanelToggleTransaction("deactivate");
         desktopPanels.forEach((panel) => {
           cancelPanelDrag(panel);
           cancelPanelFrames(panel);
@@ -4125,10 +4182,18 @@
           syncPanel(panel);
         });
       };
-      const queuePanelSync = () => {
+      const queuePanelSync = (records = []) => {
+        const transaction = panelToggleTransaction;
+        const panelClassChanged = records.some((record) => record.type === "attributes" && record.attributeName === "class");
+        if (desktopActive && transaction && panelClassChanged) {
+          schedulePanelToggleTransaction(transaction.generation, "class-mutation");
+          return;
+        }
         if (!desktopActive || panelMutationFrame) return;
+        const generation = panelToggleGeneration;
         panelMutationFrame = requestAnimationFrame(() => {
           panelMutationFrame = 0;
+          if (!desktopActive || generation !== panelToggleGeneration) return;
           desktopPanels.forEach(syncPanel);
         });
       };
@@ -4140,6 +4205,7 @@
       const managedPanelNodesConnected = () => stage?.isConnected && desktopPanels.every((panel) =>
         [panel.wrapper, panel.header, panel.body, panel.toggle].every((node) => node.isConnected));
       const teardownDesktopPanels = () => {
+        cancelPanelToggleTransaction("disconnect");
         clearTimeout(panelResizeTimer);
         panelResizeTimer = 0;
         if (panelMutationFrame) cancelAnimationFrame(panelMutationFrame);
@@ -4166,10 +4232,16 @@
         desktopPanels = resolved;
         desktopPanels.forEach(bindPanelDrag);
         mutationObserver = new MutationObserver(queuePanelSync);
-        desktopPanels.forEach((panel) => mutationObserver.observe(panel.wrapper, {
-          attributes:true,
-          attributeFilter:["class", "data-moved"],
-        }));
+        desktopPanels.forEach((panel) => {
+          mutationObserver.observe(panel.wrapper, {
+            attributes:true,
+            attributeFilter:["class", "data-moved"],
+          });
+          mutationObserver.observe(panel.body, {
+            attributes:true,
+            attributeFilter:["class"],
+          });
+        });
         bindPanelListener(window, "resize", schedulePanelResize);
         if ("ResizeObserver" in window) {
           resizeObserver = new ResizeObserver(schedulePanelResize);
@@ -4183,13 +4255,18 @@
         if (resetButtons.length === 1) {
           const resetButton = document.getElementById("resetBtn");
           const onResetClick = () => {
-            if (isResetIntent(resetButton)) requestAnimationFrame(resetDesktopPanels);
+            if (!isResetIntent(resetButton)) return;
+            const generation = cancelPanelToggleTransaction("reset-requested");
+            requestAnimationFrame(() => {
+              if (panelToggleGeneration !== generation) return;
+              resetDesktopPanels(false);
+            });
           };
           bindPanelListener(resetButton, "click", onResetClick, true);
         } else {
           console.warn("[desktop-panels] expected one reset button", "resetBtn");
         }
-        window.__codexDesktopPanels = Object.freeze({ version:panelStandardVersion });
+        window.__codexDesktopPanels = Object.freeze({ version:panelStandardVersion, getTransactionState:panelToggleDebugSnapshot });
         syncDesktopPanelMode();
       };
       const isolateThemePointer = (event) => {
