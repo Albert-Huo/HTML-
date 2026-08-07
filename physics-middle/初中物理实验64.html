@@ -19,6 +19,26 @@
       document.documentElement.dataset.theme = theme;
     })();
   </script>
+<script id="codex-physics-mode-bootstrap">
+(() => {
+  "use strict";
+  const pending = [];
+  document.documentElement.dataset.codexModeControls = "physics-middle-mode-controls-v1";
+  Object.defineProperty(window, "__codexRegisterModeAdapter", {
+    configurable:true,
+    value(adapter) {
+      if (!adapter || typeof adapter.getState !== "function") {
+        throw new TypeError("[mode-controls] invalid adapter");
+      }
+      pending.push(adapter);
+    },
+  });
+  Object.defineProperty(window, "__codexPendingModeAdapters", {
+    configurable:true,
+    value:pending,
+  });
+})();
+</script>
   <style>
     :root{
       --bg:#1a1a1a;--ink:#fff;--muted:#98afbc;--line:rgba(255,255,255,.13);
@@ -532,6 +552,55 @@
       body,.task-card,.toolbar,.explanation,#controlDock,#dataDock{transition:none!important}
     }
   </style>
+<style id="codex-physics-mode-style">
+body #app .toolbar{
+  width:100%;
+  max-width:980px;
+  display:flex;
+  gap:9px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-start;
+  margin:10px 0 0;
+}
+body #app .toolbar button{
+  min-width:0;
+  white-space:nowrap;
+  border:1px solid rgba(255,255,255,.09);
+  padding:9px 12px;
+  background:rgba(255,255,255,.075);
+  color:#d9e8f8;
+  font-size:13px;
+  font-weight:800;
+}
+body #app .toolbar button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+  filter:saturate(.55);
+}
+@media(max-width:720px){
+  body #app .toolbar{
+    max-width:100%;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:7px;
+    margin-top:8px;
+    padding:6px;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:11px;
+    background:rgba(255,255,255,.035);
+  }
+  body #app .toolbar button{
+    min-width:0;
+    padding:8px 6px;
+    border-radius:8px;
+    font-size:12px;
+    font-weight:800;
+    overflow:hidden;
+    text-overflow:clip;
+  }
+}
+</style>
 </head>
 <body>
   <div id="app">
@@ -659,9 +728,17 @@
       records:[],unseenRecords:0,analysisDone:false,analysisAverage:null,
       width:0,height:0,dpr:1,stageWidth:0,stageHeight:0,scene:null,drawerDrag:null,canvasPan:null
     });
+    let codexModeController = null; /* codex-physics-mode-source:continuous-controller */
     let state=freshState(false),toastTimer=0,checkTimer=0;
     const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
-    const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+    /* codex-physics-mode-source:continuous-wait-64:start */
+    const rawModeSleep=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
+    async function sleep(ms,phase=null){
+      if(!codexModeController||!state.autoPlaying)return rawModeSleep(ms);
+      try{return await codexModeController.wait(ms,phase,codexModeController.currentRunId());}
+      catch(error){if(error?.code==="MODE_CONTROL_CANCELLED")throw new Error("AUTO_CANCELLED");throw error;}
+    }
+    /* codex-physics-mode-source:continuous-wait-64:end */
     const edgeKey=(a,b)=>[a,b].sort().join("|");
     const hasEdge=(a,b)=>state.wireEdges.some(edge=>edgeKey(edge[0],edge[1])===edgeKey(a,b));
     const lowerTerminalCount=()=>Number(hasEdge("H_l","B_neg"))+Number(hasEdge("H_r","B_neg"));
@@ -921,7 +998,7 @@
     }
     function reset(nextFree=state.freeMode,options={}){
       const runId=state.autoRunId+1;
-      state=freshState(nextFree);state.autoRunId=runId;
+      Object.assign(state,freshState(nextFree)); /* codex-physics-mode-source:stable-state-64 */state.autoRunId=runId;
       errorMask.classList.remove("show");doneMask.classList.remove("show");analysisText.classList.remove("ok");
       analysisText.textContent="完成三组测量后，在这里分析电阻的平均值。";
       hintPop.classList.remove("open");hintLamp.setAttribute("aria-expanded","false");
@@ -1311,6 +1388,140 @@
       recordObservation,analyzeConclusion,reset,setFreeMode,runAutoDemo
     };
     updateUI();resize()
+    /* codex-physics-mode-adapter:start */
+    {
+      let codexModePauseStarted = 0;
+      let codexModePausedAnimations = [];
+
+      const MODE_VOLATILE = new Set(["autoPlaying", "autoPaused", "autoCancel", "autoRunId", "demoRunId", "freeMode", "freeStartState", "timers", "rafId", "drawerDrag"]);
+      const cloneModeValue = (value) => {
+        if (value === undefined) return undefined;
+        if (typeof structuredClone === "function") {
+          try { return structuredClone(value); }
+          catch(error) { if(error?.name !== "DataCloneError") throw error; }
+        }
+        const serialized = JSON.stringify(value);
+        return serialized === undefined ? undefined : JSON.parse(serialized);
+      };
+      function captureModeWorld(getState, getExtra = () => null) {
+        const source = getState();
+        const savedState = Object.fromEntries(Object.entries(source)
+          .filter(([key, value]) => !MODE_VOLATILE.has(key) && typeof value !== "function" && !value?.nodeType)
+          .map(([key, value]) => [key, cloneModeValue(value)]));
+        const forms = [...document.querySelectorAll("input,select,textarea")].map((element) => ({
+          id:element.id,
+          name:element.name,
+          value:element.value,
+          checked:Boolean(element.checked),
+          type:element.type,
+        })).filter(({ id, name }) => id || name);
+        return { state:savedState, forms, extra:cloneModeValue(getExtra()) };
+      }
+      function restoreModeWorld(snapshot, { getState, reset, refresh, restoreExtra = () => {} }) {
+        reset();
+        Object.assign(getState(), cloneModeValue(snapshot.state), { freeMode:true, autoPlaying:false, autoPaused:false });
+        for (const item of snapshot.forms) {
+          const element = item.id
+            ? document.getElementById(item.id)
+            : document.querySelector(`[name="${CSS.escape(item.name)}"]`);
+          if (!element) continue;
+          element.value = item.value;
+          if (item.type === "checkbox" || item.type === "radio") element.checked = item.checked;
+        }
+        restoreExtra(cloneModeValue(snapshot.extra));
+        refresh();
+      }
+      const modeIdleLabel = (modeState) => {
+        if (modeState.completed) return "闯关模式 · 已通关";
+        const text = document.querySelector("#taskStep,.task-step")?.textContent || "";
+        const match = text.match(/(?:关卡|步骤)\s*(\d+)\s*\/\s*(\d+)/);
+        const current = match ? Number(match[1]) : Number(modeState.currentTask || 0) + 1;
+        const total = match ? Number(match[2]) : Math.max(current, 1);
+        return `闯关模式 · 关卡 ${current}/${total}`;
+      };
+      const unsupported = (operation) => {
+        throw new Error(`[mode-controls] advanced59_66 adapter has not implemented ${operation}`);
+      };
+      window.__codexRegisterModeAdapter({
+        family:"advanced59_66",
+        getState:() => state,
+        bindController(controller) { codexModeController = controller; },
+
+        startDemo:() => runAutoDemo(),
+        cancelDemo() {
+          state.autoCancel = true;
+          state.autoRunId += 1;
+
+          state.autoPlaying = false;
+          state.autoPaused = false;
+          const modeCursor = document.getElementById("demoCursor");
+          if(modeCursor) modeCursor.style.opacity = "0";
+        },
+        resetChallenge() {
+          state.autoPlaying = false;
+          state.autoPaused = false;
+          reset(false, { quiet:true });
+        },
+        setFreeMode:(on) => setFreeMode(on),
+        captureFreeEntry:() => captureModeWorld(() => state),
+        restoreFreeEntry:(snapshot) => restoreModeWorld(snapshot, {
+          getState:() => state,
+          reset:() => { reset(false, { quiet:true }); },
+
+          refresh:() => {
+          if(typeof updateModeHud === "function") updateModeHud();
+          if(typeof updateControlsState === "function") updateControlsState();
+          if(typeof syncModeTag === "function") syncModeTag();
+          if(typeof syncInteractiveButtons === "function") syncInteractiveButtons();
+          if(typeof updateMode === "function") updateMode();
+          if(typeof setModeLabel === "function") setModeLabel();
+          if(typeof renderRecords === "function") renderRecords();
+          if(typeof updateBadge === "function") updateBadge();
+          if(typeof updateObservationChip === "function") updateObservationChip();
+          if(typeof renderFork === "function") renderFork();
+          if(typeof renderStriker === "function") renderStriker();
+          if(typeof scheduleChart === "function") scheduleChart();
+          if(typeof scheduleDraw === "function") scheduleDraw();
+          if(typeof updateReadoutUI === "function") updateReadoutUI();
+          if(typeof render === "function") render();
+          if(typeof draw === "function") draw();
+          if(typeof updateUI === "function") updateUI();
+          if(typeof updateTaskUI === "function") updateTaskUI(); },
+        }),
+        pauseApparatus() {
+          codexModePausedAnimations = document.getElementById("demoCursor")?.getAnimations({ subtree:true }) || [];
+          codexModePausedAnimations.forEach((animation) => animation.pause());
+        },
+        resumeApparatus() {
+          codexModePausedAnimations.forEach((animation) => animation.play());
+          codexModePausedAnimations = [];
+        },
+        isDemoCompleted:() => Array.isArray(state.completed)
+          ? state.completed.every(Boolean) && Boolean(state.analysisDone)
+          : Boolean(state.completed),
+        getIdleModeLabel:() => modeIdleLabel(state),
+        refreshView:() => {
+          if(typeof updateModeHud === "function") updateModeHud();
+          if(typeof updateControlsState === "function") updateControlsState();
+          if(typeof syncModeTag === "function") syncModeTag();
+          if(typeof syncInteractiveButtons === "function") syncInteractiveButtons();
+          if(typeof updateMode === "function") updateMode();
+          if(typeof setModeLabel === "function") setModeLabel();
+          if(typeof renderRecords === "function") renderRecords();
+          if(typeof updateBadge === "function") updateBadge();
+          if(typeof updateObservationChip === "function") updateObservationChip();
+          if(typeof renderFork === "function") renderFork();
+          if(typeof renderStriker === "function") renderStriker();
+          if(typeof scheduleChart === "function") scheduleChart();
+          if(typeof scheduleDraw === "function") scheduleDraw();
+          if(typeof updateReadoutUI === "function") updateReadoutUI();
+          if(typeof render === "function") render();
+          if(typeof draw === "function") draw();
+          if(typeof updateUI === "function") updateUI();
+          if(typeof updateTaskUI === "function") updateTaskUI(); },
+      });
+    }
+    /* codex-physics-mode-adapter:end */
   })();
   </script>
   <script id="codex-theme-pilot-runtime">
@@ -2088,5 +2299,324 @@
       installDesktopPanels();
     })();
   </script>
+<script id="codex-physics-mode-runtime">
+(() => {
+  "use strict";
+  const VERSION = "physics-middle-mode-controls-v1";
+  const AUTO_DEMO_TIMING = Object.freeze({
+    cursorPress:220,
+    panelReveal:180,
+    buttonAim:360,
+    dragSoft:720,
+    actionMotion:820,
+    selectFast:320,
+    selectCompare:560,
+    observePrimary:780,
+    observeSecondary:760,
+    observeComparison:700,
+    recordConfirm:420,
+    stepTransition:460,
+    analysisLead:620,
+    actionSettle:120,
+  });
+  const pending = window.__codexPendingModeAdapters;
+  delete window.__codexPendingModeAdapters;
+  delete window.__codexRegisterModeAdapter;
+  if (!Array.isArray(pending) || pending.length !== 1) {
+    throw new Error(`[mode-controls] expected one adapter, received ${pending?.length ?? 0}`);
+  }
+  const adapter = pending[0];
+  const requiredMethods = [
+    "getState",
+    "bindController",
+    "startDemo",
+    "cancelDemo",
+    "resetChallenge",
+    "setFreeMode",
+    "captureFreeEntry",
+    "restoreFreeEntry",
+  ];
+  for (const method of requiredMethods) {
+    if (typeof adapter[method] !== "function") {
+      throw new TypeError(`[mode-controls] adapter is missing ${method}()`);
+    }
+  }
+  const state = adapter.getState();
+  if (!state || typeof state !== "object") {
+    throw new TypeError("[mode-controls] adapter state must be an object");
+  }
+  const resetBtn = document.getElementById("resetBtn");
+  const autoDemoBtn = document.getElementById("autoDemoBtn");
+  const freeBtn = document.getElementById("freeBtn");
+  const taskCard = document.getElementById("taskCard");
+  const modeTag = document.getElementById("modeTag") || document.getElementById("modeChip");
+  const statusTag = document.getElementById("statusTag") || document.getElementById("stateChip");
+  if (!resetBtn || !autoDemoBtn || !freeBtn || !taskCard || !modeTag || !statusTag) {
+    throw new Error("[mode-controls] required mode-control DOM is missing");
+  }
+
+  let generation = 0;
+  let freeEntry = null;
+  let demoCompletedPresentation = false;
+  let pauseStartedAt = 0;
+  let pausedDuration = 0;
+  const rawSleep = (milliseconds) =>
+    new Promise((resolve) => setTimeout(resolve, milliseconds));
+  const currentRunId = () => generation;
+  const activeNow = () => {
+    const now = performance.now();
+    const activePause = pauseStartedAt ? now - pauseStartedAt : 0;
+    return now - pausedDuration - activePause;
+  };
+  const assertCurrent = (runId) => {
+    if (runId !== generation) {
+      const error = new Error("MODE_CONTROL_CANCELLED");
+      error.code = "MODE_CONTROL_CANCELLED";
+      throw error;
+    }
+  };
+  const wait = async (milliseconds, phase, runId) => {
+    const requested = Math.max(Number(milliseconds) || 0, 0);
+    const phaseFloor = phase ? AUTO_DEMO_TIMING[phase] : 0;
+    if (phase && !Number.isFinite(phaseFloor)) {
+      throw new RangeError(`[mode-controls] unknown timing phase ${phase}`);
+    }
+    let remaining = Math.max(requested, phaseFloor || 0);
+    while (remaining > 0) {
+      assertCurrent(runId);
+      if (state.autoPaused) {
+        await rawSleep(16);
+        continue;
+      }
+      const slice = Math.min(remaining, 16);
+      await rawSleep(slice);
+      assertCurrent(runId);
+      if (!state.autoPaused) remaining -= slice;
+    }
+  };
+
+  const setText = (element, value) => {
+    if (element.textContent !== value) element.textContent = value;
+  };
+  const setDisabled = (element, value) => {
+    if (element.disabled !== value) element.disabled = value;
+  };
+  const setLabel = (element, prefix, value) => setText(element, `${prefix}${value}`);
+  const syncControls = () => {
+    const playing = Boolean(state.autoPlaying);
+    const paused = playing && Boolean(state.autoPaused);
+    const free = Boolean(state.freeMode);
+    setText(resetBtn, playing
+      ? (paused ? "继续演示" : "暂停演示")
+      : (free ? "重置操作" : "重置关卡"));
+    setText(autoDemoBtn, playing ? "退出演示" : "演示模式");
+    setText(freeBtn, free ? "退出自由模式" : "自由模式");
+    setDisabled(autoDemoBtn, free && !playing);
+    setDisabled(freeBtn, playing);
+    setDisabled(resetBtn, false);
+    const pressed = paused ? "true" : "false";
+    if (resetBtn.getAttribute("aria-pressed") !== pressed) {
+      resetBtn.setAttribute("aria-pressed", pressed);
+    }
+    taskCard.classList.toggle("free-mode", free);
+  };
+  const syncModeLabels = (completed = false) => {
+    if (state.autoPlaying) {
+      setLabel(
+        modeTag,
+        "模式：",
+        state.autoPaused ? "演示模式 · 已暂停" : "演示模式 · 自动运行",
+      );
+      setLabel(statusTag, "状态：", state.autoPaused ? "演示已暂停" : "演示中");
+      return;
+    }
+    if (state.freeMode) {
+      setLabel(modeTag, "模式：", "自由模式 · 自主探索");
+      setLabel(statusTag, "状态：", "自由探索");
+      return;
+    }
+    if (completed) {
+      setLabel(modeTag, "模式：", "演示模式 · 演示完成");
+      setLabel(statusTag, "状态：", "已完成");
+      return;
+    }
+    const idleMode = adapter.getIdleModeLabel?.();
+    const idleStatus = adapter.getIdleStatusLabel?.();
+    if (idleMode) setLabel(modeTag, "模式：", idleMode);
+    if (idleStatus) setLabel(statusTag, "状态：", idleStatus);
+  };
+  const refresh = () => {
+    if (typeof adapter.refreshView === "function") adapter.refreshView();
+  };
+
+  const beginDemo = async () => {
+    if (state.freeMode || state.autoPlaying) return;
+    const runId = ++generation;
+    demoCompletedPresentation = false;
+    pauseStartedAt = 0;
+    pausedDuration = 0;
+    state.autoPaused = false;
+    let run;
+    try {
+      run = Promise.resolve(adapter.startDemo());
+    } catch (error) {
+      state.autoPlaying = false;
+      state.autoPaused = false;
+      syncControls();
+      throw error;
+    }
+    if (!state.autoPlaying) state.autoPlaying = true;
+    syncControls();
+    syncModeLabels(false);
+    try {
+      await run;
+    } catch (error) {
+      if (runId !== generation || error?.code === "MODE_CONTROL_CANCELLED") return;
+      throw error;
+    } finally {
+      if (runId !== generation) return;
+      state.autoPlaying = false;
+      state.autoPaused = false;
+      pauseStartedAt = 0;
+      demoCompletedPresentation = Boolean(adapter.isDemoCompleted?.() ?? state.demoCompleted);
+      refresh();
+      syncControls();
+      syncModeLabels(demoCompletedPresentation);
+    }
+  };
+  const togglePause = () => {
+    if (!state.autoPlaying) return;
+    if (!state.autoPaused) {
+      state.autoPaused = true;
+      pauseStartedAt = performance.now();
+      adapter.pauseApparatus?.();
+    } else {
+      const now = performance.now();
+      if (pauseStartedAt) pausedDuration += now - pauseStartedAt;
+      pauseStartedAt = 0;
+      state.autoPaused = false;
+      adapter.resumeApparatus?.();
+    }
+    syncControls();
+    syncModeLabels(false);
+  };
+  const exitDemo = () => {
+    if (!state.autoPlaying) return;
+    generation += 1;
+    adapter.cancelDemo();
+    state.autoPlaying = false;
+    state.autoPaused = false;
+    state.freeMode = false;
+    pauseStartedAt = 0;
+    pausedDuration = 0;
+    demoCompletedPresentation = false;
+    adapter.resetChallenge();
+    refresh();
+    syncControls();
+    syncModeLabels(false);
+  };
+  const toggleFree = () => {
+    if (state.autoPlaying) return;
+    if (!state.freeMode) {
+      demoCompletedPresentation = false;
+      freeEntry = adapter.captureFreeEntry();
+      adapter.setFreeMode(true);
+      state.freeMode = true;
+    } else {
+      adapter.setFreeMode(false);
+      state.freeMode = false;
+      freeEntry = null;
+    }
+    refresh();
+    syncControls();
+    syncModeLabels(false);
+  };
+  const resetIntent = () => {
+    if (state.autoPlaying) {
+      togglePause();
+      return;
+    }
+    if (state.freeMode) {
+      if (freeEntry === null) {
+        throw new Error("[mode-controls] free-mode entry snapshot is missing");
+      }
+      adapter.restoreFreeEntry(freeEntry);
+      state.freeMode = true;
+    } else {
+      generation += 1;
+      demoCompletedPresentation = false;
+      adapter.resetChallenge();
+      state.autoPlaying = false;
+      state.autoPaused = false;
+      state.freeMode = false;
+    }
+    refresh();
+    syncControls();
+    syncModeLabels(false);
+  };
+
+  const controller = Object.freeze({
+    currentRunId,
+    now:activeNow,
+    timing:AUTO_DEMO_TIMING,
+    wait,
+  });
+  adapter.bindController(controller);
+  const onModeControlClick = (event) => {
+    const button = event.target.closest("button");
+    if (![resetBtn, autoDemoBtn, freeBtn].includes(button)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (button === resetBtn) resetIntent();
+    else if (button === freeBtn) toggleFree();
+    else if (state.autoPlaying) exitDemo();
+    else void beginDemo();
+  };
+  for (const button of [resetBtn, autoDemoBtn, freeBtn]) {
+    button.addEventListener("click", onModeControlClick, true);
+  }
+
+  let ownershipSyncQueued = false;
+  const ownershipObserver = new MutationObserver(() => {
+    if (ownershipSyncQueued) return;
+    ownershipSyncQueued = true;
+    queueMicrotask(() => {
+      ownershipSyncQueued = false;
+      syncControls();
+      syncModeLabels(demoCompletedPresentation);
+    });
+  });
+  for (const element of [resetBtn, autoDemoBtn, freeBtn, modeTag, statusTag]) {
+    ownershipObserver.observe(element, {
+      attributes:true,
+      attributeFilter:["disabled", "aria-pressed"],
+      childList:true,
+      subtree:true,
+    });
+  }
+
+  Object.defineProperty(window, "__codexModeControls", {
+    configurable:true,
+    value:Object.freeze({ version:VERSION }),
+  });
+  if (window.__CODEX_MODE_CONTROLS_TEST__ === true) {
+    Object.defineProperty(window, "__codexModeControlsDebug", {
+      configurable:true,
+      value:Object.freeze({
+        snapshot:() => Object.freeze({
+          generation,
+          freeEntry:Boolean(freeEntry),
+          playing:Boolean(state.autoPlaying),
+          paused:Boolean(state.autoPaused),
+          free:Boolean(state.freeMode),
+        }),
+      }),
+    });
+  }
+  delete window.__CODEX_MODE_CONTROLS_TEST__;
+  syncControls();
+  syncModeLabels(false);
+})();
+</script>
 </body>
 </html>
