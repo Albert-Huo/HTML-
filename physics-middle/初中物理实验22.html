@@ -7519,7 +7519,7 @@ body #app .toolbar button:disabled{
     wait,
   });
   adapter.bindController(controller);
-  document.addEventListener("click", (event) => {
+  const onModeControlClick = (event) => {
     const button = event.target.closest("button");
     if (![resetBtn, autoDemoBtn, freeBtn].includes(button)) return;
     event.preventDefault();
@@ -7528,7 +7528,10 @@ body #app .toolbar button:disabled{
     else if (button === freeBtn) toggleFree();
     else if (state.autoPlaying) exitDemo();
     else void beginDemo();
-  }, true);
+  };
+  for (const button of [resetBtn, autoDemoBtn, freeBtn]) {
+    button.addEventListener("click", onModeControlClick, true);
+  }
 
   let ownershipSyncQueued = false;
   const ownershipObserver = new MutationObserver(() => {
