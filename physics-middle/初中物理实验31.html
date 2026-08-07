@@ -2854,8 +2854,12 @@ body #app .toolbar button:disabled{
       const MODE_VOLATILE = new Set(["autoPlaying", "autoPaused", "autoCancel", "autoRunId", "demoRunId", "freeMode", "freeStartState", "timers", "rafId", "drawerDrag"]);
       const cloneModeValue = (value) => {
         if (value === undefined) return undefined;
-        if (typeof structuredClone === "function") return structuredClone(value);
-        return JSON.parse(JSON.stringify(value));
+        if (typeof structuredClone === "function") {
+          try { return structuredClone(value); }
+          catch(error) { if(error?.name !== "DataCloneError") throw error; }
+        }
+        const serialized = JSON.stringify(value);
+        return serialized === undefined ? undefined : JSON.parse(serialized);
       };
       function captureModeWorld(getState, getExtra = () => null) {
         const source = getState();
