@@ -1139,7 +1139,8 @@ body #app .toolbar button:disabled{
       }
       reset(false,{quiet:true});state.autoPlaying=true;state.autoCancel=false;const runId=state.autoRunId+1;state.autoRunId=runId;updateUI();
       const active=()=>!state.autoCancel&&state.autoRunId===runId;
-      const waitActive=async ms=>{await sleep(ms);if(!active())throw new Error("AUTO_CANCELLED")};
+      const waitActive=async(ms,phase=null)=>{await sleep(ms,phase);if(!active())throw new Error("AUTO_CANCELLED")};
+      const autoRecord=async()=>{const beforeCount=state.records.length,beforeTask=state.currentTask;if(!recordObservation({quiet:true})||state.records.length!==beforeCount+1)throw new Error("AUTO_RECORD_NOT_PERSISTED");await /* codex-physics-mode-source:pace-65-recordConfirm */ waitActive(0,"recordConfirm");if(state.currentTask!==beforeTask)await /* codex-physics-mode-source:pace-65-stepTransition */ waitActive(0,"stepTransition")};
       try{
         for(let taskIndex=0;taskIndex<4;taskIndex++){
           if(!active())throw new Error("AUTO_CANCELLED");
@@ -1153,11 +1154,10 @@ body #app .toolbar button:disabled{
               cursorToScene({x:state.scene.switch.x+state.scene.switch.w/2,y:state.scene.switch.y+state.scene.switch.h/2});
               toggleSwitch({quiet:true});await waitActive(180)
             }else await waitActive(180);
-            recordObservation({quiet:true});await waitActive(180)
+            await /* codex-physics-mode-source:pace-65-actionMotion */ waitActive(0,"actionMotion");await /* codex-physics-mode-source:pace-65-observePrimary */ waitActive(0,"observePrimary");await autoRecord()
           }
-          await waitActive(500)
         }
-        applyTask(4);await waitActive(300);analyzeConclusion({quiet:true});showToast("演示完成：已验证四条规律")
+        applyTask(4);await /* codex-physics-mode-source:pace-65-analysisLead */ waitActive(0,"analysisLead");if(!analyzeConclusion({quiet:true}))throw new Error("AUTO_ANALYSIS_FAILED");showToast("演示完成：已验证四条规律")
       }catch(error){
         if(error.message!=="AUTO_CANCELLED"){console.error("自动演示失败",error);showToast("演示出现异常，请重置后重试",true)}
       }finally{

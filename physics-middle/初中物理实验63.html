@@ -1266,23 +1266,30 @@ body #app .toolbar button:disabled{
       catch(error){if(error?.code==="MODE_CONTROL_CANCELLED")throw new Error("AUTO_CANCELLED");throw error;}
     }
     /* codex-physics-mode-source:continuous-wait-63:end */
+    async function autoRecord(op,observeMs=0){
+      await /* codex-physics-mode-source:pace-63-observePrimary */ wait(observeMs,'observePrimary');
+      const beforeCount=state.records.length,beforeTask=state.currentTask;
+      if(!recordObservation(op)||state.records.length!==beforeCount+1)throw new Error("AUTO_RECORD_NOT_PERSISTED:"+op);
+      await /* codex-physics-mode-source:pace-63-recordConfirm */ wait(0,'recordConfirm');
+      if(state.currentTask!==beforeTask)await /* codex-physics-mode-source:pace-63-stepTransition */ wait(0,'stepTransition');
+    }
     async function autoDemo(){
       if(state.freeMode||state.autoPlaying)return;
       reset(false);state.autoPlaying=true;const token=++autoToken;render();
       const alive=()=>token===autoToken;
       try{
         for(const e of expected.series){if(!alive())return;connectWire(...e);await /* codex-physics-mode-source:pace-63-actionMotion */ wait(300,'actionMotion')}
-        toggleSwitch("S");await /* codex-physics-mode-source:pace-63-observePrimary */ wait(500,'observePrimary');recordObservation("位置A，S闭合");await /* codex-physics-mode-source:pace-63-recordConfirm */ wait(0,'recordConfirm');
-        toggleSwitch("S");await /* codex-physics-mode-source:pace-63-observePrimary */ wait(0,'observePrimary');recordObservation("位置A，S断开");await /* codex-physics-mode-source:pace-63-recordConfirm */ wait(380,'recordConfirm');
-        moveSeriesSwitch("B");toggleSwitch("S");markCurrentDirection();await /* codex-physics-mode-source:pace-63-observePrimary */ wait(500,'observePrimary');recordObservation("位置B，S闭合");await /* codex-physics-mode-source:pace-63-recordConfirm */ wait(0,'recordConfirm');
-        toggleSwitch("S");await /* codex-physics-mode-source:pace-63-observePrimary */ wait(0,'observePrimary');recordObservation("位置B，S断开");await /* codex-physics-mode-source:pace-63-recordConfirm */ wait(420,'recordConfirm');
+        toggleSwitch("S");await autoRecord("位置A，S闭合",500);
+        toggleSwitch("S");await autoRecord("位置A，S断开");
+        moveSeriesSwitch("B");toggleSwitch("S");markCurrentDirection();await autoRecord("位置B，S闭合",500);
+        toggleSwitch("S");await autoRecord("位置B，S断开");
         switchBoard("parallel",true);await /* codex-physics-mode-source:pace-63-stepTransition */ wait(300,'stepTransition');
         for(const e of expected.parallel){if(!alive())return;connectWire(...e);await /* codex-physics-mode-source:pace-63-actionMotion */ wait(220,'actionMotion')}
-        toggleSwitch("S");toggleSwitch("S1");toggleSwitch("S2");markCurrentDirection();await /* codex-physics-mode-source:pace-63-observePrimary */ wait(0,'observePrimary');recordObservation("全部开关闭合");await /* codex-physics-mode-source:pace-63-recordConfirm */ wait(500,'recordConfirm');
-        toggleSwitch("S");await /* codex-physics-mode-source:pace-63-observePrimary */ wait(0,'observePrimary');recordObservation("断开干路开关 S");await /* codex-physics-mode-source:pace-63-recordConfirm */ wait(500,'recordConfirm');
-        toggleSwitch("S");toggleSwitch("S1");await /* codex-physics-mode-source:pace-63-observePrimary */ wait(0,'observePrimary');recordObservation("断开支路开关 S1");await /* codex-physics-mode-source:pace-63-recordConfirm */ wait(500,'recordConfirm');
-        toggleSwitch("S1");toggleSwitch("S2");await /* codex-physics-mode-source:pace-63-observePrimary */ wait(0,'observePrimary');recordObservation("断开支路开关 S2");await /* codex-physics-mode-source:pace-63-recordConfirm */ wait(500,'recordConfirm');
-        await /* codex-physics-mode-source:pace-63-analysisLead */ wait(0,'analysisLead');analyzeConclusion();
+        toggleSwitch("S");toggleSwitch("S1");toggleSwitch("S2");markCurrentDirection();await autoRecord("全部开关闭合");
+        toggleSwitch("S");await autoRecord("断开干路开关 S");
+        toggleSwitch("S");toggleSwitch("S1");await autoRecord("断开支路开关 S1");
+        toggleSwitch("S1");toggleSwitch("S2");await autoRecord("断开支路开关 S2");
+        await /* codex-physics-mode-source:pace-63-analysisLead */ wait(0,'analysisLead');if(!analyzeConclusion())throw new Error("AUTO_ANALYSIS_FAILED");
       }catch(err){if(err?.message!=="AUTO_CANCELLED"){console.error("自动演示失败",err);showToast("自动演示出现异常，请重置后重试",true)}} /* codex-physics-mode-source:continuous-cancel-catch */
       finally{if(alive()){state.autoPlaying=false;render()}}
     }

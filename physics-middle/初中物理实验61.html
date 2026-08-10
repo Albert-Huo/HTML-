@@ -890,16 +890,17 @@ body #app .toolbar button:disabled{
       const sr=stage.getBoundingClientRect(),lr=labArea.getBoundingClientRect();demoCursor.style.opacity="1";demoCursor.style.transform="translate("+(lr.left-sr.left+point.x-10)+"px,"+(lr.top-sr.top+point.y-10)+"px)"
     }
     function clickCursor(){demoCursor.classList.remove("click");void demoCursor.offsetWidth;demoCursor.classList.add("click")}
+    async function autoStep(index){setStep(index);await /* codex-physics-mode-source:pace-61-stepTransition */ sleep(0,"stepTransition")}
     async function autoWire(name,target,runId){
       const start=state.layout.sources[name],end=state.layout.terminals[target];state.drag={type:"wire",name};state.wires[name].terminal=null;
       for(let i=0;i<=10;i++){if(state.autoCancel||runId!==state.autoRunId)throw new Error("AUTO_CANCELLED");const t=i/10,point={x:start.x+(end.x-start.x)*t,y:start.y+(end.y-start.y)*t-Math.sin(t*Math.PI)*30*state.layout.s};state.wires[name].preview=point;moveCursor(point);draw();await sleep(45)}
-      clickCursor();finishWire(name,end);await sleep(260)
+      clickCursor();finishWire(name,end);await /* codex-physics-mode-source:pace-61-actionMotion */ sleep(260,"actionMotion")
     }
     async function autoClickSwitch(runId){
       const g=state.layout,point={x:g.switch.x+g.switch.w/2,y:g.switch.y+g.switch.h/2};moveCursor(point);await sleep(180);if(state.autoCancel||runId!==state.autoRunId)throw new Error("AUTO_CANCELLED");clickCursor();toggleSwitch();await sleep(360)
     }
     async function autoRecord(position){
-      const before=state.records.length,ok=recordObservation({auto:true});await sleep(350);if(!ok||!hasRecord(position)||state.records.length<=before)throw new Error("AUTO_RECORD_NOT_PERSISTED:"+position)
+      const before=state.records.length,ok=recordObservation({auto:true});await /* codex-physics-mode-source:pace-61-recordConfirm */ sleep(350,"recordConfirm");if(!ok||!hasRecord(position)||state.records.length<=before)throw new Error("AUTO_RECORD_NOT_PERSISTED:"+position)
     }
     async function autoMoveMeter(runId){
       const start=state.layout.slots.甲,end=state.layout.slots.乙;state.drag={type:"meter"};
@@ -911,10 +912,10 @@ body #app .toolbar button:disabled{
       const runId=state.autoRunId+1;state.autoRunId=runId;state.autoPlaying=true;state.autoCancel=false;autoDemoBtn.textContent="退出演示";freeBtn.disabled=true;resetScene({keepMode:false,preserveAuto:true,quiet:true});state.autoPlaying=true;state.autoCancel=false;autoDemoBtn.textContent="退出演示";setDrawerCollapsed(controlDock,false);setDrawerCollapsed(dataDock,true);setModeLabel();
       try{
         setStep(0);await autoWire("red","pos3",runId);await autoWire("blue","neg",runId);await sleep(300);
-        setStep(1);await autoClickSwitch(runId);await sleep(1100);
-        setStep(2);await autoWire("red","pos06",runId);await autoClickSwitch(runId);await autoRecord("甲");
-        setStep(3);await autoClickSwitch(runId);await autoMoveMeter(runId);await autoClickSwitch(runId);await autoRecord("乙");
-        setStep(4);setDrawerCollapsed(controlDock,false);await sleep(350);analyzeConclusion()
+        await autoStep(1);await autoClickSwitch(runId);await sleep(1100);
+        await autoStep(2);await autoWire("red","pos06",runId);await autoClickSwitch(runId);await /* codex-physics-mode-source:pace-61-observePrimary */ sleep(0,"observePrimary");await autoRecord("甲");
+        await autoStep(3);await autoClickSwitch(runId);await autoMoveMeter(runId);await autoClickSwitch(runId);await /* codex-physics-mode-source:pace-61-observePrimary */ sleep(0,"observePrimary");await autoRecord("乙");
+        await autoStep(4);setDrawerCollapsed(controlDock,false);await /* codex-physics-mode-source:pace-61-analysisLead */ sleep(350,"analysisLead");if(!analyzeConclusion())throw new Error("AUTO_ANALYSIS_FAILED")
       }catch(error){showToast(String(error.message||error)==="AUTO_CANCELLED"?"已退出演示模式":"演示中断："+(error.message||error))}
       finally{if(runId!==state.autoRunId)return;state.switchClosed=false;state.autoPlaying=false;state.autoCancel=false;autoDemoBtn.textContent="演示模式";freeBtn.disabled=false;demoCursor.style.opacity="0";setModeLabel();updateStatus();draw()}
     }

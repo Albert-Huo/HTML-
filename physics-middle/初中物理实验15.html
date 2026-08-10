@@ -1912,7 +1912,7 @@
             }
             changed = true;
             setStatus(ap.separated ? '样件已分离（夹具已回松）' : `仍保持吸附（分离阈值约${threshold}N）`);
-            addRecord();
+            if(!state.autoPlaying) addRecord();
             if(!state.autoPlaying){
               showToast('本次拉伸已自动记录');
             }
@@ -3252,7 +3252,12 @@
         }
       };
       const doA = async (id, ms=950)=>{ performAction(id, false); updatePills(); await wait(ms); };
-      const doR = async (ms=850)=>{ addRecord(); await wait(ms); };
+      const doR = async (ms=850)=>{
+        const beforeLen = state.records.length;
+        addRecord();
+        if(state.records.length <= beforeLen) throw new Error('AUTO_RECORD_NOT_PERSISTED');
+        await wait(ms);
+      };
       const doStep = async (idx, msg, ms=700)=>{
         setStepUI(idx);
         await wait(ms);
@@ -3330,10 +3335,12 @@
           await doStep(2, '步骤3：拉伸测力', 1300);
           await demoSetPullN(3);
           await doAWithCursor('pullTest', 1700);
-          await wait(700);
+          await wait(780);
+          await doR();
           await demoSetPullN(7);
           await doAWithCursor('pullTest', 1800);
           await wait(800);
+          await doR();
         }else if(LAB_ID===16){
           await doStep(0, '步骤1：零刻度对齐');
           await doA('alignZero');

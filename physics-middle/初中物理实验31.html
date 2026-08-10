@@ -2743,34 +2743,39 @@ body #app .toolbar button:disabled{
             throw new Error('AUTO_CANCELLED');
           }
         };
-        const pause = async (ms)=>{
-          await sleep(ms);
+        const pause = async (ms, phase=null)=>{
+          await sleep(ms, phase);
           ensureActive();
+        };
+        const autoRecord = async (code)=>{
+          const before = state.records.length;
+          let ok = false;
+          await demoClickElement(recordBtn, ()=>{ ok = recordCurrent(true); });
+          await pause(560);
+          if(!ok || state.records.length <= before) throw new Error('AUTO_RECORD_NOT_PERSISTED:' + code);
         };
 
         setStepUI(0);
         setStatus('演示模式中');
-        await pause(520);
-        await demoClickElement(recordBtn, ()=>recordCurrent(true));
-        await pause(560);
+        await /* codex-physics-mode-source:pace-31-observePrimary */ pause(520, 'observePrimary');
+        await autoRecord('air');
 
         ensureActive();
         setStepUI(1);
         await animateBlockTo(depthToTop(TARGET_DEPTH_1), 920);
-        await pause(420);
-        await demoClickElement(recordBtn, ()=>recordCurrent(true));
-        await pause(560);
+        await /* codex-physics-mode-source:pace-31-observePrimary */ pause(420, 'observePrimary');
+        await autoRecord('water');
 
         ensureActive();
         setStepUI(2);
         await animateBlockTo(depthToTop(TARGET_DEPTH_2), 920);
-        await pause(420);
-        await demoClickElement(recordBtn, ()=>recordCurrent(true));
-        await pause(560);
+        await /* codex-physics-mode-source:pace-31-observePrimary */ pause(420, 'observePrimary');
+        await autoRecord('water');
 
         ensureActive();
         setStepUI(3);
         await demoClickElement(analyzeBtn, ()=>analyzeConclusion(true));
+        if(!state.analysisOk) throw new Error('AUTO_ANALYSIS_FAILED');
         await pause(700);
       }catch(err){
         if(err && err.message !== 'AUTO_CANCELLED'){
@@ -2919,7 +2924,11 @@ body #app .toolbar button:disabled{
         getState:() => state,
         bindController(controller) { codexModeController = controller; },
 
-        startDemo:() => startAutoDemo(),
+        startDemo:() => {
+          codexModeRunActive = true;
+          return Promise.resolve(startAutoDemo())
+            .finally(() => { codexModeRunActive = false; });
+        },
         cancelDemo() {
           stopAutoDemo(false);
           state.autoPlaying = false;

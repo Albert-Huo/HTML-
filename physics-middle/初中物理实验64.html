@@ -1040,7 +1040,7 @@ body #app .toolbar button:disabled{
         const point=pointOnRoute(route,step/10);state.wireDrag={from:a,point,moved:true};
         moveDemoCursor(point);draw();await pause(32)
       }
-      state.wireDrag=null;connectWire(a,b,{quiet:true});moveDemoCursorToTerminal(b);clickDemoCursor();await pause(120)
+      state.wireDrag=null;connectWire(a,b,{quiet:true});moveDemoCursorToTerminal(b);clickDemoCursor();await /* codex-physics-mode-source:pace-64-actionMotion */ pause(120,"actionMotion");await /* codex-physics-mode-source:pace-64-observePrimary */ pause(0,"observePrimary")
     }
     async function runAutoDemo(){
       if(state.freeMode)return;
@@ -1051,22 +1051,23 @@ body #app .toolbar button:disabled{
       reset(false,{quiet:true});state.autoPlaying=true;state.autoCancel=false;
       const runId=state.autoRunId+1;state.autoRunId=runId;updateUI();
       const active=()=>!state.autoCancel&&state.autoRunId===runId;
-      const pause=async ms=>{await sleep(ms);if(!active())throw new Error("AUTO_CANCELLED")};
+      const pause=async(ms,phase=null)=>{await sleep(ms,phase);if(!active())throw new Error("AUTO_CANCELLED")};
+      const autoSetSlider=async value=>{setSlider(value,{quiet:true});moveDemoCursorToSlider();clickDemoCursor();await /* codex-physics-mode-source:pace-64-actionMotion */ pause(300,"actionMotion");await /* codex-physics-mode-source:pace-64-observePrimary */ pause(0,"observePrimary")};
+      const autoRecord=async()=>{const beforeCount=state.records.length,beforeTask=state.currentTask;if(!recordObservation({quiet:true})||state.records.length!==beforeCount+1)throw new Error("AUTO_RECORD_NOT_PERSISTED");await /* codex-physics-mode-source:pace-64-recordConfirm */ pause(0,"recordConfirm");if(state.currentTask!==beforeTask)await /* codex-physics-mode-source:pace-64-stepTransition */ pause(0,"stepTransition")};
       try{
         for(const edge of EXPECTED_EDGES){
           if(!active())throw new Error("AUTO_CANCELLED");
           await demoConnectWire(edge[0],edge[1],pause)
         }
-        setSlider(1,{quiet:true});moveDemoCursorToSlider();clickDemoCursor();await pause(300);
+        await autoSetSlider(1);
         toggleSwitch({quiet:true});moveDemoCursorToSwitch();clickDemoCursor();await pause(360);
         for(const value of [1,.25,0]){
           if(!active())throw new Error("AUTO_CANCELLED");
-          setSlider(value,{quiet:true});moveDemoCursorToSlider();clickDemoCursor();await pause(300);
-          const before=state.records.length;
-          if(!recordObservation({quiet:true})||state.records.length!==before+1)throw new Error("AUTO_RECORD_NOT_PERSISTED");
-          await pause(330)
+          await autoSetSlider(value);
+          await autoRecord()
         }
         if(guidedRecords().length!==3)throw new Error("AUTO_RECORD_COUNT_MISMATCH");
+        await /* codex-physics-mode-source:pace-64-analysisLead */ pause(0,"analysisLead");
         if(!analyzeConclusion({quiet:true})||!state.analysisDone)throw new Error("AUTO_ANALYSIS_FAILED");
         showToast("演示完成：已记录三组数据并计算平均电阻")
       }catch(error){

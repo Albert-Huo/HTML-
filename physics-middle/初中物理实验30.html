@@ -2559,7 +2559,8 @@ body #app .toolbar button:disabled{
       await moveDemoCursor(fromPt.x + delta.x, fromPt.y + delta.y, 240);
       applyProbeDirectionDelta(delta.x, delta.y, true, state.probeDirection);
       demoCursorEl.classList.remove('dragging');
-      await sleep(120);
+      await /* codex-physics-mode-source:pace-30-direction-actionMotion */ sleep(0, 'actionMotion');
+      await /* codex-physics-mode-source:pace-30-direction-observePrimary */ sleep(120, 'observePrimary');
     }
     function assertAutoRecorded(beforeLen){
       if(state.records.length <= beforeLen){
@@ -2638,11 +2639,15 @@ body #app .toolbar button:disabled{
         await animateProbeDepth(20, runId, 760);
         await animateProbeDirection('side', runId);
         await demoClickElement(liquidBtns.querySelector('[data-key="alcohol"]'), runId, ()=>setLiquid('alcohol', true));
+        await /* codex-physics-mode-source:pace-30-liquid-selectCompare */ sleep(0, 'selectCompare');
+        await /* codex-physics-mode-source:pace-30-liquid-observeComparison */ sleep(0, 'observeComparison');
         before = state.records.length;
         await demoClickElement(measureBtn, runId, ()=>measureCurrent(true));
         assertAutoRecorded(before);
         await /* codex-physics-mode-source:pace-30-recordConfirm */ sleep(0, 'recordConfirm');
         await demoClickElement(liquidBtns.querySelector('[data-key="salt"]'), runId, ()=>setLiquid('salt', true));
+        await /* codex-physics-mode-source:pace-30-liquid-selectCompare */ sleep(0, 'selectCompare');
+        await /* codex-physics-mode-source:pace-30-liquid-observeComparison */ sleep(0, 'observeComparison');
         before = state.records.length;
         await demoClickElement(measureBtn, runId, ()=>measureCurrent(true));
         assertAutoRecorded(before);
@@ -2811,7 +2816,11 @@ body #app .toolbar button:disabled{
         getState:() => state,
         bindController(controller) { codexModeController = controller; },
 
-        startDemo:() => startAutoDemo(),
+        startDemo:() => {
+          codexModeRunActive = true;
+          return Promise.resolve(startAutoDemo())
+            .finally(() => { codexModeRunActive = false; });
+        },
         cancelDemo() {
           stopAutoDemo(false);
           state.autoPlaying = false;

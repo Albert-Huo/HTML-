@@ -2784,6 +2784,13 @@ body #app .toolbar button:disabled{
           await sleep(ms);
           ensureActive();
         };
+        let autoRecordIndex = 0;
+        const autoRecord = ()=>{
+          const before = state.records.length;
+          addRecord();
+          if(state.records.length <= before) throw new Error('AUTO_RECORD_NOT_PERSISTED:' + autoRecordIndex);
+          autoRecordIndex += 1;
+        };
 
         resetFlow(false);
         recalcProgress();
@@ -2797,7 +2804,7 @@ body #app .toolbar button:disabled{
         await animateSystemTo(p1.scaleX, p1.scaleTop, 1080, runId);
         ensureActive();
         await pause(900);
-        addRecord();
+        autoRecord();
         recalcProgress();
         await pause(1200);
 
@@ -2810,7 +2817,7 @@ body #app .toolbar button:disabled{
         await animateSystemTo(p2.scaleX, p2.scaleTop, 1120, runId);
         ensureActive();
         await pause(900);
-        addRecord();
+        autoRecord();
         recalcProgress();
         await pause(1200);
 
@@ -2822,12 +2829,13 @@ body #app .toolbar button:disabled{
         await animateSystemTo(p3.scaleX, p3.scaleTop, 1280, runId);
         ensureActive();
         await pause(900);
-        addRecord();
+        autoRecord();
         recalcProgress();
         await pause(1200);
 
         await pause(780);
         analyzeConclusion(false);
+        if(!state.analysisOk) throw new Error('AUTO_ANALYSIS_FAILED');
         recalcProgress();
       }catch(err){
         if(err && err.message !== 'auto-demo-cancelled'){
@@ -3032,7 +3040,11 @@ body #app .toolbar button:disabled{
         getState:() => state,
         bindController(controller) { codexModeController = controller; },
 
-        startDemo:() => autoDemo(),
+        startDemo:() => {
+          codexModeRunActive = true;
+          return Promise.resolve(autoDemo())
+            .finally(() => { codexModeRunActive = false; });
+        },
         cancelDemo() {
           cancelAutoDemo(false);
           state.autoPlaying = false;

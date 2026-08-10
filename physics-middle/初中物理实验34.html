@@ -1935,21 +1935,37 @@ body #app .toolbar button:disabled{
       setStatus('演示模式中');
       const alive = ()=>state.autoPlaying && state.autoRunId === runId;
       const click = async(el)=>{ await moveCursorTo(el, 260); if(!alive()) return; el.click(); await sleep(520); };
-      await click(recordBtn);
-      if(!alive()) return;
-      for(let i=0;i<3;i++){ await click(pumpOutBtn); }
-      await click(recordBtn);
-      if(!alive()) return;
-      for(let i=0;i<4;i++){ await click(pumpOutBtn); }
-      await click(recordBtn);
-      if(!alive()) return;
-      for(let i=0;i<5;i++){ await click(pumpInBtn); }
-      await click(recordBtn);
-      await click(analyzeBtn);
-      state.autoPlaying = false;
-      demoCursor.style.opacity = '0';
-      updateMode();
-      if(state.completed) setStatus('挑战完成');
+      try{
+        const autoRecord = async(kind)=>{ const before = state.records.length; await click(recordBtn); if(state.records.length <= before || !state.records.some(record=>record.kind === kind)) throw new Error('AUTO_RECORD_NOT_PERSISTED:' + kind); };
+        await /* codex-physics-mode-source:pace-34-observePrimary */ sleep(0, 'observePrimary');
+        await autoRecord('full-air');
+        if(!alive()) return;
+        for(let i=0;i<3;i++){ await click(pumpOutBtn); }
+        await /* codex-physics-mode-source:pace-34-observePrimary */ sleep(0, 'observePrimary');
+        await autoRecord('less-air');
+        if(!alive()) return;
+        for(let i=0;i<4;i++){ await click(pumpOutBtn); }
+        await /* codex-physics-mode-source:pace-34-observePrimary */ sleep(0, 'observePrimary');
+        await autoRecord('near-vacuum');
+        if(!alive()) return;
+        for(let i=0;i<5;i++){ await click(pumpInBtn); }
+        await /* codex-physics-mode-source:pace-34-observePrimary */ sleep(0, 'observePrimary');
+        await autoRecord('air-restored');
+        await click(analyzeBtn);
+        if(!state.analysisOk) throw new Error('AUTO_ANALYSIS_FAILED');
+        if(state.completed) setStatus('挑战完成');
+      }catch(error){
+        if(runId !== state.autoRunId || error?.message === 'auto-demo-cancelled') return;
+        console.error('[autoDemo] failed:', error);
+        showToast('演示模式失败，请重试');
+      }finally{
+        if(runId === state.autoRunId){
+          state.autoPlaying = false;
+          demoCursor.style.opacity = '0';
+          updateMode();
+          if(!state.completed) setStatus(currentStatus());
+        }
+      }
     }
 
     function setControlCollapsed(on){
@@ -2143,7 +2159,11 @@ body #app .toolbar button:disabled{
         getState:() => state,
         bindController(controller) { codexModeController = controller; },
 
-        startDemo:() => autoDemo(),
+        startDemo:() => {
+          codexModeRunActive = true;
+          return Promise.resolve(autoDemo())
+            .finally(() => { codexModeRunActive = false; });
+        },
         cancelDemo() {
           state.autoPlaying = false;
           state.autoRunId += 1;

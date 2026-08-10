@@ -1354,23 +1354,25 @@ body #app .toolbar button:disabled{
       state.freeMode=false;state.autoPlaying=true;state.autoCancel=false;state.task=0;state.completed=false;state.analysisDone=false;state.guidedRecords=[];state.unseen=0;
       resetApparatus(false);renderRecords();updateBadge();updateTaskUI();
       const active=()=>!state.autoCancel&&runId===state.autoRunId;
-      const waitActive=async ms=>{await sleep(ms);if(!active())throw new Error("cancelled")};
+      const waitActive=async(ms,phase=null)=>{await sleep(ms,phase);if(!active())throw new Error("cancelled")};
       const connect=async(a,b)=>{
-        await demoClick(terminalMap(state.layout)[a],runId);connectTerminals(a,b,true);await waitActive(260)
+        await demoClick(terminalMap(state.layout)[a],runId);connectTerminals(a,b,true);await /* codex-physics-mode-source:pace-67-actionMotion */ waitActive(260,"actionMotion");await /* codex-physics-mode-source:pace-67-observePrimary */ waitActive(0,"observePrimary")
       };
+      const settleCommit=async()=>{await /* codex-physics-mode-source:pace-67-actionMotion */ waitActive(0,"actionMotion");await /* codex-physics-mode-source:pace-67-observePrimary */ waitActive(0,"observePrimary")};
+      const autoRecord=async()=>{const beforeCount=state.guidedRecords.length,beforeTask=state.task;if(!recordObservation()||state.guidedRecords.length!==beforeCount+1)throw new Error("AUTO_RECORD_NOT_PERSISTED");await /* codex-physics-mode-source:pace-67-recordConfirm */ waitActive(0,"recordConfirm");if(state.task!==beforeTask)await /* codex-physics-mode-source:pace-67-stepTransition */ waitActive(0,"stepTransition")};
       try{
         await connect("powerL","protectorLIn");await connect("powerN","protectorNIn");await connect("protectorLOut","switchIn");await connect("switchOut","lampL");await connect("lampN","protectorNOut");
         await demoClick({x:state.layout.switchBox.x+state.layout.switchBox.w/2,y:state.layout.switchBox.y+state.layout.switchBox.h/2},runId);
-        state.switchClosed=true;updateTaskUI();await waitActive(450);recordObservation();await waitActive(500);
+        state.switchClosed=true;updateTaskUI();await settleCommit();await autoRecord();
         for(const load of state.layout.loads){
           await demoClick({x:load.x+load.w/2,y:load.y+load.h/2},runId);
-          state.loadCount=Math.max(state.loadCount,load.index);evaluateElectricalState();updateTaskUI();await waitActive(420)
+          state.loadCount=Math.max(state.loadCount,load.index);evaluateElectricalState();updateTaskUI();await settleCommit()
         }
-        recordObservation();await waitActive(500);
+        await autoRecord();
         await connect("powerPE","socketPE");
         await demoClick({x:state.layout.faultButton.x+state.layout.faultButton.w/2,y:state.layout.faultButton.y+state.layout.faultButton.h/2},runId);
-        state.leakageFault=true;evaluateElectricalState();updateTaskUI();await waitActive(450);
-        recordObservation();await waitActive(500);analyzeConclusion();showToast("演示完成，可重置后亲自操作")
+        state.leakageFault=true;evaluateElectricalState();updateTaskUI();await settleCommit();
+        await autoRecord();await /* codex-physics-mode-source:pace-67-analysisLead */ waitActive(0,"analysisLead");if(!analyzeConclusion())throw new Error("AUTO_ANALYSIS_FAILED");showToast("演示完成，可重置后亲自操作")
       }catch(error){
         if(error.message!=="cancelled"){console.error("演示模式运行失败",error);showToast("演示出现异常，请重置后重试",true)}
       }finally{

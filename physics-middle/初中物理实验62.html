@@ -1108,9 +1108,10 @@ body #app .toolbar button:disabled{
     }
     function moveCursor(point){const sr=stage.getBoundingClientRect(),lr=labArea.getBoundingClientRect();demoCursor.style.opacity="1";demoCursor.style.transform="translate("+(lr.left-sr.left+point.x-10)+"px,"+(lr.top-sr.top+point.y-10)+"px)"}
     function clickCursor(){demoCursor.classList.remove("click");void demoCursor.offsetWidth;demoCursor.classList.add("click")}
+    async function autoStep(index){setStep(index);await /* codex-physics-mode-source:pace-62-stepTransition */ sleep(0,"stepTransition")}
     async function autoSelectRange(range,runId){
       const point=state.layout.meterTerminals[range===3?"pos3":"pos15"];moveCursor(point);await sleep(180);
-      if(state.autoCancel||runId!==state.autoRunId)throw new Error("AUTO_CANCELLED");clickCursor();setRange(range,{auto:true});await sleep(300)
+      if(state.autoCancel||runId!==state.autoRunId)throw new Error("AUTO_CANCELLED");clickCursor();setRange(range,{auto:true});await /* codex-physics-mode-source:pace-62-selectCompare */ sleep(300,"selectCompare")
     }
     async function autoProbe(name,target,runId){
       const start=probeEnd(name),end=state.layout.terminals[target];state.drag={type:"probe",name};state.probes[name].terminal=null;
@@ -1122,7 +1123,7 @@ body #app .toolbar button:disabled{
       if(state.autoCancel||runId!==state.autoRunId)throw new Error("AUTO_CANCELLED");clickCursor();toggleSwitch({auto:true});await sleep(380)
     }
     async function autoRecord(target){
-      const before=state.records.length,ok=recordObservation({auto:true});await sleep(350);
+      const before=state.records.length,ok=recordObservation({auto:true});await /* codex-physics-mode-source:pace-62-recordConfirm */ sleep(350,"recordConfirm");
       if(!ok||!hasRecord(target)||state.records.length<=before)throw new Error("AUTO_RECORD_NOT_PERSISTED:"+target)
     }
     async function runAutoDemo(){
@@ -1132,10 +1133,10 @@ body #app .toolbar button:disabled{
       resetScene({keepMode:false,preserveAuto:true,quiet:true});state.autoPlaying=true;state.autoCancel=false;autoDemoBtn.textContent="退出演示";setDrawerCollapsed(controlDock,false);setDrawerCollapsed(dataDock,true);setModeLabel();
       try{
         setStep(0);await autoSelectRange(15,runId);await autoProbe("red","bulbHigh",runId);await autoProbe("blue","bulbLow",runId);
-        setStep(1);await autoClickSwitch(runId);await sleep(1150);
-        setStep(2);await autoSelectRange(3,runId);await autoClickSwitch(runId);await autoRecord("bulb");await autoClickSwitch(runId);
-        setStep(3);await autoProbe("red","batteryPos",runId);await autoProbe("blue","batteryNeg",runId);await autoRecord("battery");
-        setStep(4);setDrawerCollapsed(controlDock,false);await sleep(400);analyzeConclusion()
+        await autoStep(1);await autoClickSwitch(runId);await sleep(1150);
+        await autoStep(2);await autoSelectRange(3,runId);await autoClickSwitch(runId);await /* codex-physics-mode-source:pace-62-observePrimary */ sleep(0,"observePrimary");await autoRecord("bulb");await autoClickSwitch(runId);
+        await autoStep(3);await autoProbe("red","batteryPos",runId);await autoProbe("blue","batteryNeg",runId);await /* codex-physics-mode-source:pace-62-observePrimary */ sleep(0,"observePrimary");await autoRecord("battery");
+        await autoStep(4);setDrawerCollapsed(controlDock,false);await /* codex-physics-mode-source:pace-62-analysisLead */ sleep(400,"analysisLead");if(!analyzeConclusion())throw new Error("AUTO_ANALYSIS_FAILED")
       }catch(error){showToast(String(error.message||error)==="AUTO_CANCELLED"?"已退出演示模式":"演示中断："+(error.message||error))}
       finally{if(runId!==state.autoRunId)return;state.switchClosed=false;state.autoPlaying=false;state.autoCancel=false;autoDemoBtn.textContent="演示模式";freeBtn.disabled=false;demoCursor.style.opacity="0";setModeLabel();updateStatus();draw()}
     }

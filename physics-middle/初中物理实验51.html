@@ -1043,12 +1043,14 @@ body #app .toolbar button:disabled{
         for(let i=0;i<script.length;i++){
           setStepUI(i); updateStatus("自动演示");
           await autoCrank(script[i].direction,script[i].speed,script[i].turns);
+          if(!(await /* codex-physics-mode-source:pace-51-observePrimary */ autoWait(0,"observePrimary"))) throw new Error("AUTO_CANCELLED");
           if(state.autoCancel) throw new Error("AUTO_CANCELLED");
           if(!recordObservation({quiet:true})||!hasRecord(script[i].key)) throw new Error("AUTO_RECORD_NOT_PERSISTED:"+script[i].key);
-          if(!(await autoWait(720))) throw new Error("AUTO_CANCELLED");
+          if(!(await /* codex-physics-mode-source:pace-51-recordConfirm */ autoWait(0,"recordConfirm"))) throw new Error("AUTO_CANCELLED");
+          if(!(await /* codex-physics-mode-source:pace-51-stepTransition */ autoWait(0,"stepTransition"))) throw new Error("AUTO_CANCELLED");
         }
         setStepUI(3);
-        if(!(await autoWait(700))) throw new Error("AUTO_CANCELLED");
+        if(!(await /* codex-physics-mode-source:pace-51-analysisLead */ autoWait(700,"analysisLead"))) throw new Error("AUTO_CANCELLED");
         if(!analyzeConclusion()) throw new Error("AUTO_ANALYSIS_FAILED");
         if(!(await autoWait(900))) throw new Error("AUTO_CANCELLED");
         doneMask.style.display="none";

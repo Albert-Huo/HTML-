@@ -1171,17 +1171,17 @@ body #app .toolbar button:disabled{
       }
       reset(false,{quiet:true});state.autoPlaying=true;state.autoCancel=false;const runId=state.autoRunId+1;state.autoRunId=runId;updateUI();
       const active=()=>!state.autoCancel&&state.autoRunId===runId;
-      const waitActive=async ms=>{await sleep(ms);if(!active())throw new Error("AUTO_CANCELLED")};
+      const waitActive=async(ms,phase=null)=>{await sleep(ms,phase);if(!active())throw new Error("AUTO_CANCELLED")};
       const waitRun=async()=>{while(!state.runComplete){await waitActive(100)}};
+      const autoRecord=async()=>{const beforeCount=state.records.length,beforeTask=state.currentTask;if(!recordObservation({quiet:true})||state.records.length!==beforeCount+1)throw new Error("AUTO_RECORD_NOT_PERSISTED");await /* codex-physics-mode-source:pace-66-recordConfirm */ waitActive(0,"recordConfirm");if(state.currentTask!==beforeTask)await /* codex-physics-mode-source:pace-66-stepTransition */ waitActive(0,"stepTransition")};
       try{
         for(let index=0;index<3;index++){
           if(!active())throw new Error("AUTO_CANCELLED");
           applyTask(index);cursorToScene({x:state.scene.switch.x+state.scene.switch.w/2,y:state.scene.switch.y+state.scene.switch.h/2});
-          demoCursor.classList.remove("click");void demoCursor.offsetWidth;demoCursor.classList.add("click");toggleSwitch({quiet:true});await waitRun();await waitActive(250);
-          const before=state.records.length;if(!recordObservation({quiet:true})||state.records.length!==before+1)throw new Error("AUTO_RECORD_NOT_PERSISTED");
-          await waitActive(520)
+          demoCursor.classList.remove("click");void demoCursor.offsetWidth;demoCursor.classList.add("click");await /* codex-physics-mode-source:pace-66-actionMotion */ waitActive(0,"actionMotion");toggleSwitch({quiet:true});await waitRun();await /* codex-physics-mode-source:pace-66-observePrimary */ waitActive(0,"observePrimary");
+          await autoRecord()
         }
-        applyTask(3);setDrawerCollapsed(controlDock,false);await waitActive(350);
+        applyTask(3);setDrawerCollapsed(controlDock,false);await /* codex-physics-mode-source:pace-66-analysisLead */ waitActive(0,"analysisLead");
         if(!analyzeConclusion({quiet:true}))throw new Error("AUTO_ANALYSIS_FAILED");
         showToast("演示完成：已验证焦耳定律")
       }catch(error){

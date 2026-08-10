@@ -2875,8 +2875,8 @@ body #app .toolbar button:disabled{
             throw new Error('auto-demo-cancelled');
           }
         };
-        const pause = async (ms)=>{
-          await sleep(ms);
+        const pause = async (ms, phase=null)=>{
+          await sleep(ms, phase);
           ensureActive();
         };
         const expectRecordAdded = (before, code)=>{
@@ -2894,7 +2894,7 @@ body #app .toolbar button:disabled{
         await moveDemoCursorToElement(strikerBtn, 420, runId);
         pulseDemoCursor();
         strikeFork(1, false);
-        await pause(620);
+        await /* codex-physics-mode-source:pace-33-observePrimary */ pause(620, 'observePrimary');
         const before1 = state.records.length;
         await moveDemoCursorToElement(recordBtn, 380, runId);
         pulseDemoCursor();
@@ -2911,7 +2911,7 @@ body #app .toolbar button:disabled{
         await pause(280);
         await animateForkTo(getWaterTarget().x, getWaterTarget().y, 760, runId);
         triggerSplash(false);
-        await pause(220);
+        await /* codex-physics-mode-source:pace-33-observePrimary */ pause(220, 'observePrimary');
         const before2 = state.records.length;
         await moveDemoCursorToElement(recordBtn, 380, runId);
         pulseDemoCursor();
@@ -2928,7 +2928,7 @@ body #app .toolbar button:disabled{
         await pause(280);
         await animateForkTo(getBallTarget().x, getBallTarget().y, 760, runId);
         triggerBallBounce(false);
-        await pause(220);
+        await /* codex-physics-mode-source:pace-33-observePrimary */ pause(220, 'observePrimary');
         const before3 = state.records.length;
         await moveDemoCursorToElement(recordBtn, 380, runId);
         pulseDemoCursor();
@@ -3287,7 +3287,11 @@ body #app .toolbar button:disabled{
         getState:() => state,
         bindController(controller) { codexModeController = controller; },
 
-        startDemo:() => autoDemo(),
+        startDemo:() => {
+          codexModeRunActive = true;
+          return Promise.resolve(autoDemo())
+            .finally(() => { codexModeRunActive = false; });
+        },
         cancelDemo() {
           state.autoPlaying = false;
           state.autoRunId += 1;

@@ -2178,10 +2178,11 @@ body #app .toolbar button:disabled{
         void demoCursor.offsetWidth;
         demoCursor.classList.add("click");
       }
+      async function autoStep(index) { setStepUI(index); await /* codex-physics-mode-source:pace-60-stepTransition */ sleep(0, "stepTransition"); }
       async function autoRecord(assertion, code) {
         const before = state.records.length;
         const ok = recordLastObservation({ auto: true });
-        await sleep(360);
+        await /* codex-physics-mode-source:pace-60-recordConfirm */ sleep(360, "recordConfirm");
         if (!ok || !assertion() || state.records.length <= before) throw new Error("AUTO_RECORD_NOT_PERSISTED:" + code);
       }
       async function dragSliderToVoltage(targetVoltage, resistance) {
@@ -2202,6 +2203,7 @@ body #app .toolbar button:disabled{
         }
         clickCursor();
         await sleep(220);
+        await /* codex-physics-mode-source:pace-60-observePrimary */ sleep(0, "observePrimary");
       }
       async function clickSwitchAuto(closed) {
         draw();
@@ -2221,7 +2223,7 @@ body #app .toolbar button:disabled{
         if (state.autoCancel) throw new Error("AUTO_CANCELLED");
         clickCursor();
         if (!selectResistor(index, true)) throw new Error("AUTO_RESISTOR_CHANGE_BLOCKED");
-        await sleep(260);
+        await /* codex-physics-mode-source:pace-60-selectCompare */ sleep(260, "selectCompare");
       }
       async function runAutoDemo() {
         if (state.autoPlaying) { state.autoCancel = true; return; }
@@ -2245,12 +2247,12 @@ body #app .toolbar button:disabled{
           setStepUI(0);
           await dragSliderToVoltage(1, 10);
           await autoRecord(() => hasVoltageTarget(1), "U1_R10");
-          setStepUI(1);
+          await autoStep(1);
           await dragSliderToVoltage(2, 10);
           await autoRecord(() => hasVoltageTarget(2), "U2_R10");
           await dragSliderToVoltage(3, 10);
           await autoRecord(() => hasVoltageTarget(3), "U3_R10");
-          setStepUI(2);
+          await autoStep(2);
           await clickSwitchAuto(false);
           await clickResistorAuto(0);
           await clickSwitchAuto(true);
@@ -2261,11 +2263,11 @@ body #app .toolbar button:disabled{
           await clickSwitchAuto(true);
           await dragSliderToVoltage(2, 15);
           await autoRecord(() => hasResistanceRecord(15), "U2_R15");
-          setStepUI(3);
-          await sleep(280);
+          await autoStep(3);
+          await /* codex-physics-mode-source:pace-60-analysisLead */ sleep(280, "analysisLead");
           if (state.autoCancel || runId !== state.autoRunId) throw new Error("AUTO_CANCELLED");
           setDrawerCollapsed(dataDock, false);
-          analyzeConclusion();
+          if(!analyzeConclusion()) throw new Error("AUTO_ANALYSIS_FAILED");
           state.demoCompleted = true;
         } catch (error) {
           if (String(error.message || error) !== "AUTO_CANCELLED") showToast("演示模式中断：" + (error.message || error));

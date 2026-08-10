@@ -941,7 +941,7 @@ body #app .toolbar button:disabled{
     async function animateStroke(target,token){
       const g=geometry(),start=state.crankDegrees,steps=30;
       for(let i=1;i<=steps;i++){if(token!==state.autoToken||state.autoCancel)throw new Error("AUTO_CANCELLED");const eased=1-Math.pow(1-i/steps,2),previousDegrees=state.crankDegrees;state.crankDegrees=start+(target-start)*eased;maybeTriggerSpark(previousDegrees,state.crankDegrees);const a=state.crankDegrees*Math.PI/180;demoCursorAt(g.flyX+Math.cos(a)*g.flyR*.95,g.flyY+Math.sin(a)*g.flyR*.95);updateReadouts();draw();await sleep(34);}
-      state.crankDegrees=target;state.strokeReady=state.currentTask;updateStatus();updateReadouts();draw();demoCursor.classList.remove("click");void demoCursor.offsetWidth;demoCursor.classList.add("click");await sleep(330);
+      state.crankDegrees=target;state.strokeReady=state.currentTask;updateStatus();updateReadouts();draw();demoCursor.classList.remove("click");void demoCursor.offsetWidth;demoCursor.classList.add("click");await /* codex-physics-mode-source:pace-59-observePrimary */ sleep(330,"observePrimary");
     }
     async function runAutoDemo(){
       if(state.autoPlaying){state.autoCancel=true;return;}
@@ -950,9 +950,10 @@ body #app .toolbar button:disabled{
         for(let index=0;index<4;index++){
           setTaskUI(index);updateStatus("自动演示中");await animateStroke((index+1)*180,token);const before=state.records.length;
           if(!recordCurrent({auto:true})||state.records.length!==before+1)throw new Error("AUTO_RECORD_NOT_PERSISTED:"+STROKES[index].key);
-          await sleep(420);
+          await /* codex-physics-mode-source:pace-59-recordConfirm */ sleep(420,"recordConfirm");
+          await /* codex-physics-mode-source:pace-59-stepTransition */ sleep(0,"stepTransition");
         }
-        setTaskUI(4);await sleep(450);if(!analyze({auto:true}))throw new Error("AUTO_ANALYSIS_FAILED");await sleep(650);
+        setTaskUI(4);await /* codex-physics-mode-source:pace-59-analysisLead */ sleep(450,"analysisLead");if(!analyze({auto:true}))throw new Error("AUTO_ANALYSIS_FAILED");await sleep(650);
       }catch(error){
         if(error.message!=="AUTO_CANCELLED"){state.lastError=error.message;console.error("[实验59自动演示失败]",error);showToast("演示中断："+error.message);}else{canceled=true;showToast("已退出演示");}
       }finally{
