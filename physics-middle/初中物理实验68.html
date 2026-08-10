@@ -678,9 +678,7 @@ body #app .toolbar button:disabled{
       <h2>实验名：利用新能源设计并制作一种模型</h2>
       <p><b>关键操作：</b>在开关断开时连接太阳能板、能量控制器和模型负载；比较不同采光角度的输出，再接入储能模块并进行短时遮光测试。</p>
       <p><b>观察与结论：</b>太阳能板能把太阳能转化为电能；光线与电池板受光面越接近合适角度，输出通常越大；储能模块可以先储存电能，在光照中断后短时间继续驱动模型。</p>
-      <p class="source">教材依据：实验教学目录第 68 项“利用新能源设计并制作一种模型”；结合人教版九年级全一册第二十二章能源与可持续发展相关内容设计。模型方案为教学模拟，不作为教材原文复刻。</p>
     </section>
-    <footer>探索更多，访问：<a href="https://xingnian.net.cn" target="_blank" rel="noopener noreferrer">https://xingnian.net.cn</a></footer>
   </div>
   <script>
   (() => {
@@ -774,9 +772,11 @@ body #app .toolbar button:disabled{
     function currentStatus(){
       if(state.shortCircuit)return"低压短路模拟";
       if(state.task===0&&!mainComplete())return`等待接线 ${[...state.wireKeys].filter(key=>MAIN_KEYS.includes(key)).length}/4`;
+      if(state.task===2&&storageComplete()&&!state.shaded&&state.storageCharge<60)return`储能充电 ${Math.round(state.storageCharge)}%`;
       if(state.shaded&&modelRunning())return"遮光后由储能模块供电";
       if(modelRunning())return`模型运行 · ${loadVoltage().toFixed(2)} V`;
       if(state.loadOn)return"输出不足，模型停止";
+      if(mainComplete()&&!state.loadOn)return"主电路完成 · 断开";
       return"负载开关断开"
     }
     function showToast(message,error=false){
@@ -849,7 +849,7 @@ body #app .toolbar button:disabled{
       const records=currentRecords();
       if(records.some(item=>item.key===record.key)){showToast("这组现象已经记录");return false}
       records.push(record);if(dataDock.classList.contains("collapsed"))state.unseen++;
-      renderRecords();updateBadge();updateTaskUI();showToast("已记录现象");showCheck();return true
+      renderRecords();updateBadge();updateTaskUI();if(state.freeMode)showToast("已记录现象");showCheck();return true
     }
     function recordObservation(){
       if(state.autoPlaying===false&&state.successLock)return false;
@@ -890,7 +890,7 @@ body #app .toolbar button:disabled{
       if(state.freeMode)return false;
       if(!["weak","strong","storage"].every(key=>state.guidedRecords.some(record=>record.key===key))){warn("请先完成三组现象记录。");return false}
       state.analysisDone=true;state.completed=true;analysisText.textContent=ANALYSIS;analysisText.classList.add("ok");
-      setDrawerCollapsed(controlDock,false);showCheck();showToast("模型方案分析完成");doneMask.style.display="flex";updateTaskUI();return true
+      setDrawerCollapsed(controlDock,false);showCheck();doneMask.style.display="flex";updateTaskUI();return true
     }
     function renderRecords(){
       const records=currentRecords();recordBody.innerHTML="";
@@ -1233,8 +1233,7 @@ body #app .toolbar button:disabled{
         if(short){state.shortCircuit=true;state.loadOn=false;showToast("低压短路模拟：已停止输出，请撤销错误接线",true)}
       }
       state.selectedTerminal=null;state.dragMode=null;state.preview=null;
-      if(!state.freeMode&&state.task===0&&mainComplete()){showToast("主电路搭建完成");advanceTask()}
-      else if(!state.freeMode&&state.task===2&&storageComplete())showToast("储能模块已接入，等待充电");
+      if(!state.freeMode&&state.task===0&&mainComplete())advanceTask();
       updateTaskUI();return true
     }
     function undoWire(){

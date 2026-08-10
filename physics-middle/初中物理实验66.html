@@ -634,9 +634,7 @@ body #app .toolbar button:disabled{
       <h2>实验名：探究电流产生热量与哪些因素有关</h2>
       <p><b>关键操作：</b>用密闭空气受热后引起的 U 形管液面高度差表示产生热量的多少；分别控制电流、通电时间或电阻相同进行比较。时间实验采用短时间散热可忽略的理想模型，本模拟按 Δh=1 mm/J×Q 等比例显示。</p>
       <p><b>观察与结论：</b>在电流和时间相同时，电阻越大液面差越大；在电阻和时间相同时，电流越大液面差越大；同一电阻通电越久液面差越大。焦耳定律为 Q=I²Rt。</p>
-      <p class="source">教材依据：人教版九年级全一册第十八章第 4 节“焦耳定律”，教材第 120—122 页。</p>
     </section>
-    <footer>探索更多，访问：<a href="https://xingnian.net.cn" target="_blank" rel="noopener">https://xingnian.net.cn</a></footer>
   </div>
   <script>
   (() => {
@@ -797,7 +795,7 @@ body #app .toolbar button:disabled{
       const scheduledState=state;
       setTimeout(()=>{
         if(state!==scheduledState||state.freeMode||state.currentTask!==sourceTask)return;
-        applyTask(sourceTask+1);showToast(sourceTask===0?"已换接电流比较装置":sourceTask===1?"已进入通电时间比较":"三组记录完成，请分析结论")
+        applyTask(sourceTask+1)
       },420)
     }
     function recordObservation(options={}){
@@ -808,7 +806,7 @@ body #app .toolbar button:disabled{
       if(state.freeMode&&state.freeRunRecorded){warn("本次试验已经记录，请复位本组或改变参数后再测");return false}
       const result=observationFor(setup),record={key:setup.key,factor:setup.factor,condition:result.condition,observation:result.observation,free:state.freeMode};
       state.records.push(record);if(!dataDrawerOpen())state.unseenRecords+=1;renderRecords();showCheck();
-      if(!options.quiet)showToast("已记录本组液面高度差");
+      if(state.freeMode&&!options.quiet)showToast("已记录本组液面高度差");
       if(!state.freeMode){
         const sourceTask=state.currentTask;state.completed[sourceTask]=true;updateUI();advanceAfterRecord(sourceTask)
       }else{state.freeRunRecorded=true;updateUI()}
@@ -833,8 +831,8 @@ body #app .toolbar button:disabled{
       dots.innerHTML=TASKS.map((_,index)=>`<i class="${state.completed[index]?"done":index===state.currentTask?"now":""}"></i>`).join("");
       modeTag.textContent=state.autoPlaying?"模式：演示模式 · 自动运行":state.freeMode?"模式：自由模式 · 自主探索":
         done?"模式：闯关模式 · 已通关":`模式：闯关模式 · 关卡 ${state.currentTask+1}/${TASKS.length}`;
-      statusTag.textContent=done?"状态：实验完成":state.currentTask===3?"状态：三组记录完成":state.running?`状态：通电中 · ${state.elapsed.toFixed(1)} s`:
-        state.runComplete?"状态：本组完成，可记录":state.elapsed>0?`状态：已暂停 · ${state.elapsed.toFixed(1)} s`:"状态：开关断开";
+      statusTag.textContent=done?"状态：实验完成":state.currentTask===3?"状态：三组记录完成":state.running?`状态：${setup.factor} · 通电 ${state.elapsed.toFixed(1)} s`:
+        state.runComplete?`状态：${setup.factor} · 待记录`:state.elapsed>0?`状态：${setup.factor} · 暂停 ${state.elapsed.toFixed(1)} s`:`状态：${setup.factor} · 开关断开`;
       timeReadout.textContent=`${state.elapsed.toFixed(1)} / ${setup.targetTime.toFixed(0)} s`;
       levelLabel.textContent=setup.key==="time"?"液面高度差 5 s / 当前":"液面高度差 A / B";
       levelReadout.textContent=setup.key==="time"&&state.snapshot5===null?`— / ${diffs[1].toFixed(1)} mm`:`${diffs[0].toFixed(1)} / ${diffs[1].toFixed(1)} mm`;

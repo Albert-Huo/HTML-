@@ -748,9 +748,7 @@ body #app .toolbar button:disabled{
       <h2>实验名：连接串联电路和并联电路</h2>
       <p><b>关键操作：</b>连接导线时先断开开关；点击一个接线柱再点击另一个接线柱，或直接拖动导线完成连接。串联实验还要把开关拖到另一位置，比较控制效果。</p>
       <p><b>观察与结论：</b>串联电路中开关控制所有用电器，改变开关位置，控制作用不变；并联电路中干路开关控制所有用电器，支路开关只控制所在支路。</p>
-      <p class="source">教材依据：人教版物理九年级全一册，第 50—51 页“连接串联电路和并联电路”。</p>
     </section>
-    <footer>探索更多，访问：<a href="https://xingnian.net.cn" target="_blank" rel="noopener">https://xingnian.net.cn</a></footer>
   </div>
   <div class="modal danger" id="burnModal"><div class="modal-card"><div class="icon">⚠️</div><h3>电路短路，电源已“烧毁”</h3><p>电源正、负极被导线和闭合开关直接连通，电流过大。请先断开开关，再检查并重新接线。</p><button id="repairBtn">更换电源并重置</button></div></div>
   <div class="modal" id="finishModal"><div class="modal-card"><div class="icon">✅</div><h3>实验完成</h3><p>你已用真实接线验证串联、并联电路中各开关的控制作用，并标出了电流方向。</p><button id="finishBtn">继续探索</button></div></div>
@@ -1124,18 +1122,16 @@ body #app .toolbar button:disabled{
       evaluateTasks();render();return true;
     }
     function advanceAfterRecord(previousTask){
-      if(state.freeMode||state.currentTask===previousTask)return "";
+      if(state.freeMode||state.currentTask===previousTask)return;
       if(previousTask===0&&state.currentTask===1){
         state.switches.S=false;state.seriesSwitchSlot="B";state.pendingTerminal=null;
-        return "记录完成，已自动进入第 2 关并把开关移到位置 B";
+        return;
       }
       if(previousTask===1&&state.currentTask===2){
         state.boardMode="parallel";state.wireEdges=[];state.pendingTerminal=null;
         state.switches={S:false,S1:false,S2:false};
-        return "记录完成，已自动进入第 3 关并切换到并联实验板";
+        return;
       }
-      if(previousTask===3&&state.currentTask===4)return "记录完成，已自动进入第 5 关：分析实验结论";
-      return `记录完成，已自动进入第 ${state.currentTask+1} 关`;
     }
     function recordProgressMessage(taskIndex){
       if(state.freeMode)return "";
@@ -1189,9 +1185,10 @@ body #app .toolbar button:disabled{
         L1:c.L1?"亮":"灭",L2:c.L2?"亮":"灭",observation});
       if(!dataDrawerOpen())state.unseenRecords+=1;
       captureEvidence();evaluateTasks();
-      const transition=advanceAfterRecord(previousTask);
-      const progress=recordProgressMessage(previousTask);
-      render();showToast(transition||progress||"实验现象已记录",false,transition||progress?3200:2100);return true;
+      advanceAfterRecord(previousTask);
+      const stayedOnTask=state.currentTask===previousTask;
+      const progress=stayedOnTask?recordProgressMessage(previousTask):"";
+      render();if(stayedOnTask)showToast(progress||"实验现象已记录",false,progress?3200:2100);return true;
     }
     function analyzeConclusion(){
       const e=state.evidence;
@@ -1238,7 +1235,7 @@ body #app .toolbar button:disabled{
       const status=state.burned?"电源烧毁":complete?Object.values(state.switches).some(Boolean)?"已通电":"接线完成，开关断开":
         state.freeMode?state.wireEdges.length?"自由接线中":"等待接线":
         state.wireEdges.length?`接线中 · 还缺 ${missingCount} 根导线`:"等待接线";
-      $("#stateChip").textContent=`状态：${status}`;
+      $("#stateChip").textContent=`状态：${state.boardMode==="series"?"串联":"并联"} · ${status}`;
       $("#progress").innerHTML=tasks.map((_,i)=>`<i class="${state.completed[i]?"done":i===state.currentTask?"now":""}"></i>`).join("");
       $("#seriesBoardBtn").classList.toggle("active",state.boardMode==="series");$("#parallelBoardBtn").classList.toggle("active",state.boardMode==="parallel");
       $("#freeBtn").classList.toggle("active",state.freeMode);/* codex-physics-mode-source:continuous-ui-owner:start */

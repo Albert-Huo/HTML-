@@ -636,9 +636,7 @@ body #app .toolbar button:disabled{
       <h2>实验名：探究串联电路和并联电路中电流、电压的特点</h2>
       <p><b>关键操作：</b>断开开关后更换电流表测点或电压表测量对象，闭合开关读数并记录。</p>
       <p><b>观察与结论：</b>串联电路各处电流相等、总电压等于各部分电压之和；并联电路干路电流等于各支路电流之和、各支路两端电压相等。</p>
-      <p class="source">教材依据：人教版九年级全一册“串、并联电路中电流与电压的规律”，具体页码待版本核对。</p>
     </section>
-    <footer>探索更多，访问：<a href="https://xingnian.net.cn" target="_blank" rel="noopener">https://xingnian.net.cn</a></footer>
   </div>
   <script>
   (() => {
@@ -720,7 +718,7 @@ body #app .toolbar button:disabled{
       state.completed[sourceTask]=true;showCheck();
       setTimeout(()=>{
         if(state!==scheduledState||state.freeMode||state.currentTask!==sourceTask)return;
-        applyTask(sourceTask+1);showToast(sourceTask===1?"已换接为并联电路":"已自动进入下一关")
+        applyTask(sourceTask+1)
       },420)
     }
     function selectTarget(index,options={}){
@@ -787,10 +785,11 @@ body #app .toolbar button:disabled{
       dots.innerHTML=TASKS.map((_,index)=>`<i class="${state.completed[index]?"done":index===state.currentTask?"now":""}"></i>`).join("");
       modeTag.textContent=state.autoPlaying?"模式：演示模式 · 自动运行":state.freeMode?"模式：自由模式 · 自主探索":
         guidedComplete?"模式：闯关模式 · 已通关":`模式：闯关模式 · 关卡 ${state.currentTask+1}/${TASKS.length}`;
+      const setupLabel=`${state.topology==="series"?"串联":"并联"}${state.measureMode==="current"?"电流":"电压"}`;
       statusTag.textContent=state.switchClosed?
         `状态：已通电 · ${state.measureMode==="current"?"I":"U"}=${currentValue().toFixed(3)} ${state.measureMode==="current"?"A":"V"}`:
         isSourceVoltageTarget()?`状态：电源 U=${currentValue().toFixed(3)} V`:
-        state.selectedTarget===null?"状态：等待选择测量位置":`状态：已选择 ${targetLabels()[state.selectedTarget]}，开关断开`;
+        state.selectedTarget===null?`状态：${setupLabel} · 待选`:`状态：已选择 ${targetLabels()[state.selectedTarget]}，开关断开`;
       const label=state.selectedTarget===null?"尚未选择测量位置":
         `${targetLabels()[state.selectedTarget]} · ${hasReading?currentValue().toFixed(3)+" "+(state.measureMode==="current"?"A":"V"):"开关断开"}`;
       measureReadout.textContent=label;
