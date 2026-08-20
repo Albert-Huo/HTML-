@@ -2080,22 +2080,48 @@
       return null;
     }
 
+    const DYE_PARTICLE_RADIUS = 2.05;
+
+    function getLiquidParticleBounds(key){
+      const canvas = key==='cold' ? canvasCold : canvasHot;
+      const wrap = key==='cold' ? beakerCold : beakerHot;
+      const water = wrap.querySelector('.water');
+      const canvasRect = canvas.getBoundingClientRect();
+      const waterRect = water.getBoundingClientRect();
+      const minY = clamp(
+        waterRect.top - canvasRect.top + DYE_PARTICLE_RADIUS,
+        DYE_PARTICLE_RADIUS,
+        canvasRect.height - DYE_PARTICLE_RADIUS
+      );
+      const maxY = clamp(
+        waterRect.bottom - canvasRect.top - DYE_PARTICLE_RADIUS,
+        minY,
+        canvasRect.height - DYE_PARTICLE_RADIUS
+      );
+      return {
+        minX:DYE_PARTICLE_RADIUS,
+        maxX:canvasRect.width - DYE_PARTICLE_RADIUS,
+        minY,
+        maxY,
+        width:canvasRect.width,
+        height:Math.max(1, maxY-minY)
+      };
+    }
+
     function seedParticles(key){
       const beaker = state.beakers[key];
-      const canvas = key==='cold' ? canvasCold : canvasHot;
-      const rect = canvas.getBoundingClientRect();
-      const W = rect.width;
-      const H = rect.height;
+      const bounds = getLiquidParticleBounds(key);
       const count = 150;
-      const cx = W * 0.5;
-      const cy = H * 0.14;
+      const cx = bounds.width * 0.5;
+      const cy = bounds.minY + bounds.height * 0.08;
+      const maxSeedRadius = Math.min(12, Math.max(2, bounds.height*0.06));
       beaker.particles = [];
       for(let i=0;i<count;i++){
         const a = Math.random()*Math.PI*2;
-        const r = Math.random()*12;
+        const r = Math.random()*maxSeedRadius;
         beaker.particles.push({
-          x:cx + Math.cos(a)*r,
-          y:cy + Math.sin(a)*r,
+          x:clamp(cx + Math.cos(a)*r, bounds.minX, bounds.maxX),
+          y:clamp(cy + Math.sin(a)*r, bounds.minY, bounds.maxY),
           vx:(Math.random()*2-1)*6,
           vy:(Math.random()*2-1)*6
         });
@@ -2113,17 +2139,15 @@
       const beaker = state.beakers[key];
       if(!beaker.injected) return;
       const motionDt = dt * (state.autoPlaying ? 2.4 : 1);
-      const canvas = key==='cold' ? canvasCold : canvasHot;
-      const rect = canvas.getBoundingClientRect();
-      const W = rect.width;
-      const H = rect.height;
+      const bounds = getLiquidParticleBounds(key);
+      const W = bounds.width;
       const cfg = BEAKER_CONFIG[key];
       const noise = cfg.speed * 0.65;
 
       let distSum = 0;
       const cx = W*0.5;
-      const cy = H*0.14;
-      const maxR = Math.hypot(W*0.5, H*0.8);
+      const cy = bounds.minY + bounds.height*0.08;
+      const maxR = Math.hypot(W*0.5, bounds.maxY-cy);
 
       const gridX = 6;
       const gridY = 8;
@@ -2143,15 +2167,15 @@
         p.x += p.vx * motionDt;
         p.y += p.vy * motionDt;
 
-        if(p.x < 2){ p.x = 2; p.vx *= -0.75; }
-        if(p.x > W-2){ p.x = W-2; p.vx *= -0.75; }
-        if(p.y < 2){ p.y = 2; p.vy *= -0.75; }
-        if(p.y > H-2){ p.y = H-2; p.vy *= -0.75; }
+        if(p.x < bounds.minX){ p.x = bounds.minX; p.vx *= -0.75; }
+        if(p.x > bounds.maxX){ p.x = bounds.maxX; p.vx *= -0.75; }
+        if(p.y < bounds.minY){ p.y = bounds.minY; p.vy *= -0.75; }
+        if(p.y > bounds.maxY){ p.y = bounds.maxY; p.vy *= -0.75; }
 
         distSum += Math.hypot(p.x-cx, p.y-cy);
 
         const gx = clamp(Math.floor((p.x / W) * gridX), 0, gridX-1);
-        const gy = clamp(Math.floor((p.y / H) * gridY), 0, gridY-1);
+        const gy = clamp(Math.floor(((p.y-bounds.minY) / bounds.height) * gridY), 0, gridY-1);
         cells.add(`${gx}_${gy}`);
       }
 
@@ -2166,9 +2190,10 @@
         beaker.timeTo60 = round(beaker.elapsed, 2);
         addT60Record(key);
       }
+      return bounds;
     }
 
-    function renderBeaker(key){
+    function renderBeaker(key, frameBounds=null){
       const canvas = key==='cold' ? canvasCold : canvasHot;
       const info = setupCanvas(canvas);
       const ctx = info.ctx;
@@ -2179,13 +2204,19 @@
       const beaker = state.beakers[key];
       if(!beaker.injected) return;
 
+      const bounds = frameBounds || getLiquidParticleBounds(key);
       const alphaBase = key==='hot' ? 0.33 : 0.26;
       ctx.fillStyle = `rgba(177,92,255,${alphaBase})`;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, bounds.minY-DYE_PARTICLE_RADIUS, W, bounds.height+DYE_PARTICLE_RADIUS*2);
+      ctx.clip();
       for(const p of beaker.particles){
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 2.05, 0, Math.PI*2);
+        ctx.arc(p.x, p.y, DYE_PARTICLE_RADIUS, 0, Math.PI*2);
         ctx.fill();
       }
+      ctx.restore();
     }
 
     function updateHudReadings(){
@@ -2213,12 +2244,14 @@
       const dt = clamp((now - state.lastTick) / 1000, 0, 0.04);
       state.lastTick = now;
 
+      let coldBounds = null;
+      let hotBounds = null;
       if(!state.autoPaused){
-        updateOneBeaker('cold', dt);
-        updateOneBeaker('hot', dt);
+        coldBounds = updateOneBeaker('cold', dt);
+        hotBounds = updateOneBeaker('hot', dt);
       }
-      renderBeaker('cold');
-      renderBeaker('hot');
+      renderBeaker('cold', coldBounds);
+      renderBeaker('hot', hotBounds);
       updateHudReadings();
 
       state.rafId = requestAnimationFrame(updateLoop);
