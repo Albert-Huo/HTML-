@@ -289,7 +289,7 @@
     :root[data-theme="dark"]{color-scheme:dark}
     .theme-app-contents{display:contents}
     @property --codex-mode-ring-angle{syntax:"<angle>";inherits:false;initial-value:0deg}
-    body #app #stage :is(#modeTag,#modeChip){
+    body #app #stage#stage :is(#modeTag,#modeChip){
       position:relative!important;isolation:isolate!important;min-width:158px!important;width:auto!important;max-width:none!important;
       box-sizing:border-box!important;border:2px solid transparent!important;border-radius:999px!important;padding:4px 12px!important;
       font-weight:900!important;color:#fff!important;white-space:nowrap!important;text-align:center!important;overflow:hidden!important;text-overflow:clip!important;
@@ -298,8 +298,8 @@
       box-shadow:0 0 13px rgba(75,216,255,.20)!important;
       animation:codexModeRingTurn 8s linear infinite!important;
     }
-    body #app #stage :is(#modeTag,#modeChip)::before,
-    body #app #stage :is(#modeTag,#modeChip)::after{content:none!important;display:none!important}
+    body #app #stage#stage :is(#modeTag,#modeChip)::before,
+    body #app #stage#stage :is(#modeTag,#modeChip)::after{content:none!important;display:none!important}
     @keyframes codexModeRingTurn{to{--codex-mode-ring-angle:1turn}}
     :root[data-theme="light"]{
       color-scheme:light;
@@ -613,7 +613,7 @@
     @media(prefers-reduced-motion:reduce){
       .theme-toggle,
       body,.task-card,.toolbar,.explanation,#controlDock,#dataDock{transition:none!important}
-      body #app #stage :is(#modeTag,#modeChip){animation:none!important;--codex-mode-ring-angle:0deg}
+      body #app #stage#stage :is(#modeTag,#modeChip){animation:none!important;--codex-mode-ring-angle:0deg}
     }
   </style>
 <style id="codex-physics-mode-style">
@@ -665,6 +665,50 @@ body #app .toolbar button:disabled{
   }
 }
 </style>
+<style id="codex-mobile-panel-chevron-v3">
+@media (max-width:720px){
+  #stage .mobile-tab{display:flex!important;align-items:center!important;justify-content:center!important;gap:9px!important}
+  #stage .mobile-tab::after{content:""!important;width:7px!important;height:7px!important;flex:0 0 auto!important;border-right:2px solid currentColor!important;border-bottom:2px solid currentColor!important;transform:translateY(2px) rotate(225deg)!important;transition:transform .18s ease!important}
+  #stage .mobile-tab:is(.active,[aria-expanded="true"])::after{transform:translateY(-2px) rotate(45deg)!important}
+  body #app #stage#stage :is(#controlDock,#dataDock,#controlDrawer,#dataDrawer) .sheet-close{display:none!important}
+  body #app #stage#stage :is(#controlDock,#dataDock,#controlDrawer,#dataDrawer) :is(#controlBody,#panelBody,#dataBody,#resultsBody,.panelBody,.resultsBody,.dockBody,.dock-body,.drawer-body){grid-template-columns:minmax(0,1fr)!important}
+  body #app #stage#stage :is(#controlDrawer,#dataDrawer).mobile-open .drawer-body{padding-top:10px!important}
+}
+</style>
+<style id="codex-mobile-panel-tabs-v2">
+  #stage .mobile-tabs{display:none}
+  @media (max-width:720px){
+    #stage .mobile-tabs{
+      position:absolute!important;z-index:64!important;left:12px!important;right:12px!important;bottom:8px!important;
+      display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;padding:5px!important;
+      border:1px solid rgba(91,188,255,.24)!important;border-radius:11px!important;
+      background:rgba(9,12,16,.9)!important;backdrop-filter:blur(10px)!important;
+      box-shadow:0 12px 30px rgba(0,0,0,.42)!important;
+    }
+    #stage .mobile-tabs.attached{border-top:0!important;border-radius:0 0 12px 12px!important}
+    #stage .mobile-tab{
+      min-height:36px!important;border:0!important;border-radius:8px!important;padding:9px 10px!important;
+      background:rgba(255,255,255,.04)!important;color:#cfe4ff!important;font-size:13px!important;font-weight:900!important;
+    }
+    #stage .mobile-tab.active{background:rgba(61,220,151,.16)!important;color:#effff7!important;box-shadow:inset 0 0 0 1px rgba(61,220,151,.56)!important}
+    #stage .tab-label{position:relative!important;display:inline-block!important}
+    #stage .mobile-badge{
+      position:absolute!important;top:-9px!important;right:-17px!important;display:grid!important;place-items:center!important;
+      min-width:18px!important;height:18px!important;padding:0 5px!important;border-radius:999px!important;
+      background:#ff3b30!important;color:#fff!important;font-size:11px!important;line-height:1!important;
+      opacity:0!important;transform:scale(.55)!important;pointer-events:none!important;
+    }
+    #stage .mobile-badge.show{opacity:1!important;transform:scale(1)!important}
+    #stage .dock{
+      left:12px!important;right:12px!important;top:auto!important;bottom:56px!important;width:auto!important;max-width:none!important;
+      border-radius:12px 12px 0 0!important;z-index:62!important;touch-action:auto!important;
+    }
+    #stage .dock.collapsed{display:none!important}
+    #stage .dock .dock-header{display:none!important}
+    #stage .dock .dock-body{display:grid!important;max-height:188px!important;padding:10px!important;overflow:auto!important}
+    #stage .lab-area{top:96px!important;left:8px!important;right:8px!important;bottom:10px!important}
+  }
+</style>
 </head>
 <body>
   <div id="app">
@@ -693,6 +737,11 @@ body #app .toolbar button:disabled{
       <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
       <div class="hint-pop" id="hintPop"></div>
       <div class="lab-area" id="labArea"><canvas id="labCanvas"></canvas></div>
+
+      <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+        <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板</span></button>
+        <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button>
+      </div>
 
       <section class="dock collapsed" id="controlDock">
         <div class="dock-header"><span class="dock-title">实验面板</span><button class="icon-btn" id="controlToggleBtn" type="button">展开</button></div>
@@ -2575,6 +2624,39 @@ body #app .toolbar button:disabled{
   delete window.__CODEX_MODE_CONTROLS_TEST__;
   syncControls();
   syncModeLabels(false);
+})();
+</script>
+<script id="codex-mobile-panel-tabs-v2-runtime">
+(() => {
+  const stage=document.getElementById("stage"),tabs=document.getElementById("mobileTabs");
+  const experimentTab=document.getElementById("experimentTab"),dataTab=document.getElementById("dataTab");
+  const controlDock=document.getElementById("controlDock"),dataDock=document.getElementById("dataDock");
+  const controlToggle=document.getElementById("controlToggleBtn"),dataToggle=document.getElementById("dataToggleBtn");
+  const dataNotice=document.getElementById("dataNotice"),dataBadge=document.getElementById("dataTabBadge");
+  if(!stage||!tabs||!experimentTab||!dataTab||!controlDock||!dataDock)return;
+  const isMobile=()=>window.innerWidth<=720||stage.clientWidth<=720;
+  const isOpen=dock=>!dock.classList.contains("collapsed");
+  function sync(){
+    if(!isMobile())return;
+    const controlOpen=isOpen(controlDock),dataOpen=isOpen(dataDock);
+    tabs.classList.toggle("attached",controlOpen||dataOpen);
+    experimentTab.classList.toggle("active",controlOpen);
+    dataTab.classList.toggle("active",dataOpen);
+    experimentTab.setAttribute("aria-expanded",String(controlOpen));
+    dataTab.setAttribute("aria-expanded",String(dataOpen));
+    if(dataBadge){
+      const count=(dataNotice?.textContent||"0").trim()||"0";
+      dataBadge.textContent=count;
+      dataBadge.classList.toggle("show",!dataOpen&&count!=="0");
+    }
+  }
+  experimentTab.addEventListener("click",()=>{controlToggle?.click();setTimeout(sync,0)});
+  dataTab.addEventListener("click",()=>{dataToggle?.click();setTimeout(sync,0)});
+  new MutationObserver(sync).observe(controlDock,{attributes:true,attributeFilter:["class"]});
+  new MutationObserver(sync).observe(dataDock,{attributes:true,attributeFilter:["class"]});
+  if(dataNotice)new MutationObserver(sync).observe(dataNotice,{attributes:true,childList:true,subtree:true});
+  window.addEventListener("resize",()=>setTimeout(sync,80));
+  sync();
 })();
 </script>
 </body>

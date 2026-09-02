@@ -1319,8 +1319,8 @@
     }
     #stage{
       max-width:100% !important;
-      max-height:560px !important;
-      min-height:500px !important;
+      max-height:590px !important;
+      min-height:590px !important;
     }
     #stage #bench{
       top:112px !important;
@@ -1349,6 +1349,10 @@
     }
     #stage .mobile-tab{
       position:relative !important;
+      display:flex !important;
+      align-items:center !important;
+      justify-content:center !important;
+      gap:9px !important;
       border:0 !important;
       border-radius:8px !important;
       padding:9px 10px !important;
@@ -1359,6 +1363,19 @@
       cursor:pointer !important;
       overflow:visible !important;
       min-height:36px !important;
+    }
+    #stage .mobile-tab::after{
+      content:"" !important;
+      width:7px !important;
+      height:7px !important;
+      flex:0 0 auto !important;
+      border-right:2px solid currentColor !important;
+      border-bottom:2px solid currentColor !important;
+      transform:translateY(2px) rotate(225deg) !important;
+      transition:transform .18s ease !important;
+    }
+    #stage .mobile-tab[aria-expanded="true"]::after{
+      transform:translateY(-2px) rotate(45deg) !important;
     }
     #stage .mobile-tab.active{
       background:rgba(61,220,151,.16) !important;
@@ -1532,6 +1549,22 @@
     #stage #dataDock.mobile-sheet .sheet-close{
       grid-column:2 !important;
       grid-row:1 !important;
+    }
+    #stage #controlDock.mobile-sheet #controlBody > .sheet-close,
+    #stage #dataDock.mobile-sheet #dataBody > .sheet-close{
+      display:none !important;
+    }
+    #stage #controlDock.mobile-sheet #controlBody,
+    #stage #controlDock.mobile-sheet #panelBody,
+    #stage #controlDock.mobile-sheet .panelBody,
+    #stage #controlDock.mobile-sheet .dockBody,
+    #stage #controlDock.mobile-sheet .drawer-body,
+    #stage #dataDock.mobile-sheet #dataBody,
+    #stage #dataDock.mobile-sheet #resultsBody,
+    #stage #dataDock.mobile-sheet .resultsBody,
+    #stage #dataDock.mobile-sheet .dockBody,
+    #stage #dataDock.mobile-sheet .drawer-body{
+      grid-template-columns:minmax(0,1fr) !important;
     }
     #stage #dataDock.mobile-sheet table.record,
     #stage #dataDock.mobile-sheet .record{
@@ -2305,7 +2338,7 @@
       </div>
       <div class="resultsBody scroll collapsed drawer-body" id="dataBody">
         <h4>记录表</h4>
-        <table class="table">
+        <table class="table record">
           <thead>
             <tr>
               <th>#</th>
@@ -2315,7 +2348,7 @@
             </tr>
           </thead>
           <tbody id="recordBody">
-            <tr><td colspan="4" style="opacity:.7;">把温度计放进烧杯里，等稳定后点击“记录一次”。</td></tr>
+            <tr><td colspan="4" data-label="状态" style="opacity:.7;">暂无记录。</td></tr>
           </tbody>
         </table>
         <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
@@ -2548,13 +2581,27 @@
     const dataBody = $('#dataBody');
     const dataToggleBtn = $('#dataToggleBtn');
     const dataNotice = $('#dataNotice');
+    function syncSheetCloseButton(button, isOpen, panelLabel){
+      if (!button) return;
+      button.classList.toggle('is-open', isOpen);
+      const label = panelLabel || '';
+      const action = isOpen ? "收起" : "展开";
+      const text = label ? `${action}${label}` : action;
+      button.setAttribute('aria-expanded', String(isOpen));
+      button.setAttribute('aria-label', text);
+      button.title = text;
+    }
 
     function setControlCollapsed(on) {
       if (!on && window.innerWidth <= 760 && !state.dataCollapsed) {
         setDataCollapsed(true);
       }
       controlBody.classList.toggle('collapsed', !!on);
-      controlToggleBtn.textContent = on ? '展开' : '收起';
+      const controlOpen = !on;
+      controlToggleBtn.textContent = controlOpen ? '收起' : '展开';
+      controlToggleBtn.setAttribute('aria-expanded', String(controlOpen));
+      controlToggleBtn.setAttribute('aria-label', `${controlOpen ? '收起' : '展开'}实验面板`);
+      syncSheetCloseButton(document.getElementById('controlSheetCloseBtn'), controlOpen, '实验面板');
       resolveDrawerOverlap();
     }
     function refreshDataNotice() {
@@ -2565,7 +2612,11 @@
     function setDataCollapsed(on) {
       state.dataCollapsed = !!on;
       dataBody.classList.toggle('collapsed', state.dataCollapsed);
-      dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
+      const dataOpen = !state.dataCollapsed;
+      dataToggleBtn.textContent = dataOpen ? '收起' : '展开';
+      dataToggleBtn.setAttribute('aria-expanded', String(dataOpen));
+      dataToggleBtn.setAttribute('aria-label', `${dataOpen ? '收起' : '展开'}数据面板`);
+      syncSheetCloseButton(document.getElementById('dataSheetCloseBtn'), dataOpen, '数据面板');
       if (!state.dataCollapsed) {
         state.unseenRecordCount = 0;
       }
@@ -3052,7 +3103,7 @@
     }
     function renderTable() {
       if (!state.records.length) {
-        tbody.innerHTML = '<tr><td colspan="4" style="opacity:.7;">把温度计放进烧杯里，等稳定后点击“记录一次”。</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" data-label="状态" style="opacity:.7;">暂无记录。</td></tr>';
         return;
       }
       tbody.innerHTML = state.records
@@ -3737,6 +3788,16 @@
   const dataBadge = $('#dataTabBadge') || $('.mobile-badge', dataTab);
   if (experimentBadge && !experimentBadge.id) experimentBadge.id = 'experimentTabBadge';
   if (dataBadge && !dataBadge.id) dataBadge.id = 'dataTabBadge';
+  function makeSheetCloseIconButton(button, panelLabel, isOpen){
+    if (!button) return;
+    button.classList.toggle('is-open', !!isOpen);
+    const expandedLabel = panelLabel || '';
+    const action = isOpen ? "收起" : "展开";
+    const text = expandedLabel ? `${action}${expandedLabel}` : action;
+    button.setAttribute('aria-expanded', String(!!isOpen));
+    button.setAttribute('aria-label', text);
+    button.title = text;
+  }
   function ensureClose(body, id, label){
     if (!body) return null;
     let btn = $('#' + id, body);
@@ -3745,15 +3806,19 @@
       btn.id = id;
       btn.type = 'button';
       btn.className = 'sheet-close';
-      btn.textContent = '⌄';
-      btn.setAttribute('aria-label', label);
-      btn.title = '收起';
+      btn.innerHTML = '<svg class="sheet-close-icon" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg>';
+      btn.setAttribute('aria-label', `展开${label}`);
+      btn.title = `展开${label}`;
+      btn.setAttribute('aria-expanded', 'false');
       body.insertBefore(btn, body.firstChild);
     }
+    const dock = body.closest?.('.dock') || body.parentElement;
+    const isOpen = !isCollapsed(dock, body);
+    makeSheetCloseIconButton(btn, label, isOpen);
     return btn;
   }
-  const controlClose = ensureClose(controlBody, 'controlSheetCloseBtn', '收起实验面板');
-  const dataClose = ensureClose(dataBody, 'dataSheetCloseBtn', '收起数据面板');
+  const controlClose = ensureClose(controlBody, 'controlSheetCloseBtn', '实验面板');
+  const dataClose = ensureClose(dataBody, 'dataSheetCloseBtn', '数据面板');
   function isCollapsed(dock, body){
     if (!dock) return true;
     return dock.classList.contains('collapsed') || (body && body.classList.contains('collapsed'));
@@ -3770,7 +3835,25 @@
     const toggle = which === 'control' ? controlToggle : dataToggle;
     dock.classList.toggle('collapsed', !open);
     if (body) body.classList.toggle('collapsed', !open);
-    if (toggle && /^(展开|收起)$/.test((toggle.textContent || '').trim())) toggle.textContent = open ? '收起' : '展开';
+    const label = which === 'control' ? '实验面板' : '数据面板';
+    if (toggle && /^(展开|收起)$/.test((toggle.textContent || '').trim())) {
+      toggle.textContent = open ? '收起' : '展开';
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', `${open ? '收起' : '展开'}${label}`);
+    }
+    if (which === 'control') {
+      makeSheetCloseIconButton(controlClose, '实验面板', open);
+    } else if (which === 'data') {
+      makeSheetCloseIconButton(dataClose, '数据面板', open);
+      if (window.state && Object.prototype.hasOwnProperty.call(window.state, 'dataCollapsed')) {
+        const nextCollapsed = !open;
+        if (window.state.dataCollapsed !== nextCollapsed) {
+          window.state.dataCollapsed = nextCollapsed;
+          if (!nextCollapsed) window.state.unseenRecordCount = 0;
+        }
+      }
+      if (typeof refreshDataNotice === 'function') refreshDataNotice();
+    }
   }
   function clickToOpen(which){
     const targetDock = which === 'control' ? controlDock : dataDock;
@@ -3824,6 +3907,8 @@
     const dataClosed = mirrorCollapsed(dataDock, dataBody);
     const experimentOpen = !controlClosed;
     const dataOpen = !dataClosed;
+    makeSheetCloseIconButton(controlClose, '实验面板', experimentOpen);
+    makeSheetCloseIconButton(dataClose, '数据面板', dataOpen);
     tabs.classList.toggle('attached', experimentOpen || dataOpen);
     tabs.classList.toggle('experiment-open', experimentOpen);
     tabs.classList.toggle('data-open', dataOpen);
@@ -4117,6 +4202,7 @@
     if (paused && statusTag) statusTag.textContent = "状态：演示已暂停";
     else if (auto && statusTag) statusTag.textContent = "状态：演示中";
     else if (free && statusTag) statusTag.textContent = "状态：自由探索";
+    else if (statusTag && statusTag.textContent.trim() === "状态：自由探索") statusTag.textContent = "状态：待操作";
   }
 
   function normalizeDemoWait(ms){

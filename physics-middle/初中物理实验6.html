@@ -712,7 +712,24 @@
   .drawer-body{ max-height:260px; }
 }
 
-  </style>
+
+#stage .sheet-close .sheet-close-icon{
+  width:12px;
+  height:8px;
+  display:block;
+  pointer-events:none;
+  margin:0;
+  transform:rotate(0deg);
+  transition:transform .2s ease;
+}
+#stage .sheet-close .sheet-close-icon path{
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+</style>
 
 <style id="codex-exp1-10-ui-polish">
   #spectrum{
@@ -1784,7 +1801,7 @@
     :root[data-theme="dark"]{color-scheme:dark}
     .theme-app-contents{display:contents}
     @property --codex-mode-ring-angle{syntax:"<angle>";inherits:false;initial-value:0deg}
-    body #app #stage :is(#modeTag,#modeChip){
+    body #app #stage#stage :is(#modeTag,#modeChip){
       position:relative!important;isolation:isolate!important;min-width:158px!important;width:auto!important;max-width:none!important;
       box-sizing:border-box!important;border:2px solid transparent!important;border-radius:999px!important;padding:4px 12px!important;
       font-weight:900!important;color:#fff!important;white-space:nowrap!important;text-align:center!important;overflow:hidden!important;text-overflow:clip!important;
@@ -1793,8 +1810,8 @@
       box-shadow:0 0 13px rgba(75,216,255,.20)!important;
       animation:codexModeRingTurn 8s linear infinite!important;
     }
-    body #app #stage :is(#modeTag,#modeChip)::before,
-    body #app #stage :is(#modeTag,#modeChip)::after{content:none!important;display:none!important}
+    body #app #stage#stage :is(#modeTag,#modeChip)::before,
+    body #app #stage#stage :is(#modeTag,#modeChip)::after{content:none!important;display:none!important}
     @keyframes codexModeRingTurn{to{--codex-mode-ring-angle:1turn}}
     :root[data-theme="light"]{
       color-scheme:light;
@@ -2108,9 +2125,19 @@
     @media(prefers-reduced-motion:reduce){
       .theme-toggle,
       body,.task-card,.toolbar,.explanation,#controlDock,#dataDock{transition:none!important}
-      body #app #stage :is(#modeTag,#modeChip){animation:none!important;--codex-mode-ring-angle:0deg}
+      body #app #stage#stage :is(#modeTag,#modeChip){animation:none!important;--codex-mode-ring-angle:0deg}
     }
   </style>
+<style id="codex-mobile-panel-chevron-v3">
+@media (max-width:720px){
+  #stage .mobile-tab{display:flex!important;align-items:center!important;justify-content:center!important;gap:9px!important}
+  #stage .mobile-tab::after{content:""!important;width:7px!important;height:7px!important;flex:0 0 auto!important;border-right:2px solid currentColor!important;border-bottom:2px solid currentColor!important;transform:translateY(2px) rotate(225deg)!important;transition:transform .18s ease!important}
+  #stage .mobile-tab:is(.active,[aria-expanded="true"])::after{transform:translateY(-2px) rotate(45deg)!important}
+  body #app #stage#stage :is(#controlDock,#dataDock,#controlDrawer,#dataDrawer) .sheet-close{display:none!important}
+  body #app #stage#stage :is(#controlDock,#dataDock,#controlDrawer,#dataDrawer) :is(#controlBody,#panelBody,#dataBody,#resultsBody,.panelBody,.resultsBody,.dockBody,.dock-body,.drawer-body){grid-template-columns:minmax(0,1fr)!important}
+  body #app #stage#stage :is(#controlDrawer,#dataDrawer).mobile-open .drawer-body{padding-top:10px!important}
+}
+</style>
 </head>
 <body>
 <div id="app">
@@ -4144,7 +4171,7 @@ init();
       btn.id = id;
       btn.type = 'button';
       btn.className = 'sheet-close';
-      btn.textContent = '⌄';
+      btn.innerHTML = '<svg class="sheet-close-icon" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg>';
       btn.setAttribute('aria-label', label);
       btn.title = '收起';
       body.insertBefore(btn, body.firstChild);
