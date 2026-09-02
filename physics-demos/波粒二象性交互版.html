@@ -166,8 +166,720 @@ canvas,svg,img{max-width:100%}
 /* CODEX_STANDARD_OPTIMIZATION_END */
 
 </style>
+<script id="codexDemoRuntimePreludeV2">(() => {
+  if (window.__codexDemoClock) return;
+
+  const native = {
+    raf: window.requestAnimationFrame.bind(window),
+    caf: window.cancelAnimationFrame.bind(window),
+    setTimeout: window.setTimeout.bind(window),
+    clearTimeout: window.clearTimeout.bind(window),
+    now: () => performance.now()
+  };
+  const timers = new Map();
+  const frames = new Map();
+  let sequence = 1000000;
+  let paused = false;
+  let pausedAt = 0;
+  let pausedDuration = 0;
+
+  const invoke = (handler, args) => {
+    if (typeof handler === "function") return handler(...args);
+    return (0, eval)(String(handler));
+  };
+
+  const scheduleTimer = (entry) => {
+    entry.startedAt = native.now();
+    entry.nativeId = native.setTimeout(() => {
+      if (!timers.has(entry.id)) return;
+      if (entry.kind === "timeout") timers.delete(entry.id);
+      invoke(entry.handler, entry.args);
+      if (entry.kind === "interval" && timers.has(entry.id)) {
+        entry.remaining = entry.delay;
+        scheduleTimer(entry);
+      }
+    }, Math.max(0, entry.remaining));
+  };
+
+  const createTimer = (kind, handler, delay, args) => {
+    const id = sequence++;
+    const value = Number.isFinite(Number(delay)) ? Math.max(0, Number(delay)) : 0;
+    const entry = { id, kind, handler, args, delay: value, remaining: value, startedAt: native.now(), nativeId: 0 };
+    timers.set(id, entry);
+    if (!paused) scheduleTimer(entry);
+    return id;
+  };
+
+  window.setTimeout = (handler, delay, ...args) => createTimer("timeout", handler, delay, args);
+  window.setInterval = (handler, delay, ...args) => createTimer("interval", handler, delay, args);
+  window.clearTimeout = (id) => {
+    const entry = timers.get(id);
+    if (!entry) return native.clearTimeout(id);
+    native.clearTimeout(entry.nativeId);
+    timers.delete(id);
+  };
+  window.clearInterval = window.clearTimeout;
+
+  window.requestAnimationFrame = (callback) => {
+    const id = sequence++;
+    const tick = (timestamp) => {
+      if (!frames.has(id)) return;
+      if (paused) {
+        frames.get(id).nativeId = native.raf(tick);
+        return;
+      }
+      frames.delete(id);
+      callback(timestamp - pausedDuration);
+    };
+    const entry = { id, nativeId: native.raf(tick) };
+    frames.set(id, entry);
+    return id;
+  };
+  window.cancelAnimationFrame = (id) => {
+    const entry = frames.get(id);
+    if (!entry) return native.caf(id);
+    native.caf(entry.nativeId);
+    frames.delete(id);
+  };
+
+  window.__codexDemoClock = {
+    get paused() { return paused; },
+    pause() {
+      if (paused) return;
+      paused = true;
+      pausedAt = native.now();
+      for (const entry of timers.values()) {
+        native.clearTimeout(entry.nativeId);
+        entry.remaining = Math.max(0, entry.remaining - (pausedAt - entry.startedAt));
+      }
+      document.documentElement.classList.add("codex-demo-paused");
+    },
+    resume() {
+      if (!paused) return;
+      const now = native.now();
+      pausedDuration += now - pausedAt;
+      paused = false;
+      for (const entry of timers.values()) scheduleTimer(entry);
+      document.documentElement.classList.remove("codex-demo-paused");
+    },
+    nativeSetTimeout: native.setTimeout,
+    nativeClearTimeout: native.clearTimeout
+  };
+})();
+</script>
+<style id="codexDemoShellStylesV2">
+:root {
+  color-scheme: dark;
+  --demo-shell-max: 980px;
+  --demo-panel-bg: rgba(15, 17, 22, .88);
+  --demo-panel-line: rgba(255, 255, 255, .14);
+  --demo-card-bg: rgba(255, 255, 255, .075);
+  --demo-text: #f4f7fb;
+  --demo-muted: #aeb8c7;
+  --demo-accent: #43e39f;
+  --demo-warn: #ffbd55;
+}
+
+html { min-width: 0; background: #07090d; }
+body {
+  min-width: 0 !important;
+  min-height: 100svh !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 12px 8px 18px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+  background:
+    radial-gradient(circle at 18% -10%, rgba(42, 82, 110, .18), transparent 36%),
+    linear-gradient(180deg, #101318 0%, #080a0e 48%, #050609 100%) !important;
+  color: var(--demo-text) !important;
+}
+
+#app {
+  width: min(var(--demo-shell-max), 100%);
+  min-width: 0;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+#app > :not(script):not(style) { max-width: 100%; box-sizing: border-box; }
+#app #spectrum {
+  width: 100% !important;
+  max-width: none !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  margin: 0 0 2px !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  flex: 0 0 auto !important;
+}
+
+#app .task-card,
+#app .taskCard,
+#app .xn-stepcard {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 11px 14px !important;
+  border: 1px solid var(--demo-panel-line) !important;
+  border-radius: 12px !important;
+  background: var(--demo-card-bg) !important;
+  color: var(--demo-text) !important;
+  box-sizing: border-box !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+#app .task-card[data-mode="free"],
+#app .task-card.free-mode,
+#app .task-card.free,
+#app .xn-stepcard.free {
+  opacity: .46 !important;
+  filter: grayscale(.48) !important;
+}
+
+#app .task-step { font-size: 13px !important; line-height: 1.2 !important; }
+#app .task-text { min-width: 0 !important; font-size: 14px !important; line-height: 1.38 !important; }
+#app .task-hint { margin-top: 3px !important; font-size: 12px !important; line-height: 1.35 !important; }
+#app .progress-dots { gap: 6px !important; }
+#app .progress-dots .dot { width: 10px !important; height: 10px !important; }
+
+#app .codex-runtime-stage {
+  position: relative !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: 520px !important;
+  min-height: 520px;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(103, 179, 222, .18) !important;
+  border-radius: 13px !important;
+  background: #04070b !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .025) !important;
+  box-sizing: border-box !important;
+  isolation: isolate;
+}
+
+#app > .page:has(#stage),
+#app > .stage-wrap:has(#stage) {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#app > #xn-spectrum,
+#app > #xn-task { display: none !important; }
+
+#app .codex-stage-content {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#app .codex-stage-content > * { max-width: 100%; box-sizing: border-box; }
+#app .codex-runtime-stage > canvas,
+#app .codex-stage-content > canvas,
+#app .codex-stage-content > .canvas,
+#app .codex-stage-content > [id*="canvas" i] {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+}
+
+.codex-hud {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 58;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: calc(100% - 188px);
+  pointer-events: none;
+}
+
+.codex-hud .tag {
+  flex: 0 0 auto;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 999px;
+  background: rgba(7, 10, 15, .83);
+  color: #f6f8fb;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+  box-sizing: border-box;
+  backdrop-filter: blur(8px);
+}
+
+.codex-hud #modeTag {
+  border: 2px solid transparent;
+  background:
+    linear-gradient(rgba(7, 10, 15, .94), rgba(7, 10, 15, .94)) padding-box,
+    linear-gradient(90deg, #35ff73, #4bd8ff, #6c5cff, #ff4fc3, #ffd166, #35ff73) border-box;
+  background-size: 100% 100%, 220% 100%;
+  animation: codexDemoModeFlow 5s linear infinite;
+}
+
+@keyframes codexDemoModeFlow {
+  to { background-position: 0 0, -220% 0; }
+}
+
+.codex-drawer {
+  --drawer-top: 12px;
+  position: absolute;
+  top: var(--drawer-top);
+  right: 12px;
+  z-index: 56;
+  width: min(316px, calc(100% - 24px));
+  color: var(--demo-text);
+  border: 1px solid var(--demo-panel-line);
+  border-radius: 10px;
+  background: var(--demo-panel-bg);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .34);
+  backdrop-filter: blur(12px);
+  box-sizing: border-box;
+  transition: width .18s ease, box-shadow .18s ease;
+}
+
+.codex-drawer[data-kind="data"] { --drawer-top: 56px; }
+.codex-drawer.is-front { z-index: 60; }
+.codex-drawer.is-dragging { transition: none; box-shadow: 0 18px 38px rgba(0, 0, 0, .48); }
+.codex-drawer.collapsed { width: 164px; }
+
+.codex-drawer-header {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 6px 5px 12px;
+  border-radius: 9px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  box-sizing: border-box;
+}
+
+.codex-drawer-header:active { cursor: grabbing; }
+.codex-drawer-title {
+  min-width: 0;
+  overflow: hidden;
+  color: #eef3f8;
+  font-size: 13px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codex-panel-toggle {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #dce5ef;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .07);
+  cursor: pointer;
+}
+
+.codex-panel-toggle svg { width: 13px; height: 9px; overflow: visible; }
+.codex-panel-toggle path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 6px 4px;
+  transition: transform .18s ease;
+}
+.codex-drawer:not(.collapsed) .codex-panel-toggle path { transform: rotate(180deg); }
+
+.codex-drawer-body {
+  max-height: min(390px, calc(100% - 48px));
+  padding: 8px 10px 11px;
+  overflow: auto;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  scrollbar-width: thin;
+  box-sizing: border-box;
+}
+.codex-drawer.collapsed .codex-drawer-body { display: none; }
+
+.codex-control-note,
+.codex-empty-data {
+  padding: 10px 11px;
+  border: 1px dashed rgba(255, 255, 255, .14);
+  border-radius: 8px;
+  color: var(--demo-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.codex-drawer-body .codex-managed-control {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 0 8px !important;
+  padding: 8px !important;
+  transform: none !important;
+  overflow: visible !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border-color: rgba(255, 255, 255, .10) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, .04) !important;
+  box-shadow: none !important;
+  box-sizing: border-box !important;
+}
+
+.codex-drawer-body .codex-managed-control > * { max-width: 100%; box-sizing: border-box; }
+.codex-drawer-body .codex-managed-control .lab {
+  width: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+.codex-drawer-body #controls .control-row {
+  width: 100% !important;
+  height: auto !important;
+}
+.codex-drawer-body #controls .speed-scale { display: none !important; }
+.codex-drawer-body #controls input.vertical {
+  width: 100% !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  writing-mode: horizontal-tb !important;
+  -webkit-appearance: auto !important;
+  appearance: auto !important;
+}
+.codex-drawer-body .codex-managed-control :is(.hint-arrow, #hintArrow, .arrow-hint) {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  margin: 0 !important;
+  transform: none !important;
+  white-space: normal !important;
+}
+.codex-drawer-body button,
+.codex-drawer-body select,
+.codex-drawer-body input:not([type="range"]),
+.codex-global-toolbar button {
+  min-height: 36px !important;
+}
+.codex-drawer-body input[type="range"] { min-width: 36px; min-height: 36px; touch-action: pan-y; }
+#app .codex-runtime-stage button:not(.mobile-tab):not(.codex-panel-toggle),
+#app .codex-runtime-stage select,
+#app .codex-runtime-stage input[type="range"] {
+  min-width: 36px !important;
+  min-height: 36px !important;
+  box-sizing: border-box !important;
+}
+
+.codex-live-title,
+.codex-record-title {
+  margin: 2px 0 7px;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.codex-record-title { margin-top: 12px; }
+
+.codex-data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.codex-data-card {
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .045);
+}
+.codex-data-card b,
+.codex-data-card span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.codex-data-card b { color: #9facbc; font-size: 10px; font-weight: 750; white-space: nowrap; }
+.codex-data-card span { margin-top: 3px; color: #f6f8fb; font-size: 12px; font-weight: 800; line-height: 1.3; }
+
+.codex-record-list { display: grid; gap: 6px; }
+.codex-record-item {
+  padding: 7px 9px;
+  border-left: 3px solid #4bd8ff;
+  border-radius: 7px;
+  background: rgba(75, 216, 255, .075);
+  color: #dce6f1;
+  font-size: 11px;
+  line-height: 1.42;
+}
+.codex-record-item time { color: #8390a0; margin-right: 6px; }
+
+.codex-badge {
+  display: none;
+  min-width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ff4d5f;
+  color: white;
+  font-size: 10px;
+  font-weight: 900;
+  box-sizing: border-box;
+  animation: codexBadgePulse 1s ease-in-out infinite;
+}
+.codex-badge.show { display: inline-flex; }
+@keyframes codexBadgePulse { 50% { box-shadow: 0 0 0 5px rgba(255, 77, 95, .12); } }
+
+.mobile-tabs {
+  display: none;
+}
+
+.codex-global-toolbar.toolbar {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 7px !important;
+  border: 1px solid rgba(255, 255, 255, .10) !important;
+  border-radius: 11px !important;
+  background: rgba(255, 255, 255, .045) !important;
+  box-sizing: border-box !important;
+}
+
+.codex-global-toolbar button {
+  min-width: 0 !important;
+  padding: 9px 8px !important;
+  border: 1px solid rgba(255, 255, 255, .12) !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, .08) !important;
+  color: #eef3f8 !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+.codex-global-toolbar button:hover { background: rgba(255, 255, 255, .13) !important; }
+.codex-global-toolbar button:disabled { opacity: .46 !important; cursor: not-allowed; }
+.codex-global-toolbar button[aria-pressed="true"] { border-color: rgba(67, 227, 159, .55) !important; color: #baf7dc !important; }
+.codex-legacy-toolbar { display: none !important; }
+
+#app .explanation,
+#app .codex-generated-explanation {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 13px 15px !important;
+  border: 1px solid rgba(255, 255, 255, .10) !important;
+  border-radius: 11px !important;
+  background: rgba(255, 255, 255, .045) !important;
+  color: #cfd8e4 !important;
+  font-size: 13px !important;
+  line-height: 1.62 !important;
+  box-sizing: border-box !important;
+}
+#app .explanation h2,
+#app .explanation h3,
+#app .codex-generated-explanation h2 {
+  margin: 0 0 6px !important;
+  color: #f3f6fa !important;
+  font-size: 15px !important;
+}
+#app .explanation p,
+#app .codex-generated-explanation p { margin: 4px 0 !important; }
+
+.codex-demo-paused #app .codex-runtime-stage * { animation-play-state: paused !important; }
+.codex-auto-cursor {
+  position: absolute;
+  z-index: 80;
+  width: 18px;
+  height: 24px;
+  left: 50%;
+  top: 50%;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-3px, -2px);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .7));
+  transition: left .48s ease, top .48s ease, opacity .18s ease;
+}
+.codex-auto-cursor::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(0 0, 0 90%, 27% 68%, 43% 100%, 58% 92%, 42% 61%, 76% 61%);
+  background: white;
+}
+.codex-auto-cursor.show { opacity: .96; }
+.codex-auto-cursor.tap::after {
+  content: "";
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  left: -7px;
+  top: -7px;
+  border: 2px solid #4bd8ff;
+  border-radius: 50%;
+  animation: codexTap .38s ease-out both;
+}
+@keyframes codexTap { to { transform: scale(1.8); opacity: 0; } }
+
+@media (max-width: 720px) {
+  body { padding: 8px 8px 12px !important; }
+  #app { gap: 8px; }
+  #app #spectrum { height: 20px !important; min-height: 20px !important; }
+  #app .task-card,
+  #app .taskCard,
+  #app .xn-stepcard {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    align-items: start !important;
+    gap: 5px 8px !important;
+    padding: 8px 11px !important;
+  }
+  #app .task-step { display: none !important; }
+  #app .task-text { grid-column: 1; font-size: 13px !important; line-height: 1.3 !important; }
+  #app .task-hint { margin-top: 2px !important; font-size: 11px !important; line-height: 1.25 !important; }
+  #app .progress-dots { grid-column: 2; grid-row: 1; align-self: center; }
+  #app .progress-dots .dot { width: 9px !important; height: 9px !important; }
+
+  #app .codex-runtime-stage {
+    height: 510px !important;
+    min-height: 510px;
+    padding-bottom: 51px !important;
+    border-radius: 12px !important;
+  }
+  .codex-hud { top: 8px; left: 8px; max-width: calc(100% - 16px); gap: 5px; }
+  .codex-hud .tag { min-height: 26px; padding: 3px 8px; font-size: 10px; }
+
+  .mobile-tabs {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: 5px;
+    z-index: 72;
+    height: 45px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    padding: 4px;
+    border: 1px solid rgba(112, 184, 226, .26);
+    border-radius: 10px;
+    background: rgba(5, 9, 14, .91);
+    box-sizing: border-box;
+    backdrop-filter: blur(12px);
+  }
+  .mobile-tabs.attached { border-radius: 0 0 10px 10px; }
+  .mobile-tab {
+    position: relative;
+    min-width: 0;
+    min-height: 36px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px 28px 4px 9px !important;
+    border: 0 !important;
+    border-radius: 7px !important;
+    background: rgba(255, 255, 255, .055) !important;
+    color: #dfe7f0 !important;
+    font-size: 11px !important;
+    font-weight: 850 !important;
+    cursor: pointer;
+  }
+  .mobile-tab.active { background: rgba(255, 255, 255, .10) !important; color: #fff !important; }
+  .mobile-tab::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-65%) rotate(45deg);
+    transition: transform .18s ease;
+  }
+  .mobile-tab.active::after,
+  .mobile-tab[aria-expanded="true"]::after {
+    transform: translateY(-20%) rotate(225deg);
+  }
+  .mobile-tab .codex-badge { position: absolute; right: 24px; top: -5px; }
+
+  .codex-drawer {
+    --drawer-top: auto !important;
+    position: absolute !important;
+    left: 6px !important;
+    right: 6px !important;
+    top: auto !important;
+    bottom: 49px !important;
+    width: auto !important;
+    max-width: none !important;
+    height: 43% !important;
+    max-height: none !important;
+    border-radius: 10px 10px 0 0 !important;
+    box-shadow: 0 -12px 34px rgba(0, 0, 0, .46) !important;
+  }
+  .codex-drawer.collapsed { display: none !important; }
+  .codex-drawer-header { display: none !important; }
+  .codex-drawer-body { height: 100%; max-height: none; padding: 9px 10px 10px; overflow: auto; border-top: 0; }
+  .codex-data-grid { grid-template-columns: 1fr 1fr; }
+  .codex-drawer-body button,
+  .codex-drawer-body select,
+  .codex-drawer-body input:not([type="range"]) { min-height: 40px !important; }
+
+  .codex-global-toolbar.toolbar { gap: 7px !important; padding: 6px !important; }
+  .codex-global-toolbar button { min-height: 40px !important; padding: 7px 5px !important; font-size: 11px !important; }
+  #app .explanation,
+  #app .codex-generated-explanation { padding: 11px 12px !important; font-size: 12px !important; }
+}
+
+@media (max-width: 420px) {
+  .codex-hud #statusTag { max-width: 112px; overflow: hidden; text-overflow: ellipsis; }
+  .codex-data-grid { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #app *, #app *::before, #app *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+</style>
 </head>
 <body>
+<main id="app">
   <div id="spectrum"></div>
 
   <div class="task-card" id="taskCard">
@@ -180,7 +892,7 @@ canvas,svg,img{max-width:100%}
   </div>
 
   <div id="stageWrap">
-    <div id="stage">
+    <div id="stage" class="lab-area">
       <canvas id="sim"></canvas>
 
       <div class="legend"><span class="tag det off" id="detTag">探测器 OFF</span><span class="tag" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25)">双缝</span><span class="tag" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.25)">屏幕</span></div>
@@ -652,5 +1364,583 @@ init();
 /* CODEX_STANDARD_OPTIMIZATION_END */
 </script>
 
+<!-- CODEX_DEMO_SHELL_V2_START -->
+<div id="codexDemoBridge">
+
+  <div class="codex-hud" aria-label="实验状态">
+    <span class="tag" id="modeTag">模式：闯关模式</span>
+    <span class="tag" id="statusTag" aria-live="polite">状态：待操作</span>
+  </div>
+  <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+    <button class="mobile-tab" id="experimentTab" type="button" aria-controls="codexControlDock" aria-expanded="false">实验面板</button>
+    <button class="mobile-tab" id="dataTab" type="button" aria-controls="codexDataDock" aria-expanded="false">数据面板<span class="codex-badge" id="codexDataTabBadge" aria-hidden="true">0</span></button>
+  </div>
+  <section class="codex-drawer collapsed" id="codexControlDock" data-kind="control" aria-label="实验面板">
+    <div class="codex-drawer-header" data-drag-handle>
+      <span class="codex-drawer-title">实验面板</span>
+      <button class="codex-panel-toggle" type="button" aria-expanded="false" aria-label="展开实验面板"><svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg></button>
+    </div>
+    <div class="codex-drawer-body" id="codexControlBody"></div>
+  </section>
+  <section class="codex-drawer collapsed" id="codexDataDock" data-kind="data" aria-label="数据面板">
+    <div class="codex-drawer-header" data-drag-handle>
+      <span class="codex-drawer-title">数据面板 <span class="codex-badge" id="codexDataNotice" aria-hidden="true">0</span></span>
+      <button class="codex-panel-toggle" type="button" aria-expanded="false" aria-label="展开数据面板"><svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg></button>
+    </div>
+    <div class="codex-drawer-body">
+      <div class="codex-live-title">当前观测</div>
+      <div class="codex-data-grid" id="codexLiveData"></div>
+      <div class="codex-record-title">操作记录</div>
+      <div class="codex-record-list" id="codexRecordList"></div>
+      <div class="codex-empty-data" id="codexDataEmpty">操作实验后，这里会记录关键观测。</div>
+    </div>
+  </section>
+  <div class="toolbar codex-global-toolbar" role="group" aria-label="实验模式控制">
+    <button id="resetBtn" type="button">重置关卡</button>
+    <button id="autoDemoBtn" type="button">演示模式</button>
+    <button id="freeBtn" type="button" aria-pressed="false">自由模式</button>
+  </div>
+  <section class="explanation codex-generated-explanation" hidden>
+    <h2>实验名：物理科普演示</h2>
+    <p>先按关卡提示操作并观察场景中的关键变化，再比较参数变化与现象之间的关系。</p>
+    <p>进入自由模式后可以自主尝试；数据面板会保留操作过程中的主要观测。</p>
+  </section>
+</div>
+<script id="codexDemoShellRuntimeV2">(() => {
+  if (window.__codexDemoShellV2) return;
+  window.__codexDemoShellV2 = true;
+
+  const bridge = document.getElementById("codexDemoBridge");
+  const app = document.getElementById("app");
+  const clock = window.__codexDemoClock;
+  if (!bridge || !app) return;
+
+  const $ = (selector, root = document) => root.querySelector(selector);
+  const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+  const nativeDelay = (ms) => new Promise((resolve) => clock.nativeSetTimeout(resolve, ms));
+  const shellState = {
+    freeMode: false,
+    autoPlaying: false,
+    autoPaused: false,
+    autoToken: 0,
+    unseen: 0,
+    records: [],
+    drawerZ: 60
+  };
+
+  const taskCard = $(".task-card,.taskCard,.xn-stepcard", app);
+  const contractStage = $("#stage.codex-contract-stage", app);
+  const existingStage = $("#stage:not(.codex-contract-stage)", app);
+  const stage = existingStage || contractStage;
+  const hud = $(".codex-hud", bridge);
+  const mobileTabs = $(".mobile-tabs", bridge);
+  const controlDock = $("#codexControlDock", bridge);
+  const dataDock = $("#codexDataDock", bridge);
+  const controlBody = $("#codexControlBody", bridge);
+  const liveGrid = $("#codexLiveData", bridge);
+  const recordList = $("#codexRecordList", bridge);
+  const dataEmpty = $("#codexDataEmpty", bridge);
+  const modeTag = $("#modeTag", bridge);
+  const statusTag = $("#statusTag", bridge);
+  const experimentTab = $("#experimentTab", bridge);
+  const dataTab = $("#dataTab", bridge);
+  const dataNotice = $("#codexDataNotice", bridge);
+  const dataTabBadge = $("#codexDataTabBadge", bridge);
+  const standardToolbar = $(".codex-global-toolbar", bridge);
+  const resetButton = $("#resetBtn", standardToolbar);
+  const autoButton = $("#autoDemoBtn", standardToolbar);
+  const freeButton = $("#freeBtn", standardToolbar);
+
+  const visualRoots = [...document.body.children].filter((node) => node !== app && node !== bridge && !["SCRIPT", "STYLE"].includes(node.tagName));
+  visualRoots.forEach((node) => app.insertBefore(node, bridge));
+
+  const isBridgeNode = (node) => Boolean(node && (
+    node === bridge ||
+    node.closest?.('.codex-hud,.mobile-tabs,.codex-drawer,.codex-global-toolbar,.codex-generated-explanation')
+  ));
+  const allButtons = $$('button', document).filter((button) => !isBridgeNode(button));
+  const scoreButton = (button, kind) => {
+    const text = (button.textContent || "").replace(/\s+/g, "").trim();
+    const id = (button.id || "").toLowerCase();
+    const className = String(button.className || "").toLowerCase();
+    let score = 0;
+    if (kind === "reset") {
+      if (id === "resetbtn") score += 100;
+      if (/stepreset|resetall|xnreset/.test(id)) score += 75;
+      if (/步骤重置|重置关卡/.test(text)) score += 65;
+      else if (/全部重置|重置|复位|重新来/.test(text)) score += 28;
+    }
+    if (kind === "auto") {
+      if (id === "autodemobtn") score += 100;
+      if (/autodemo|xnauto/.test(id)) score += 75;
+      if (/自动演示|演示模式/.test(text)) score += 65;
+    }
+    if (kind === "free") {
+      if (id === "freebtn") score += 100;
+      if (/xnfree|freemode/.test(id + className)) score += 75;
+      if (/自由模式/.test(text)) score += 65;
+    }
+    if (button.closest('.toolbar,.toolbar-bottom,.xn-toolbar')) score += 10;
+    return score;
+  };
+  const findLegacyButton = (kind) => allButtons
+    .map((button) => ({ button, score: scoreButton(button, kind) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)[0]?.button || null;
+
+  const legacy = {
+    reset: findLegacyButton("reset"),
+    auto: findLegacyButton("auto"),
+    free: findLegacyButton("free")
+  };
+
+  Object.entries(legacy).forEach(([kind, button]) => {
+    if (!button) return;
+    if (["resetBtn", "autoDemoBtn", "freeBtn"].includes(button.id)) button.id = `codexLegacy${kind[0].toUpperCase()}${kind.slice(1)}Btn`;
+    const toolbar = button.closest('.toolbar,.toolbar-bottom,.xn-toolbar');
+    if (toolbar && toolbar !== standardToolbar) toolbar.classList.add('codex-legacy-toolbar');
+  });
+
+  const findStageCandidate = () => {
+    const selectors = [
+      '#stageWrap', '.stageWrap', '.stage-wrap', '#canvasWrap', '.canvasWrap', '.canvas-wrap',
+      '.sceneWrap', '.scene-wrap', '#scene-container', '.scene-container', '.simulation-area', '.simulation-container',
+      '.simulation', '.simFrame', '.river', '#canvas', 'canvas'
+    ];
+    const candidates = selectors.flatMap((selector) => $$(selector, document));
+    return candidates.find((candidate) => {
+      if (isBridgeNode(candidate) || candidate === stage || candidate.closest('.task-card,.toolbar,.explanation')) return false;
+      if (candidate.tagName === 'CANVAS') return true;
+      const rect = candidate.getBoundingClientRect();
+      return rect.width > 220 && rect.height > 180;
+    }) || null;
+  };
+
+  if (!stage) return;
+  stage.classList.add("lab-area", "codex-runtime-stage");
+  let stageContent = $(".codex-stage-content", stage);
+  if (!stageContent && contractStage) {
+    stageContent = document.createElement("div");
+    stageContent.className = "codex-stage-content";
+    stage.prepend(stageContent);
+  }
+  if (contractStage && stageContent) {
+    const candidate = findStageCandidate();
+    if (candidate) {
+      const sourceParent = candidate.parentElement;
+      if (candidate.tagName === "CANVAS") {
+        stageContent.append(candidate);
+        visualRoots
+          .filter((node) => node !== candidate && !isBridgeNode(node) && (node.tagName === "CANVAS" || node.tagName === "DIV" || node.classList?.contains("label")))
+          .forEach((node) => stageContent.append(node));
+        const infoOverlay = $("#info", app);
+        if (infoOverlay && !infoOverlay.closest(".task-card,.explanation")) stageContent.append(infoOverlay);
+      } else {
+        stageContent.append(candidate);
+      }
+      if (sourceParent && sourceParent !== app && sourceParent !== stageContent && !sourceParent.children.length && !sourceParent.textContent.trim()) {
+        sourceParent.hidden = true;
+      }
+    }
+  }
+
+  stage.append(hud, controlDock, dataDock, mobileTabs);
+  stage.insertAdjacentElement("afterend", standardToolbar);
+  const generatedExplanation = $(".codex-generated-explanation", bridge);
+  const existingExplanation = $(".explanation:not(.codex-generated-explanation),.explain", app);
+  if (existingExplanation) {
+    generatedExplanation.hidden = true;
+    existingExplanation.classList.add("explanation");
+    const rawTitle = (document.title || "物理科普演示").split(/[｜|—-]/)[0].trim();
+    const heading = $("h2,h3", existingExplanation);
+    if (heading && !heading.textContent.trim().startsWith("实验名：")) heading.textContent = `实验名：${rawTitle}`;
+    standardToolbar.insertAdjacentElement("afterend", existingExplanation);
+  }
+  else {
+    generatedExplanation.hidden = false;
+    const rawTitle = (document.title || "物理科普演示").split(/[｜|—-]/)[0].trim();
+    $("h2", generatedExplanation).textContent = `实验名：${rawTitle}`;
+    standardToolbar.insertAdjacentElement("afterend", generatedExplanation);
+  }
+
+  const controlSelectors = [
+    '.control-panel', '.controls-panel', '.controlPanel', '.control-deck', '.ctrl-panel', '.slider-panel',
+    '.controls-overlay', '.canvas-controls', '.inline-controls', '.in-controls', '.in-canvas-controls', '.in-canvas', '.incanvas', '.inPanel', '.panelLeft',
+    '.free-panel', '.legacy-controls', '.sensebar', '.ctrlbar', '.choice-bar', '#controls', '.panel', '.controls'
+  ];
+  const controlCandidates = [...new Set(controlSelectors.flatMap((selector) => $$(selector, app)))].filter((node) => {
+    if (isBridgeNode(node) || node.closest('.task-card,.toolbar,.explanation,.modal,.modal-mask')) return false;
+    if (!node.querySelector('button,input,select')) return false;
+    if (node.querySelector('canvas')) return false;
+    return !controlCandidatesContainsStage(node);
+  });
+
+  function controlCandidatesContainsStage(node) {
+    return node === stage || node.contains(stage);
+  }
+
+  const managedControls = controlCandidates.filter((node) => !controlCandidates.some((other) => other !== node && other.contains(node)));
+  managedControls.slice(0, 5).forEach((node) => {
+    const companion = node.nextElementSibling?.matches('.tip,.choice-tip') ? node.nextElementSibling : null;
+    node.classList.add("codex-managed-control");
+    controlBody.append(node);
+    if (companion) {
+      companion.classList.add("codex-control-note");
+      controlBody.append(companion);
+    }
+  });
+  if (!managedControls.length) {
+    const directNote = document.createElement("div");
+    directNote.className = "codex-control-note";
+    directNote.textContent = "本演示以场景直接操作为主，请在画面中拖动、点击或观察变化。";
+    controlBody.append(directNote);
+  }
+
+  const setStatus = (text) => { statusTag.textContent = `状态：${text}`; };
+  const syncMode = () => {
+    if (shellState.autoPlaying) modeTag.textContent = `模式：演示模式${shellState.autoPaused ? " · 已暂停" : " · 自动运行"}`;
+    else if (shellState.freeMode) modeTag.textContent = "模式：自由模式 · 自主探索";
+    else modeTag.textContent = "模式：闯关模式";
+    if (!shellState.autoPlaying && !shellState.freeMode) setStatus("待操作");
+    resetButton.textContent = shellState.autoPlaying ? (shellState.autoPaused ? "继续演示" : "暂停演示") : (shellState.freeMode ? "重置操作" : "重置关卡");
+    autoButton.textContent = shellState.autoPlaying ? "退出演示" : "演示模式";
+    autoButton.disabled = shellState.freeMode && !shellState.autoPlaying;
+    freeButton.disabled = shellState.autoPlaying;
+    freeButton.textContent = shellState.freeMode ? "退出自由模式" : "自由模式";
+    freeButton.setAttribute("aria-pressed", String(shellState.freeMode));
+    if (taskCard) {
+      taskCard.classList.toggle("free-mode", shellState.freeMode);
+      taskCard.dataset.mode = shellState.freeMode ? "free" : "challenge";
+      taskCard.setAttribute("aria-label", shellState.freeMode ? "关卡参考，自由模式不进行步骤判定" : "当前实验关卡");
+    }
+  };
+
+  const safeClick = (button) => {
+    if (!button) return false;
+    const disabled = button.disabled;
+    button.disabled = false;
+    button.click();
+    if (disabled) clock.nativeSetTimeout(() => { if (!shellState.autoPlaying) button.disabled = disabled; }, 0);
+    return true;
+  };
+
+  const updateBadges = () => {
+    const show = shellState.unseen > 0 && dataDock.classList.contains("collapsed");
+    [dataNotice, dataTabBadge].forEach((badge) => {
+      badge.textContent = shellState.unseen > 99 ? "99+" : String(shellState.unseen);
+      badge.classList.toggle("show", show);
+    });
+    dataTab.setAttribute("aria-label", show ? `数据面板，${shellState.unseen} 条未读记录` : "数据面板");
+  };
+
+  const setDrawerCollapsed = (drawer, collapsed) => {
+    const other = drawer === controlDock ? dataDock : controlDock;
+    if (matchMedia("(max-width: 720px)").matches && !collapsed) other.classList.add("collapsed");
+    drawer.classList.toggle("collapsed", collapsed);
+    const expanded = !collapsed;
+    const toggle = $(".codex-panel-toggle", drawer);
+    toggle?.setAttribute("aria-expanded", String(expanded));
+    toggle?.setAttribute("aria-label", expanded ? `收起${drawer.dataset.kind === "data" ? "数据" : "实验"}面板` : `展开${drawer.dataset.kind === "data" ? "数据" : "实验"}面板`);
+    experimentTab.classList.toggle("active", !controlDock.classList.contains("collapsed"));
+    dataTab.classList.toggle("active", !dataDock.classList.contains("collapsed"));
+    experimentTab.setAttribute("aria-expanded", String(!controlDock.classList.contains("collapsed")));
+    dataTab.setAttribute("aria-expanded", String(!dataDock.classList.contains("collapsed")));
+    mobileTabs.classList.toggle("attached", !controlDock.classList.contains("collapsed") || !dataDock.classList.contains("collapsed"));
+    if (drawer === dataDock && expanded) shellState.unseen = 0;
+    updateBadges();
+  };
+
+  $$(".codex-panel-toggle", bridge).forEach((button) => button.addEventListener("click", () => {
+    const drawer = button.closest(".codex-drawer");
+    setDrawerCollapsed(drawer, !drawer.classList.contains("collapsed"));
+  }));
+  experimentTab.addEventListener("click", () => setDrawerCollapsed(controlDock, !controlDock.classList.contains("collapsed")));
+  dataTab.addEventListener("click", () => setDrawerCollapsed(dataDock, !dataDock.classList.contains("collapsed")));
+
+  const bringToFront = (drawer) => {
+    shellState.drawerZ += 1;
+    [controlDock, dataDock].forEach((item) => item.classList.toggle("is-front", item === drawer));
+    drawer.style.zIndex = String(shellState.drawerZ);
+  };
+  [controlDock, dataDock].forEach((drawer) => {
+    const header = $(".codex-drawer-header", drawer);
+    drawer.addEventListener("pointerdown", () => bringToFront(drawer));
+    header.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("button") || matchMedia("(max-width: 720px)").matches) return;
+      const stageRect = stage.getBoundingClientRect();
+      const drawerRect = drawer.getBoundingClientRect();
+      const offsetX = event.clientX - drawerRect.left;
+      const offsetY = event.clientY - drawerRect.top;
+      bringToFront(drawer);
+      drawer.classList.add("is-dragging");
+      header.setPointerCapture(event.pointerId);
+      const move = (moveEvent) => {
+        const maxLeft = Math.max(0, stageRect.width - drawer.offsetWidth);
+        const maxTop = Math.max(0, stageRect.height - drawer.offsetHeight);
+        const left = Math.max(0, Math.min(maxLeft, moveEvent.clientX - stageRect.left - offsetX));
+        const top = Math.max(0, Math.min(maxTop, moveEvent.clientY - stageRect.top - offsetY));
+        drawer.style.left = `${left}px`;
+        drawer.style.top = `${top}px`;
+        drawer.style.right = "auto";
+      };
+      const end = (endEvent) => {
+        drawer.classList.remove("is-dragging");
+        header.releasePointerCapture?.(endEvent.pointerId);
+        header.removeEventListener("pointermove", move);
+        header.removeEventListener("pointerup", end);
+        header.removeEventListener("pointercancel", end);
+      };
+      header.addEventListener("pointermove", move);
+      header.addEventListener("pointerup", end);
+      header.addEventListener("pointercancel", end);
+    });
+  });
+
+  const labelFor = (node) => {
+    const explicit = node.getAttribute("aria-label") || node.getAttribute("data-label");
+    if (explicit) return explicit;
+    const linked = node.id && $(`label[for="${CSS.escape(node.id)}"]`);
+    if (linked) return linked.textContent.replace(/\s+/g, " ").trim();
+    const nearest = node.closest("label,.readout,.metric,.status-row,.info-row,.data-row");
+    if (nearest) {
+      const copy = nearest.cloneNode(true);
+      copy.querySelectorAll("span,strong,b,output").forEach((child) => child.remove());
+      const text = copy.textContent.replace(/\s+/g, " ").replace(/[:：]$/, "").trim();
+      if (text) return text.slice(0, 24);
+    }
+    return (node.id || "观测值").replace(/(?:Value|Readout|Display|Text)$/i, "").replace(/[-_]/g, " ").slice(0, 24);
+  };
+
+  const valueFor = (node) => {
+    if (node instanceof HTMLInputElement || node instanceof HTMLSelectElement) return node.value;
+    return (node.value ?? node.textContent ?? "").toString().replace(/\s+/g, " ").trim();
+  };
+
+  const collectObservations = () => {
+    const selector = [
+      'output', 'meter', '[id*="value" i]', '[id*="readout" i]', '[id*="display" i]',
+      '[id*="time" i]', '[id*="speed" i]', '[id*="pressure" i]', '[id*="temperature" i]',
+      '[id*="force" i]', '[id*="frequency" i]', '[id*="height" i]', '[id*="distance" i]', '[id*="energy" i]'
+    ].join(',');
+    const seen = new Set();
+    return $$(selector, app).filter((node) => {
+      if (isBridgeNode(node) || node.closest('.task-card,.toolbar,.modal,.modal-mask')) return false;
+      const value = valueFor(node);
+      if (!value || value.length > 80) return false;
+      const key = `${labelFor(node)}:${value}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 8).map((node) => ({ label: labelFor(node), value: valueFor(node) }));
+  };
+
+  const renderLiveData = () => {
+    const observations = collectObservations();
+    liveGrid.replaceChildren();
+    observations.forEach(({ label, value }) => {
+      const card = document.createElement("div");
+      card.className = "codex-data-card";
+      const title = document.createElement("b");
+      const content = document.createElement("span");
+      title.textContent = label;
+      content.textContent = value;
+      card.append(title, content);
+      liveGrid.append(card);
+    });
+    dataEmpty.hidden = observations.length > 0 || shellState.records.length > 0;
+  };
+
+  const renderRecords = () => {
+    recordList.replaceChildren();
+    shellState.records.slice(-12).reverse().forEach((record) => {
+      const item = document.createElement("div");
+      item.className = "codex-record-item";
+      const time = document.createElement("time");
+      time.textContent = record.time;
+      const text = document.createElement("span");
+      text.textContent = record.text;
+      item.append(time, text);
+      recordList.append(item);
+    });
+  };
+
+  const completionIsVisible = () => $$('.modal-mask,#doneMask,.done-mask,.completion-modal', app).some((node) => {
+    const style = getComputedStyle(node);
+    return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && node.getBoundingClientRect().width > 0;
+  });
+
+  let lastRecord = "";
+  const recordObservation = (action) => {
+    renderLiveData();
+    const values = collectObservations().slice(0, 3).map((entry) => `${entry.label} ${entry.value}`).join("；");
+    const text = values || action || "完成一次场景操作";
+    if (text === lastRecord) return;
+    lastRecord = text;
+    shellState.records.push({ time: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }), text });
+    renderRecords();
+    if (dataDock.classList.contains("collapsed")) shellState.unseen += 1;
+    updateBadges();
+  };
+
+  let liveRenderScheduled = false;
+  const observer = new MutationObserver((mutations) => {
+    if (mutations.every((mutation) => isBridgeNode(mutation.target)) || liveRenderScheduled) return;
+    liveRenderScheduled = true;
+    clock.nativeSetTimeout(() => {
+      liveRenderScheduled = false;
+      renderLiveData();
+      if (completionIsVisible()) {
+        if (shellState.autoPlaying) finishDemo("演示完成");
+        else if (!shellState.freeMode) setStatus("已完成");
+      }
+    }, 80);
+  });
+  observer.observe(app, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["value", "aria-valuenow"] });
+  app.addEventListener("change", (event) => {
+    if (!isBridgeNode(event.target)) clock.nativeSetTimeout(() => recordObservation("调整参数"), 120);
+  }, true);
+  app.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button || isBridgeNode(button) || button.closest('.modal,.modal-mask')) return;
+    const text = (button.textContent || "完成操作").replace(/\s+/g, " ").trim();
+    clock.nativeSetTimeout(() => recordObservation(text), 220);
+  }, true);
+
+  const cursor = document.createElement("div");
+  cursor.className = "codex-auto-cursor";
+  stage.append(cursor);
+  const moveCursorTo = async (element, token) => {
+    if (!element || token !== shellState.autoToken) return;
+    const stageRect = stage.getBoundingClientRect();
+    const rect = element.getBoundingClientRect();
+    cursor.style.left = `${rect.left - stageRect.left + rect.width / 2}px`;
+    cursor.style.top = `${rect.top - stageRect.top + rect.height / 2}px`;
+    cursor.classList.add("show");
+    await nativeDelay(520);
+    cursor.classList.remove("tap");
+    void cursor.offsetWidth;
+    cursor.classList.add("tap");
+  };
+
+  const genericDemo = async (token) => {
+    const sceneButtons = $$('button', stage).filter((button) => !isBridgeNode(button) && !button.disabled && button.offsetParent !== null && !button.closest('.modal,.modal-mask'));
+    const ranges = $$('input[type="range"]', stage).filter((input) => !isBridgeNode(input));
+    const sequence = [...ranges.slice(0, 2), ...sceneButtons.slice(0, 3)];
+    if (!sequence.length) {
+      setStatus("请观察场景变化");
+      await nativeDelay(2600);
+      return;
+    }
+    for (const control of sequence) {
+      if (token !== shellState.autoToken || !shellState.autoPlaying) return;
+      await moveCursorTo(control, token);
+      if (control instanceof HTMLInputElement) {
+        const min = Number(control.min || 0);
+        const max = Number(control.max || 100);
+        control.value = String(min + (max - min) * .72);
+        control.dispatchEvent(new Event("input", { bubbles: true }));
+        control.dispatchEvent(new Event("change", { bubbles: true }));
+      } else safeClick(control);
+      await nativeDelay(900);
+    }
+  };
+
+  const finishDemo = (message = "演示完成") => {
+    if (!shellState.autoPlaying) return;
+    shellState.autoPlaying = false;
+    shellState.autoPaused = false;
+    cursor.classList.remove("show", "tap");
+    if (clock.paused) clock.resume();
+    syncMode();
+    setStatus(message);
+    recordObservation(message);
+  };
+
+  const startDemo = async () => {
+    if (shellState.autoPlaying || shellState.freeMode) return;
+    shellState.autoPlaying = true;
+    shellState.autoPaused = false;
+    shellState.autoToken += 1;
+    const token = shellState.autoToken;
+    setDrawerCollapsed(controlDock, false);
+    setStatus("演示中");
+    syncMode();
+    try {
+      if (legacy.auto) {
+        await moveCursorTo(legacy.auto, token);
+        safeClick(legacy.auto);
+        await nativeDelay(12000);
+      } else {
+        await genericDemo(token);
+      }
+      if (token === shellState.autoToken) finishDemo();
+    } catch (error) {
+      console.error("[科普演示] 自动演示执行失败", error);
+      if (token === shellState.autoToken) finishDemo("演示已停止");
+    }
+  };
+
+  const exitDemo = () => {
+    shellState.autoToken += 1;
+    if (clock.paused) clock.resume();
+    shellState.autoPlaying = false;
+    shellState.autoPaused = false;
+    cursor.classList.remove("show", "tap");
+    safeClick(legacy.reset);
+    syncMode();
+    setStatus("已退出演示");
+  };
+
+  resetButton.addEventListener("click", () => {
+    if (shellState.autoPlaying) {
+      shellState.autoPaused = !shellState.autoPaused;
+      if (shellState.autoPaused) clock.pause();
+      else clock.resume();
+      setStatus(shellState.autoPaused ? "演示已暂停" : "演示中");
+      syncMode();
+      return;
+    }
+    safeClick(legacy.reset);
+    shellState.records = [];
+    shellState.unseen = 0;
+    lastRecord = "";
+    renderRecords();
+    renderLiveData();
+    updateBadges();
+    setStatus(shellState.freeMode ? "自由探索中" : "待操作");
+  });
+  autoButton.addEventListener("click", () => shellState.autoPlaying ? exitDemo() : startDemo());
+  freeButton.addEventListener("click", () => {
+    if (shellState.autoPlaying) return;
+    shellState.freeMode = !shellState.freeMode;
+    if (legacy.free) safeClick(legacy.free);
+    if (!shellState.freeMode) safeClick(legacy.reset);
+    setStatus(shellState.freeMode ? "自由探索中" : "待操作");
+    syncMode();
+  });
+
+  const normalizeTaskLanguage = () => {
+    $$(".task-step", app).forEach((node) => { node.textContent = node.textContent.replace(/步骤/g, "关卡"); });
+  };
+  normalizeTaskLanguage();
+  setDrawerCollapsed(controlDock, true);
+  setDrawerCollapsed(dataDock, true);
+  renderLiveData();
+  renderRecords();
+  syncMode();
+  clock.nativeSetTimeout(() => window.dispatchEvent(new Event("resize")), 80);
+  window.addEventListener("resize", () => {
+    if (matchMedia("(max-width: 720px)").matches) {
+      [controlDock, dataDock].forEach((drawer) => {
+        drawer.style.left = "";
+        drawer.style.top = "";
+        drawer.style.right = "";
+      });
+    }
+  });
+})();
+</script>
+<!-- CODEX_DEMO_SHELL_V2_END -->
+</main>
 </body>
 </html>
