@@ -184,12 +184,18 @@
 
     /* ===== 交互对象：三只“烧杯” ===== */
     .bench{
-      position:absolute; left:0; right:0; top:122px; height:250px;
+      position:absolute; left:4%; right:4%; top:122px; height:250px;
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:clamp(12px,3vw,32px);
+      align-items:start;
+      padding-top:26px;
       pointer-events:none;
     }
     .beaker{
-      position:absolute; top:26px;
-      width:220px; height:200px;
+      position:relative;
+      width:100%; max-width:160px; height:180px;
+      min-width:0; justify-self:center;
       border-radius:18px 18px 26px 26px;
       border:1px solid rgba(255,255,255,0.16);
       background: rgba(255,255,255,0.04);
@@ -204,8 +210,15 @@
       opacity:.65;
       pointer-events:none;
     }
+    .beaker .label,
+    .beaker .tempTag{
+      z-index:9;
+      pointer-events:none;
+    }
     .beaker .label{
-      position:absolute; left:10px; top:10px;
+      position:absolute; left:50%; top:10px;
+      transform:translateX(-50%);
+      white-space:nowrap;
       font-size:12px; font-weight:800; letter-spacing:.2px;
       color:#cfe2ff;
       background: rgba(0,0,0,0.34);
@@ -215,7 +228,9 @@
       backdrop-filter: blur(8px);
     }
     .beaker .tempTag{
-      position:absolute; right:10px; top:10px;
+      position:absolute; left:50%; top:38px;
+      transform:translateX(-50%);
+      white-space:nowrap;
       font-size:12px; font-weight:800;
       color:#071328;
       padding:4px 10px;
@@ -226,7 +241,7 @@
     }
     .liquid{
       position:absolute; left:10px; right:10px; bottom:10px;
-      height:120px;
+      height:100px;
       border-radius:14px 14px 18px 18px;
       border:1px solid rgba(255,255,255,0.16);
       background: rgba(0,188,212,0.20);
@@ -255,11 +270,6 @@
       backdrop-filter: blur(8px);
       pointer-events:none;
     }
-    /* 三杯位置 */
-    #bCold{ left:6%; }
-    #bRoom{ left:calc(50% - 110px); }
-    #bHot { right:6%; }
-
     /* 液体色随温度变化（JS会写入变量） */
     .beaker[data-kind="cold"] .tempTag{ background: rgba(155,211,255,0.95); color:#071328; }
     .beaker[data-kind="room"] .tempTag{ background: rgba(61,220,151,0.95); color:#071328; }
@@ -350,8 +360,8 @@
       font-variant-numeric: tabular-nums;
     }
     .readout{
-      position:absolute; right:-6px; top:8px;
-      transform: translateX(100%);
+      position:absolute; left:74px; top:8px;
+      width:max-content;
       display:flex; flex-direction:column; gap:6px;
       align-items:flex-start;
       pointer-events:none;
@@ -763,10 +773,6 @@
 
     @media (max-width:760px){
       .grid2{ grid-template-columns:1fr; }
-      .beaker{ width:190px; }
-      #bCold{ left:4%; }
-      #bHot{ right:4%; }
-      #bRoom{ left:calc(50% - 95px); }
       .thermo{ top:320px; }
       .panelDock{ width:min(350px, 82%); }
     }
@@ -1278,10 +1284,10 @@
       height:230px !important;
     }
     #stage .beaker{
-      height:178px !important;
+      height:168px !important;
     }
     #stage .liquid{
-      height:104px !important;
+      height:92px !important;
     }
     #stage #thermo{
       top:418px;
@@ -1323,7 +1329,7 @@
       min-height:590px !important;
     }
     #stage #bench{
-      top:112px !important;
+      top:172px !important;
     }
     #stage .mobile-tabs{
       position:absolute !important;
@@ -2820,6 +2826,8 @@
     const tauVal = $('#tauVal');
     const thermo = $('#thermo');
     const bulb = thermo.querySelector('.bulb');
+    const thermoReadout = thermo.querySelector('.readout');
+    const readoutObstacles = [...stage.querySelectorAll('.hud, #hintLamp, #audioToggle')];
     const mercury = $('#mercury');
     const readChip = $('#readChip');
     const stateChip = $('#stateChip');
@@ -3031,7 +3039,22 @@
     function setThermoPos(x, y) {
       thermo.style.left = `${x}px`;
       thermo.style.top = `${y}px`;
+      positionThermoReadout();
     }
+    function positionThermoReadout() {
+      const x = thermo.offsetLeft;
+      const width = thermoReadout.offsetWidth;
+      const right = x + thermo.offsetWidth + 6;
+      const preferred = right + width <= stage.clientWidth - 8 ? right : x - width - 6;
+      const left = clamp(preferred, 8, Math.max(8, stage.clientWidth - width - 8));
+      thermoReadout.style.left = `${left - x}px`;
+      const controlsBottom = Math.max(...readoutObstacles.map(el => el.offsetTop + el.offsetHeight));
+      thermoReadout.style.top = `${Math.max(8, controlsBottom + 8 - thermo.offsetTop)}px`;
+    }
+    const readoutResizeObserver = new ResizeObserver(positionThermoReadout);
+    readoutResizeObserver.observe(stage);
+    readoutResizeObserver.observe(thermoReadout);
+    readoutObstacles.forEach(el => readoutResizeObserver.observe(el));
     function getThermoPos() {
       const s = stage.getBoundingClientRect();
       const r = thermo.getBoundingClientRect();
