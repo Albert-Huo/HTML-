@@ -715,6 +715,19 @@ body {
 .codex-global-toolbar button:hover { background: rgba(255, 255, 255, .13) !important; }
 .codex-global-toolbar button:disabled { opacity: .46 !important; cursor: not-allowed; }
 .codex-global-toolbar button[aria-pressed="true"] { border-color: rgba(67, 227, 159, .55) !important; color: #baf7dc !important; }
+@media (min-width: 721px) {
+  .codex-global-toolbar.toolbar {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+  }
+  .codex-global-toolbar button {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    padding: 9px 12px !important;
+  }
+}
 .codex-legacy-toolbar { display: none !important; }
 
 #app .explanation,
@@ -789,7 +802,9 @@ body {
     gap: 5px 8px !important;
     padding: 8px 11px !important;
   }
-  #app .task-step { display: none !important; }
+  #app .task-step,
+  #app .stepBadge,
+  #app .xn-step { display: none !important; }
   #app .task-text { grid-column: 1; font-size: 13px !important; line-height: 1.3 !important; }
   #app .task-hint { margin-top: 2px !important; font-size: 11px !important; line-height: 1.25 !important; }
   #app .progress-dots { grid-column: 2; grid-row: 1; align-self: center; }
@@ -867,14 +882,29 @@ body {
     bottom: 49px !important;
     width: auto !important;
     max-width: none !important;
-    height: 43% !important;
-    max-height: none !important;
+    height: auto !important;
+    max-height: 188px !important;
+    overflow: hidden !important;
     border-radius: 10px 10px 0 0 !important;
     box-shadow: 0 -12px 34px rgba(0, 0, 0, .46) !important;
   }
   .codex-drawer.collapsed { display: none !important; }
   .codex-drawer-header { display: none !important; }
-  .codex-drawer-body { height: 100%; max-height: none; padding: 9px 10px 10px; overflow: auto; border-top: 0; }
+  .codex-drawer-body {
+    height: auto !important;
+    max-height: 186px;
+    padding: 8px;
+    overflow: auto;
+    border-top: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  #codexDataDock { max-height: 120px !important; }
+  #codexDataDock .codex-drawer-body { max-height: 118px; }
+  #codexDataDock:has(#codexLiveData:empty) .codex-live-title,
+  #codexDataDock:has(#codexRecordList:empty) .codex-record-title { display: none; }
+  #app .codex-runtime-stage input[type="range"] {
+    min-height: 40px !important;
+  }
   .codex-data-grid { grid-template-columns: 1fr 1fr; }
   .codex-drawer-body button,
   .codex-drawer-body select,
@@ -1435,7 +1465,7 @@ body {
 <div id="codexDemoBridge">
 
   <div class="codex-hud" aria-label="实验状态">
-    <span class="tag" id="modeTag">模式：闯关模式</span>
+    <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/3</span>
     <span class="tag" id="statusTag" aria-live="polite">状态：待操作</span>
   </div>
   <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
@@ -1496,6 +1526,10 @@ body {
   };
 
   const taskCard = $(".task-card,.taskCard,.xn-stepcard", app);
+  const taskStep = $("#taskStep,#xn-step,#xnStepBadge", app);
+  const taskDots = taskStep
+    ? [...(taskStep.closest(".task-card,.taskCard,.xn-task,.xn-stepcard")?.querySelectorAll(".dot,.xn-dot") || [])]
+    : [];
   const contractStage = $("#stage.codex-contract-stage", app);
   const existingStage = $("#stage:not(.codex-contract-stage)", app);
   const stage = existingStage || contractStage;
@@ -1664,10 +1698,30 @@ body {
   }
 
   const setStatus = (text) => { statusTag.textContent = `状态：${text}`; };
+  let lastChallengeProgress = { step: 1, total: Math.max(1, taskDots.length) };
+  const challengeProgress = () => {
+    const match = (taskStep?.textContent || "").match(/(\d+)\s*\/\s*(\d+)/);
+    if (match) {
+      lastChallengeProgress = { step: Number(match[1]), total: Number(match[2]) };
+    } else if (taskDots.length) {
+      const activeIndex = taskDots.findIndex((dot) => dot.classList.contains("active"));
+      const doneCount = taskDots.filter((dot) => dot.classList.contains("done")).length;
+      const step = activeIndex >= 0 ? activeIndex + 1 : (doneCount || lastChallengeProgress.step);
+      lastChallengeProgress = { step: Math.min(taskDots.length, Math.max(1, step)), total: taskDots.length };
+    }
+    return `模式：闯关模式 · 关卡 ${lastChallengeProgress.step}/${lastChallengeProgress.total}`;
+  };
+  const syncChallengeProgress = () => {
+    if (taskStep && taskStep.textContent.includes("步骤")) {
+      taskStep.textContent = taskStep.textContent.replace(/步骤/g, "关卡");
+    }
+    const label = challengeProgress();
+    if (!shellState.autoPlaying && !shellState.freeMode && modeTag.textContent !== label) modeTag.textContent = label;
+  };
   const syncMode = () => {
     if (shellState.autoPlaying) modeTag.textContent = `模式：演示模式${shellState.autoPaused ? " · 已暂停" : " · 自动运行"}`;
     else if (shellState.freeMode) modeTag.textContent = "模式：自由模式 · 自主探索";
-    else modeTag.textContent = "模式：闯关模式";
+    else syncChallengeProgress();
     if (!shellState.autoPlaying && !shellState.freeMode) setStatus("待操作");
     resetButton.textContent = shellState.autoPlaying ? (shellState.autoPaused ? "继续演示" : "暂停演示") : (shellState.freeMode ? "重置操作" : "重置关卡");
     autoButton.textContent = shellState.autoPlaying ? "退出演示" : "演示模式";
@@ -1851,6 +1905,8 @@ body {
 
   let liveRenderScheduled = false;
   const observer = new MutationObserver((mutations) => {
+    const taskStepChanged = taskStep && mutations.some((mutation) => mutation.target === taskStep || taskStep.contains(mutation.target));
+    if (taskStepChanged) syncChallengeProgress();
     if (mutations.every((mutation) => isBridgeNode(mutation.target)) || liveRenderScheduled) return;
     liveRenderScheduled = true;
     clock.nativeSetTimeout(() => {
@@ -1987,7 +2043,7 @@ body {
   });
 
   const normalizeTaskLanguage = () => {
-    $$(".task-step", app).forEach((node) => { node.textContent = node.textContent.replace(/步骤/g, "关卡"); });
+    $$(".task-step,.stepBadge,.xn-step", app).forEach((node) => { node.textContent = node.textContent.replace(/步骤/g, "关卡"); });
   };
   normalizeTaskLanguage();
   setDrawerCollapsed(controlDock, true);

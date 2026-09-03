@@ -794,6 +794,19 @@ body {
 .codex-global-toolbar button:hover { background: rgba(255, 255, 255, .13) !important; }
 .codex-global-toolbar button:disabled { opacity: .46 !important; cursor: not-allowed; }
 .codex-global-toolbar button[aria-pressed="true"] { border-color: rgba(67, 227, 159, .55) !important; color: #baf7dc !important; }
+@media (min-width: 721px) {
+  .codex-global-toolbar.toolbar {
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+  }
+  .codex-global-toolbar button {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    padding: 9px 12px !important;
+  }
+}
 .codex-legacy-toolbar { display: none !important; }
 
 #app .explanation,
@@ -946,14 +959,29 @@ body {
     bottom: 49px !important;
     width: auto !important;
     max-width: none !important;
-    height: 43% !important;
-    max-height: none !important;
+    height: auto !important;
+    max-height: 188px !important;
+    overflow: hidden !important;
     border-radius: 10px 10px 0 0 !important;
     box-shadow: 0 -12px 34px rgba(0, 0, 0, .46) !important;
   }
   .codex-drawer.collapsed { display: none !important; }
   .codex-drawer-header { display: none !important; }
-  .codex-drawer-body { height: 100%; max-height: none; padding: 9px 10px 10px; overflow: auto; border-top: 0; }
+  .codex-drawer-body {
+    height: auto !important;
+    max-height: 186px;
+    padding: 8px;
+    overflow: auto;
+    border-top: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+  #codexDataDock { max-height: 120px !important; }
+  #codexDataDock .codex-drawer-body { max-height: 118px; }
+  #codexDataDock:has(#codexLiveData:empty) .codex-live-title,
+  #codexDataDock:has(#codexRecordList:empty) .codex-record-title { display: none; }
+  #app .codex-runtime-stage input[type="range"] {
+    min-height: 40px !important;
+  }
   .codex-data-grid { grid-template-columns: 1fr 1fr; }
   .codex-drawer-body button,
   .codex-drawer-body select,
@@ -986,9 +1014,9 @@ body {
   <div id="spectrum"></div>
 
   <div class="task-card" id="taskCard">
-    <div class="task-step" id="taskStep">步骤 1/3</div>
+    <div class="task-step" id="taskStep">关卡 1/3</div>
     <div class="task-text" id="taskText">
-      先把“观测器”关掉，然后点“开始发射”。当光子数达到 <b>3000</b>，自动进入第二步。
+      先把“观测器”关掉，然后点“开始发射”。当光子数达到 <b>3000</b>，自动进入下一关。
     </div>
     <div class="dots progress-dots">
       <span class="dot active" id="dot1"></span>
@@ -1162,6 +1190,7 @@ body {
     interacted:false,
     freeMode:false,
     autoPlaying:false,
+    autoRunToken:0,
     completed:false,
     step:1,
 
@@ -1299,22 +1328,22 @@ body {
 
   const steps = [
     {
-      text:'第1步：关观测器，点“开始发射”。<b>当光子数达到 3000</b>，自动进入第2步。',
+      text:'关观测器，点“开始发射”。<b>当光子数达到 3000</b>，自动进入下一关。',
       // v3.3：第1步不靠 check 判定（在 tick 里硬触发）
       check:()=> false
     },
     {
-      text:'第2步：打开观测器，再点“清空”。你会看到：条纹消失，变成<b>两条亮带</b>。',
+      text:'打开观测器，再点“清空”。你会看到：条纹消失，变成<b>两条亮带</b>。',
       check:()=> state.observing && state.reveal > 0.80
     },
     {
-      text:'第3步：先看一眼<b>密条纹</b>（已设 550nm），再把 λ 调到 <b>≥620nm</b>，条纹会<b>更稀疏</b>。',
+      text:'先看一眼<b>密条纹</b>（已设 550nm），再把 λ 调到 <b>≥620nm</b>，条纹会<b>更稀疏</b>。',
       check:()=> !state.observing && state.step3DenseSeen && state.lambdaNm>=620 && state.reveal>0.85
     },
   ];
 
   function setStepUI(){
-    taskStepEl.textContent = `步骤 ${state.step}/3`;
+    taskStepEl.textContent = `关卡 ${state.step}/3`;
     taskTextEl.innerHTML = steps[state.step-1].text;
     [dot1,dot2,dot3].forEach((d,i)=>{
       d.className = 'dot' + (i < state.step-1 ? ' done' : '') + (i === state.step-1 ? ' active' : '');
@@ -1438,27 +1467,43 @@ body {
     state.photonCount=0;
     pillPhotons.textContent='0 光子';
   }
-  btnReset.addEventListener('click', ()=>{ if(!state.autoPlaying) resetAll(); });
+  function cancelAutoDemo(){
+    state.autoRunToken++;
+    state.autoPlaying=false;
+    btnFree.disabled=false;
+    pillMode.textContent = state.freeMode?'自由模式':'步骤模式';
+  }
+  btnReset.addEventListener('click', ()=>{
+    cancelAutoDemo();
+    resetAll();
+  });
 
   async function autoDemo(){
     if(state.freeMode || state.autoPlaying) return;
     state.autoPlaying=true;
+    const runToken = ++state.autoRunToken;
+    const autoRunIsCurrent = ()=> state.autoPlaying && state.autoRunToken === runToken;
     pillMode.textContent='自动演示';
     btnFree.disabled=true;
 
     resetAll();
     await sleep(200);
+    if(!autoRunIsCurrent()) return;
 
     // Step1
     applyLight(true);
-    while(state.photonCount < 3200) await sleep(40);
-    // tick里会自动 nextStep，这里等待一下
+    while(autoRunIsCurrent() && state.photonCount < 3200) await sleep(40);
+    if(!autoRunIsCurrent()) return;
+    // 自动演示不走 tick 的闯关判定，等待效果稳定后手动推进
     await sleep(120);
+    if(!autoRunIsCurrent()) return;
+    nextStep();
 
     // Step2
     applyObs(true);
     hardClearKeepRunning();
     await sleep(1100);
+    if(!autoRunIsCurrent()) return;
     state.reveal = 1.0;
     nextStep();
 
@@ -1467,12 +1512,14 @@ body {
     state.lambdaNm = 550; rngLambda.value=550; valLambda.textContent='550';
     hardClearKeepRunning();
     await sleep(700);
+    if(!autoRunIsCurrent()) return;
     state.reveal = 1.0;
     state.step3DenseSeen = true;
 
     state.lambdaNm = 650; rngLambda.value=650; valLambda.textContent='650';
     hardClearKeepRunning();
     await sleep(900);
+    if(!autoRunIsCurrent()) return;
     state.reveal = 1.0;
     nextStep();
 
@@ -1547,7 +1594,7 @@ body {
 <div id="codexDemoBridge">
   <section id="stage" class="lab-area codex-runtime-stage codex-contract-stage" aria-label="物理演示舞台"><div class="codex-stage-content"></div></section>
   <div class="codex-hud" aria-label="实验状态">
-    <span class="tag" id="modeTag">模式：闯关模式</span>
+    <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/3</span>
     <span class="tag" id="statusTag" aria-live="polite">状态：待操作</span>
   </div>
   <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
@@ -1597,6 +1644,7 @@ body {
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
   const nativeDelay = (ms) => new Promise((resolve) => clock.nativeSetTimeout(resolve, ms));
+  const demoDelay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const shellState = {
     freeMode: false,
     autoPlaying: false,
@@ -1608,6 +1656,7 @@ body {
   };
 
   const taskCard = $(".task-card,.taskCard,.xn-stepcard", app);
+  const taskStep = $("#taskStep", app);
   const contractStage = $("#stage.codex-contract-stage", app);
   const existingStage = $("#stage:not(.codex-contract-stage)", app);
   const stage = existingStage || contractStage;
@@ -1776,10 +1825,20 @@ body {
   }
 
   const setStatus = (text) => { statusTag.textContent = `状态：${text}`; };
+  const challengeProgress = () => {
+    const match = (taskStep?.textContent || "").match(/(\d+)\s*\/\s*(\d+)/);
+    const step = match?.[1] || "1";
+    const total = match?.[2] || "3";
+    return `模式：闯关模式 · 关卡 ${step}/${total}`;
+  };
+  const syncChallengeProgress = () => {
+    const label = challengeProgress();
+    if (!shellState.autoPlaying && !shellState.freeMode && modeTag.textContent !== label) modeTag.textContent = label;
+  };
   const syncMode = () => {
     if (shellState.autoPlaying) modeTag.textContent = `模式：演示模式${shellState.autoPaused ? " · 已暂停" : " · 自动运行"}`;
     else if (shellState.freeMode) modeTag.textContent = "模式：自由模式 · 自主探索";
-    else modeTag.textContent = "模式：闯关模式";
+    else syncChallengeProgress();
     if (!shellState.autoPlaying && !shellState.freeMode) setStatus("待操作");
     resetButton.textContent = shellState.autoPlaying ? (shellState.autoPaused ? "继续演示" : "暂停演示") : (shellState.freeMode ? "重置操作" : "重置关卡");
     autoButton.textContent = shellState.autoPlaying ? "退出演示" : "演示模式";
@@ -1963,7 +2022,10 @@ body {
 
   let liveRenderScheduled = false;
   const observer = new MutationObserver((mutations) => {
-    if (mutations.every((mutation) => isBridgeNode(mutation.target)) || liveRenderScheduled) return;
+    const taskStepChanged = taskStep && mutations.some((mutation) => mutation.target === taskStep || taskStep.contains(mutation.target));
+    if (taskStepChanged) syncChallengeProgress();
+    if (mutations.every((mutation) => isBridgeNode(mutation.target))) return;
+    if (liveRenderScheduled) return;
     liveRenderScheduled = true;
     clock.nativeSetTimeout(() => {
       liveRenderScheduled = false;
@@ -2047,8 +2109,11 @@ body {
     try {
       if (legacy.auto) {
         await moveCursorTo(legacy.auto, token);
+        if (token !== shellState.autoToken || !shellState.autoPlaying) return;
         safeClick(legacy.auto);
-        await nativeDelay(12000);
+        while (token === shellState.autoToken && shellState.autoPlaying && !completionIsVisible()) {
+          await demoDelay(160);
+        }
       } else {
         await genericDemo(token);
       }
