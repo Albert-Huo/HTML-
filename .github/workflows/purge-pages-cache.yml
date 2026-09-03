@@ -1,0 +1,331 @@
+# Generated from the tested purge tool; credentials are injected by GitHub Secrets.
+name: Refresh experiment cache after Pages
+
+on:
+  page_build:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: read
+  actions: read
+
+concurrency:
+  group: cloudflare-pages-cache
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    name: Purge published experiment cache
+    if: >-
+      github.repository == 'Albert-Huo/HTML-' &&
+      github.ref == 'refs/heads/main' &&
+      vars.CLOUDFLARE_AUTO_PURGE_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' || github.event.build.status == 'built')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Read published repository history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Refresh changed experiment URLs
+        id: purge_cache
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: df183938717cbe298ecd6c04d6b24099
+        shell: bash
+        run: |
+          python3 - --auto --apply <<'PY'
+          #!/usr/bin/env python3
+          """Wait for an exact Pages release, then purge only specified experiment URLs."""
+
+          import argparse
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+          import sys
+          import time
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+
+          REPOSITORY = "Albert-Huo/HTML-"
+          ZONE_NAME = "xingnian.net.cn"
+          BASE_URL = "https://html.xingnian.net.cn/"
+          API_URL = "https://api.cloudflare.com/client/v4"
+          DIRECTORIES = {"physics-middle", "physics-high", "physics-demos", "biology-high"}
+          WORKFLOW = "purge-pages-cache.yml"
+          PURGE_JOB = "Purge published experiment cache"
+
+
+          def paths_to_urls(paths: list[str]) -> list[str]:
+              """Encode raw repository paths; reject paths outside the cached experiment scope."""
+              urls = []
+              for path in paths:
+                  parts = path.split("/")
+                  if (len(parts) < 2 or parts[0] not in DIRECTORIES
+                          or any(part in {"", ".", ".."} for part in parts)
+                          or any(character in path for character in "?#\\")
+                          or any(ord(character) < 32 or ord(character) == 127 for character in path)
+                          or not path.endswith(".html")):
+                      raise ValueError("仅接受实验目录内、不含查询参数的原始 HTML 相对路径。")
+                  url = BASE_URL + urllib.parse.quote(path, safe="/")
+                  if url not in urls:
+                      urls.append(url)
+              return urls
+
+
+          def github_api(path: str):
+              """Read this repository through gh; do not expose command stderr or credentials."""
+              try:
+                  response = subprocess.run(
+                      ["gh", "api", f"repos/{REPOSITORY}/{path}"],
+                      check=True, capture_output=True, text=True, timeout=30,
+                  )
+                  return json.loads(response.stdout)
+              except (OSError, subprocess.SubprocessError, json.JSONDecodeError) as error:
+                  raise RuntimeError("无法读取 GitHub 发布记录，请检查权限与网络。") from error
+
+
+          def latest_build() -> dict:
+              """Read Pages build state using the existing gh login, without exposing its token."""
+              result = github_api("pages/builds/latest")
+              if not isinstance(result, dict) or not result.get("commit") or not result.get("status"):
+                  raise RuntimeError("GitHub Pages 返回了不完整的构建状态。")
+              return result
+
+
+          def latest_successful_build() -> dict:
+              """A newer failed build does not replace the last successfully published site."""
+              page = 1
+              while True:
+                  builds = github_api(f"pages/builds?per_page=100&page={page}")
+                  if not isinstance(builds, list):
+                      raise RuntimeError("GitHub 返回无效的 Pages 发布历史。")
+                  for build in builds:
+                      if build.get("status") == "built":
+                          if not re.fullmatch(r"[0-9a-f]{40}", build.get("commit", "")):
+                              raise RuntimeError("Pages 发布历史缺少有效提交。")
+                          return build
+                  if len(builds) < 100:
+                      raise RuntimeError("没有找到成功发布的 Pages 版本。")
+                  page += 1
+
+
+          def require_published_build(commit: str) -> None:
+              if latest_successful_build()["commit"] != commit:
+                  raise RuntimeError("该事件版本已被更新的成功发布替代，请运行当前版本的刷新任务。")
+
+
+          def wait_for_build(commit: str, wait_seconds: int) -> None:
+              """Fail closed unless the latest successful Pages build is the requested commit."""
+              deadline = time.monotonic() + wait_seconds
+              while True:
+                  build = latest_build()
+                  if build["commit"] == commit:
+                      if build["status"] == "built":
+                          return
+                      if build["status"] == "errored":
+                          raise RuntimeError("指定提交的 Pages 构建失败，未清缓存。")
+                  remaining = deadline - time.monotonic()
+                  if remaining <= 0:
+                      raise RuntimeError("未确认指定提交已成功发布，未清缓存。")
+                  print("等待指定提交的 Pages 发布完成…", flush=True)
+                  time.sleep(min(10, remaining))
+
+
+          def cloudflare_api(token: str, method: str, path: str, payload=None):
+              """Call the fixed Cloudflare endpoint; never print credentials or API error bodies."""
+              request = urllib.request.Request(
+                  API_URL + path,
+                  data=None if payload is None else json.dumps(payload).encode("utf-8"),
+                  headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"},
+                  method=method,
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      result = json.loads(response.read())
+              except urllib.error.HTTPError as error:
+                  raise RuntimeError(f"Cloudflare 返回 HTTP {error.code}，操作未确认成功。") from error
+              except (OSError, urllib.error.URLError, ValueError) as error:
+                  raise RuntimeError("Cloudflare 请求失败或返回无效数据，操作未确认成功。") from error
+              if not isinstance(result, dict) or result.get("success") is not True:
+                  raise RuntimeError("Cloudflare API 未确认操作成功；请检查权限或后台状态。")
+              return result.get("result")
+
+
+          def resolve_zone(token: str) -> str:
+              zones = cloudflare_api(token, "GET", f"/zones?name={ZONE_NAME}&status=active")
+              if not isinstance(zones, list) or len(zones) != 1 or zones[0].get("name") != ZONE_NAME:
+                  raise RuntimeError("未能唯一确认 xingnian.net.cn 的有效 Cloudflare zone。")
+              zone_id = zones[0].get("id", "")
+              if not isinstance(zone_id, str) or not re.fullmatch(r"[0-9a-f]{32}", zone_id):
+                  raise RuntimeError("Cloudflare 返回无效的 zone ID。")
+              return zone_id
+
+
+          def purge_urls(token: str, zone_id: str, urls: list[str]) -> None:
+              """Purge explicit HTTPS URLs in small batches; never purge the whole zone."""
+              for offset in range(0, len(urls), 30):
+                  if offset:
+                      time.sleep(1)
+                  batch = urls[offset:offset + 30]
+                  cloudflare_api(token, "POST", f"/zones/{zone_id}/purge_cache", {"files": batch})
+                  print(f"已提交清缓存：{min(offset + 30, len(urls))}/{len(urls)} 个网址。", flush=True)
+
+
+          def automatic_release(event: dict, environ) -> str:
+              """Accept only a successful main Pages event or an explicit main-branch retry."""
+              if (environ.get("GITHUB_REPOSITORY") != REPOSITORY
+                      or environ.get("GITHUB_REF") != "refs/heads/main"):
+                  raise ValueError("自动刷新仅允许原仓库的 main 分支。")
+              name = environ.get("GITHUB_EVENT_NAME")
+              if name == "page_build":
+                  build = event.get("build", {})
+                  if not isinstance(build, dict) or build.get("status") != "built":
+                      raise ValueError("Pages 事件未确认发布成功。")
+                  commit = build.get("commit", "")
+              elif name == "workflow_dispatch":
+                  commit = latest_successful_build()["commit"]
+              else:
+                  raise ValueError("不接受此自动刷新事件。")
+              if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-f]{40}", commit):
+                  raise ValueError("Pages 事件缺少有效发布提交。")
+              return commit
+
+
+          def previous_purged_commit(run_id: int):
+              """Use only a prior run whose actual purge job succeeded, including all batches."""
+              page = 1
+              while True:
+                  result = github_api(f"actions/workflows/{WORKFLOW}/runs?status=success&branch=main&per_page=100&page={page}")
+                  runs = result.get("workflow_runs") if isinstance(result, dict) else None
+                  if not isinstance(runs, list):
+                      raise RuntimeError("GitHub 返回无效的刷新运行记录。")
+                  for run in runs:
+                      if (not isinstance(run.get("id"), int) or run["id"] == run_id
+                              or run.get("conclusion") != "success"
+                              or run.get("event") not in {"page_build", "workflow_dispatch"}):
+                          continue
+                      result = github_api(f"actions/runs/{run['id']}/jobs?per_page=100")
+                      jobs = result.get("jobs") if isinstance(result, dict) else None
+                      if not isinstance(jobs, list):
+                          raise RuntimeError("GitHub 返回无效的刷新任务记录。")
+                      for job in jobs:
+                          if job.get("name") != PURGE_JOB or job.get("conclusion") != "success":
+                              continue
+                          for step in job.get("steps", []):
+                              match = re.fullmatch(r"Cache purged at ([0-9a-f]{40})", step.get("name", ""))
+                              if match and step.get("conclusion") == "success":
+                                  return match.group(1)
+                  if len(runs) < 100:
+                      return None
+                  page += 1
+
+
+          def changed_experiment_paths(before, after: str, cwd=None) -> list[str]:
+              """Include intermediate releases and net rollback changes, including both rename URLs."""
+              for commit in (before, after):
+                  if commit is not None and not re.fullmatch(r"[0-9a-f]{40}", commit):
+                      raise ValueError("比较版本必须是完整提交 SHA。")
+              commands = ([["diff", "--no-renames", "--name-only", "-z", before, after, "--"],
+                           ["log", "--format=", "--name-only", "-z", "--no-renames", "-m", f"{before}..{after}", "--"]]
+                          if before else [["ls-tree", "-r", "--name-only", "-z", after],
+                                          ["log", "--format=", "--name-only", "-z", "--no-renames", "-m", after, "--"]])
+              try:
+                  paths = []
+                  for args in commands:
+                      response = subprocess.run(["git", *args], cwd=cwd, check=True, capture_output=True, timeout=30)
+                      paths.extend(response.stdout.decode("utf-8").split("\0"))
+              except (OSError, subprocess.SubprocessError, UnicodeError) as error:
+                  raise RuntimeError("无法比较发布版本；需要完整的 Git 历史。") from error
+              return list(dict.fromkeys(path for path in paths
+                                        if path.split("/")[0] in DIRECTORIES and path.endswith(".html")))
+
+
+          def automatic_purge(token: str) -> None:
+              """Refresh cumulative changes after an exact published revision; failures do not advance history."""
+              try:
+                  event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
+                  run_id = int(os.environ["GITHUB_RUN_ID"])
+              except (KeyError, OSError, ValueError) as error:
+                  raise ValueError("缺少有效的 GitHub Actions 事件信息。") from error
+              if not isinstance(event, dict) or run_id <= 0:
+                  raise ValueError("GitHub Actions 事件信息无效。")
+              commit = automatic_release(event, os.environ)
+              require_published_build(commit)
+              before = previous_purged_commit(run_id)
+              urls = paths_to_urls(changed_experiment_paths(before, commit))
+              zone_id = os.environ.get("CLOUDFLARE_ZONE_ID", "")
+              if not re.fullmatch(r"[0-9a-f]{32}", zone_id):
+                  raise ValueError("自动刷新需要有效的 CLOUDFLARE_ZONE_ID。")
+              print(json.dumps({"mode": "automatic", "commit": commit,
+                                "previous_purged_commit": before, "files": urls}, ensure_ascii=False, indent=2))
+              require_published_build(commit)
+              if urls:
+                  purge_urls(token, zone_id, urls)
+              print(f"发布后刷新完成：{len(urls)} 个实验网址。")
+              summary = os.environ.get("GITHUB_STEP_SUMMARY")
+              if summary:
+                  with open(summary, "a", encoding="utf-8") as output:
+                      output.write(f"Pages revision: `{commit}`\n\nRefreshed experiment URLs: **{len(urls)}**\n")
+              result_file = os.environ.get("GITHUB_OUTPUT")
+              if result_file:
+                  with open(result_file, "a", encoding="utf-8") as output:
+                      output.write(f"published_commit={commit}\n")
+
+
+          def main(argv=None) -> int:
+              parser = argparse.ArgumentParser(description=__doc__)
+              parser.add_argument("--commit", help="待确认已发布的完整 Git 提交 SHA")
+              parser.add_argument("--path", action="append", help="原始 HTML 相对路径，可重复")
+              parser.add_argument("--auto", action="store_true", help="从 GitHub Pages 成功事件自动生成刷新清单，需配合 --apply")
+              parser.add_argument("--wait-seconds", type=int, default=600, help="最多等待 Pages 发布的秒数")
+              parser.add_argument("--apply", action="store_true", help="确认发布成功后实际清缓存；默认只预览")
+              args = parser.parse_args(argv)
+              try:
+                  if args.auto:
+                      if not args.apply or args.commit or args.path:
+                          raise ValueError("自动模式仅接受 --auto --apply；手动预览请使用 --commit 和 --path。")
+                      token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+                      if not token:
+                          raise ValueError("缺少环境变量 CLOUDFLARE_API_TOKEN；未发起清缓存请求。")
+                      automatic_purge(token)
+                      return 0
+                  if not args.commit or not re.fullmatch(r"[0-9a-f]{40}", args.commit):
+                      raise ValueError("--commit 必须是完整的 40 位 Git 提交 SHA。")
+                  if not args.path:
+                      raise ValueError("手动模式至少需要一个 --path。")
+                  if not 0 <= args.wait_seconds <= 900:
+                      raise ValueError("--wait-seconds 必须介于 0 和 900 秒之间。")
+                  urls = paths_to_urls(args.path)
+                  print(json.dumps({"mode": "apply" if args.apply else "preview",
+                                    "commit": args.commit, "files": urls}, ensure_ascii=False, indent=2))
+                  if not args.apply:
+                      return 0
+                  token = os.environ.get("CLOUDFLARE_API_TOKEN", "").strip()
+                  if not token:
+                      raise ValueError("缺少环境变量 CLOUDFLARE_API_TOKEN；未发起清缓存请求。")
+                  wait_for_build(args.commit, args.wait_seconds)
+                  zone_id = resolve_zone(token)
+                  purge_urls(token, zone_id, urls)
+                  print("Cloudflare 已接受指定网址的清缓存请求；请继续验证页面内容和缓存命中。")
+                  return 0
+              except (ValueError, RuntimeError) as error:
+                  print(f"错误：{error}", file=sys.stderr)
+                  return 1
+
+
+          if __name__ == "__main__":
+              raise SystemExit(main())
+          PY
+      - name: Cache purged at ${{ steps.purge_cache.outputs.published_commit }}
+        if: success() && steps.purge_cache.outputs.published_commit != ''
+        run: 'true'
