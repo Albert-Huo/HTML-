@@ -950,6 +950,30 @@ body #app .toolbar button:disabled{
   body #app#app .task-card :is(.progress-dots,.dots)>*{width:8px!important;height:8px!important;outline-width:1px!important}
 }
 </style>
+<style id="codex-mobile-observation-clearance">
+  @media (max-width:720px){
+
+    body #app #stage#stage .hud{
+      left:10px !important; right:54px !important; top:10px !important;
+      width:auto !important; max-width:none !important; min-width:0 !important;
+      display:flex !important; flex-wrap:wrap !important; gap:4px 6px !important;
+    }
+    body #app #stage#stage :is(#modeTag,#modeChip){
+      min-width:0 !important; max-width:100% !important;
+      padding:4px 8px !important; white-space:normal !important; font-size:11px !important;
+    }
+    body #app #stage#stage :is(#statusTag,#stateChip){
+      min-width:0 !important; max-width:100% !important; white-space:normal !important;
+      overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere;
+      line-height:1.35 !important; font-size:11px !important;
+    }
+    #stage > #hintLamp, #stage .hint-lamp-wrap{
+      left:auto !important; right:10px !important; top:10px !important;
+    }
+    #stage #audioToggle{ left:auto !important; right:10px !important; top:50px !important; }
+    #stage .hint-lamp-wrap .hint-pop{ left:auto !important; right:0 !important; }
+  }
+</style>
 </head>
 <body>
   <div id="app" class="theme-app-contents">
@@ -4445,7 +4469,7 @@ body #app .toolbar button:disabled{
 
       const tagX = g.sponge.x + 8;
       const chipY = 18;
-      ['甲','乙','丙'].forEach((label, idx)=>{
+      if(W >= 600) ['甲','乙','丙'].forEach((label, idx)=>{
         const x = tagX + idx * 54;
         const active = meta.sceneLabel === label;
         ctx.fillStyle = active ? 'rgba(127,230,177,.18)' : 'rgba(255,255,255,.06)';
@@ -4540,18 +4564,21 @@ body #app .toolbar button:disabled{
       ctx.lineTo(wx + ww * 0.61, wy + wh * 0.28);
       ctx.stroke();
 
-      const infoX = W * 0.54;
-      const infoY = H - 250;
+      const compactInfo = W < 600;
+      const infoX = compactInfo ? 12 : W * 0.54;
+      const infoY = compactInfo ? 10 : H - 250;
+      const infoW = compactInfo ? W - 24 : 228;
+      const infoH = compactInfo ? 72 : 112;
       ctx.fillStyle = 'rgba(21,33,49,.82)';
-      ctx.fillRect(infoX, infoY, 228, 112);
+      ctx.fillRect(infoX, infoY, infoW, infoH);
       ctx.strokeStyle = 'rgba(149,183,216,.7)';
-      ctx.strokeRect(infoX, infoY, 228, 112);
+      ctx.strokeRect(infoX, infoY, infoW, infoH);
       ctx.fillStyle = '#dfeaff';
       ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText(`场景：${meta.sceneLabel}`, infoX + 16, infoY + 22);
-      ctx.fillText(`压力：${ap.deskPlaced ? meta.force.toFixed(1)+'N' : '--'}`, infoX + 16, infoY + 44);
-      ctx.fillText(`受力面积：${ap.deskPlaced ? meta.area + 'cm²' : '--'}`, infoX + 16, infoY + 66);
-      ctx.fillText(`海绵形变：${ap.deskPlaced ? sink.toFixed(1)+'mm' : '--'}`, infoX + 16, infoY + 88);
+      ctx.fillText(`场景：${meta.sceneLabel}`, infoX + 12, infoY + 20);
+      ctx.fillText(`压力：${ap.deskPlaced ? meta.force.toFixed(1)+'N' : '--'}`, compactInfo ? infoX + infoW - 106 : infoX + 16, infoY + (compactInfo ? 20 : 44));
+      ctx.fillText(`受力面积：${ap.deskPlaced ? meta.area + 'cm²' : '--'}`, infoX + 12, infoY + (compactInfo ? 42 : 66));
+      ctx.fillText(`海绵形变：${ap.deskPlaced ? sink.toFixed(1)+'mm' : '--'}`, infoX + 12, infoY + (compactInfo ? 62 : 88));
 
       let opLabel = '拖动小桌到海绵上';
       if(ap.deskPlaced){

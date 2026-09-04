@@ -486,6 +486,30 @@ body #app .toolbar button:disabled{
   body #app#app .task-card :is(.progress-dots,.dots)>*{width:8px!important;height:8px!important;outline-width:1px!important}
 }
 </style>
+<style id="codex-mobile-observation-clearance">
+  @media (max-width:720px){
+
+    body #app #stage#stage .hud{
+      left:10px !important; right:54px !important; top:10px !important;
+      width:auto !important; max-width:none !important; min-width:0 !important;
+      display:flex !important; flex-wrap:wrap !important; gap:4px 6px !important;
+    }
+    body #app #stage#stage :is(#modeTag,#modeChip){
+      min-width:0 !important; max-width:100% !important;
+      padding:4px 8px !important; white-space:normal !important; font-size:11px !important;
+    }
+    body #app #stage#stage :is(#statusTag,#stateChip){
+      min-width:0 !important; max-width:100% !important; white-space:normal !important;
+      overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere;
+      line-height:1.35 !important; font-size:11px !important;
+    }
+    #stage > #hintLamp, #stage .hint-lamp-wrap{
+      left:auto !important; right:10px !important; top:10px !important;
+    }
+    #stage #audioToggle{ left:auto !important; right:10px !important; top:50px !important; }
+    #stage .hint-lamp-wrap .hint-pop{ left:auto !important; right:0 !important; }
+  }
+</style>
 </head>
 <body>
   <div id="app">
@@ -705,7 +729,30 @@ function setDrawerCollapsed(drawer, collapsed) {
     function drawRoom(w,h){ const g = ctx.createLinearGradient(0,0,0,h); g.addColorStop(0,"#071018"); g.addColorStop(1,"#111922"); ctx.fillStyle = g; ctx.fillRect(0,0,w,h); ctx.fillStyle = "rgba(255,255,255,.06)"; for(let i=0;i<9;i++){ ctx.fillRect(28+i*w/9, h-72, 1, 50); } }
     function drawWoodBench(r){ ctx.save(); ctx.fillStyle = "#5a3d2b"; roundRect(r.x+20*r.s,r.y+r.h-90*r.s,r.w-40*r.s,70*r.s,12*r.s); ctx.fill(); ctx.fillStyle = "#7b573c"; roundRect(r.x+36*r.s,r.y+r.h-104*r.s,r.w-72*r.s,38*r.s,10*r.s); ctx.fill(); ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 1.2*r.s; for(let i=0;i<8;i++){ const yy = r.y+r.h-96*r.s+i*8*r.s; ctx.beginPath(); ctx.moveTo(r.x+50*r.s,yy); ctx.lineTo(r.x+r.w-50*r.s,yy); ctx.stroke(); } ctx.restore(); }
     function fitStageText(text,x,y,maxWidth,fontSize,color){ let size=fontSize; ctx.fillStyle=color; while(size>10){ ctx.font="700 "+size+"px Arial"; if(ctx.measureText(text).width<=maxWidth) break; size-=1; } let out=String(text); while(out.length>2&&ctx.measureText(out).width>maxWidth) out=out.slice(0,-2)+"…"; ctx.fillText(out,x,y); }
-    function drawStageReadout(r){ const s = currentScenario(), vText = s.key === "inside" ? "无实像" : state.screenDistance.toFixed(1) + " cm", boxW=Math.min(r.w-36*r.s,590*r.s), x=r.x+34*r.s, maxText=boxW-32*r.s; ctx.save(); ctx.fillStyle = "rgba(0,0,0,.42)"; roundRect(r.x+18*r.s,r.y+8*r.s,boxW,30*r.s,10*r.s); ctx.fill(); ctx.textAlign = "left"; fitStageText("物距 " + state.objectDistance.toFixed(1) + " cm ｜ 像距 " + vText + " ｜ 焦距 10.0 cm", x, r.y+29*r.s, maxText, Math.max(11,12*r.s), "#ffd54f"); ctx.restore(); }
+    function drawStageReadout(r){
+      const s = currentScenario();
+      const vText = s.key === "inside" ? "无实像" : state.screenDistance.toFixed(1) + " cm";
+      const fields = ["物距 " + state.objectDistance.toFixed(1) + " cm", "像距 " + vText, "焦距 10.0 cm"];
+      const boxW = Math.min(r.w - 36*r.s, 590*r.s);
+      const padding = Math.max(8, 16*r.s), fontSize = Math.max(11, 12*r.s), lineHeight = fontSize + 5;
+      const lines = [];
+      ctx.save();
+      ctx.font = "700 " + fontSize + "px Arial";
+      let line = "";
+      for(const field of fields){
+        const next = line ? line + " ｜ " + field : field;
+        if(line && ctx.measureText(next).width > boxW - padding*2){ lines.push(line); line = field; }
+        else line = next;
+      }
+      if(line) lines.push(line);
+      const x = r.x + 18*r.s, y = r.y + 8*r.s;
+      ctx.fillStyle = "rgba(0,0,0,.42)";
+      roundRect(x, y, boxW, lines.length*lineHeight + 8, 6);
+      ctx.fill();
+      ctx.fillStyle = "#ffd54f"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+      lines.forEach((text,index)=>ctx.fillText(text, x + padding, y + 4 + index*lineHeight));
+      ctx.restore();
+    }
     function drawScene(r){ const n = state.scenarioIndex; const map = { planeMirror:scenePlaneMirror, convexLens:sceneConvexLens, camera:sceneCamera, eyeCorrection:sceneEyeCorrection, dispersion:sceneDispersion, colorMix:sceneColorMix, static:sceneStatic, magneticField:sceneMagneticField, wireField:sceneWireField, solenoid:sceneSolenoid, motorForce:sceneMotorForce, dcMotor:sceneDcMotor, induction:sceneInduction, generator:sceneGenerator, steamPop:sceneSteam, frictionHeat:sceneFriction, motorEnergy:sceneMotorEnergy, electricHeat:sceneElectricHeat, energyTrack:sceneEnergyTrack, pulleyEfficiency:scenePulley, heatCapacity:sceneHeatCapacity, heatEngine:sceneHeatEngine, ammeter:sceneAmmeter, voltmeter:sceneVoltmeter, seriesParallel:sceneSeriesParallel, resistanceMeasure:sceneResistanceMeasure, circuitLaws:sceneCircuitLaws, jouleHeat:sceneJouleHeat, safetyCircuit:sceneSafety, renewable:sceneRenewable }; (map[SPEC.scene] || sceneFallback)(r,n); }
     function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
     function fillRound(x,y,w,h,r,color){ ctx.fillStyle=color; roundRect(x,y,w,h,r); ctx.fill(); }

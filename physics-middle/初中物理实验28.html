@@ -950,6 +950,30 @@ body #app .toolbar button:disabled{
   body #app#app .task-card :is(.progress-dots,.dots)>*{width:8px!important;height:8px!important;outline-width:1px!important}
 }
 </style>
+<style id="codex-mobile-observation-clearance">
+  @media (max-width:720px){
+
+    body #app #stage#stage .hud{
+      left:10px !important; right:54px !important; top:10px !important;
+      width:auto !important; max-width:none !important; min-width:0 !important;
+      display:flex !important; flex-wrap:wrap !important; gap:4px 6px !important;
+    }
+    body #app #stage#stage :is(#modeTag,#modeChip){
+      min-width:0 !important; max-width:100% !important;
+      padding:4px 8px !important; white-space:normal !important; font-size:11px !important;
+    }
+    body #app #stage#stage :is(#statusTag,#stateChip){
+      min-width:0 !important; max-width:100% !important; white-space:normal !important;
+      overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere;
+      line-height:1.35 !important; font-size:11px !important;
+    }
+    #stage > #hintLamp, #stage .hint-lamp-wrap{
+      left:auto !important; right:10px !important; top:10px !important;
+    }
+    #stage #audioToggle{ left:auto !important; right:10px !important; top:50px !important; }
+    #stage .hint-lamp-wrap .hint-pop{ left:auto !important; right:0 !important; }
+  }
+</style>
 </head>
 <body>
   <div id="app" class="theme-app-contents">
@@ -4084,10 +4108,17 @@ body #app .toolbar button:disabled{
       const tankH = H * 0.5;
       const pxPerCm = 2.9;
 
-      function drawSceneTitle(x, y, text, color='#dfeaff'){
+      function drawSceneTitle(x, y, text, color='#dfeaff', maxWidth=Infinity){
+        const lines = Array.isArray(text) ? text : [text];
+        let size = 14;
+        while(size > 10){
+          ctx.font = `bold ${size}px -apple-system,Segoe UI`;
+          if(lines.every(line => ctx.measureText(line).width <= maxWidth)) break;
+          size -= 1;
+        }
         ctx.fillStyle = color;
-        ctx.font = 'bold 14px -apple-system,Segoe UI';
-        ctx.fillText(text, x, y);
+        ctx.font = `bold ${size}px -apple-system,Segoe UI`;
+        lines.forEach((line, index) => ctx.fillText(line, x, y + index * (size + 3)));
       }
 
       function drawBenchTank(x, y, w, h, fillRatio, liquidColor, label){
@@ -4206,7 +4237,8 @@ body #app .toolbar button:disabled{
       function drawSameHoleScene(x, y, scale=1){
         const tankW = W * (focus === 'both' ? 0.22 : 0.26) * scale;
         const tank = drawBenchTank(x, y, tankW, tankH, clamp(ap.sameHoleLevel / 32, 0.24, 0.92), 'rgba(93,165,255,.38)', '同孔连续观察');
-        drawSceneTitle(x, y - 42, '液面下降，喷流逐渐变近');
+        if(focus === 'both') drawSceneTitle(x, y - 48, '同孔：液面降、喷距近', '#dfeaff', W * .38);
+        else drawSceneTitle(x, y - 42, '液面下降，喷流逐渐变近');
 
         const holeY = tank.y + tankH - (ap.sameHoleHoleDepth / 32) * (tankH * 0.9) - 10;
         const holeX = tank.x + tank.w - 2;
@@ -4247,7 +4279,8 @@ body #app .toolbar button:disabled{
         const alcoholFillRatio = clamp((ap.alcoholLevelCurrent + 8) / 32, 0.42, 0.88);
         const waterTank = drawBenchTank(x, y, tankW, tankH, waterFillRatio, 'rgba(93,165,255,.38)', '清水');
         const alcoholTank = drawBenchTank(x + tankW + gap, y, tankW, tankH, alcoholFillRatio, 'rgba(241,202,119,.30)', '酒精');
-        drawSceneTitle(x, y - 42, '同深度比较不同液体喷距');
+        if(focus === 'both') drawSceneTitle(x, y - 48, '同深度：清水/酒精', '#dfeaff', W * .42);
+        else drawSceneTitle(x, y - 42, '同深度比较不同液体喷距');
         const cmpHoleY = y + tankH - (ap.compareDepthCm / 32) * (tankH * 0.9) - 10;
         const waterHoleX = x + tankW - 2;
         const alcoholHoleX = x + tankW + gap + tankW - 2;

@@ -553,6 +553,30 @@ body #app .toolbar button:disabled{
   body #app#app .task-card :is(.progress-dots,.dots)>*{width:8px!important;height:8px!important;outline-width:1px!important}
 }
 </style>
+<style id="codex-mobile-observation-clearance">
+  @media (max-width:720px){
+
+    body #app #stage#stage .hud{
+      left:10px !important; right:54px !important; top:10px !important;
+      width:auto !important; max-width:none !important; min-width:0 !important;
+      display:flex !important; flex-wrap:wrap !important; gap:4px 6px !important;
+    }
+    body #app #stage#stage :is(#modeTag,#modeChip){
+      min-width:0 !important; max-width:100% !important;
+      padding:4px 8px !important; white-space:normal !important; font-size:11px !important;
+    }
+    body #app #stage#stage :is(#statusTag,#stateChip){
+      min-width:0 !important; max-width:100% !important; white-space:normal !important;
+      overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere;
+      line-height:1.35 !important; font-size:11px !important;
+    }
+    #stage > #hintLamp, #stage .hint-lamp-wrap{
+      left:auto !important; right:10px !important; top:10px !important;
+    }
+    #stage #audioToggle{ left:auto !important; right:10px !important; top:50px !important; }
+    #stage .hint-lamp-wrap .hint-pop{ left:auto !important; right:0 !important; }
+  }
+</style>
 </head>
 <body>
   <div id="app">
@@ -778,8 +802,11 @@ body #app .toolbar button:disabled{
     function label(text,x,y,options){const opts=options||{};ctx.save();ctx.fillStyle=opts.color||"#eaf5ff";ctx.font=(opts.weight||700)+" "+(opts.size||13)+"px Arial";ctx.textAlign=opts.align||"center";ctx.textBaseline="middle";ctx.fillText(text,x,y);ctx.restore();}
     function line(points,color,width,dash){ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="round";ctx.lineJoin="round";if(dash)ctx.setLineDash(dash);ctx.beginPath();points.forEach((point,index)=>index?ctx.lineTo(point[0],point[1]):ctx.moveTo(point[0],point[1]));ctx.stroke();ctx.restore();}
     function geometry(){
-      const w=state.width,h=state.height,compact=w<600,s=clamp(w/900,compact?.68:.76,1);
-      const cx=w*(compact?.40:.43),headY=h*(compact?.18:.13),cylinderW=190*s,cylinderH=250*s,crankY=headY+cylinderH+52*s,flyX=cx+(compact?205:240)*s;
+      const w=state.width,h=state.height,compact=w<600,cx=w*(compact?.40:.43);
+      const flyOffset=compact?205:240,flyRadius=compact?74:92;
+      const rightExtent=flyOffset+Math.max(flyRadius+3,flyRadius*.76+37);
+      const s=Math.min(clamp(w/900,compact?.68:.76,1),(w-cx-12)/rightExtent);
+      const headY=h*(compact?.18:.13),cylinderW=190*s,cylinderH=250*s,crankY=headY+cylinderH+52*s,flyX=cx+flyOffset*s;
       return{w,h,compact,s,cx,headY,cylinderW,cylinderH,crankY,flyX,flyY:crankY,flyR:(compact?74:92)*s,benchY:h-34};
     }
     function drawBackground(g){

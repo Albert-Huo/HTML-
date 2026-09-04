@@ -950,6 +950,30 @@ body #app .toolbar button:disabled{
   body #app#app .task-card :is(.progress-dots,.dots)>*{width:8px!important;height:8px!important;outline-width:1px!important}
 }
 </style>
+<style id="codex-mobile-observation-clearance">
+  @media (max-width:720px){
+
+    body #app #stage#stage .hud{
+      left:10px !important; right:54px !important; top:10px !important;
+      width:auto !important; max-width:none !important; min-width:0 !important;
+      display:flex !important; flex-wrap:wrap !important; gap:4px 6px !important;
+    }
+    body #app #stage#stage :is(#modeTag,#modeChip){
+      min-width:0 !important; max-width:100% !important;
+      padding:4px 8px !important; white-space:normal !important; font-size:11px !important;
+    }
+    body #app #stage#stage :is(#statusTag,#stateChip){
+      min-width:0 !important; max-width:100% !important; white-space:normal !important;
+      overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere;
+      line-height:1.35 !important; font-size:11px !important;
+    }
+    #stage > #hintLamp, #stage .hint-lamp-wrap{
+      left:auto !important; right:10px !important; top:10px !important;
+    }
+    #stage #audioToggle{ left:auto !important; right:10px !important; top:50px !important; }
+    #stage .hint-lamp-wrap .hint-pop{ left:auto !important; right:0 !important; }
+  }
+</style>
 </head>
 <body>
   <div id="app" class="theme-app-contents">
@@ -3831,8 +3855,8 @@ body #app .toolbar button:disabled{
       const pullStableX = pullRestX + (compact ? 46 : 52);
       const deskZone = { x: deskX - 24, y: deskY - deskBagH - 42, w: deskW + 136, h: deskBagH + 92 };
       const inspectRect = { x: meterX, y: meterY, w: meterW, h: meterH };
-      const scaleInfoX = meterX - 4;
-      const scaleInfoY = meterY - 44;
+      const scaleInfoX = compact ? meterX + meterW + 10 : meterX - 4;
+      const scaleInfoY = compact ? Math.max(8, meterY - 44) : meterY - 44;
       const scaleInfoW = compact ? 168 : 184;
       const scaleInfoH = 30;
       const zeroLabelX = zeroTrackX - 10;
@@ -5681,8 +5705,8 @@ body #app .toolbar button:disabled{
         const g = getLab22Layout();
         const start = scenePointToStage(g.pullRestX, g.hHookY);
         const startForce = 2.35;
-        const holdForce = 2.02;
-        const forcePerPx = g.compact ? 0.040 : 0.036;
+        const holdForce = g.pullStableForce;
+        const forcePerPx = g.compact ? 0.042 : 0.040;
         const startExtension = startForce / forcePerPx;
         const holdExtension = holdForce / forcePerPx;
         await moveDemoCursorToStage(start.x, start.y, 420);
@@ -5714,7 +5738,7 @@ body #app .toolbar button:disabled{
           state.apparatus.horizontalLocked = true;
           state.apparatus.readReady = true;
           state.apparatus.lastMeasureKind = 'F2';
-          state.apparatus.lastN = round(Math.max(state.apparatus.f2Force || 0, holdForce), 2);
+          state.apparatus.lastN = round(g.pullStableForce, 2);
           state.apparatus.f2Hint = 'ready';
           state.apparatus.measureState = 'F2 示数稳定，可记录';
           const zeroBias = getLab22ZeroBias(state.apparatus);

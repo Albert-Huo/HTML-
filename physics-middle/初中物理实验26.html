@@ -950,6 +950,30 @@ body #app .toolbar button:disabled{
   body #app#app .task-card :is(.progress-dots,.dots)>*{width:8px!important;height:8px!important;outline-width:1px!important}
 }
 </style>
+<style id="codex-mobile-observation-clearance">
+  @media (max-width:720px){
+
+    body #app #stage#stage .hud{
+      left:10px !important; right:54px !important; top:10px !important;
+      width:auto !important; max-width:none !important; min-width:0 !important;
+      display:flex !important; flex-wrap:wrap !important; gap:4px 6px !important;
+    }
+    body #app #stage#stage :is(#modeTag,#modeChip){
+      min-width:0 !important; max-width:100% !important;
+      padding:4px 8px !important; white-space:normal !important; font-size:11px !important;
+    }
+    body #app #stage#stage :is(#statusTag,#stateChip){
+      min-width:0 !important; max-width:100% !important; white-space:normal !important;
+      overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere;
+      line-height:1.35 !important; font-size:11px !important;
+    }
+    #stage > #hintLamp, #stage .hint-lamp-wrap{
+      left:auto !important; right:10px !important; top:10px !important;
+    }
+    #stage #audioToggle{ left:auto !important; right:10px !important; top:50px !important; }
+    #stage .hint-lamp-wrap .hint-pop{ left:auto !important; right:0 !important; }
+  }
+</style>
 </head>
 <body>
   <div id="app" class="theme-app-contents">
@@ -4011,7 +4035,7 @@ body #app .toolbar button:disabled{
       const rect = scene.getBoundingClientRect();
       const W = rect.width;
       const H = rect.height;
-      const pxPerCm = clamp((W * 0.72) / 44, 10.4, 13.6);
+      const pxPerCm = Math.min(clamp((W * 0.72) / 44, 10.4, 13.6), (W - 56) / 44);
       const beamHalfCm = 22;
       const beamHalf = beamHalfCm * pxPerCm;
       const beamY = H * 0.26;
@@ -4421,7 +4445,7 @@ body #app .toolbar button:disabled{
       ctx.fillRect(g.reserveRect.x + 10, g.reserveRect.y + g.reserveRect.h - 16, g.reserveRect.w - 20, 10);
       ctx.fillStyle = '#eaf2ff';
       ctx.font = '13px -apple-system,Segoe UI';
-      ctx.fillText('备用钩码', g.reserveRect.x + g.reserveRect.w * 0.5 - 26, g.reserveRect.y + g.reserveRect.h + 8);
+      ctx.fillText('备用钩码', g.reserveRect.x + g.reserveRect.w * 0.5 - 26, g.reserveRect.y + g.reserveRect.h + (W < 600 ? -2 : 8));
 
       tokenRects.forEach(item=>drawLab26Weight(ctx, item.rect.x, item.rect.y, item.rect.w, item.rect.h));
       if(ap.dragTokenId){
@@ -4434,10 +4458,31 @@ body #app .toolbar button:disabled{
       ctx.fillText(`支点`, g.cx - 12, g.supportTopY - 10);
 
       ctx.fillStyle = '#eaf2ff';
-      ctx.font = '14px -apple-system,Segoe UI';
-      ctx.fillText(`阻力侧：${ap.leftCount}个钩码`, W * 0.08, H - 32);
-      ctx.fillText(`动力侧：${ap.rightCount}个钩码`, W * 0.29, H - 32);
-      ctx.fillText(`力矩差：${Math.abs(ap.balanceError || 0).toFixed(2)} N·cm`, W * 0.52, H - 32);
+      if(W < 600){
+        const momentDelta = Number(ap.balanceError || 0);
+        const signedDelta = `${momentDelta > 0 ? '+' : (momentDelta < 0 ? '−' : '')}${Math.abs(momentDelta).toFixed(2)}`;
+        ctx.fillStyle = 'rgba(12,20,30,.94)';
+        ctx.fillRect(0, H - 58, W, 58);
+        ctx.strokeStyle = 'rgba(149,183,216,.36)';
+        ctx.beginPath();
+        ctx.moveTo(0, H - 58);
+        ctx.lineTo(W, H - 58);
+        ctx.stroke();
+        ctx.fillStyle = '#eaf2ff';
+        ctx.font = '10px -apple-system,Segoe UI';
+        ctx.textAlign = 'left';
+        ctx.fillText(`阻力侧${ap.leftCount}钩码 F₂${ap.f2}N l₂${ap.leftArm}cm`, 10, H - 36);
+        ctx.textAlign = 'right';
+        ctx.fillText(`动力侧${ap.rightCount}钩码 F₁${ap.f1}N l₁${ap.rightArm}cm`, W - 10, H - 36);
+        ctx.textAlign = 'left';
+        ctx.font = '11px -apple-system,Segoe UI';
+        ctx.fillText(`力矩差（动力−阻力）：${signedDelta} N·cm`, 10, H - 14);
+      }else{
+        ctx.font = '14px -apple-system,Segoe UI';
+        ctx.fillText(`阻力侧：${ap.leftCount}个钩码`, W * 0.08, H - 32);
+        ctx.fillText(`动力侧：${ap.rightCount}个钩码`, W * 0.29, H - 32);
+        ctx.fillText(`力矩差：${Math.abs(ap.balanceError || 0).toFixed(2)} N·cm`, W * 0.52, H - 32);
+      }
     }
 
     function draw27(ctx,W,H){

@@ -950,6 +950,30 @@ body #app .toolbar button:disabled{
   body #app#app .task-card :is(.progress-dots,.dots)>*{width:8px!important;height:8px!important;outline-width:1px!important}
 }
 </style>
+<style id="codex-mobile-observation-clearance">
+  @media (max-width:720px){
+
+    body #app #stage#stage .hud{
+      left:10px !important; right:54px !important; top:10px !important;
+      width:auto !important; max-width:none !important; min-width:0 !important;
+      display:flex !important; flex-wrap:wrap !important; gap:4px 6px !important;
+    }
+    body #app #stage#stage :is(#modeTag,#modeChip){
+      min-width:0 !important; max-width:100% !important;
+      padding:4px 8px !important; white-space:normal !important; font-size:11px !important;
+    }
+    body #app #stage#stage :is(#statusTag,#stateChip){
+      min-width:0 !important; max-width:100% !important; white-space:normal !important;
+      overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere;
+      line-height:1.35 !important; font-size:11px !important;
+    }
+    #stage > #hintLamp, #stage .hint-lamp-wrap{
+      left:auto !important; right:10px !important; top:10px !important;
+    }
+    #stage #audioToggle{ left:auto !important; right:10px !important; top:50px !important; }
+    #stage .hint-lamp-wrap .hint-pop{ left:auto !important; right:0 !important; }
+  }
+</style>
 </head>
 <body>
   <div id="app" class="theme-app-contents">
@@ -3715,17 +3739,18 @@ body #app .toolbar button:disabled{
     }
 
     function getLab21Layout(W = scene.clientWidth || 960, H = scene.clientHeight || 540){
-      const narrow = W <= 760;
-      const boardX = W * (narrow ? 0.18 : 0.16);
+      const narrow = W < 840;
+      const compact = W < 600;
+      const boardX = compact ? 12 : W * (narrow ? 0.18 : 0.16);
       const boardY = H - (narrow ? 188 : 184);
-      const boardW = W * (narrow ? 0.42 : 0.5);
+      const boardW = compact ? Math.max(112, W * 0.4) : W * (narrow ? 0.42 : 0.5);
       const boardH = narrow ? 30 : 34;
-      const blockW = narrow ? 100 : 116;
+      const blockW = compact ? Math.min(100, Math.max(56, W * 0.19)) : (narrow ? 100 : 116);
       const blockH = narrow ? 38 : 42;
       const tray = {
-        x: boardX - (narrow ? 132 : 152),
-        y: boardY - blockH - (narrow ? 20 : 24),
-        w: blockW + (narrow ? 40 : 52),
+        x: compact ? boardX : boardX - (narrow ? 132 : 152),
+        y: boardY - blockH - (compact ? 68 : (narrow ? 20 : 24)),
+        w: blockW + (compact ? 28 : (narrow ? 40 : 52)),
         h: blockH + (narrow ? 26 : 32)
       };
       const slot = {
@@ -3734,12 +3759,12 @@ body #app .toolbar button:disabled{
       };
       const maxBlockSlide = boardW - blockW - (narrow ? 34 : 42);
       const gauge = {
-        x: boardX + boardW + (narrow ? 18 : 26),
+        x: boardX + boardW + (compact ? 8 : (narrow ? 18 : 26)),
         y: boardY - (narrow ? 48 : 52),
-        w: Math.max(narrow ? 126 : 160, Math.min(narrow ? 150 : 184, W - (boardX + boardW + (narrow ? 18 : 26)) - 26)),
+        w: compact ? Math.min(150, Math.max(76, W * 0.27)) : Math.max(narrow ? 126 : 160, Math.min(narrow ? 150 : 184, W - (boardX + boardW + (narrow ? 18 : 26)) - 26)),
         h: narrow ? 52 : 56
       };
-      const maxGaugeOffset = Math.max(narrow ? 76 : 98, Math.min(narrow ? 110 : 136, W - (gauge.x + gauge.w) - 20));
+      const maxGaugeOffset = Math.max(1, Math.min(narrow ? 110 : 136, W - (gauge.x + gauge.w) - 46));
       const handle = {
         x: gauge.x + gauge.w + 14,
         y: gauge.y + gauge.h * 0.56,
@@ -3750,7 +3775,7 @@ body #app .toolbar button:disabled{
         max: maxGaugeOffset * 0.92
       };
       const steadyCenter = (steadyZone.min + steadyZone.max) * 0.5;
-      return { narrow, boardX, boardY, boardW, boardH, blockW, blockH, tray, slot, maxBlockSlide, gauge, maxGaugeOffset, handle, steadyZone, steadyCenter };
+      return { compact, narrow, boardX, boardY, boardW, boardH, blockW, blockH, tray, slot, maxBlockSlide, gauge, maxGaugeOffset, handle, steadyZone, steadyCenter };
     }
 
     function getLab21MeasureKey(mode = state.freeMode ? 'free' : 'guided'){
@@ -3924,12 +3949,14 @@ body #app .toolbar button:disabled{
       ctx.fillRect(blockX + blockW - 6, blockY + 14, 10, 14);
 
       const weightCount = Math.max(1, Math.round(Number(state.vars.normalN) / 2));
+      const weightStep = g.compact ? Math.min(20, (blockW - 12) / weightCount) : 20;
+      const weightW = g.compact ? Math.min(15, weightStep - 2) : 15;
       for(let i=0;i<weightCount;i++){
-        const wx = blockX + 10 + i*20;
+        const wx = blockX + (g.compact ? 6 : 10) + i * weightStep;
         ctx.fillStyle = '#c6d3e5';
-        ctx.fillRect(wx, blockY - 14, 15, 14);
+        ctx.fillRect(wx, blockY - 14, weightW, 14);
         ctx.strokeStyle = '#ebf3ff';
-        ctx.strokeRect(wx, blockY - 14, 15, 14);
+        ctx.strokeRect(wx, blockY - 14, weightW, 14);
       }
 
       const gaugeX = g.gauge.x + ap.gaugeOffset;

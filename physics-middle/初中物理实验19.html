@@ -910,6 +910,30 @@ body #app .toolbar button:disabled{
   body #app#app .task-card :is(.progress-dots,.dots)>*{width:8px!important;height:8px!important;outline-width:1px!important}
 }
 </style>
+<style id="codex-mobile-observation-clearance">
+  @media (max-width:720px){
+
+    body #app #stage#stage .hud{
+      left:10px !important; right:54px !important; top:10px !important;
+      width:auto !important; max-width:none !important; min-width:0 !important;
+      display:flex !important; flex-wrap:wrap !important; gap:4px 6px !important;
+    }
+    body #app #stage#stage :is(#modeTag,#modeChip){
+      min-width:0 !important; max-width:100% !important;
+      padding:4px 8px !important; white-space:normal !important; font-size:11px !important;
+    }
+    body #app #stage#stage :is(#statusTag,#stateChip){
+      min-width:0 !important; max-width:100% !important; white-space:normal !important;
+      overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere;
+      line-height:1.35 !important; font-size:11px !important;
+    }
+    #stage > #hintLamp, #stage .hint-lamp-wrap{
+      left:auto !important; right:10px !important; top:10px !important;
+    }
+    #stage #audioToggle{ left:auto !important; right:10px !important; top:50px !important; }
+    #stage .hint-lamp-wrap .hint-pop{ left:auto !important; right:0 !important; }
+  }
+</style>
 </head>
 <body>
   <div id="app" class="theme-app-contents">
@@ -1156,7 +1180,10 @@ body #app .toolbar button:disabled{
     }
 
     function get19Geometry(W, H){
-      const frameX = W * 0.36;
+      const compact = W < 600;
+      const frameScale = compact ? Math.min(190, W - 92) / 340 : 1;
+      const frameX = compact ? 8 + 170 * frameScale : W * 0.36;
+      const rulerX = compact ? W - 50 : frameX + 190;
       const topY = 84;
       const baseY = H - 126;
       const headW = 132;
@@ -1167,7 +1194,7 @@ body #app .toolbar button:disabled{
       const maxDeformPx = deformOf(state.apparatus.sample, 10) * mmPx;
       const forceMinY = topRestY - headH;
       const forceMaxY = topRestY + maxDeformPx - headH;
-      return { frameX, topY, baseY, headW, headH, mmPx, restHeight, topRestY, maxDeformPx, forceMinY, forceMaxY };
+      return { compact, frameScale, frameX, rulerX, topY, baseY, headW, headH, mmPx, restHeight, topRestY, maxDeformPx, forceMinY, forceMaxY };
     }
 
     function currentHeadY(W, H){
@@ -1697,20 +1724,20 @@ body #app .toolbar button:disabled{
       ctx.fillRect(0, floorY, W, 2);
 
       ctx.fillStyle = '#6e7986';
-      ctx.fillRect(g.frameX - 130, g.topY, 260, 12);
-      ctx.fillRect(g.frameX - 60, g.topY, 10, g.baseY - g.topY + 36);
-      ctx.fillRect(g.frameX + 50, g.topY, 10, g.baseY - g.topY + 36);
-      ctx.fillRect(g.frameX - 150, g.baseY + 24, 300, 12);
+      ctx.fillRect(g.frameX - 130 * g.frameScale, g.topY, 260 * g.frameScale, 12);
+      ctx.fillRect(g.frameX - 60 * g.frameScale, g.topY, 10, g.baseY - g.topY + 36);
+      ctx.fillRect(g.frameX + 50 * g.frameScale, g.topY, 10, g.baseY - g.topY + 36);
+      ctx.fillRect(g.frameX - 150 * g.frameScale, g.baseY + 24, 300 * g.frameScale, 12);
 
       ctx.fillStyle = '#4d5663';
-      ctx.fillRect(g.frameX - 170, g.baseY + 36, 340, 18);
+      ctx.fillRect(g.frameX - 170 * g.frameScale, g.baseY + 36, 340 * g.frameScale, 18);
 
       const headY = currentHeadY(W, H);
       drawRoundedRect(ctx, g.frameX - g.headW/2, headY, g.headW, g.headH, 10, '#c7d4e8', '#ecf3ff');
       drawRoundedRect(ctx, g.frameX - 18, headY - 20, 36, 18, 8, '#dce6f5', '#eef5ff');
       ctx.fillStyle = '#e7f0ff';
       ctx.font = '13px -apple-system,Segoe UI';
-      ctx.fillText('拖动压板施力', g.frameX - 46, g.topY - 12);
+      ctx.fillText('拖动压板施力', g.frameX - 46, g.topY - (g.compact ? 38 : 12));
 
       const deformPx = ap.deformMm * g.mmPx;
       if(ap.sample === 'spring'){
@@ -1720,12 +1747,12 @@ body #app .toolbar button:disabled{
       }
 
       ctx.fillStyle = '#f3c98b';
-      drawRoundedRect(ctx, g.frameX - 110, g.baseY + 10, 220, 24, 10, '#c99863', '#f3c98b');
+      drawRoundedRect(ctx, g.frameX - 110 * g.frameScale, g.baseY + 10, 220 * g.frameScale, 24, 10, '#c99863', '#f3c98b');
       ctx.fillStyle = '#eaf2ff';
       ctx.font = '14px -apple-system,Segoe UI';
       ctx.fillText(ap.sample === 'spring' ? '当前样件：弹簧' : '当前样件：海绵', g.frameX - 64, g.baseY + 68);
 
-      const rulerX = g.frameX + 190;
+      const rulerX = g.rulerX;
       const rulerTop = g.topRestY - 6;
       const rulerBottom = g.topRestY + g.maxDeformPx + 18;
       ctx.strokeStyle = '#b8cade';
@@ -1751,7 +1778,7 @@ body #app .toolbar button:disabled{
       }
       ctx.fillStyle = '#dce8fa';
       ctx.font = '13px -apple-system,Segoe UI';
-      ctx.fillText('形变尺(mm)', rulerX - 18, rulerTop - 18);
+      ctx.fillText('形变尺(mm)', g.compact ? W - 96 : rulerX - 18, rulerTop - 18);
       const pointerY = rulerTop + ap.deformMm * g.mmPx;
       ctx.fillStyle = '#7fd1ff';
       ctx.beginPath();
@@ -1760,8 +1787,11 @@ body #app .toolbar button:disabled{
       ctx.lineTo(rulerX - 3, pointerY + 7);
       ctx.closePath();
       ctx.fill();
-      ctx.fillText(`当前形变 ${ap.deformMm.toFixed(1)} mm`, rulerX - 70, rulerBottom + 24);
-      ctx.fillText(`当前施力 ${ap.forceN} N`, rulerX - 52, rulerBottom + 44);
+      ctx.save();
+      if(g.compact) ctx.textAlign = 'right';
+      ctx.fillText(`当前形变 ${ap.deformMm.toFixed(1)} mm`, g.compact ? W - 8 : rulerX - 70, rulerBottom + 24);
+      ctx.fillText(`当前施力 ${ap.forceN} N`, g.compact ? W - 8 : rulerX - 52, rulerBottom + 44);
+      ctx.restore();
 
     }
 
