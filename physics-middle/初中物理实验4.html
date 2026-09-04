@@ -292,25 +292,28 @@
       position:absolute;
       top:20px;
       right:20px;
-      width:24px;
-      height:286px;
+      width:44px;
+      height:240px;
       z-index:23;
-      cursor:pointer;
-      transition:all .7s cubic-bezier(0.34, 1.56, 0.64, 1);
+      cursor:grab;
+      transition:filter .2s ease;
       filter:drop-shadow(0 4px 8px rgba(0,0,0,0.55));
       touch-action:none;
+      user-select:none;
     }
-    .thermo-container:hover{ transform:scale(1.05); }
     .thermo-container.inserted{
-      top:auto;
-      bottom:178px;
-      left:50%;
-      right:auto;
-      transform:translateX(-50%);
+      filter:drop-shadow(0 0 7px rgba(75,216,151,.45));
     }
     .thermo-container.touching-bottom{
-      bottom:150px;
       filter:drop-shadow(0 0 8px rgba(255,107,107,.9));
+    }
+    .thermo-container.snap-ready{
+      filter:drop-shadow(0 0 10px rgba(61,220,151,.95));
+    }
+    .thermo-container.dragging{
+      cursor:grabbing;
+      transition:none;
+      filter:drop-shadow(0 8px 14px rgba(0,0,0,.68));
     }
     .thermo-glass{
       width:10px;
@@ -1334,12 +1337,6 @@
     #stage .alcohol-lamp{
       bottom:90px !important;
     }
-    #stage .thermo-container.inserted{
-      bottom:216px !important;
-    }
-    #stage .thermo-container.inserted.touching-bottom{
-      bottom:188px !important;
-    }
     #stage .stand-clamp{
       top:calc(22% + 170px) !important;
     }
@@ -1351,12 +1348,6 @@
     }
     #stage:has(#controlBody:not(.collapsed)) .alcohol-lamp{
       bottom:180px !important;
-    }
-    #stage:has(#controlBody:not(.collapsed)) .thermo-container.inserted{
-      bottom:306px !important;
-    }
-    #stage:has(#controlBody:not(.collapsed)) .thermo-container.inserted.touching-bottom{
-      bottom:278px !important;
     }
     #stage:has(#controlBody:not(.collapsed)) .stand-clamp{
       top:calc(22% + 80px) !important;
@@ -2439,7 +2430,6 @@
     #stage .exp4-observation-panel .lab-note{ flex:1; font-size:11px; }
     #stage .exp4-observation-panel .pill{ white-space:normal; overflow:visible; text-overflow:clip; font-size:11px; }
     #stage #labArea .thermo-container{ top:220px; height:220px; }
-    #stage #labArea .thermo-container.inserted{ top:auto; }
     #stage .stand-rod{ top:220px; height:auto; }
   }
 </style>
@@ -2477,7 +2467,7 @@
   <div class="task-card" id="taskCard" data-mode="challenge">
     <div class="task-step" id="taskStep">关卡 1 / 4</div>
     <div class="task-text">
-      <div id="taskText">先组装装置：点击温度计，把玻璃泡浸入烧杯水中（不碰杯底）。</div>
+      <div id="taskText">先组装装置：拖动温度计，把玻璃泡浸入烧杯水中（不碰杯底和杯壁）。</div>
       <div class="task-hint" id="taskHint">提示：先让温度计就位，再开始加热。</div>
     </div>
     <div class="progress-dots">
@@ -2547,8 +2537,8 @@
         <div class="flame" id="flame"></div>
       </div>
 
-      <div class="thermo-container" id="thermo" aria-label="温度计">
-        <div class="thermo-tag" id="thermoTag">点击温度计</div>
+      <div class="thermo-container" id="thermo" aria-label="可拖动温度计">
+        <div class="thermo-tag" id="thermoTag">拖动温度计</div>
         <div class="thermo-glass">
           <div class="mercury" id="mercury"></div>
           <div class="thermo-bulb"></div>
@@ -2571,7 +2561,6 @@
       <div class="dockBody collapsed drawer-body" id="controlBody">
         <div class="btnRow">
           <button class="warn" id="heatBtn">点燃酒精灯 🔥</button>
-          <button id="positionBtn">调整温度计位置</button>
           <button id="checkBtn">确认观察 ✅</button>
         </div>
       </div>
@@ -2664,6 +2653,10 @@ const state = {
   demoRunId: 0,
   timers: new Set(),
   rafId: 0,
+  draggingId: null,
+  thermoDrag: null,
+  thermoAtHome: true,
+  thermoSnapped: false,
   dockMoved: { control: false, data: false },
   observationPanelMoved: false
 };
@@ -2674,6 +2667,7 @@ const sim = {
   heating: false,
   inserted: false,
   safePosition: false,
+  placementStatus: 'outside',
   boilStableSec: 0,
   dataPoints: [],
   lastSampleAt: 0,
@@ -2684,18 +2678,18 @@ const sim = {
 const tasks = [
   {
     text: '先组装装置：让温度计玻璃泡悬空浸入水中，不能接触烧杯底。',
-    hint: '提示：先点击温度计放入水中；若提示触底，再点击“调整温度计位置”。',
+    hint: '提示：拖动温度计，把玻璃泡放入水中；靠近正确位置会自动吸附。',
     pass: () => sim.inserted && sim.safePosition
   },
   {
     text: '点燃酒精灯并持续加热，观察温度上升，目标达到 95℃。',
     hint: '提示：点击“点燃酒精灯”后持续观察图像上升段。',
-    pass: () => sim.temp >= 95 && sim.dataPoints.length >= 12
+    pass: () => sim.inserted && sim.safePosition && sim.heating && sim.temp >= 95 && sim.dataPoints.length >= 12
   },
   {
     text: '继续加热，观察水沸腾时的现象和图线变化；观察充分后点击“确认观察”。',
     hint: '提示：温度接近 100℃ 后继续记录至少 8 个点，留意图线后半段走势。',
-    pass: () => sim.temp >= 99 && sim.boilStableSec >= 3 && plateauCount() >= 8
+    pass: () => sim.inserted && sim.safePosition && sim.heating && sim.temp >= 99 && sim.boilStableSec >= 3 && plateauCount() >= 8
   },
   {
     text: '根据刚才记录的图线，完成观察后小测。',
@@ -2720,7 +2714,9 @@ const observationHead = $('#exp4ObservationHead');
 const labNote = $('#labNote');
 const thermo = $('#thermo');
 const thermoTag = $('#thermoTag');
-const positionBtn = $('#positionBtn');
+const thermoBulb = thermo.querySelector('.thermo-bulb');
+const beaker = labArea.querySelector('.beaker');
+const water = beaker.querySelector('.water');
 const positionPill = $('#positionPill');
 const mercury = $('#mercury');
 const flame = $('#flame');
@@ -2963,7 +2959,8 @@ function createBubble(isBoiling) {
 }
 
 function updatePhysics(dt) {
-  if (sim.heating) {
+  const validMeasurement = sim.inserted && sim.safePosition;
+  if (sim.heating && validMeasurement) {
     if (sim.temp < BOILING_POINT - 0.25) {
       const near = clamp((BOILING_POINT - sim.temp) / 28, 0.35, 1.0);
       sim.temp += (14 + Math.random() * 3) * near * dt;
@@ -2975,11 +2972,11 @@ function updatePhysics(dt) {
   }
   sim.temp = clamp(sim.temp, ROOM_TEMP, 102);
 
-  if (sim.heating && sim.temp >= 99.1) sim.boilStableSec += dt;
+  if (sim.heating && validMeasurement && sim.temp >= 99.1) sim.boilStableSec += dt;
   else if (!sim.heating) sim.boilStableSec = 0;
   else if (sim.temp < 98.3) sim.boilStableSec = Math.max(0, sim.boilStableSec - dt * 0.65);
 
-  if (sim.heating || sim.temp > ROOM_TEMP + 0.2) {
+  if (validMeasurement && (sim.heating || sim.temp > ROOM_TEMP + 0.2)) {
     const experimentMinutes = dt * EXPERIMENT_MINUTES_PER_SECOND;
     sim.time += experimentMinutes;
     sim.lastSampleAt += experimentMinutes;
@@ -2990,7 +2987,7 @@ function updatePhysics(dt) {
     }
   }
 
-  if (sim.heating && sim.temp > 85) {
+  if (sim.heating && validMeasurement && sim.temp > 85) {
     const chance = clamp((sim.temp - 85) / 20, 0.04, 0.28);
     sim.bubbleAcc += dt * chance * 6;
     while (sim.bubbleAcc >= 1) {
@@ -3106,14 +3103,23 @@ function refreshReadouts() {
   heatBtn.textContent = sim.heating ? '熄灭酒精灯 ❄️' : '点燃酒精灯 🔥';
 
   thermo.classList.toggle('inserted', sim.inserted);
-  thermo.classList.toggle('touching-bottom', sim.inserted && !sim.safePosition);
+  thermo.classList.toggle('touching-bottom', sim.placementStatus === 'bottom');
   thermoTag.style.display = sim.inserted && sim.safePosition ? 'none' : 'block';
-  thermoTag.textContent = sim.inserted && !sim.safePosition ? '玻璃泡触底' : '点击温度计';
-  positionPill.textContent = !sim.inserted ? '未插入' : (sim.safePosition ? '悬空浸入' : '接触杯底');
-  positionBtn.disabled = state.autoPlaying || !sim.inserted || sim.safePosition;
+  const placementCopy = {
+    outside: ['拖动温度计', '未浸入'],
+    shallow: ['请完全浸入', '浸入过浅'],
+    wall: ['请离开杯壁', '接触杯壁'],
+    bottom: ['请离开杯底', '接触杯底'],
+    valid: ['', '悬空浸入']
+  };
+  const copy = placementCopy[sim.placementStatus] || placementCopy.outside;
+  thermoTag.textContent = copy[0];
+  positionPill.textContent = copy[1];
 
-  if (!sim.inserted) labNote.textContent = '装置状态：温度计未插入';
-  else if (!sim.safePosition) labNote.textContent = '装置状态：玻璃泡接触杯底，需上调温度计';
+  if (sim.placementStatus === 'outside') labNote.textContent = '装置状态：拖动温度计放入水中';
+  else if (sim.placementStatus === 'shallow') labNote.textContent = '装置状态：玻璃泡需完全浸入水中';
+  else if (sim.placementStatus === 'wall') labNote.textContent = '装置状态：玻璃泡接触杯壁，请调整';
+  else if (sim.placementStatus === 'bottom') labNote.textContent = '装置状态：玻璃泡接触杯底，请调整';
   else if (!sim.heating) labNote.textContent = '装置状态：可开始加热';
   else if (sim.temp < 99) labNote.textContent = '装置状态：升温中';
   else labNote.textContent = '装置状态：沸腾现象观察中';
@@ -3165,45 +3171,246 @@ function answerQuiz(ans, fromAuto = false) {
   }
 }
 
-function toggleThermo(force = null, fromAuto = false) {
-  if (state.autoPlaying && !fromAuto) return;
-  const next = force === null ? !sim.inserted : !!force;
-  if (!state.freeMode && !state.completed && state.currentTask > 0 && !next && !fromAuto) {
-    markStepWarning('实验进行中，请保持温度计在水中。');
-    return;
-  }
-  sim.inserted = next;
-  sim.safePosition = next && fromAuto;
-  if (!fromAuto) {
-    showToast(
-      sim.inserted
-        ? '温度计已放入，但玻璃泡接触杯底；请调整位置。'
-        : '温度计已移出。'
-    );
-  }
-  refreshReadouts();
+function getThermometerPosition() {
+  const areaRect = labArea.getBoundingClientRect();
+  const rect = thermo.getBoundingClientRect();
+  return {
+    x: rect.left - areaRect.left,
+    y: rect.top - areaRect.top,
+    width: rect.width,
+    height: rect.height
+  };
 }
 
-function adjustThermoPosition(fromAuto = false) {
-  if (state.autoPlaying && !fromAuto) return;
-  if (!sim.inserted) {
-    if (!fromAuto) markStepWarning('请先把温度计放入水中。');
-    return;
-  }
-  sim.safePosition = true;
-  refreshReadouts();
-  if (!fromAuto) showToast('温度计已上调：玻璃泡悬空浸入且不接触杯底。');
+function clampThermometerPosition(x, y) {
+  const width = thermo.offsetWidth;
+  const height = thermo.offsetHeight;
+  const pad = 8;
+  return {
+    x: clamp(x, pad, Math.max(pad, labArea.clientWidth - width - pad)),
+    y: clamp(y, pad, Math.max(pad, labArea.clientHeight - height - 12))
+  };
 }
+
+function setThermometerPosition(x, y) {
+  const next = clampThermometerPosition(x, y);
+  thermo.style.left = `${next.x}px`;
+  thermo.style.top = `${next.y}px`;
+  thermo.style.right = 'auto';
+  thermo.style.bottom = 'auto';
+  return next;
+}
+
+function getThermometerHomePosition() {
+  const top = window.innerWidth <= 720 ? 220 : 20;
+  return clampThermometerPosition(labArea.clientWidth - thermo.offsetWidth - 20, top);
+}
+
+function getThermometerSnapPose() {
+  const areaRect = labArea.getBoundingClientRect();
+  const thermoRect = thermo.getBoundingClientRect();
+  const bulbRect = thermoBulb.getBoundingClientRect();
+  const beakerRect = beaker.getBoundingClientRect();
+  const waterRect = water.getBoundingClientRect();
+  const bulbOffsetX = bulbRect.left + bulbRect.width / 2 - thermoRect.left;
+  const bulbOffsetY = bulbRect.top + bulbRect.height / 2 - thermoRect.top;
+  const targetBulbX = beakerRect.left + beakerRect.width / 2;
+  const targetBulbY = waterRect.bottom - 28;
+  const pos = clampThermometerPosition(
+    targetBulbX - areaRect.left - bulbOffsetX,
+    targetBulbY - areaRect.top - bulbOffsetY
+  );
+  return { ...pos, targetBulbX, targetBulbY };
+}
+
+function classifyThermometerPosition() {
+  const bulbRect = thermoBulb.getBoundingClientRect();
+  const beakerRect = beaker.getBoundingClientRect();
+  const waterRect = water.getBoundingClientRect();
+  const bulbCenterX = bulbRect.left + bulbRect.width / 2;
+  const overlapsLiquid =
+    bulbRect.right > waterRect.left &&
+    bulbRect.left < waterRect.right &&
+    bulbRect.bottom > waterRect.top &&
+    bulbRect.top < waterRect.bottom;
+  const fullyImmersed = bulbRect.top >= waterRect.top + 4 && bulbRect.bottom <= waterRect.bottom - 4;
+  const withinBeaker = bulbCenterX > beakerRect.left && bulbCenterX < beakerRect.right;
+  const clearsWalls = bulbRect.left >= beakerRect.left + 10 && bulbRect.right <= beakerRect.right - 10;
+  const clearsBottom = bulbRect.bottom <= beakerRect.bottom - 12;
+
+  let status = 'outside';
+  if (overlapsLiquid && withinBeaker) {
+    if (!clearsBottom) status = 'bottom';
+    else if (!clearsWalls) status = 'wall';
+    else if (!fullyImmersed) status = 'shallow';
+    else status = 'valid';
+  }
+
+  sim.placementStatus = status;
+  sim.inserted = fullyImmersed && withinBeaker;
+  sim.safePosition = status === 'valid';
+  return status;
+}
+
+function snapThermometerToTarget(showMsg = true) {
+  const target = getThermometerSnapPose();
+  setThermometerPosition(target.x, target.y);
+  state.thermoAtHome = false;
+  thermo.classList.remove('snap-ready');
+  const status = classifyThermometerPosition();
+  state.thermoSnapped = status === 'valid';
+  refreshReadouts();
+  if (showMsg && state.thermoSnapped) showToast('已吸附：玻璃泡悬空浸入水中。');
+  return state.thermoSnapped;
+}
+
+function stopHeatingForInvalidMeasurement(showMsg = true) {
+  if (!sim.heating || sim.safePosition) return;
+  sim.heating = false;
+  setStatusTag('温度计待复位');
+  if (showMsg) showToast('温度计位置无效，已暂停加热。');
+}
+
+function commitThermometerPosition(showMsg = true, pointerType = '') {
+  const target = getThermometerSnapPose();
+  const bulbRect = thermoBulb.getBoundingClientRect();
+  const bulbX = bulbRect.left + bulbRect.width / 2;
+  const bulbY = bulbRect.top + bulbRect.height / 2;
+  const snapDistance = pointerType === 'touch' ? 52 : 44;
+  if (Math.hypot(bulbX - target.targetBulbX, bulbY - target.targetBulbY) <= snapDistance) {
+    return snapThermometerToTarget(showMsg);
+  }
+
+  state.thermoSnapped = false;
+  const status = classifyThermometerPosition();
+  stopHeatingForInvalidMeasurement(showMsg);
+  refreshReadouts();
+  if (showMsg) {
+    const messages = {
+      outside: '请把温度计玻璃泡拖入水中。',
+      shallow: '玻璃泡需要完全浸入水中。',
+      wall: '玻璃泡不能接触烧杯壁。',
+      bottom: '玻璃泡不能接触烧杯底。',
+      valid: '温度计位置正确：玻璃泡悬空浸入水中。'
+    };
+    showToast(messages[status]);
+  }
+  return status === 'valid';
+}
+
+function resetThermometerPosition() {
+  state.thermoDrag = null;
+  state.draggingId = null;
+  state.thermoAtHome = true;
+  state.thermoSnapped = false;
+  thermo.classList.remove('dragging', 'snap-ready');
+  const home = getThermometerHomePosition();
+  setThermometerPosition(home.x, home.y);
+  classifyThermometerPosition();
+}
+
+function relayoutThermometer() {
+  if (state.thermoDrag) return;
+  if (state.thermoSnapped) {
+    snapThermometerToTarget(false);
+  } else if (state.thermoAtHome) {
+    const home = getThermometerHomePosition();
+    setThermometerPosition(home.x, home.y);
+    classifyThermometerPosition();
+    refreshReadouts();
+  } else {
+    const current = getThermometerPosition();
+    setThermometerPosition(current.x, current.y);
+    classifyThermometerPosition();
+    refreshReadouts();
+  }
+}
+
+function bindThermometerDrag() {
+  thermo.addEventListener('pointerdown', (e) => {
+    if (state.autoPlaying || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    const rect = thermo.getBoundingClientRect();
+    state.thermoDrag = {
+      pointerId: e.pointerId,
+      offsetX: e.clientX - rect.left,
+      offsetY: e.clientY - rect.top,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+      pointerType: e.pointerType
+    };
+    state.draggingId = 'thermo';
+    state.thermoAtHome = false;
+    state.thermoSnapped = false;
+    thermo.classList.add('dragging');
+    try { thermo.setPointerCapture(e.pointerId); }
+    catch (err) { console.warn('thermometer setPointerCapture failed', err); }
+    e.preventDefault();
+  });
+
+  thermo.addEventListener('pointermove', (e) => {
+    const drag = state.thermoDrag;
+    if (!drag || e.pointerId !== drag.pointerId) return;
+    if (e.pointerType === 'mouse' && (e.buttons & 1) === 0) {
+      finishThermometerDrag(e.pointerId, true);
+      return;
+    }
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > 4) drag.moved = true;
+    const areaRect = labArea.getBoundingClientRect();
+    setThermometerPosition(
+      e.clientX - areaRect.left - drag.offsetX,
+      e.clientY - areaRect.top - drag.offsetY
+    );
+    const target = getThermometerSnapPose();
+    const bulbRect = thermoBulb.getBoundingClientRect();
+    const bulbX = bulbRect.left + bulbRect.width / 2;
+    const bulbY = bulbRect.top + bulbRect.height / 2;
+    const snapDistance = drag.pointerType === 'touch' ? 52 : 44;
+    thermo.classList.toggle(
+      'snap-ready',
+      Math.hypot(bulbX - target.targetBulbX, bulbY - target.targetBulbY) <= snapDistance
+    );
+    classifyThermometerPosition();
+    stopHeatingForInvalidMeasurement(false);
+    refreshReadouts();
+    e.preventDefault();
+  });
+
+  function finishThermometerDrag(pointerId, cancelled = false) {
+    const drag = state.thermoDrag;
+    if (!drag || pointerId !== drag.pointerId) return;
+    state.thermoDrag = null;
+    state.draggingId = null;
+    thermo.classList.remove('dragging', 'snap-ready');
+    try { thermo.releasePointerCapture(pointerId); }
+    catch (err) { console.warn('thermometer releasePointerCapture failed', err); }
+    if (cancelled) {
+      classifyThermometerPosition();
+      stopHeatingForInvalidMeasurement(false);
+      refreshReadouts();
+      return;
+    }
+    commitThermometerPosition(true, drag.pointerType);
+  }
+
+  thermo.addEventListener('pointerup', (e) => finishThermometerDrag(e.pointerId));
+  thermo.addEventListener('pointercancel', (e) => finishThermometerDrag(e.pointerId, true));
+  thermo.addEventListener('lostpointercapture', (e) => finishThermometerDrag(e.pointerId, true));
+}
+bindThermometerDrag();
 
 function setHeating(on, fromAuto = false) {
   if (state.autoPlaying && !fromAuto) return;
   const next = !!on;
-  if (!state.freeMode && !state.completed && state.currentTask === 0 && next && !fromAuto) {
-    markStepWarning('请先完成步骤1：插入温度计。');
+  if (next && !(sim.inserted && sim.safePosition)) {
+    if (!fromAuto) {
+      if (state.freeMode) showToast('请先把温度计正确放入水中。');
+      else markStepWarning('请先拖动温度计，使玻璃泡悬空浸入水中。');
+    }
     return;
   }
-  if (!sim.inserted && next && !state.freeMode && !fromAuto) {
-    markStepWarning('请先插入温度计，再加热。');
+  if (!state.freeMode && !state.completed && state.currentTask === 0 && next && !fromAuto) {
+    markStepWarning('请先完成步骤1：确认温度计位置。');
     return;
   }
   sim.heating = next;
@@ -3245,12 +3452,6 @@ function tryPassCurrentStep(fromAuto = false) {
   return true;
 }
 
-thermo.onclick = () => {
-  toggleThermo(null, false);
-};
-positionBtn.onclick = () => {
-  adjustThermoPosition(false);
-};
 heatBtn.onclick = () => {
   toggleHeat(false);
 };
@@ -3265,6 +3466,7 @@ function setControlCollapsed(on) {
   state.panelCollapsed = !!on;
   controlBody.classList.toggle('collapsed', state.panelCollapsed);
   controlToggleBtn.textContent = state.panelCollapsed ? '展开' : '收起';
+  relayoutThermometer();
 }
 function setDataCollapsed(on) {
   state.dataCollapsed = !!on;
@@ -3558,17 +3760,19 @@ function resetSim() {
   sim.heating = false;
   sim.inserted = false;
   sim.safePosition = false;
+  sim.placementStatus = 'outside';
   sim.boilStableSec = 0;
   sim.dataPoints = [];
   sim.lastSampleAt = 0;
   sim.quizPassed = false;
   sim.bubbleAcc = 0;
   bubblesArea.innerHTML = '';
+  resetThermometerPosition();
   refreshReadouts();
 }
 
 function resetAll(opts = {}) {
-  const { preserveAuto = false, showTip = true } = opts;
+  const { preserveAuto = false, preserveFreeMode = false, showTip = true } = opts;
   clearTrackedTimers();
   if (!preserveAuto) {
     state.autoPlaying = false;
@@ -3596,11 +3800,11 @@ function resetAll(opts = {}) {
   setStepUI(0);
 
   if (!preserveAuto) {
-    state.freeMode = false;
-    freeBtn.textContent = '自由模式';
-    $('#taskCard').style.opacity = '1';
-    $('#taskCard').style.filter = 'none';
-    setStatusTag('待操作');
+    state.freeMode = preserveFreeMode;
+    freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
+    $('#taskCard').style.opacity = state.freeMode ? '.25' : '1';
+    $('#taskCard').style.filter = state.freeMode ? 'grayscale(.6)' : 'none';
+    setStatusTag(state.freeMode ? '自由探索' : '待操作');
   }
   updateModeHud();
   refreshModeStyle();
@@ -3674,6 +3878,39 @@ async function demoClickElement(el, runId, action = null) {
   await waitAuto(220, runId);
 }
 
+async function demoDragThermometer(runId) {
+  const start = getThermometerPosition();
+  const target = getThermometerSnapPose();
+  const startRect = thermo.getBoundingClientRect();
+  setDemoCursor(startRect.left + startRect.width / 2, startRect.top + startRect.height * .55);
+  await waitAuto(260, runId);
+  await clickDemoCursor(140, runId);
+  thermo.classList.add('dragging');
+  state.thermoAtHome = false;
+  state.thermoSnapped = false;
+  try {
+    const steps = 24;
+    for (let i = 1; i <= steps; i += 1) {
+      const p = i / steps;
+      const eased = p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      setThermometerPosition(
+        start.x + (target.x - start.x) * eased,
+        start.y + (target.y - start.y) * eased
+      );
+      classifyThermometerPosition();
+      refreshReadouts();
+      const rect = thermo.getBoundingClientRect();
+      setDemoCursor(rect.left + rect.width / 2, rect.top + rect.height * .55);
+      await waitAuto(34, runId);
+    }
+  } finally {
+    thermo.classList.remove('dragging');
+  }
+  snapThermometerToTarget(false);
+  await clickDemoCursor(140, runId);
+  await waitAuto(260, runId);
+}
+
 async function startAutoDemo() {
   if (state.autoPlaying || state.freeMode) return;
   state.autoPlaying = true;
@@ -3685,7 +3922,7 @@ async function startAutoDemo() {
   setStatusTag('演示中');
 
   try {
-    await demoClickElement(thermo, runId, async () => { toggleThermo(true, true); });
+    await demoDragThermometer(runId);
     const r1 = state.records.length;
     await demoClickElement(checkBtn, runId, async () => { tryPassCurrentStep(true); });
     assertAutoRecorded(r1);
@@ -3748,7 +3985,7 @@ async function startAutoDemo() {
 
 resetBtn.onclick = () => {
   if (state.autoPlaying) return;
-  resetAll({ preserveAuto: false, showTip: true });
+  resetAll({ preserveAuto: false, preserveFreeMode: state.freeMode, showTip: true });
 };
 freeBtn.onclick = () => setFreeMode(!state.freeMode);
 autoDemoBtn.onclick = () => {
@@ -3788,6 +4025,7 @@ const relayout = (() => {
       defaultDockPositions();
       resolveDrawerOverlap(true);
       constrainObservationPanelPosition();
+      relayoutThermometer();
       drawChart();
     }, 120));
   };
