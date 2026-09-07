@@ -518,6 +518,213 @@ body #app .toolbar button:disabled{
 
 </head>
 <body>
+<script id="codex-lab-sound-bus" data-native-audio="false">
+(() => {
+  'use strict';
+  if (window.labSoundBus) return;
+  const nativeAudio = document.currentScript.dataset.nativeAudio === 'true';
+  let ctx = null, master = null, muted = false, held = false, unlocked = false, outputTarget = null;
+  let button = null, warned = false;
+  const voices = new Map();
+  const lastSounds = new Map();
+  const patterns = {
+    tap: { peak:.018, duration:.055, notes:[[440,0,.045]] },
+    hint: { peak:.035, duration:.18, notes:[[783.99,0,.08],[987.77,.09,.07]] },
+    record: { peak:.04, duration:.13, notes:[[554.37,0,.09]] },
+    warn: { peak:.045, duration:.22, notes:[[220,0,.09],[164.81,.1,.09]] },
+    step: { peak:.055, duration:.24, notes:[[523.25,0,.11],[659.25,.085,.13]] },
+    finish: { peak:.07, duration:.65, notes:[[392,0,.12],[523.25,.14,.14],[659.25,.3,.24]] },
+  };
+  function report(error) {
+    if (!warned) { warned = true; console.warn('[lab-audio] 无法播放音效', error); }
+  }
+  function syncButton() {
+    if (!button || nativeAudio) return;
+    button.textContent = muted ? '🔇' : '🔊';
+    button.setAttribute('aria-pressed', String(!muted));
+    button.setAttribute('aria-label', muted ? '开启音效' : '关闭音效');
+    button.title = muted ? '开启音效' : '关闭音效';
+    button.classList.toggle('muted', muted);
+  }
+  function paused() {
+    const mode = document.querySelector('#modeTag,#modeChip')?.textContent || '';
+    return (mode.includes('演示模式') && mode.includes('已暂停')) || document.querySelector('#resetBtn')?.textContent.trim() === '继续演示';
+  }
+  function applyGate() {
+    if (!master) return;
+    const target = muted || held || document.hidden || paused() ? 0 : 1;
+    if (target === outputTarget) return;
+    outputTarget = target;
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setTargetAtTime(target, now, .008);
+  }
+  function stopVoices() {
+    for (const [voice, stop] of voices) {
+      try { stop(ctx.currentTime); } catch (error) { report(error); }
+      voices.delete(voice);
+    }
+  }
+  function hush() {
+    held = true; stopVoices(); applyGate();
+    window.dispatchEvent(new Event('lab-audio-silence'));
+  }
+  function unlock(event) {
+    if (!event?.isTrusted || document.hidden) return null;
+    if (event.type === 'keydown' && !['Enter',' ','Spacebar'].includes(event.key)) return ctx;
+    if (held) stopVoices();
+    held = false;
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) {
+      if (button) { button.disabled = true; button.title = '当前浏览器不支持声音'; }
+      return null;
+    }
+    try {
+      if (!ctx) {
+        ctx = new Audio();
+        master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+        // Track scheduled one-shot voices so mute cannot revive their old tails.
+        // Continuous apparatus oscillators stay alive behind the output gate.
+        const createOscillator = ctx.createOscillator.bind(ctx);
+        ctx.createOscillator = () => {
+          const voice = createOscillator(); const stop = voice.stop.bind(voice);
+          voice.stop = when => { voices.set(voice, stop); return stop(when); };
+          voice.addEventListener('ended', () => voices.delete(voice), { once:true });
+          return voice;
+        };
+      }
+      unlocked = ctx.state === 'running';
+      if (ctx.state === 'suspended') ctx.resume().then(() => {
+        unlocked = ctx.state === 'running';
+      }).catch(error => { unlocked = false; report(error); });
+      applyGate(); return ctx;
+    } catch (error) { report(error); return null; }
+  }
+  function setMuted(value) {
+    const next = Boolean(value);
+    if (next === muted) return;
+    muted = next;
+    if (muted) { stopVoices(); window.dispatchEvent(new Event('lab-audio-silence')); }
+    applyGate(); syncButton();
+  }
+  function play(kind) {
+    if (!unlocked || !ctx || muted || held || document.hidden || paused() || ctx.state !== 'running') return false;
+    const nowMs = performance.now();
+    if (nowMs - (lastSounds.get(kind) ?? -Infinity) < (kind === 'finish' ? 650 : 100)) return false;
+    const pattern = patterns[kind] || patterns.hint;
+    lastSounds.set(kind, nowMs);
+    const start = ctx.currentTime + .005;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.linearRampToValueAtTime(pattern.peak, start + .008);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + pattern.duration);
+    gain.connect(master);
+    let remaining = pattern.notes.length;
+    for (const [frequency, offset, duration] of pattern.notes) {
+      const voice = ctx.createOscillator(); voice.type = 'sine';
+      voice.frequency.value = frequency; voice.connect(gain);
+      voice.addEventListener('ended', () => { voice.disconnect(); if (--remaining === 0) gain.disconnect(); }, { once:true });
+      voice.start(start + offset); voice.stop(start + offset + duration);
+    }
+    window.dispatchEvent(new CustomEvent('lab-ui-sound', { detail:{kind} }));
+    return true;
+  }
+  window.labSoundBus = {
+    unlock, play, setMuted, hush,
+    getContext: () => unlocked && ctx?.state === 'running' ? ctx : null,
+    getInput: () => master,
+    get muted() { return muted; },
+    get unlocked() { return unlocked && ctx?.state === 'running'; },
+    get held() { return held; },
+  };
+  document.addEventListener('pointerdown', unlock, { capture:true, passive:true });
+  document.addEventListener('keydown', unlock, { capture:true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hush(); });
+  window.addEventListener('pagehide', hush);
+  function mount() {
+    const stage = document.querySelector('#stage'); if (!stage) return;
+    button = stage.querySelector('#audioToggle');
+    if (!button) {
+      button = document.createElement('button'); button.id = 'audioToggle';
+      button.type = 'button'; button.className = 'audio-toggle'; stage.appendChild(button);
+    }
+    if (nativeAudio) {
+      const syncNativeMute = () => setMuted(button.getAttribute('aria-pressed') === 'false' || button.classList.contains('muted'));
+      new MutationObserver(syncNativeMute).observe(button, { attributes:true, attributeFilter:['aria-pressed','class'] });
+      syncNativeMute();
+    } else {
+      window.labAudio = window.labSoundBus;
+      syncButton();
+      button.addEventListener('click', event => {
+        event.stopPropagation(); if (!event.isTrusted) return;
+        setMuted(!muted); if (!muted) { held = false; applyGate(); play('hint'); }
+      });
+    }
+    const lamp = stage.querySelector('#hintLamp,.hint-lamp');
+    const mode = stage.querySelector('#modeTag,#modeChip');
+    if (mode) new MutationObserver(applyGate).observe(mode, { childList:true, characterData:true, subtree:true });
+    let quietUntil = 0;
+    let beginRound = () => {};
+    let acceptRecordClear = () => {};
+    document.addEventListener('click', event => {
+      const clicked = event.target.closest?.('button');
+      if (!clicked || clicked.disabled || clicked === button) return;
+      if (event.isTrusted && ((clicked.id === 'resetBtn' && /重置/.test(clicked.textContent)) || clicked.id === 'autoDemoBtn')) beginRound();
+      if (event.isTrusted && clicked.id === 'clearBtn') setTimeout(acceptRecordClear, 0);
+      if (/reset|autoDemo|freeBtn/i.test(clicked.id) && /暂停|退出|重置|自由/.test(clicked.textContent)) {
+        hush(); quietUntil = performance.now() + 300; return;
+      }
+      if (!nativeAudio) play(clicked === lamp ? 'hint' : 'tap');
+    }, { capture:true });
+    if (nativeAudio) return;
+    // Observe accepted state, never infer success from a button's name.
+    const snapshot = () => {
+      const body = document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody');
+      const records = [...(body?.querySelectorAll('tr') || [])].filter(row =>
+        row.querySelectorAll('td').length > 1 && !row.querySelector('td[colspan]'))
+        .map(row => row.dataset.recordId || row.textContent.trim());
+      const dots = document.querySelector('#dots,#progress,.progress-dots');
+      const done = dots?.querySelectorAll('.done').length || 0;
+      const warning = Boolean(dots?.querySelector('.warning,.warn,.error') || lamp?.classList.contains('flash'));
+      const mode = stage.querySelector('#modeTag,#modeChip')?.textContent || '';
+      const modal = document.querySelector('#doneMask,#doneModal,.modal-mask');
+      const finished = Boolean(modal && getComputedStyle(modal).display !== 'none' && getComputedStyle(modal).visibility !== 'hidden');
+      return { records, done, warning, finished, free:mode.includes('自由'), mode };
+    };
+    let previous = snapshot();
+    const seenRecords = new Set(previous.records);
+    let maxDone = previous.done;
+    let finishAnnounced = previous.finished;
+    acceptRecordClear = () => {
+      // Clear only after the experiment accepted the action; completion stays announced.
+      if (snapshot().records.length === 0) seenRecords.clear();
+    };
+    beginRound = () => {
+      seenRecords.clear(); maxDone = 0; finishAnnounced = false;
+      quietUntil = performance.now() + 300;
+    };
+    const feedbackChanges = new MutationObserver(() => {
+      const current = snapshot();
+      if (performance.now() >= quietUntil && current.free === previous.free) {
+        if (!current.free && current.finished && !finishAnnounced) play('finish');
+        else if (!current.free && current.done > maxDone) play('step');
+        else if (!current.free && current.warning && !previous.warning) play('warn');
+        else if (current.records.some(record => !seenRecords.has(record))) play('record');
+      }
+      current.records.forEach(record => seenRecords.add(record));
+      maxDone = Math.max(maxDone, current.done);
+      finishAnnounced ||= current.finished;
+      previous = current;
+    });
+    // Observe only feedback surfaces; apparatus animation updates every frame.
+    for (const node of [document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody'), document.querySelector('#dots,#progress,.progress-dots'), lamp, stage.querySelector('#modeTag,#modeChip'), document.querySelector('#doneMask,#doneModal,.modal-mask')].filter(Boolean)) {
+      feedbackChanges.observe(node, { subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['class','style'] });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+})();
+</script>
   <div id="app">
   <div class="theme-spectrum-row">
   <div class="theme-toolbar">
@@ -2129,5 +2336,130 @@ function setDrawerCollapsed(drawer, collapsed) {
   }
 </style>
   <script src="../experiment-scroll-receiver.v2.js" data-science-lab-scroll></script>
+<script id="codex-stage-tools-runtime">
+(() => {
+  'use strict';
+  function mount() {
+    const stage = document.querySelector('#stage');
+    const lamp = stage?.querySelector('#hintLamp, .hint-lamp');
+    const pop = stage?.querySelector('#hintPop');
+    const hud = stage?.querySelector('.hud');
+    if (!stage || !lamp || !pop || !hud || stage.dataset.stageToolsMounted) return;
+    stage.dataset.stageToolsMounted = 'true';
+    const wrap = lamp.closest('.hint-lamp-wrap');
+    const anchor = wrap || lamp;
+    let frame = 0;
+    let disposed = false;
+    const put = (node, key, value) => {
+      if (node.style.getPropertyValue(key) !== value || node.style.getPropertyPriority(key) !== 'important') {
+        node.style.setProperty(key, value, 'important');
+      }
+    };
+    const pixels = value => `${Math.round(value * 100) / 100}px`;
+    function expanded() {
+      return pop.classList.contains('open') || Boolean(wrap?.classList.contains('open'));
+    }
+    function syncExpanded() {
+      lamp.setAttribute('aria-controls', pop.id);
+      lamp.setAttribute('aria-expanded', String(expanded()));
+      lamp.setAttribute('aria-label', expanded() ? '收起提示' : '查看提示');
+    }
+    function closeHint() {
+      // Reuse the page's own close action so legacy state.hintOpen and its
+      // wrapper stay synchronized with the popover after Escape/outside clicks.
+      if (wrap ? wrap.classList.contains('open') : expanded()) lamp.click();
+      pop.classList.remove('open');
+      wrap?.classList.remove('open');
+      syncExpanded();
+    }
+    function managedHint() {
+      if (lamp.dataset.stageHint !== 'managed') return;
+      pop.textContent = document.querySelector('#taskHint')?.textContent || '按步骤操作器材，观察现象并记录数据。';
+      pop.classList.toggle('open');
+      syncExpanded();
+    }
+    lamp.addEventListener('click', managedHint);
+    function layout() {
+      frame = 0;
+      if (disposed) return;
+      const s = stage.getBoundingClientRect();
+      const h = hud.getBoundingClientRect();
+      const originX = s.left + stage.clientLeft;
+      const originY = s.top + stage.clientTop;
+      const left = Math.max(8, h.left - originX);
+      const top = Math.max(8, h.bottom - originY + 6);
+      put(anchor, 'position', 'absolute');
+      put(anchor, 'left', pixels(left));
+      put(anchor, 'right', 'auto');
+      put(anchor, 'top', pixels(top));
+      put(anchor, 'bottom', 'auto');
+      put(anchor, 'z-index', '72');
+      if (wrap) {
+        put(wrap, 'width', '36px'); put(wrap, 'height', '36px');
+        put(lamp, 'position', 'static'); put(lamp, 'transform', 'none');
+      }
+      for (const button of [lamp, stage.querySelector('#audioToggle')].filter(Boolean)) {
+        put(button, 'width', '36px'); put(button, 'height', '36px');
+        put(button, 'min-width', '36px'); put(button, 'min-height', '36px');
+        put(button, 'padding', '0'); put(button, 'margin', '0');
+        put(button, 'display', 'grid'); put(button, 'place-items', 'center');
+        put(button, 'font-size', '18px'); put(button, 'box-sizing', 'border-box');
+      }
+      const audio = stage.querySelector('#audioToggle');
+      if (audio) {
+        put(audio, 'position', 'absolute'); put(audio, 'left', pixels(left + 42));
+        put(audio, 'right', 'auto'); put(audio, 'top', pixels(top));
+        put(audio, 'bottom', 'auto'); put(audio, 'z-index', '72');
+        put(audio, 'border', '1px solid rgba(150,170,190,.38)');
+        put(audio, 'border-radius', '8px');
+        put(audio, 'background', 'rgba(100,120,140,.13)');
+        put(audio, 'cursor', 'pointer');
+      }
+      put(pop, 'position', 'absolute'); put(pop, 'box-sizing', 'border-box');
+      put(pop, 'left', wrap ? '0px' : pixels(left)); put(pop, 'right', 'auto');
+      put(pop, 'top', pixels(wrap ? 44 : top + 44)); put(pop, 'bottom', 'auto');
+      put(pop, 'transform', 'none'); put(pop, 'z-index', '71');
+      put(pop, 'width', pixels(Math.max(1, Math.min(340, stage.clientWidth - left - 10))));
+      put(pop, 'max-width', 'none');
+      put(pop, 'max-height', pixels(Math.max(48, stage.clientHeight - top - 60)));
+      put(pop, 'overflow-y', 'auto'); put(pop, 'overflow-wrap', 'anywhere');
+      syncExpanded();
+    }
+    const requestLayout = () => { if (!disposed && !frame) frame = requestAnimationFrame(layout); };
+    function onKey(event) {
+      if (event.key === 'Escape' && expanded()) {
+        closeHint(); lamp.focus({ preventScroll:true });
+      }
+    }
+    function onOutside(event) {
+      if (!lamp.contains(event.target) && !pop.contains(event.target)) closeHint();
+    }
+    const changes = new MutationObserver(syncExpanded);
+    changes.observe(pop, { attributes:true, attributeFilter:['class'] });
+    if (wrap) changes.observe(wrap, { attributes:true, attributeFilter:['class'] });
+    const sizes = new ResizeObserver(requestLayout);
+    sizes.observe(hud); sizes.observe(stage);
+    window.addEventListener('resize', requestLayout);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onOutside, { passive:true });
+    lamp.addEventListener('click', requestLayout);
+    function dispose() {
+      disposed = true; cancelAnimationFrame(frame);
+      sizes.disconnect(); changes.disconnect();
+      window.removeEventListener('resize', requestLayout);
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onOutside);
+      lamp.removeEventListener('click', requestLayout);
+      lamp.removeEventListener('click', managedHint);
+      delete stage.dataset.stageToolsMounted;
+    }
+    window.addEventListener('pagehide', dispose, { once:true });
+    layout();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+  window.addEventListener('pageshow', event => { if (event.persisted) mount(); });
+})();
+</script>
 </body>
 </html>
