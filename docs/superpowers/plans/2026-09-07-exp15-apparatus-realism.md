@@ -21,8 +21,10 @@
 ```js
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-const html = readFileSync(new URL('../../../../HTML-/physics-middle/初中物理实验15.html', import.meta.url), 'utf8');
+const target = resolve(process.argv[2] || 'HTML-/physics-middle/初中物理实验15.html');
+const html = readFileSync(target, 'utf8');
 assert.match(html, /function drawLab15SpringScale\(/);
 assert.match(html, /function drawLab15Clamp\(/);
 assert.match(html, /function drawLab15Scraper\(/);
@@ -35,7 +37,7 @@ assert.doesNotMatch(html, /ctx\.fillText\(`压紧度:/);
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `node HTML-sources-private/reports/agent-audits/2026-09-07-exp15-apparatus/exp15-apparatus-regression.mjs`
+Run: `node HTML-sources-private/reports/agent-audits/2026-09-07-exp15-apparatus/exp15-apparatus-regression.mjs /Users/lx100/.config/superpowers/worktrees/HTML-/exp15-apparatus-realism/physics-middle/初中物理实验15.html`
 
 Expected: FAIL because the drawing helpers and release state do not exist.
 
@@ -85,7 +87,7 @@ await dragDemoCursorPath([start, end], 720, pt => applyLab15ClampAtStagePoint(pt
 
 - [ ] **Step 5: Run the regression probe**
 
-Run: `node HTML-sources-private/reports/agent-audits/2026-09-07-exp15-apparatus/exp15-apparatus-regression.mjs`
+Run: `node HTML-sources-private/reports/agent-audits/2026-09-07-exp15-apparatus/exp15-apparatus-regression.mjs /Users/lx100/.config/superpowers/worktrees/HTML-/exp15-apparatus-realism/physics-middle/初中物理实验15.html`
 
 Expected: Still FAIL until the drawing task is complete.
 
@@ -129,7 +131,7 @@ Keep A/B marks on the blocks and concise affordances near the handle only. Do no
 
 - [ ] **Step 4: Run the regression probe to verify it passes**
 
-Run: `node HTML-sources-private/reports/agent-audits/2026-09-07-exp15-apparatus/exp15-apparatus-regression.mjs`
+Run: `node HTML-sources-private/reports/agent-audits/2026-09-07-exp15-apparatus/exp15-apparatus-regression.mjs /Users/lx100/.config/superpowers/worktrees/HTML-/exp15-apparatus-realism/physics-middle/初中物理实验15.html`
 
 Expected: PASS.
 
@@ -143,7 +145,7 @@ Expected: PASS.
 
 Run: `node HTML-sources-private/physics-lab-html/scripts/check_lab_html.mjs --target HTML-/physics-middle/初中物理实验15.html`
 
-Run: `node HTML-sources-private/scripts/validate_ui_shell.mjs HTML-/physics-middle/初中物理实验15.html`
+Run: `node HTML-sources-private/physics-lab-html/scripts/validate_ui_shell.mjs HTML-/physics-middle/初中物理实验15.html`
 
 Expected: both exit 0.
 
