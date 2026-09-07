@@ -1921,7 +1921,15 @@ body #app .toolbar button:disabled{
       ctx.font = "12px PingFang SC, sans-serif";
       ctx.textAlign = "center";
       const weightCaptionY = g.weight.y + (Math.round(currentLoad()) - 1) * 16 + 60;
-      if (state.weightLocation === "tray" && !state.dragWeight) ctx.fillText(state.freeMode ? "拖到测力计或动滑轮挂钩" : "钩码托盘｜拖到测力计挂钩", g.tray.x, weightCaptionY);
+      if (state.weightLocation === "tray" && !state.dragWeight) {
+        const lines = g.compact
+          ? (state.freeMode ? ["拖到测力计", "或动滑轮挂钩"] : ["钩码托盘", "拖到测力计挂钩"])
+          : [state.freeMode ? "拖到测力计或动滑轮挂钩" : "钩码托盘｜拖到测力计挂钩"];
+        const halfWidth = Math.max(...lines.map((line)=>ctx.measureText(line).width)) / 2;
+        const captionX = clamp(g.tray.x, halfWidth + 8, g.w - halfWidth - 8);
+        const captionY = Math.min(weightCaptionY, g.h - 12 - (lines.length - 1) * 16);
+        lines.forEach((line, index)=>ctx.fillText(line, captionX, captionY + index * 16));
+      }
       if (state.weightLocation === "scale") ctx.fillText(state.freeMode ? "可拖到动滑轮或放回托盘" : "已称得 G｜拖到动滑轮挂钩", g.weight.x, weightCaptionY);
       if (state.weightLocation === "block" && !state.scaleConnected) ctx.fillText("翻转测力计，将挂钩接入黄色绳端", g.scaleX, g.scaleY - 16);
       if (state.scaleConnected && !state.pullComplete) ctx.fillText("握住下方拉环，缓慢向下拉", g.scaleX, Math.min(g.h - 12, g.scaleHook.y + 28));

@@ -2160,9 +2160,6 @@
     const GUIDED_INITIAL_BEAKER_ML = 70.0;
     const GUIDED_EMPTY_CUP_MASS = 101.6;
     const GUIDED_DENSITY = 1.20;
-    const GUIDED_M1 = round(GUIDED_EMPTY_CUP_MASS + GUIDED_INITIAL_BEAKER_ML * GUIDED_DENSITY, 1);
-    const GUIDED_M2 = round(GUIDED_EMPTY_CUP_MASS + (GUIDED_INITIAL_BEAKER_ML - GUIDED_TARGET_ML) * GUIDED_DENSITY, 1);
-    const GUIDED_M = round(GUIDED_M1 - GUIDED_M2, 1);
 
     const qs = s => document.querySelector(s);
     const byId = id => document.getElementById(id);
@@ -2440,14 +2437,7 @@
       cylinderReadout.textContent = state.currentTask === 0
         ? '当前读数：观察量程与分度值'
         : `当前读数：${round(state.cylinderMl, 1)} mL`;
-      let beakerMass = round(state.emptyCupMass + state.beakerLiquidMl * state.liquidDensity, 1);
-      if(!state.freeMode && state.onScale){
-        if(state.currentTask <= 1){
-          beakerMass = GUIDED_M1;
-        }else if(state.currentTask >= 3){
-          beakerMass = GUIDED_M2;
-        }
-      }
+      const beakerMass = state.emptyCupMass + state.beakerLiquidMl * state.liquidDensity;
       const scaleVal = state.onScale ? `${beakerMass.toFixed(1)} g` : '0.0 g';
       scaleReadout.textContent = scaleVal;
       if(state.currentTask === 0){
@@ -2780,19 +2770,16 @@
 
     function finishRecord(){
       if(state.m1 === null || state.m2 === null || state.V === null) return;
-      if(!state.freeMode){
-        state.m1 = GUIDED_M1;
-        state.m2 = GUIDED_M2;
-        state.V = GUIDED_TARGET_ML;
-        state.m = GUIDED_M;
-        state.rho = GUIDED_DENSITY;
-      }else{
-        state.m = round(state.m1 - state.m2, 1);
-        state.rho = round(state.m / state.V, 2);
+      if(state.dropperLoadedMl > 1e-9 || state.V <= 0 || state.m1 <= state.m2){
+        showToast('请先归还滴管余液，并重新完成有效的体积和质量测量。');
+        return false;
       }
+      state.m = state.m1 - state.m2;
+      state.rho = state.m / state.V;
       state.analysisOk = true;
       appendRecordSnapshot('final', true);
       reRender();
+      return true;
     }
 
     function snapToScale(){
@@ -2837,9 +2824,18 @@
       reRender();
     }
 
+    function invalidateTransferredMeasurements(){
+      state.V = null;
+      state.m2 = null;
+      state.m = null;
+      state.rho = null;
+      state.analysisOk = false;
+    }
+
     let pourAnim = null;
     function startPour(targetMl){
-      if(state.beakerLiquidMl <= 0.2 || state.pouring) return;
+      if(state.beakerLiquidMl <= 1e-9 || state.pouring) return;
+      invalidateTransferredMeasurements();
       if(!state.beakerDocked) dockBeakerAtCylinder();
       state.pouring = true;
       state.beakerAngle = -58;
@@ -2855,13 +2851,12 @@
       const angle = Math.atan2(dx, Math.max(18, dy)) * 180 / Math.PI;
       pourStream.style.height = `${Math.max(92, Math.hypot(dx, dy) + 38)}px`;
       pourStream.style.transform = `rotate(${angle}deg)`;
-      const finalTarget = clamp(targetMl, 0, Math.min(100, state.cylinderMl + state.beakerLiquidMl));
+      const finalTarget = clamp(targetMl, state.cylinderMl, Math.min(CYL_MAX, state.cylinderMl + state.beakerLiquidMl));
       cancelAnimationFrame(pourAnim);
       const tick = ()=>{
         if(!state.pouring) return;
         const remaining = finalTarget - state.cylinderMl;
-        if(remaining <= 0.02 || state.beakerLiquidMl <= 0.05){
-          state.cylinderMl = round(finalTarget, 1);
+        if(remaining <= 1e-9 || state.beakerLiquidMl <= 1e-9){
           state.pouring = false;
           pourStream.style.opacity = '0';
           state.beakerAngle = 0;
@@ -2881,8 +2876,8 @@
         }
         const delta = state.freeMode ? 0.8 : 0.75;
         const move = Math.min(delta, remaining, state.beakerLiquidMl);
-        state.cylinderMl = round(state.cylinderMl + move, 1);
-        state.beakerLiquidMl = round(state.beakerLiquidMl - move, 1);
+        state.cylinderMl += move;
+        state.beakerLiquidMl -= move;
         reRender();
         pourAnim = requestAnimationFrame(tick);
       };
@@ -2894,15 +2889,17 @@
         showToast('请先把烧杯放到天平上');
         return;
       }
-      state.m1 = state.freeMode
-        ? round(state.emptyCupMass + state.beakerLiquidMl * state.liquidDensity, 1)
-        : GUIDED_M1;
+      state.m1 = state.emptyCupMass + state.beakerLiquidMl * state.liquidDensity;
       appendRecordSnapshot('m1');
       setStatus(`已记录 m₁ = ${state.m1.toFixed(1)} g`);
       reRender();
     }
 
     function recordV(){
+      if(state.dropperLoadedMl > 1e-9){
+        showToast('滴管还有盐水，请先滴入量筒或归还原烧杯，再记录体积。');
+        return;
+      }
       if(!state.eyeAligned){
         showToast('视线需与弯月面最低处相平');
         flashHintLamp();
@@ -2913,20 +2910,22 @@
         flashHintLamp();
         return;
       }
-      state.V = round(!state.freeMode && Math.abs(state.cylinderMl - GUIDED_TARGET_ML) <= 0.2 ? GUIDED_TARGET_ML : state.cylinderMl, 1);
+      state.V = state.cylinderMl;
       appendRecordSnapshot('V');
       setStatus(`已记录 V = ${state.V.toFixed(1)} mL`);
       reRender();
     }
 
     function recordM2(){
+      if(state.dropperLoadedMl > 1e-9){
+        showToast('请先把滴管余液归还原烧杯，再称量剩余盐水。');
+        return;
+      }
       if(!state.onScale){
         showToast('请先把烧杯放回天平上');
         return;
       }
-      state.m2 = state.freeMode
-        ? round(state.emptyCupMass + state.beakerLiquidMl * state.liquidDensity, 1)
-        : GUIDED_M2;
+      state.m2 = state.emptyCupMass + state.beakerLiquidMl * state.liquidDensity;
       appendRecordSnapshot('m2');
       setStatus(`已记录 m₂ = ${state.m2.toFixed(1)} g`);
       reRender();
@@ -2937,7 +2936,7 @@
         showToast('请先完成 m₁、V、m₂ 三项测量');
         return;
       }
-      finishRecord();
+      if(!finishRecord()) return;
       setStatus(`ρ = ${state.rho.toFixed(2)} g/cm³`);
       if(!state.freeMode && state.currentTask === LAB.tasks.length - 1 && !state.quizPassed){
         advanceIfAllowed();
@@ -3154,8 +3153,9 @@
     function loadDropper(volume = 1){
       const actual = Math.min(volume, state.beakerLiquidMl);
       if(actual <= 0) return false;
-      state.beakerLiquidMl = round(Math.max(0, state.beakerLiquidMl - actual), 1);
-      state.dropperLoadedMl = round(state.dropperLoadedMl + actual, 1);
+      invalidateTransferredMeasurements();
+      state.beakerLiquidMl -= actual;
+      state.dropperLoadedMl += actual;
       snapDropperToBeaker();
       setStatus(`已吸取 ${state.dropperLoadedMl.toFixed(1)} mL 盐水`);
       reRender();
@@ -3167,8 +3167,9 @@
       const transferable = Math.min(state.dropperLoadedMl, CYL_MAX - state.cylinderMl);
       if(transferable <= 0) return false;
       snapDropperToCylinder();
-      state.cylinderMl = round(state.cylinderMl + transferable, 1);
-      state.dropperLoadedMl = round(Math.max(0, state.dropperLoadedMl - transferable), 1);
+      invalidateTransferredMeasurements();
+      state.cylinderMl += transferable;
+      state.dropperLoadedMl -= transferable;
       const remain = Math.max(0, round(GUIDED_TARGET_ML - state.cylinderMl, 1));
       setStatus(remain > 0.01
         ? `已补加 ${transferable.toFixed(1)} mL，当前 ${state.cylinderMl.toFixed(1)} mL，还差 ${remain.toFixed(1)} mL`
@@ -3176,6 +3177,18 @@
       if(state.dropperLoadedMl <= 0){
         state.dropperSnapTarget = 'cylinder';
       }
+      reRender();
+      return true;
+    }
+
+    function returnDropperToBeaker(){
+      if(state.dropperLoadedMl <= 0) return false;
+      const returned = state.dropperLoadedMl;
+      invalidateTransferredMeasurements();
+      state.beakerLiquidMl += returned;
+      state.dropperLoadedMl = 0;
+      snapDropperToBeaker();
+      setStatus(`已向原烧杯归还 ${returned.toFixed(1)} mL 盐水`);
       reRender();
       return true;
     }
@@ -3192,6 +3205,10 @@
           showToast(`已补到 ${state.cylinderMl.toFixed(1)} mL`);
         }
         return;
+      }else if(state.dropperLoadedMl > 0 && nearBeakerSnap){
+        returnDropperToBeaker();
+        showToast('已把滴管余液归还原烧杯');
+        return;
       }else if(state.dropperLoadedMl <= 0 && nearBeakerSnap){
         snapDropperToBeaker();
         if(loadDropper(1)){
@@ -3207,7 +3224,10 @@
           ? 'beaker'
           : (dropperOverCylinder() ? 'cylinder' : '')
             || state.dropperHoverTarget;
-      if(target === 'beaker' && state.dropperLoadedMl <= 0){
+      if(target === 'beaker' && state.dropperLoadedMl > 0){
+        returnDropperToBeaker();
+        showToast('已把滴管余液归还原烧杯');
+      }else if(target === 'beaker' && state.dropperLoadedMl <= 0){
         if(loadDropper(1)){
           showToast('已用滴管吸取 1 mL 盐水');
         }else{
@@ -3940,7 +3960,7 @@
     if (!modeTag) return;
     const progress = taskProgress();
     let text = (modeTag.textContent || '').trim().replace(/^模式[:：]\s*/, '');
-    if (/自动|演示/.test(text)) text = /完成/.test(text) ? '演示模式 · 演示完成' : '演示模式 · 自动运行';
+    if (/自动|演示/.test(text)) text = /暂停/.test(text) ? '演示模式 · 已暂停' : /完成/.test(text) ? '演示模式 · 演示完成' : '演示模式 · 自动运行';
     else if (/自由/.test(text)) text = '自由模式 · 自主探索';
     else if (/完成|通关|已完成/.test(text)) text = '闯关模式 · 已通关';
     else if (progress) text = '闯关模式 · 关卡 ' + progress.current + '/' + progress.total;

@@ -555,7 +555,7 @@ body #app .toolbar button:disabled{
   <script>
   (() => {
     "use strict";
-    const SPEC = {"id":"49-1","title":"演示电动机换向器原理","scene":"dcMotor","family":"电磁","textbook":"九年级全一册 第二十章 第5节 电动机相关演示实验","apparatus":"电源、开关、滑动变阻器、直流电动机模型、导线","keyPoint":"闭合开关，观察直流电动机模型中换向器工作情况。","conclusion":"换向器可以使直流电动机持续转动。","scenarios":[{"key":"assemble","label":"装入线圈","action":"把线圈放入永久磁铁的圆形间隙，确认转轴能自由转动。","note":"线圈已经放入磁极间隙，转轴与换向器对齐；此时开关仍断开。","value":0},{"key":"closed","label":"闭合开关","action":"点击开关，接通电路并观察线圈持续转动。","note":"闭合开关后，换向器配合电刷周期性改变线圈中的电流方向。","value":1},{"key":"reverse","label":"切换正负极","action":"点击电池组，交换电源正负极，观察电动机转向改变。","note":"反接电源后，线圈受力方向改变，电动机转动方向反向。","value":2}]};
+    const SPEC = {"id":"49-1","title":"演示电动机换向器原理","scene":"dcMotor","family":"电磁","textbook":"九年级全一册 第二十章 第4节 电动机（PDF第170页，印刷第163页）；目录49相关扩展页49-1","apparatus":"电源、开关、滑动变阻器、直流电动机模型、导线","keyPoint":"闭合开关，观察直流电动机模型中换向器工作情况。","conclusion":"换向器可以使直流电动机持续转动。","scenarios":[{"key":"assemble","label":"装入线圈","action":"把线圈放入永久磁铁的圆形间隙，确认转轴能自由转动。","note":"线圈已经放入磁极间隙，转轴与换向器对齐；此时开关仍断开。","value":0},{"key":"closed","label":"闭合开关","action":"点击开关，接通电路并观察线圈持续转动。","note":"闭合开关后，换向器配合电刷周期性改变线圈中的电流方向。","value":1},{"key":"reverse","label":"切换正负极","action":"点击电池组，交换电源正负极，观察电动机转向改变。","note":"反接电源后，线圈受力方向改变，电动机转动方向反向。","value":2}]};
     const $ = s => document.querySelector(s);
     const stage = $("#stage"), labArea = $("#labArea"), canvas = $("#labCanvas"), ctx = canvas.getContext("2d");
     const taskStep = $("#taskStep"), taskText = $("#taskText"), taskHint = $("#taskHint"), dots = $("#dots"), modeTag = $("#modeTag"), statusTag = $("#statusTag");
@@ -663,8 +663,9 @@ body #app .toolbar button:disabled{
       const powered=nFree ? state.dcSwitchClosed : (state.dcSwitchClosed && mounted);
       const spinning=state.dcSwitchClosed && state.dcMotorKicked;
       const angle=spinning ? dcMotorAngle() : (nFree ? state.dcRestAngle : (n===1?.72:.02));
+      drawDcRefBattery(g.battery.x,g.battery.y,s);
       drawDcRefWires(g.motor.x,g.motor.y,g.battery.x,g.battery.y,g.rheo.x,g.rheo.y,g.switch.x,g.switch.y,powered,state.currentReversed,s);
-      drawDcRefBattery(g.battery.x,g.battery.y,s,state.currentReversed);
+      drawDcRefBatteryTerminals(g.battery.x,g.battery.y,s,state.currentReversed);
       drawDcRefRheostat(g.rheo.x,g.rheo.y,s);
       drawDcRefSwitch(g.switch.x,g.switch.y,nFree ? state.dcSwitchClosed : powered,s);
       drawDcRefMotor(g.motor.x,g.motor.y,angle,powered,spinning,s,{mounted,scraped});
@@ -1127,16 +1128,20 @@ body #app .toolbar button:disabled{
       ctx.fill();
       ctx.restore();
     }
-    function drawDcRefBattery(x,y,s,reverse){
+    function drawDcRefBattery(x,y,s){
       ctx.save();
       fillRound(x-58*s,y-34*s,116*s,68*s,10*s,"#39424d");
       for(let i=0;i<3;i++) fillRound(x-43*s+i*31*s,y-23*s,22*s,46*s,5*s,i%2?"#222":"#4e5965");
+      label("电池组",x,y-52*s);
+      ctx.restore();
+    }
+    function drawDcRefBatteryTerminals(x,y,s,reverse){
+      ctx.save();
       const terminals=dcBatteryTerminals(x,y,s,reverse);
       fillRound(terminals.pos.x-6.5*s,terminals.pos.y-8*s,13*s,16*s,3*s,"#ff6b6b");
       fillRound(terminals.neg.x-6.5*s,terminals.neg.y-8*s,13*s,16*s,3*s,"#8fc8ff");
       label("+",terminals.pos.x,terminals.pos.y-18*s,"#ffb0b0");
       label("-",terminals.neg.x,terminals.neg.y+22*s,"#b8e2ff");
-      label("电池组",x,y-52*s);
       ctx.restore();
     }
     function drawDcRefRheostat(x,y,s){
@@ -1582,7 +1587,7 @@ body #app .toolbar button:disabled{
     const isMobile = () => window.matchMedia("(max-width:720px)").matches || stage.clientWidth <= 720;
     let tabsEl = null, syncing = false, queued = false;
     function makeTab(id, label){ const btn = document.createElement("button"); btn.className = "mobile-tab"; btn.id = id; btn.type = "button"; btn.innerHTML = `<span class="tab-label">${label}<span class="mobile-badge" aria-hidden="true">0</span></span>`; return btn; }
-    function ensureTabs(){ if (tabsEl) return; tabsEl = document.createElement("div"); tabsEl.className = "mobile-tabs"; tabsEl.setAttribute("role", "group"); tabsEl.setAttribute("aria-label", "实验数据面板切换"); const exp = makeTab("experimentTab", "实验面板"); const data = makeTab("dataTab", "数据面板"); tabsEl.append(exp, data); stage.appendChild(tabsEl); exp.addEventListener("click", () => setMobilePanel("control")); data.addEventListener("click", () => setMobilePanel("data")); ensureClose(controlDock); ensureClose(dataDock); }
+    function ensureTabs(){ if (tabsEl) return; tabsEl = document.createElement("div"); tabsEl.className = "mobile-tabs"; tabsEl.setAttribute("role", "group"); tabsEl.setAttribute("aria-label", "实验数据面板切换"); const exp = makeTab("experimentTab", "实验面板"); const data = makeTab("dataTab", "数据面板"); tabsEl.append(exp, data); stage.appendChild(tabsEl); exp.addEventListener("click", () => setMobilePanel(controlDock.classList.contains("collapsed") ? "control" : null)); data.addEventListener("click", () => setMobilePanel(dataDock.classList.contains("collapsed") ? "data" : null)); ensureClose(controlDock); ensureClose(dataDock); }
     function ensureClose(dock){ const body = dock.querySelector(".dock-body"); if (!body || body.querySelector(".sheet-close")) return; const btn = document.createElement("button"); btn.className = "sheet-close"; btn.type = "button"; btn.innerHTML = '<svg class="sheet-close-icon" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg>'; btn.title = "收起"; btn.setAttribute("aria-label", "收起"); btn.addEventListener("click", () => setMobilePanel(null)); body.appendChild(btn); }
     function setCollapsed(dock, collapsed){ dock.classList.toggle("collapsed", !!collapsed); const btn = dock === controlDock ? controlToggleBtn : dataToggleBtn; if (btn) btn.textContent = collapsed ? "展开" : "收起"; }
     function clearDataNotice(){ if (window.state && typeof window.state.unseenRecords === "number") window.state.unseenRecords = 0; if (dataNotice) { dataNotice.textContent = "0"; dataNotice.classList.remove("show"); } }

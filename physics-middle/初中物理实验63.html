@@ -1110,7 +1110,10 @@ body #app .toolbar button:disabled{
       state.wireEdges.forEach(e=>add(e[0],e[1]));
       if(state.boardMode==="series"){if(state.switches.S)add("S_l","S_r")}
       else ["S","S1","S2"].forEach(id=>{if(state.switches[id])add(`${id}_l`,`${id}_r`)});
-      add("L1_l","L1_r","L1");add("L2_l","L2_r","L2");
+      // An ideal wire or closed switch makes both lamp terminals equipotential.
+      for(const id of ["L1","L2"]){
+        if(!reachable(`${id}_l`,`${id}_r`,zg))add(`${id}_l`,`${id}_r`,id);
+      }
       const energized=new Set(),energizedEdges=new Set();
       function search(node,seen,loads,path){
         if(node==="B_neg"){

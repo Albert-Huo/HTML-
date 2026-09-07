@@ -881,7 +881,7 @@
       #stage{ height:86vh; max-height:1040px; min-height:780px; }
       .spring-scale{
         top:8px;
-        transform:translateX(-50%) scale(.86);
+        transform:translateX(-50%);
         transform-origin:top center;
       }
       .rack{ left:50%; transform:translateX(-50%) scale(.94); }
@@ -2146,7 +2146,27 @@ body #app .toolbar button:disabled{
       });
     }
 
+    function getMobileBeakerHeight(width){
+      const pad = width < 430 ? 10 : 18;
+      return Math.min(width < 430 ? 220 : 274, (width - pad * 2 - 12) / 1.32);
+    }
+
+    function ensureApparatusHeight(){
+      if(window.innerWidth <= 720){
+        const beakerHeight = getMobileBeakerHeight(labArea.getBoundingClientRect().width);
+        const chainHeight = HOOK_BASE_OFFSET + getHookDropForApparent(state.airWeightN) + FIXED_STRING_LENGTH - BLOCK_EYELET_OFFSET_Y;
+        const blockHeight = Math.max(...Object.values(BLOCK_SPECS).map((spec)=>spec.h));
+        const stageHeight = Math.ceil(170 + chainHeight + blockHeight + AIR_CLEARANCE_ABOVE_WATER + beakerHeight * .58 + 48 + 24);
+        stageEl.style.setProperty('height', `${stageHeight}px`, 'important');
+        stageEl.style.setProperty('min-height', `${stageHeight}px`, 'important');
+        stageEl.style.setProperty('max-height', `${stageHeight}px`, 'important');
+      }else{
+        ['height','min-height','max-height'].forEach((key)=>stageEl.style.removeProperty(key));
+      }
+    }
+
     function layoutApparatus(){
+      ensureApparatusHeight();
       const lab = labArea.getBoundingClientRect();
       const W = lab.width;
       const H = lab.height;
@@ -2154,7 +2174,7 @@ body #app .toolbar button:disabled{
       const benchH = 76;
       const beakerHBase = W < 430 ? 220 : (W < 760 ? 274 : 312);
       const maxBeakerH = Math.max(180, H - benchH - 166);
-      const beakerH = Math.min(beakerHBase, maxBeakerH);
+      const beakerH = window.innerWidth <= 720 ? getMobileBeakerHeight(W) : Math.min(beakerHBase, maxBeakerH);
       const beakerW = Math.round(beakerH * 0.66);
       const bottom = Math.max(40, benchH - 28);
 

@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>初中物理实验31｜测量铝块所受的浮力（交互版）</title>
-  <!-- 实验目录依据：中小学实验教学目录（初中物理 31. 测量铝块所受的浮力） -->
-  <!-- 教材依据：人教版八年级下册，图10.1-3 测量铝块所受的浮力 -->
+  <title>初中物理实验31｜探究浮力产生的原因（交互版）</title>
+  <!-- 实验目录依据：中小学实验教学目录（初中物理 31. 探究浮力产生的原因） -->
+  <!-- 教材依据：人教版八年级下册，图10.1-3 探究浮力产生的原因 -->
   <script id="codex-theme-bootstrap">
     (() => {
       const themeKey = "xingnian.physics.theme";
@@ -235,6 +235,16 @@
     }
     .hint-pop .hint-thought b{ color:#fff1c4; }
 
+    .pressure-panel{position:absolute;top:10px;width:138px;padding:9px;box-sizing:border-box;border:1px solid rgba(155,211,255,.5);border-radius:9px;background:rgba(5,18,28,.9);color:#eaf5ff;font-size:12px;line-height:1.55;z-index:7;pointer-events:none}
+    .pressure-panel b,.pressure-panel strong{display:block;color:#ffd54f}
+    .pressure-panel[hidden],.pressure-arrow[hidden]{display:none}
+    .pressure-arrow{position:absolute;width:0;border-left:3px solid #ffd54f;z-index:7;pointer-events:none}
+    .pressure-arrow::after{content:"";position:absolute;left:-6px;border:5px solid transparent}
+    .pressure-arrow.top::after{bottom:-6px;border-top-color:#ffd54f}
+    .pressure-arrow.bottom{border-color:#3ddc97}
+    .pressure-arrow.bottom::after{top:-6px;border-bottom-color:#3ddc97}
+    .pressure-arrow span{position:absolute;left:-27px;top:0;font-size:12px;font-weight:800;color:#ffd54f}
+    .pressure-arrow.bottom span{left:8px;top:auto;bottom:0;color:#3ddc97}
     .lab-area{
       position:absolute;
       inset:54px 10px 10px;
@@ -653,6 +663,17 @@
       background:linear-gradient(180deg,#22313f,#0e171f);
       box-shadow:0 2px 5px rgba(0,0,0,.28);
       pointer-events:none;
+    }
+    .block-eyelet::after{
+      content:"";
+      position:absolute;
+      left:50%;
+      top:8px;
+      width:2px;
+      height:12px;
+      transform:translateX(-50%);
+      background:linear-gradient(180deg,#d7e2ed,#95a7b9);
+      border-radius:1px;
     }
     .block::before{
       content:"";
@@ -1671,7 +1692,7 @@ body #app .toolbar button:disabled{
   </div>
 
   <div class="task-card" id="taskCard">
-    <div class="task-step" id="taskStep">关卡 1 / 4</div>
+    <div class="task-step" id="taskStep">关卡 1 / 5</div>
     <div class="task-text">
       <div id="taskText"></div>
       <div class="task-hint" id="taskHint"></div>
@@ -1681,7 +1702,7 @@ body #app .toolbar button:disabled{
 
   <div id="stage">
     <div class="hud">
-      <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/4</span>
+      <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/5</span>
       <span class="tag" id="statusTag">状态：待操作</span>
     </div>
     <div class="hint-lamp-wrap" id="hintLampWrap">
@@ -1690,7 +1711,7 @@ body #app .toolbar button:disabled{
         <h4>当前提示</h4>
         <div class="hint-detail" id="hintDetail">先让铝块保持在空气中，读取弹簧测力计示数。</div>
         <h4>实验思路</h4>
-        <div class="hint-thought" id="hintThought">先读空气中示数作为 <b>重力</b>，再把铝块 <b>完全浸没</b> 读第二次示数，二者之差就是 <b>浮力</b>；继续改变完全浸没深度，若示数基本不变，就说明浮力与深度无关。</div>
+        <div class="hint-thought" id="hintThought">先读空气中示数作为 <b>重力</b>，再把铝块 <b>完全浸没</b> 读第二次示数，二者之差就是 <b>浮力</b>；比较浸没深度后，再显示上下压力，观察 <b>F₂ &gt; F₁</b> 如何形成向上的压力差。</div>
       </div>
     </div>
 
@@ -1730,12 +1751,19 @@ body #app .toolbar button:disabled{
       </div>
 
       <div class="depth-ruler" id="depthRuler">
-        <div class="ruler-title">深度尺</div>
+        <div class="ruler-title">深度 / cm</div>
         <div class="line"></div>
       </div>
 
       <div class="block" id="block"><span class="block-eyelet" aria-hidden="true"></span>铝块</div>
 
+      <div class="pressure-panel" id="pressurePanel" hidden>
+        <b>同面积上、下表面</b>
+        <div id="pressureComparison">先让铝块完全浸没。</div>
+        <strong id="pressureNet"></strong>
+      </div>
+      <div class="pressure-arrow top" id="pressureTopArrow" hidden><span>F₁</span></div>
+      <div class="pressure-arrow bottom" id="pressureBottomArrow" hidden><span>F₂</span></div>
       <div class="bench"></div>
       <div class="demoCursor" id="demoCursor" aria-hidden="true">
         <svg viewBox="0 0 24 24" role="img" aria-label="演示模式鼠标">
@@ -1764,6 +1792,9 @@ body #app .toolbar button:disabled{
         <div class="btnRow">
           <button class="sub" id="analyzeBtn">分析结论</button>
           <button class="sub" id="airBtn">铝块回到空气</button>
+        </div>
+        <div class="btnRow">
+          <button class="sub" id="pressureBtn" aria-pressed="false">显示上下压力</button>
         </div>
         <div class="analysisBox" id="analysisText" hidden></div>
       </div>
@@ -1808,18 +1839,19 @@ body #app .toolbar button:disabled{
   <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
     <div class="modal">
       <h3 id="doneTitle">实验完成</h3>
-      <p id="doneText">你已经验证：铝块浸没在水中后，弹簧测力计示数减小；空气中示数与水中示数之差就是浮力；完全浸没时，浮力大小与浸没深度无关。</p>
+      <p id="doneText">你已经观察到：同面积下表面比上表面更深，所受液体压强更大，因此向上的 F₂ 大于向下的 F₁。浮力来自上下表面的压力差：F<sub>浮</sub> = F₂ − F₁，方向竖直向上。称重法用空气中与水中测力计示数之差，验证了同一浮力大小；完全浸没后继续加深，两表面压力同增，压力差不变。</p>
       <button class="ok" id="okBtn">OK</button>
     </div>
   </div>
 
   <div class="explanation">
-    <h2>实验名：测量铝块所受的浮力</h2>
+    <h2>实验名：探究浮力产生的原因</h2>
     <ul>
       <li><b>关键操作与现象</b>：先让铝块悬挂在空气中，读出弹簧测力计的示数，这个示数表示铝块所受重力的大小。</li>
       <li><b>关键操作与现象</b>：再把铝块完全浸没在水中，弹簧测力计示数减小，空气中示数与水中示数之差就是浮力的大小。</li>
       <li><b>关键操作与现象</b>：在水中改变铝块完全浸没时的深度，弹簧测力计示数基本不变，说明浮力大小与浸没深度无关。</li>
-      <li><b>原理与结论</b>：浸在液体中的物体会受到浮力作用；浮力大小等于物体在空气中的重力与在液体中测力计示数之差；物体完全浸没在同种液体中时，浮力大小与浸没深度无关。</li>
+      <li><b>关键操作与现象</b>：显示上下压力，观察同面积下表面比上表面更深，所受液体压强和压力更大。</li>
+      <li><b>原理与结论</b>：同面积下表面所受压力 F₂ &gt; F₁，浮力就是上下表面的压力差：F<sub>浮</sub> = F₂ − F₁，方向竖直向上；称重法用空气中与水中测力计示数之差验证这一浮力大小。完全浸没后继续下移，两表面压力同时增大，压力差不变。</li>
     </ul>
   </div>
 
@@ -1841,8 +1873,13 @@ body #app .toolbar button:disabled{
         check:(s)=>s.depthCompared === true
       },
       {
-        text:'点击“分析结论”，汇总浮力与浸没深度的关系。',
-        hint:'提示：结论要同时体现“受浮力”和“完全浸没时与深度无关”两个要点。',
+        text:'保持铝块完全浸没，点击“显示上下压力”，比较同面积上、下表面的压力并记录。',
+        hint:'提示：下表面更深，液体压强更大；比较向上的 F₂ 与向下的 F₁。',
+        check:(s)=>s.hasPressureRecord === true
+      },
+      {
+        text:'点击“分析结论”，用上下表面压力差解释浮力的方向。',
+        hint:'提示：同面积下表面压力更大，F浮 = F₂ − F₁，合力方向向上。',
         check:(s)=>s.analysisOk === true
       }
     ];
@@ -1916,6 +1953,12 @@ body #app .toolbar button:disabled{
     const recordBtn = $('#recordBtn');
     const checkBtn = $('#checkBtn');
     const analyzeBtn = $('#analyzeBtn');
+    const pressureBtn = $('#pressureBtn');
+    const pressurePanel = $('#pressurePanel');
+    const pressureComparison = $('#pressureComparison');
+    const pressureNet = $('#pressureNet');
+    const pressureTopArrow = $('#pressureTopArrow');
+    const pressureBottomArrow = $('#pressureBottomArrow');
     const airBtn = $('#airBtn');
     const resetBtn = $('#resetBtn');
     const autoDemoBtn = $('#autoDemoBtn');
@@ -1961,6 +2004,8 @@ body #app .toolbar button:disabled{
       records:[],
       unseenRecordCount:0,
       analysisOk:false,
+      pressureVisible:false,
+      hasPressureRecord:false,
       hasAirRecord:false,
       hasShallowRecord:false,
       depthCompared:false,
@@ -2043,16 +2088,18 @@ body #app .toolbar button:disabled{
         detail = '先把整块铝块完全压到液面下，再让块中心对准 12.0 cm 标记。';
       }else if(state.currentTask === 2 && state.fullySubmerged){
         detail = '此步只改变浸没深度。若仍完全浸没，示数应与 12.0 cm 时基本相同。';
-      }else if(state.currentTask === 3 && state.records.length < 3){
-        detail = '分析前至少需要三组关键记录：空气中、12.0 cm 完全浸没、24.0 cm 完全浸没。';
+      }else if(state.currentTask === 4 && !state.hasPressureRecord){
+        detail = '分析前需要空气中、12.0 cm、24.0 cm 三组称重记录，以及上下表面压力比较记录。';
       }
       hintDetail.textContent = detail.replace(/^提示：/, '');
       if(state.analysisOk){
-        hintThought.innerHTML = '你已经得到：<b>浮力 = 空气中示数 - 水中示数</b>，并验证了 <b>同种液体里完全浸没时浮力与深度无关</b>。';
+        hintThought.innerHTML = '你已经观察到 <b>F₂ &gt; F₁</b>：<b>F浮 = F₂ − F₁</b>，方向竖直向上；称重法的示数之差验证了同一浮力大小。';
+      }else if(state.depthCompared){
+        hintThought.innerHTML = '称重比较已经完成。现在显示上下压力，观察<b>同面积下表面更深、压力更大</b>，记录后再分析浮力的原因。';
       }else if(state.hasAirRecord && state.hasShallowRecord){
         hintThought.innerHTML = `空气中示数已经记录。接下来只要再记录 <b>${TARGET_DEPTH_2.toFixed(1)} cm</b> 完全浸没示数，就能比较深度变化前后的差异。`;
       }else {
-        hintThought.innerHTML = '先读空气中示数作为 <b>重力</b>，再把铝块 <b>完全浸没</b> 读第二次示数，二者之差就是 <b>浮力</b>；继续改变完全浸没深度，若示数基本不变，就说明浮力与深度无关。';
+        hintThought.innerHTML = '先读空气中示数作为 <b>重力</b>，再把铝块 <b>完全浸没</b> 读第二次示数，二者之差就是 <b>浮力</b>；比较浸没深度后，再显示上下压力，观察 <b>F₂ &gt; F₁</b> 如何形成向上的压力差。';
       }
     }
     function initDots(){
@@ -2156,20 +2203,36 @@ body #app .toolbar button:disabled{
       return blockTopY - HOOK_BASE_OFFSET - hookDrop - FIXED_STRING_LENGTH + BLOCK_EYELET_OFFSET_Y;
     }
 
+    function ensureApparatusHeight(){
+      if(window.innerWidth <= 720){
+        const chainHeight = HOOK_BASE_OFFSET + getHookDropForApparent(AIR_READING_N) + FIXED_STRING_LENGTH - BLOCK_EYELET_OFFSET_Y;
+        const minimumLabHeight = Math.ceil(chainHeight + BLOCK_SIZE + AIR_CLEARANCE_ABOVE_WATER + 220 * .66 + 40 + 24);
+        const stageHeight = minimumLabHeight + 170;
+        stageEl.style.setProperty('height', `${stageHeight}px`, 'important');
+        stageEl.style.setProperty('min-height', `${stageHeight}px`, 'important');
+        stageEl.style.setProperty('max-height', `${stageHeight}px`, 'important');
+      }else{
+        ['height','min-height','max-height'].forEach((key)=>stageEl.style.removeProperty(key));
+      }
+    }
+
     function layoutApparatus(){
+      ensureApparatusHeight();
       const labRect = labArea.getBoundingClientRect();
       const W = labRect.width;
       const H = labRect.height;
       const benchH = 68;
       const stacked = W < 760;
       const beakerW = Math.round(clamp(W * 0.28, 180, 230));
-      const beakerH = Math.round(clamp(H * 0.5, 220, 280));
+      const beakerH = window.innerWidth <= 720 ? 220 : Math.round(clamp(H * 0.5, 220, 280));
       const apparatusCenterX = stacked
-        ? Math.round(W * 0.48)
+        ? Math.round(clamp((W - 90) / 2, beakerW / 2 + 6, W - beakerW / 2 - 86))
         : Math.round(clamp(W * 0.36, 250, W - 420));
       const beakerLeft = Math.round(apparatusCenterX - beakerW / 2);
       const beakerBottom = Math.max(24, benchH - 28);
-      const rulerLeft = beakerLeft + beakerW + (stacked ? 12 : 20);
+      const rulerLeft = Math.min(W - 78, beakerLeft + beakerW + (stacked ? 8 : 20));
+      pressurePanel.style.left = `${apparatusCenterX + 62}px`;
+      pressurePanel.style.width = `${Math.min(138, W - apparatusCenterX - 68)}px`;
 
       beakerWrap.style.width = `${beakerW}px`;
       beakerWrap.style.height = `${beakerH}px`;
@@ -2330,9 +2393,51 @@ body #app .toolbar button:disabled{
       const air = state.records.find((r)=>r.medium === 'air');
       const shallow = state.records.find((r)=>r.medium === 'water' && r.fullySubmerged && isExactDepth(r.depth, TARGET_DEPTH_1));
       const deep = state.records.find((r)=>r.medium === 'water' && r.fullySubmerged && isExactDepth(r.depth, TARGET_DEPTH_2));
+      state.hasPressureRecord = state.records.some((r)=>r.pressureObserved && r.fullySubmerged && r.pressure.bottomDepth > r.pressure.topDepth && Math.abs(r.pressure.netForce - r.buoyancy) < .001);
       state.hasAirRecord = !!air;
       state.hasShallowRecord = !!shallow;
       state.depthCompared = !!(shallow && deep && Math.abs(shallow.apparent - deep.apparent) <= 0.02);
+    }
+
+    function getPressureComparison(blockTop = state.blockTopY, liquid = getLiquidGeometry()){
+      const topDepth = Math.max(0, blockTop - liquid.liquidTop);
+      const bottomDepth = Math.max(0, blockTop + BLOCK_SIZE - liquid.liquidTop);
+      const displacedFraction = clamp((bottomDepth - topDepth) / BLOCK_SIZE, 0, 1);
+      return { topDepth, bottomDepth, netForce:round(FULL_BUOYANCY_N * displacedFraction, 3) };
+    }
+
+    function updatePressureEvidence(){
+      pressurePanel.hidden = !state.pressureVisible;
+      pressureBtn.textContent = state.pressureVisible ? '隐藏上下压力' : '显示上下压力';
+      pressureBtn.setAttribute('aria-pressed', String(state.pressureVisible));
+      const visible = state.fullySubmerged && state.pressureVisible;
+      pressureTopArrow.hidden = !visible;
+      pressureBottomArrow.hidden = !visible;
+      if(!visible){
+        pressureComparison.textContent = '先让铝块完全浸没，比较上、下表面。';
+        pressureNet.textContent = '';
+        return;
+      }
+      const liquid = getLiquidGeometry();
+      const pressure = getPressureComparison(state.blockTopY, liquid);
+      const arrowScale = 50 / Math.max(BLOCK_SIZE, liquid.liquidBottom - liquid.liquidTop);
+      const topLength = Math.max(5, pressure.topDepth * arrowScale);
+      const bottomLength = Math.max(5, pressure.bottomDepth * arrowScale);
+      pressureTopArrow.style.left = `${state.blockX + 12}px`;
+      pressureTopArrow.style.top = `${state.blockTopY - topLength}px`;
+      pressureTopArrow.style.height = `${topLength}px`;
+      pressureBottomArrow.style.left = `${state.blockX + BLOCK_SIZE - 12}px`;
+      pressureBottomArrow.style.top = `${state.blockTopY + BLOCK_SIZE}px`;
+      pressureBottomArrow.style.height = `${bottomLength}px`;
+      pressureComparison.innerHTML = '上表面 h₁ 较浅<br>p₁ 较小，F₁ 向下<br>下表面 h₂ 较深<br>p₂ 较大，F₂ 向上';
+      pressureNet.innerHTML = `F₂ &gt; F₁<br>合力向上 ${pressure.netForce.toFixed(2)} N`;
+    }
+
+    function togglePressure(fromAuto = false){
+      if(state.autoPlaying && !fromAuto) return false;
+      state.pressureVisible = !state.pressureVisible;
+      updatePressureEvidence();
+      return state.pressureVisible;
     }
 
     function updateReadoutUI(){
@@ -2367,6 +2472,7 @@ body #app .toolbar button:disabled{
       depthPill.textContent = `当前深度：${state.currentDepthCm.toFixed(1)} cm`;
 
       updateStringLine(solved.hookAnchorY);
+      updatePressureEvidence();
       syncHintLamp();
     }
 
@@ -2374,7 +2480,8 @@ body #app .toolbar button:disabled{
       if(state.currentTask === 0) return '空气中待记录';
       if(state.currentTask === 1) return '对准 12.0 cm';
       if(state.currentTask === 2) return '对准 24.0 cm';
-      if(state.currentTask === 3) return '等待分析';
+      if(state.currentTask === 3) return '比较上下压力';
+      if(state.currentTask === 4) return '等待分析';
       return '待操作';
     }
 
@@ -2432,6 +2539,7 @@ body #app .toolbar button:disabled{
       if(state.currentTask === 0) return !state.inWater;
       if(state.currentTask === 1) return state.fullySubmerged && isExactDepth(state.currentDepthCm, TARGET_DEPTH_1);
       if(state.currentTask === 2) return state.fullySubmerged && isExactDepth(state.currentDepthCm, TARGET_DEPTH_2);
+      if(state.currentTask === 3) return state.fullySubmerged && state.pressureVisible;
       return false;
     }
     function currentMeasureKey(){
@@ -2444,10 +2552,12 @@ body #app .toolbar button:disabled{
         if(state.currentTask === 0) warnCurrentStep('步骤1要求：先让铝块保持在空气中，再记录弹簧测力计示数。');
         else if(state.currentTask === 1) warnCurrentStep('步骤2要求：下移弹簧测力计，让铝块完全浸没，并使块中心对准 12.0 cm 标记后再记录。');
         else if(state.currentTask === 2) warnCurrentStep('步骤3要求：继续下移弹簧测力计，让铝块完全浸没，并使块中心对准 24.0 cm 标记后再记录。');
+        else if(state.currentTask === 3) warnCurrentStep('保持完全浸没，显示上下压力并比较后再记录。');
         else warnCurrentStep('当前步骤不需要再记录。');
         return false;
       }
-      const key = currentMeasureKey();
+      const pressureObserved = state.fullySubmerged && state.pressureVisible && (state.freeMode || state.currentTask === 3);
+      const key = (pressureObserved ? "pressure:" : "") + currentMeasureKey();
       if(state.records.some((r)=>r.key === key)){
         showToast('该状态的数据已记录过');
         return false;
@@ -2460,8 +2570,10 @@ body #app .toolbar button:disabled{
         depth:state.inWater ? state.currentDepthCm : null,
         fullySubmerged:state.fullySubmerged,
         apparent:state.apparentN,
+        pressureObserved,
+        pressure:pressureObserved ? getPressureComparison() : null,
         buoyancy:state.buoyancyN,
-        note:!state.inWater ? '空气中重力示数'
+        note:pressureObserved ? '同面积下表面更深，p₂>p₁，F₂>F₁，合力向上' : !state.inWater ? '空气中重力示数'
           : state.fullySubmerged && isExactDepth(state.currentDepthCm, TARGET_DEPTH_1) ? '完全浸没 @12.0 cm'
           : state.fullySubmerged && isExactDepth(state.currentDepthCm, TARGET_DEPTH_2) ? '完全浸没 @24.0 cm'
           : state.fullySubmerged ? '完全浸没'
@@ -2484,23 +2596,24 @@ body #app .toolbar button:disabled{
       const air = state.records.find((r)=>r.medium === 'air');
       const shallow = state.records.find((r)=>r.medium === 'water' && r.fullySubmerged && isExactDepth(r.depth, TARGET_DEPTH_1));
       const deep = state.records.find((r)=>r.medium === 'water' && r.fullySubmerged && isExactDepth(r.depth, TARGET_DEPTH_2));
-      if(!air || !shallow || !deep){
+      if(!air || !shallow || !deep || !state.hasPressureRecord){
         state.analysisOk = false;
         analysisText.classList.remove('ok');
         analysisText.hidden = true;
         analysisText.textContent = '';
-        if(!fromAuto) warnCurrentStep('请先补齐三组关键数据，再分析结论。');
+        if(!fromAuto) warnCurrentStep('请先补齐三组称重数据，并显示上下压力、记录比较结果，再分析结论。');
         return false;
       }
       const buoyancy = round(air.apparent - shallow.apparent, 3);
       const depthDiff = round(Math.abs(shallow.apparent - deep.apparent), 3);
-      state.analysisOk = buoyancy > 0.1 && depthDiff <= 0.02;
+      state.analysisOk = buoyancy > 0.1 && depthDiff <= 0.02 && state.hasPressureRecord;
       if(state.analysisOk){
         analysisText.classList.add('ok');
         analysisText.hidden = false;
         analysisText.innerHTML = [
           `分析：空气中示数为 ${air.apparent.toFixed(3)} N，铝块在水中 12.0 cm 完全浸没时示数为 ${shallow.apparent.toFixed(3)} N，二者之差 ${buoyancy.toFixed(3)} N，就是浮力大小。`,
           `当铝块继续下移到 24.0 cm 且仍完全浸没时，示数为 ${deep.apparent.toFixed(3)} N，与 12.0 cm 时仅差 ${depthDiff.toFixed(3)} N，可认为完全浸没时浮力大小与浸没深度无关。`
+          ,`同面积上、下表面中，下表面更深，液体压强更大，因此向上的 F₂ 大于向下的 F₁。浮力就是上下压力差：F浮 = F₂ − F₁ = ${buoyancy.toFixed(3)} N，方向竖直向上。`
         ].join('<br />');
         showToast('分析完成：结论正确');
       }else{
@@ -2562,6 +2675,8 @@ body #app .toolbar button:disabled{
       state.hasAirRecord = false;
       state.hasShallowRecord = false;
       state.depthCompared = false;
+      state.pressureVisible = false;
+      state.hasPressureRecord = false;
       state.records = [];
       state.unseenRecordCount = 0;
       doneMaskEl.style.display = 'none';
@@ -2783,6 +2898,7 @@ body #app .toolbar button:disabled{
       recordBtn.disabled = locked;
       checkBtn.disabled = locked;
       analyzeBtn.disabled = locked;
+      pressureBtn.disabled = locked;
       airBtn.disabled = locked;
       resetBtn.disabled = locked;
       freeBtn.disabled = locked;
@@ -2842,6 +2958,12 @@ body #app .toolbar button:disabled{
 
         ensureActive();
         setStepUI(3);
+        await demoClickElement(pressureBtn, ()=>togglePressure(true));
+        await pause(900, 'observePrimary');
+        await autoRecord('pressure');
+
+        ensureActive();
+        setStepUI(4);
         await demoClickElement(analyzeBtn, ()=>analyzeConclusion(true));
         if(!state.analysisOk) throw new Error('AUTO_ANALYSIS_FAILED');
         await pause(700);
@@ -2882,6 +3004,7 @@ body #app .toolbar button:disabled{
     }
 
     function bindEvents(){
+      pressureBtn.addEventListener('click', ()=>togglePressure());
       controlToggleBtn.addEventListener('click', ()=>setControlCollapsed(!state.controlCollapsed));
       dataToggleBtn.addEventListener('click', ()=>setDataCollapsed(!state.dataCollapsed));
       recordBtn.addEventListener('click', ()=>recordCurrent(false));

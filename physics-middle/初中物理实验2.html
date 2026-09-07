@@ -2305,8 +2305,11 @@
       demoDriving: false
     };
 
+    let simulationRunId = 0;
     function createSim() {
       return {
+        runId: ++simulationRunId,
+        modeRunId: 0,
         t: 0,
         T: Tmin,
         running: false,
@@ -2556,7 +2559,7 @@
       }
 
       sim.t += dt;
-      sim.data.push({ t: sim.t, T: sim.T });
+      sim.data.push({ t: sim.t, T: sim.T, runId:sim.runId, modeRunId:sim.modeRunId, mode:sim.mode, phase:sim.phase });
       if (sim.data.length > 5000) sim.data.shift();
     }
 
@@ -2660,7 +2663,13 @@
       };
     }
 
-    function analyzeBoxData() {
+    function plateauPointsFor(kind, currentModeRun = true) {
+      const mode = kind === 'freezing' ? 'cool' : 'heat';
+      return sim.data.filter(p => p.runId === sim.runId && p.mode === mode && p.phase === kind
+        && (!currentModeRun || p.modeRunId === sim.modeRunId) && Math.abs(p.T - MP) < 2.0);
+    }
+
+    function analyzeBoxData(kind = state.currentTask === 2 ? 'freezing' : 'melting') {
       if (!graphMapper || sim.data.length < 5) return { ok: false };
       const { padL, padT, gw, gh, tMin, tMax } = graphMapper;
       const br = getBoxRect();
@@ -2672,7 +2681,7 @@
       const tt2 = tMin + gx2 / gw * (tMax - tMin);
       const seg = sim.data.filter((p) => p.t >= tt1 && p.t <= tt2);
       if (seg.length < 3) return { ok: false };
-      const plateauPoints = seg.filter((p) => Math.abs(p.T - MP) < 2.0);
+      const plateauPoints = plateauPointsFor(kind).filter(p => p.t >= tt1 && p.t <= tt2);
       const yMP = padT + (Tmax - MP) / (Tmax - Tmin) * gh;
       const includesMP = yMP >= br.y && yMP <= br.y + br.h;
       let timeSpan = 0;
@@ -2692,8 +2701,8 @@
         text: '点击<strong>暂停</strong>，拖动标记框圈出<strong>熔化平台</strong>（48℃附近）',
         hint: '提示：先暂停，再圈画；框需要覆盖 48℃ 虚线并包含足够平台数据。',
         check: () => {
-          if (sim.running) return false;
-          const r = analyzeBoxData();
+          if (sim.running || sim.mode !== 'heat') return false;
+          const r = analyzeBoxData('melting');
           return r.ok && r.includesMP && r.validPointCount > 5 && r.timeSpan > 1.0;
         }
       },
@@ -2702,8 +2711,8 @@
         hint: '提示：切到冷却并运行一段时间，再暂停后圈画凝固平台。',
         check: () => {
           if (sim.running) return false;
-          if (sim.mode === 'heat') return false;
-          const r = analyzeBoxData();
+          if (sim.mode !== 'cool') return false;
+          const r = analyzeBoxData('freezing');
           return r.ok && r.includesMP && r.validPointCount > 5 && r.timeSpan > 1.0;
         }
       }
@@ -2768,7 +2777,10 @@
 
     function completeChallenge() {
       if (state.completed) return;
-      ensureCompletionRecords();
+      if (!ensureCompletionRecords()) {
+        markStepWarning('缺少本次加热或冷却的平台证据，请完成对应观察后再试。');
+        return;
+      }
       state.completed = true;
       if (state.autoPlaying) state.demoCompleted = true;
       state.warningStep = -1;
@@ -2819,17 +2831,21 @@
 
     function addRecord(step = `步骤${state.currentTask + 1}`, note = '') {
       const recordStep = note ? `${step}(${note})` : step;
-      const platformRecord = /^步骤[23]/.test(step) || /平台|熔化|凝固/.test(note);
-      state.records.push({
-        step: recordStep,
-        temp: platformRecord ? MP : sim.T,
-        t: Math.round(sim.t)
-      });
+      const stepNo = Number((String(step).match(/步骤(\d+)/) || [])[1]);
+      const kind = stepNo === 3 ? 'freezing' : stepNo === 2 ? 'melting' : null;
+      const points = kind ? plateauPointsFor(kind) : sim.data.filter(p => p.runId === sim.runId);
+      const point = kind ? points[Math.floor(points.length / 2)] : points[points.length - 1];
+      if (!point) {
+        showToast(kind === 'freezing' ? '请先运行本次冷却，获得凝固平台后再记录。' : '请先运行并获得对应的实测数据。');
+        return false;
+      }
+      state.records.push({ step:recordStep, temp:point.T, t:Math.round(point.t), runId:point.runId, modeRunId:point.modeRunId, mode:point.mode, phase:point.phase });
       if (state.records.length > 80) state.records.shift();
       if (state.dataCollapsed) state.unseenRecordCount = Math.min(999, state.unseenRecordCount + 1);
       else state.unseenRecordCount = 0;
       refreshDataNotice();
       renderRecordTable();
+      return true;
     }
 
     function addRecordWithAssert(step, note) {
@@ -2843,39 +2859,31 @@
     }
 
     function hasRecordForStep(stepNo) {
-      return state.records.some((r) => String(r.step || '').startsWith(`步骤${stepNo}`));
+      return state.records.some(r => String(r.step || '').startsWith(`步骤${stepNo}`) && r.runId === sim.runId
+        && (stepNo !== 2 || (r.mode === 'heat' && r.phase === 'melting'))
+        && (stepNo !== 3 || (r.mode === 'cool' && r.phase === 'freezing' && r.modeRunId === sim.modeRunId)));
     }
 
-    function nearestPointToTemp(target) {
-      if (!sim.data.length) return null;
-      return sim.data.reduce((best, p) => (
-        !best || Math.abs(p.T - target) < Math.abs(best.T - target) ? p : best
-      ), null);
-    }
-
-    function appendCompletionRecord(stepNo, note, point, fallbackTemp) {
-      if (hasRecordForStep(stepNo)) return;
-      state.records.push({
-        step: `步骤${stepNo}(${note})`,
-        temp: stepNo === 1 && point ? point.T : fallbackTemp,
-        t: Math.round(point ? point.t : sim.t)
-      });
+    function appendCompletionRecord(stepNo, note, point) {
+      if (hasRecordForStep(stepNo) || !point) return;
+      state.records.push({ step:`步骤${stepNo}(${note})`, temp:point.T, t:Math.round(point.t), runId:point.runId, modeRunId:point.modeRunId, mode:point.mode, phase:point.phase });
     }
 
     function ensureCompletionRecords() {
-      const highPoint = sim.data.find((p) => p.T >= 95) || nearestPointToTemp(95);
-      const meltingPoint = nearestPointToTemp(MP);
-      const freezingPoint = [...sim.data].reverse().find((p) => Math.abs(p.T - MP) < 1.8) || meltingPoint;
+      const highPoint = sim.data.find(p => p.runId === sim.runId && p.mode === 'heat' && p.T >= 95);
+      const melting = plateauPointsFor('melting', false);
+      const freezing = plateauPointsFor('freezing');
       const before = state.records.length;
-      appendCompletionRecord(1, '升温达标', highPoint, 95);
-      appendCompletionRecord(2, '熔化平台', meltingPoint, MP);
-      appendCompletionRecord(3, '凝固平台', freezingPoint, MP);
+      appendCompletionRecord(1, '升温达标', highPoint);
+      appendCompletionRecord(2, '熔化平台', melting[Math.floor(melting.length / 2)]);
+      appendCompletionRecord(3, '凝固平台', freezing[Math.floor(freezing.length / 2)]);
       if (state.records.length > before) {
         if (state.dataCollapsed) state.unseenRecordCount = Math.min(999, state.unseenRecordCount + state.records.length - before);
         else state.unseenRecordCount = 0;
         refreshDataNotice();
         renderRecordTable();
       }
+      return [1, 2, 3].every(hasRecordForStep);
     }
 
     function showSelectBox(label) {
@@ -2909,15 +2917,10 @@
       const yMP = padT + (Tmax - MP) / (Tmax - Tmin) * gh;
       let xCenter = areaW * 0.7;
       if (graphMapper && sim.data.length > 10) {
-        const near = sim.data.filter((p) => Math.abs(p.T - MP) < 1.2);
+        const phase = kind === 'auto' ? (sim.mode === 'cool' ? 'freezing' : 'melting') : kind;
+        const near = plateauPointsFor(phase);
         if (near.length) {
-          let chosen = near;
-          if (kind === 'melting') {
-            chosen = near.slice(0, Math.max(6, Math.floor(near.length * 0.45)));
-          } else if (kind === 'freezing') {
-            chosen = near.slice(Math.max(0, Math.floor(near.length * 0.55)));
-          }
-          const mid = chosen[Math.floor(chosen.length / 2)] || near[Math.floor(near.length / 2)];
+          const mid = near[Math.floor(near.length / 2)];
           const { padL, gw, tMin, tMax } = graphMapper;
           xCenter = padL + (mid.t - tMin) / (tMax - tMin || 1) * gw;
         }
@@ -2990,6 +2993,7 @@
         }
       }
       sim.mode = nextMode;
+      sim.modeRunId += 1;
       toggleModeBtn.textContent = sim.mode === 'heat' ? '切换到冷却' : '切换到加热';
       if (!sim.running) updateVisual();
       setStatusTag(sim.mode === 'heat' ? '准备加热' : '准备冷却');
@@ -3024,8 +3028,7 @@
         markStepWarning('请先完成步骤1，再记录数据。');
         return;
       }
-      addRecord(`步骤${state.currentTask + 1}`, phaseText());
-      showToast('记录成功。');
+      if (addRecord(`步骤${state.currentTask + 1}`, phaseText())) showToast('记录成功。');
     });
 
     clearRecordsBtn.addEventListener('click', () => {
@@ -3820,6 +3823,8 @@
     const toggle = which === 'control' ? controlToggle : dataToggle;
     dock.classList.toggle('collapsed', !open);
     if (body) body.classList.toggle('collapsed', !open);
+    if (which === 'control') setControlCollapsed(!open);
+    else setDataCollapsed(!open);
     if (toggle && /^(展开|收起)$/.test((toggle.textContent || '').trim())) toggle.textContent = open ? '收起' : '展开';
   }
   function clickToOpen(which){

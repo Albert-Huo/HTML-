@@ -1816,6 +1816,8 @@ body #app .toolbar button:disabled{
     const TUBE_LIQUID_TOP_MIN = 28;
     const TUBE_LIQUID_TOP_MAX = 102;
     const TUBE_LIQUID_BASE_TOP = 72;
+    const TUBE_MAX_PRESSURE_KPA = Math.max(...Object.values(LIQUIDS).map(liquid => liquid.rho)) * 9.8 * 0.4 / 1000;
+    const TUBE_MAX_DELTA = Math.min(TUBE_LIQUID_BASE_TOP - TUBE_LIQUID_TOP_MIN, TUBE_LIQUID_TOP_MAX - TUBE_LIQUID_BASE_TOP);
     const TUBE_LIQUID_BOTTOM_Y = 114;
     const TUBE_LEFT_X = 42;
     const TUBE_RIGHT_X = 98;
@@ -2102,7 +2104,7 @@ body #app .toolbar button:disabled{
       depthPill.textContent = `${state.probeDepthCm.toFixed(1)} cm`;
       gaugeText.innerHTML = `压强：<b>${state.currentPressureKPa.toFixed(2)}</b> kPa<br />方向：<b>${currentDirCfg().name}</b>`;
       dhLabel.textContent = `Δh = ${state.currentDhCm.toFixed(1)} cm`;
-      const delta = clamp(state.currentDhCm * 3.3, 0, 28);
+      const delta = clamp(pressure / TUBE_MAX_PRESSURE_KPA, 0, 1) * TUBE_MAX_DELTA;
       const leftTop = clamp(TUBE_LIQUID_BASE_TOP - delta, TUBE_LIQUID_TOP_MIN, TUBE_LIQUID_TOP_MAX);
       const rightTop = clamp(TUBE_LIQUID_BASE_TOP + delta, TUBE_LIQUID_TOP_MIN, TUBE_LIQUID_TOP_MAX);
       liquidLeft.setAttribute('y', String(leftTop));

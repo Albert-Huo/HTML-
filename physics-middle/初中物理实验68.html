@@ -823,8 +823,8 @@ body #app .toolbar button:disabled{
     function currentStatus(){
       if(state.shortCircuit)return"低压短路模拟";
       if(state.task===0&&!mainComplete())return`等待接线 ${[...state.wireKeys].filter(key=>MAIN_KEYS.includes(key)).length}/4`;
-      if(state.task===2&&storageComplete()&&!state.shaded&&state.storageCharge<60)return`储能充电 ${Math.round(state.storageCharge)}%`;
-      if(state.shaded&&modelRunning())return"遮光后由储能模块供电";
+      if(state.task===2&&storageComplete()&&mainComplete()&&!state.shortCircuit&&panelVoltage()>1.2&&state.storageCharge<60)return`储能充电 ${Math.round(state.storageCharge)}%`;
+      if(supplyKind()==="储能模块")return state.shaded?"遮光后由储能模块供电":"弱光下由储能模块供电";
       if(modelRunning())return`模型运行 · ${loadVoltage().toFixed(2)} V`;
       if(state.loadOn)return"输出不足，模型停止";
       if(mainComplete()&&!state.loadOn)return"主电路完成 · 断开";
@@ -887,7 +887,7 @@ body #app .toolbar button:disabled{
     }
     function updateLiveReadouts(){
       voltageReadout.textContent=`${controllerVoltage().toFixed(2)} V`;
-      modelReadout.textContent=state.shortCircuit?"短路，输出已停止":modelRunning()?(state.shaded?"储能运行":"风扇与 LED 运行"):"停止";
+      modelReadout.textContent=state.shortCircuit?"短路，输出已停止":modelRunning()?(supplyKind()==="储能模块"?"储能运行":"风扇与 LED 运行"):"停止";
       chargeReadout.textContent=`${Math.round(state.storageCharge)}%`;
       sourceReadout.textContent=supplyKind()
     }
@@ -1407,7 +1407,7 @@ body #app .toolbar button:disabled{
       const delta=state.lastTick?Math.min(.08,(time-state.lastTick)/1000):0;state.lastTick=time;
       const canCharge=storageComplete()&&mainComplete()&&!state.shaded&&!state.shortCircuit&&panelVoltage()>1.2;
       if(canCharge)state.storageCharge=clamp(state.storageCharge+(state.loadOn?12:20)*delta,0,100);
-      if(state.shaded&&state.loadOn&&storageCanSupply())state.storageCharge=clamp(state.storageCharge-3.2*delta,0,100);
+      if(supplyKind()==="储能模块")state.storageCharge=clamp(state.storageCharge-3.2*delta,0,100);
       if(modelRunning())state.fanPhase+=loadVoltage()*delta*2.3;
       updateLiveReadouts();draw();requestAnimationFrame(tick)
     }

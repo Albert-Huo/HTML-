@@ -2326,7 +2326,10 @@ const sim = {
   gas: 0,
   cold: 0,
   solidLeft: 100,
-  crystals: 0
+  crystals: 0,
+  iodineSolid: 100,
+  iodineVapor: 0,
+  iodineDeposit: 0
 };
 
 const taskStepEl = $('#taskStep');
@@ -2631,12 +2634,20 @@ function showDone() {
 }
 okBtn.onclick = () => { doneMask.style.display = 'none'; };
 
+function syncIodineVisuals() {
+  // Internal relative inventories track transfers; purple intensity is only a visual readout.
+  sim.gas = Math.round(clamp(sim.iodineVapor, 0, 100));
+  sim.solidLeft = clamp(sim.iodineSolid, 0, 100);
+  sim.crystals = clamp(sim.iodineDeposit, 0, 100);
+}
+
 function refreshReadouts() {
+  syncIodineVisuals();
   tPill.textContent = String(Math.round(sim.T));
   gasPill.textContent = String(Math.round(sim.gas));
   coldPill.textContent = String(Math.round(sim.cold));
   crystalPill.textContent = String(Math.round(sim.crystals));
-  solidEl.style.opacity = String(clamp(0.25 + sim.solidLeft / 100 * 0.75, 0.15, 1));
+  solidEl.style.opacity = String(clamp(sim.solidLeft / 100, 0, 1));
   solidEl.style.transform = `translateX(-50%) scaleX(${0.85 + sim.solidLeft / 100 * 0.25}) scaleY(${0.65 + sim.solidLeft / 100 * 0.45})`;
   renderCrystals();
 }
@@ -2645,9 +2656,12 @@ async function applyHeatPulse(runId = null) {
   for (let i = 0; i < 10; i++) {
     if (runId !== null && runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
     sim.T = clamp(sim.T + 4, -10, 120);
-    sim.gas = clamp(sim.gas + (sim.T >= 60 ? 6 : 3), 0, 100);
-    sim.solidLeft = clamp(sim.solidLeft - (sim.T >= 70 ? 3.5 : 1.8), 0, 100);
-    sim.crystals = clamp(sim.crystals - 2.0, 0, 100);
+    const requested = sim.T >= 60 ? 6 : 3;
+    const fromDeposit = Math.min(2, requested, sim.iodineDeposit);
+    const fromSolid = Math.min(requested - fromDeposit, sim.iodineSolid);
+    sim.iodineDeposit -= fromDeposit;
+    sim.iodineSolid -= fromSolid;
+    sim.iodineVapor += fromDeposit + fromSolid;
     refreshReadouts();
     if (runId !== null) await waitAuto(40, runId);
     else await wait(40);
@@ -2659,9 +2673,9 @@ async function applyCoolPulse(runId = null) {
     if (runId !== null && runId !== state.demoRunId) throw new Error('AUTO_DEMO_CANCELLED');
     sim.T = clamp(sim.T - 4, -10, 120);
     const take = clamp(2.2 + sim.cold * 0.05, 2.2, 7.5);
-    const gain = clamp(take * 0.95, 1.8, 7.0);
-    sim.gas = clamp(sim.gas - take, 0, 100);
-    sim.crystals = clamp(sim.crystals + gain * (sim.gas > 10 ? 1 : 0.45), 0, 100);
+    const transferred = Math.min(take, sim.iodineVapor);
+    sim.iodineVapor -= transferred;
+    sim.iodineDeposit += transferred;
     refreshReadouts();
     if (runId !== null) await waitAuto(40, runId);
     else await wait(40);
@@ -2674,9 +2688,10 @@ async function heatAction(fromAuto = false, runId = null) {
     markStepWarning('请先完成步骤1（常温观察）。');
     return;
   }
+  const gasBefore = sim.gas;
   setStatusTag('加热中');
   await applyHeatPulse(runId);
-  if (!fromAuto) showToast('🔥 加热中：管内紫色物质增多。');
+  if (!fromAuto) showToast(sim.gas > gasBefore ? '🔥 加热后：管内紫色物质增多。' : '加热操作已完成，请观察当前状态。');
 }
 async function coolAction(fromAuto = false, runId = null) {
   if (state.autoPlaying && !fromAuto) return;
@@ -2684,9 +2699,10 @@ async function coolAction(fromAuto = false, runId = null) {
     markStepWarning('当前步骤未到冷凝阶段。');
     return;
   }
+  const depositedBefore = sim.iodineDeposit;
   setStatusTag('冷凝中');
   await applyCoolPulse(runId);
-  if (!fromAuto) showToast('❄️ 冷凝中：管内紫色物质减少，冷板下方附着物增多。');
+  if (!fromAuto) showToast(sim.iodineDeposit > depositedBefore ? '❄️ 冷凝后：冷板下方附着物增多。' : '冷凝操作已完成，当前没有新增附着物。');
 }
 
 function completeCurrentStep(fromAuto = false) {
@@ -3126,8 +3142,9 @@ function resetSim() {
   sim.T = 25;
   sim.gas = 0;
   sim.cold = 0;
-  sim.solidLeft = 100;
-  sim.crystals = 0;
+  sim.iodineSolid = 100;
+  sim.iodineVapor = 0;
+  sim.iodineDeposit = 0;
   refreshReadouts();
 }
 function resetAll(opts = {}) {
@@ -3530,6 +3547,8 @@ init();
     const toggle = which === 'control' ? controlToggle : dataToggle;
     dock.classList.toggle('collapsed', !open);
     if (body) body.classList.toggle('collapsed', !open);
+    if (which === 'control') setPanelCollapsed(!open);
+    else setDataCollapsed(!open);
     if (toggle && /^(展开|收起)$/.test((toggle.textContent || '').trim())) toggle.textContent = open ? '收起' : '展开';
   }
   function clickToOpen(which){

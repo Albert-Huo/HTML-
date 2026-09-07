@@ -1466,26 +1466,23 @@ body #app .toolbar button:disabled{
         ]
       },
       28:{
-        name:'观察液体压强与哪些因素有关',
+        name:'观察液体对器壁的压强',
         catalog:'中小学实验教学目录 初中物理 28',
         textbook:'人教版初中物理 八下（液体压强现象）',
-        apparatusHint:'器材：同孔连续放水容器 + 同深度清水/酒精对比容器。先观察液面下降时同孔喷流变近，再比较同深度下清水与酒精喷流远近。',
+        apparatusHint:'器材：透明容器、同一侧孔和喷距对比尺。打开侧孔，观察液面下降时喷流的变化。',
         bullets:[
-          '同一侧孔持续喷水时，液面逐渐下降，喷流会越来越近。',
-          '相同容器、相同深度比较清水与酒精，清水喷流更远。',
-          '结论：液体压强与深度和液体密度有关。'
+          '打开容器侧孔，水向外喷出，说明液体对器壁有压强。',
+          '保持侧孔位置不变，持续观察液面下降时喷流越来越近。',
+          '结论：液体对器壁有压强；同一侧孔上方的液体越深，压强越大。'
         ],
-        tableHeaders:['观察项目','关键条件','结果','备注'],
+        tableHeaders:['观察时刻','孔上液深(cm)','喷距(cm)','观察结果'],
         controls:[],
-        actions:[
-          {id:'startSameHole', label:'打开同一侧孔'},
-          {id:'compareDensity', label:'比较水和酒精'}
-        ],
+        actions:[{id:'startSameHole', label:'打开同一侧孔'}],
         tasks:[
-          {text:'先打开同一侧孔，持续观察液面下降时喷流逐渐变近。', hint:'重点观察同一侧孔喷射距离由远变近。'},
-          {text:'再比较同深度下清水与酒精的喷流远近。', hint:'同一深度下清水喷流应比酒精更远。'},
-          {text:'把“液面下降对喷距的影响”和“液体种类对喷距的影响”分别记录。', hint:'本步骤要记录两条不同类型的数据。'},
-          {text:'点击“分析结论”，完成本实验。', hint:'结论应体现“压强与深度、密度有关”。'}
+          {text:'打开同一侧孔，观察水从器壁向外喷出。', hint:'点击“打开同一侧孔”，观察开始放水的现象。'},
+          {text:'继续观察液面下降，比较同一侧孔的喷距变化。', hint:'白色虚线保留初始轨迹，蓝色水流显示当前喷距。'},
+          {text:'分别记录开始放水和液面降低后的两组观察数据。', hint:'点击两次“记录数据”，比较同一侧孔的高、低液面。'},
+          {text:'点击“分析结论”，完成本实验。', hint:'用侧孔喷水及液面下降时的喷距变化说明器壁压强。'}
         ]
       },
       29:{
@@ -1783,6 +1780,11 @@ body #app .toolbar button:disabled{
       await clickDemoCursor();
     }
 
+    function sameHoleJetCm(levelCm, holeHeightCm, fallHeightCm){
+      const headCm = Math.max(0, levelCm - holeHeightCm);
+      return 2 * Math.sqrt(headCm * Math.max(0, fallHeightCm));
+    }
+
     function makeInitialApparatus(){
       switch(LAB_ID){
         case 14: return { waterMl:50, alcoholMl:50, mixMl:0, pouredWater:false, pouredAlcohol:false, shaken:false, mixRead:null, bubblePhase:0 };
@@ -1817,31 +1819,17 @@ body #app .toolbar button:disabled{
         case 26: return { leftTorque:0, rightTorque:0, balanced:false, tests:[] };
         case 27: return { pressed:false, sinkDepth:0, lastP:0, lastArea:20, lastForce:15, tests:[] };
         case 28: return {
+          sameHoleOpened:false,
           sameHoleAnimating:false,
           sameHoleObserved:false,
           sameHoleProgress:0,
           sameHoleLevelStart:30,
           sameHoleLevelEnd:18,
           sameHoleLevel:30,
-          sameHoleHoleDepth:12,
-          sameHoleJetStart:34,
-          sameHoleJetEnd:16,
-          sameHoleJetCurrent:34,
-          compareAnimating:false,
-          compareProgress:0,
-          densityObserved:false,
-          compareDepthCm:18,
-          compareLevelStart:26,
-          compareLevelEnd:24.4,
-          waterLevelCurrent:26,
-          alcoholLevelCurrent:26,
-          waterJet:34,
-          alcoholJet:25,
-          waterJetCurrent:0,
-          alcoholJetCurrent:0,
-          depthRecorded:false,
-          densityRecorded:false,
-          lastObservationType:'',
+          sameHoleHoleHeight:12,
+          sameHoleFallHeight:12,
+          sameHoleJetCurrent:0,
+          observationRun:0,
           tests:[]
         };
         case 29: return { probeReady:false, lastDepth:15, lastDir:'side', lastP:0, tests:[], sameDepthCompared:false };
@@ -2049,7 +2037,7 @@ body #app .toolbar button:disabled{
           25:[['launchCar','observeStop'], ['launchCar','observeStop'], ['launchCar','observeStop'], []],
           26:[['setLever','observeLeverBalance'], ['setLever','observeLeverBalance'], ['setLever','observeLeverBalance'], []],
           27:[['applyPressure','readPressure'], ['applyPressure','readPressure'], ['applyPressure','readPressure'], []],
-          28:[['startSameHole'], ['compareDensity'], ['startSameHole','compareDensity'], []],
+          28:[['startSameHole'], ['startSameHole'], ['startSameHole'], []],
           29:[['rotateProbe','probePressure'], ['rotateProbe','probePressure'], ['rotateProbe','probePressure'], []],
           30:[['switchLiquid','probePressure'], ['switchLiquid','probePressure'], ['switchLiquid','probePressure'], []]
         };
@@ -2456,26 +2444,18 @@ body #app .toolbar button:disabled{
         }
         case 28:{
           if(actionId === 'startSameHole'){
+            if(ap.sameHoleAnimating) break;
+            ap.observationRun += 1;
+            ap.sameHoleOpened = true;
             ap.sameHoleAnimating = true;
             ap.sameHoleObserved = false;
             ap.sameHoleProgress = 0;
             ap.sameHoleLevel = ap.sameHoleLevelStart;
-            ap.sameHoleJetCurrent = ap.sameHoleJetStart;
-            ap.lastObservationType = '';
+            ap.sameHoleJetCurrent = sameHoleJetCm(ap.sameHoleLevel, ap.sameHoleHoleHeight, ap.sameHoleFallHeight);
+            ap.tests = [{ type:'high', run:ap.observationRun, level:ap.sameHoleLevel, depth:ap.sameHoleLevel - ap.sameHoleHoleHeight, jet:ap.sameHoleJetCurrent }];
+            state.analysisOk = false;
             changed = true;
             setStatus('同一侧孔持续喷水中，请观察液面下降时喷流逐渐变近');
-          }
-          if(actionId === 'compareDensity'){
-            ap.compareAnimating = true;
-            ap.compareProgress = 0;
-            ap.densityObserved = false;
-            ap.waterLevelCurrent = ap.compareLevelStart;
-            ap.alcoholLevelCurrent = ap.compareLevelStart;
-            ap.waterJetCurrent = 0;
-            ap.alcoholJetCurrent = 0;
-            ap.lastObservationType = '';
-            changed = true;
-            setStatus('正在比较同深度下清水和酒精的喷流远近');
           }
           break;
         }
@@ -2622,32 +2602,20 @@ body #app .toolbar button:disabled{
           return { c1:`${areaText} / ${ap.lastForce}N`, c2:String(ap.lastForce), c3:String(ap.lastP), c4:`受力面积${ap.lastArea}cm²`, y:ap.lastP };
         }
         case 28:{
-          const makeDepthRec = ()=>({
-            c1:'液面下降',
-            c2:`同孔 ${ap.sameHoleLevelStart}→${ap.sameHoleLevelEnd}cm`,
-            c3:`喷距 ${ap.sameHoleJetStart}→${ap.sameHoleJetEnd}cm`,
-            c4:'液面越低，喷流越近',
-            y:ap.sameHoleJetEnd,
-            type:'depth'
-          });
-          const makeDensityRec = ()=>({
-            c1:'液体种类',
-            c2:`同深度 ${ap.compareDepthCm}cm`,
-            c3:`水${ap.waterJet} / 酒精${ap.alcoholJet}cm`,
-            c4:'清水喷流更远',
-            y:ap.waterJet,
-            type:'density'
-          });
-          if(state.freeMode){
-            if(ap.lastObservationType === 'depth' && ap.sameHoleObserved) return makeDepthRec();
-            if(ap.lastObservationType === 'density' && ap.densityObserved) return makeDensityRec();
-            showToast('请先完成一次同孔或同深度观察');
-            return null;
-          }
-          if(!ap.depthRecorded && ap.sameHoleObserved) return makeDepthRec();
-          if(!ap.densityRecorded && ap.densityObserved) return makeDensityRec();
-          showToast('请把两类观察都完成后再记录');
-          return null;
+          if(!ap.sameHoleObserved){ showToast('请先观察同一侧孔放水至液面降低'); return null; }
+          const sample = ap.tests.find(point => !state.records.some(rec => rec.run === point.run && rec.type === point.type));
+          if(!sample){ showToast('本次高、低液面均已记录，可重新放水再观察'); return null; }
+          return {
+            c1:sample.type === 'high' ? '开始放水' : '液面降低后',
+            c2:sample.depth.toFixed(1),
+            c3:sample.jet.toFixed(1),
+            c4:sample.type === 'high' ? '侧孔喷水，喷距较远' : '同孔水头降低，喷距变近',
+            y:sample.jet,
+            type:sample.type,
+            run:sample.run,
+            depth:sample.depth,
+            jet:sample.jet
+          };
         }
         case 29:{
           if(ap.lastP <= 0){ showToast('请先读取压强'); return null; }
@@ -2673,10 +2641,6 @@ body #app .toolbar button:disabled{
       const rec = buildRecord();
       if(!rec) return;
       state.records.push(rec);
-      if(LAB_ID === 28){
-        if(rec.type === 'depth') state.apparatus.depthRecorded = true;
-        if(rec.type === 'density') state.apparatus.densityRecorded = true;
-      }
       if(state.records.length > 40) state.records.shift();
       renderRecords();
       scheduleChart();
@@ -2802,14 +2766,13 @@ body #app .toolbar button:disabled{
           break;
         }
         case 28:{
-          const hasDepth = rs.some(r=>r.type === 'depth');
-          const hasDensity = rs.some(r=>r.type === 'density');
-          ok = hasDepth && hasDensity
-            && ap.sameHoleJetEnd < ap.sameHoleJetStart
-            && ap.waterJet > ap.alcoholJet;
+          const high = rs.find(r=>r.type === 'high' && r.run === ap.observationRun);
+          const low = rs.find(r=>r.type === 'low' && r.run === ap.observationRun);
+          ok = ap.sameHoleOpened && ap.sameHoleObserved && !!high && !!low
+            && low.depth < high.depth && low.jet < high.jet;
           msg = ok
-            ? '结论：同一侧孔液面下降时喷流逐渐变近，说明液体压强与深度有关；同深度下清水比酒精喷得更远，说明液体压强与液体密度有关。'
-            : '请分别记录“液面下降使喷流变近”和“同深度清水比酒精喷得更远”两类现象。';
+            ? '结论：水从侧孔向外喷出，说明液体对器壁有压强；同一侧孔上方的液面下降时，喷距变近，说明孔上液体越深，压强越大。'
+            : '请完成同一侧孔放水，并记录本次开始放水和液面降低后的两组数据。';
           break;
         }
         case 29:{
@@ -2923,9 +2886,9 @@ body #app .toolbar button:disabled{
           if(step===3) return state.analysisOk;
           return false;
         case 28:
-          if(step===0) return ap.sameHoleObserved;
-          if(step===1) return ap.densityObserved;
-          if(step===2) return ap.depthRecorded && ap.densityRecorded;
+          if(step===0) return ap.sameHoleOpened && ap.tests.some(t=>t.type === 'high' && t.jet > 0);
+          if(step===1) return ap.sameHoleObserved && ap.tests.some(t=>t.type === 'low');
+          if(step===2) return ap.sameHoleObserved && ['high','low'].every(type=>rs.some(r=>r.type === type && r.run === ap.observationRun));
           if(step===3) return state.analysisOk;
           return false;
         case 29:
@@ -3065,13 +3028,9 @@ body #app .toolbar button:disabled{
           pillD.textContent = `记录:${state.records.length}条`;
           break;
         case 28:
-          pillA.textContent = ap.sameHoleAnimating
-            ? `液面:${ap.sameHoleLevel.toFixed(1)}cm`
-            : `液面:${ap.sameHoleLevelStart}→${ap.sameHoleLevelEnd}cm`;
-          pillB.textContent = ap.sameHoleAnimating
-            ? `同孔喷距:${ap.sameHoleJetCurrent.toFixed(1)}cm`
-            : `同孔喷距:${ap.sameHoleJetStart}→${ap.sameHoleJetEnd}cm`;
-          pillC.textContent = `清水/酒精:${Math.round((ap.waterJetCurrent || ap.waterJet) || 0)}/${Math.round((ap.alcoholJetCurrent || ap.alcoholJet) || 0)}cm`;
+          pillA.textContent = `孔上液深:${(ap.sameHoleLevel - ap.sameHoleHoleHeight).toFixed(1)}cm`;
+          pillB.textContent = `当前喷距:${ap.sameHoleJetCurrent.toFixed(1)}cm`;
+          pillC.textContent = `侧孔:${ap.sameHoleOpened ? '已打开' : '待打开'}`;
           pillD.textContent = `记录:${state.records.length}条`;
           break;
         case 29:
@@ -4106,13 +4065,10 @@ body #app .toolbar button:disabled{
 
     function draw28(ctx,W,H){
       const ap = state.apparatus;
-      const focus = state.freeMode ? 'both'
-        : (state.currentTask === 0 ? 'same'
-          : state.currentTask === 1 ? 'compare'
-            : 'both');
       const topY = H * 0.18;
       const tankH = H * 0.5;
-      const pxPerCm = 2.9;
+      const tankWidth = Math.min(240, W * 0.28);
+      const pxPerCm = Math.min(5, (W - tankWidth - 64) / 44);
 
       function drawSceneTitle(x, y, text, color='#dfeaff', maxWidth=Infinity){
         const lines = Array.isArray(text) ? text : [text];
@@ -4196,13 +4152,12 @@ body #app .toolbar button:disabled{
 
       function drawJetReal(startX, startY, jetCm, color, opts={}){
         const dist = Math.max(0, jetCm) * pxPerCm;
-        const dropBias = opts.dropBias || 0.24;
-        const endX = startX + 18 + dist;
-        const endY = startY + 10 + dist * dropBias;
-        const c1x = startX + Math.max(12, dist * 0.34);
-        const c1y = startY - 6;
-        const c2x = startX + Math.max(20, dist * 0.72);
-        const c2y = startY + 8 + dist * 0.16;
+        const endX = startX + dist;
+        const endY = opts.landingY ?? startY + 48;
+        const c1x = startX + dist / 3;
+        const c1y = startY;
+        const c2x = startX + dist * 2 / 3;
+        const c2y = startY + (endY - startY) / 3;
         ctx.save();
         if(opts.dash) ctx.setLineDash([6,4]);
         ctx.lineCap = 'round';
@@ -4241,30 +4196,29 @@ body #app .toolbar button:disabled{
       }
 
       function drawSameHoleScene(x, y, scale=1){
-        const tankW = W * (focus === 'both' ? 0.22 : 0.26) * scale;
-        const tank = drawBenchTank(x, y, tankW, tankH, clamp(ap.sameHoleLevel / 32, 0.24, 0.92), 'rgba(93,165,255,.38)', '同孔连续观察');
-        if(focus === 'both') drawSceneTitle(x, y - 48, '同孔：液面降、喷距近', '#dfeaff', W * .38);
-        else drawSceneTitle(x, y - 42, '液面下降，喷流逐渐变近');
+        const tankW = tankWidth * scale;
+        const tank = drawBenchTank(x, y, tankW, tankH, ap.sameHoleLevel / 32, 'rgba(93,165,255,.38)', '清水');
+        drawSceneTitle(x, y - 42, '同一侧孔：液面下降，喷距变近', '#dfeaff', W - x - 16);
 
-        const holeY = tank.y + tankH - (ap.sameHoleHoleDepth / 32) * (tankH * 0.9) - 10;
+        const holeY = tank.bottom - (ap.sameHoleHoleHeight / 32) * tankH;
         const holeX = tank.x + tank.w - 2;
         ctx.fillStyle = '#d3a54c';
         ctx.fillRect(holeX - 1, holeY - 5, 12, 12);
         ctx.fillStyle = '#dfeaff';
         ctx.font = '12px -apple-system,Segoe UI';
-        ctx.fillText(`同侧孔，深度 ${ap.sameHoleHoleDepth}cm`, tank.x - 2, tank.y - 28);
+        ctx.fillText(`孔上液深 ${(ap.sameHoleLevel - ap.sameHoleHoleHeight).toFixed(1)} cm`, tank.x - 2, tank.y - 28);
         const rulerY = tank.bottom + 34;
         drawHorizontalRuler(holeX + 8, rulerY, 40, '喷距对比尺');
-        if(ap.sameHoleAnimating || ap.sameHoleObserved || state.currentTask > 0){
-          drawJetReal(holeX + 8, holeY + 2, ap.sameHoleJetStart, 'rgba(255,255,255,.45)', {
+        if(ap.sameHoleOpened){
+          drawJetReal(holeX + 8, holeY + 2, sameHoleJetCm(ap.sameHoleLevelStart, ap.sameHoleHoleHeight, ap.sameHoleFallHeight), 'rgba(255,255,255,.45)', {
             dash:true,
             width:3,
             shadowWidth:5,
             shadowColor:'rgba(255,255,255,.08)',
             showSplash:false,
-            dropBias:0.22
+            landingY:tank.bottom + 2
           });
-          const jet = drawJetReal(holeX + 8, holeY + 2, ap.sameHoleJetCurrent, '#8fd8ff', { width:4.5, dropBias:0.22 });
+          const jet = drawJetReal(holeX + 8, holeY + 2, ap.sameHoleJetCurrent, '#8fd8ff', { width:4.5, landingY:tank.bottom + 2 });
           ctx.fillStyle = '#8fd8ff';
           ctx.font = '11px -apple-system,Segoe UI';
           ctx.fillText(`当前喷距 ${ap.sameHoleJetCurrent.toFixed(1)}cm`, holeX + 18, holeY - 8);
@@ -4278,67 +4232,7 @@ body #app .toolbar button:disabled{
         }
       }
 
-      function drawCompareScene(x, y){
-        const tankW = focus === 'both' ? W * 0.11 : W * 0.13;
-        const gap = focus === 'both' ? W * 0.05 : W * 0.07;
-        const waterFillRatio = clamp((ap.waterLevelCurrent + 8) / 32, 0.42, 0.88);
-        const alcoholFillRatio = clamp((ap.alcoholLevelCurrent + 8) / 32, 0.42, 0.88);
-        const waterTank = drawBenchTank(x, y, tankW, tankH, waterFillRatio, 'rgba(93,165,255,.38)', '清水');
-        const alcoholTank = drawBenchTank(x + tankW + gap, y, tankW, tankH, alcoholFillRatio, 'rgba(241,202,119,.30)', '酒精');
-        if(focus === 'both') drawSceneTitle(x, y - 48, '同深度：清水/酒精', '#dfeaff', W * .42);
-        else drawSceneTitle(x, y - 42, '同深度比较不同液体喷距');
-        const cmpHoleY = y + tankH - (ap.compareDepthCm / 32) * (tankH * 0.9) - 10;
-        const waterHoleX = x + tankW - 2;
-        const alcoholHoleX = x + tankW + gap + tankW - 2;
-        ctx.fillStyle = '#d3a54c';
-        ctx.fillRect(waterHoleX - 1, cmpHoleY - 5, 12, 12);
-        ctx.fillRect(alcoholHoleX - 1, cmpHoleY - 5, 12, 12);
-        ctx.fillStyle = '#dfeaff';
-        ctx.font = '12px -apple-system,Segoe UI';
-        ctx.fillText(`同深度 ${ap.compareDepthCm}cm`, x + 6, y - 28);
-
-        const rulerY = waterTank.bottom + 34;
-        const depthLineY = cmpHoleY + 1;
-        ctx.strokeStyle = 'rgba(255,255,255,.18)';
-        ctx.setLineDash([6,5]);
-        ctx.beginPath();
-        ctx.moveTo(x - 8, depthLineY);
-        ctx.lineTo(alcoholTank.x + alcoholTank.w + 18, depthLineY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        drawHorizontalRuler(waterHoleX + 8, rulerY, 42, '清水喷距尺');
-        drawHorizontalRuler(alcoholHoleX + 8, rulerY, 42, '酒精喷距尺');
-        if(ap.compareAnimating || ap.densityObserved || state.currentTask >= 2){
-          const waterEnd = drawJetReal(waterHoleX + 8, cmpHoleY + 2, ap.waterJetCurrent || ap.waterJet, '#7fd1ff', { width:4.3, dropBias:0.21 });
-          const alcoholEnd = drawJetReal(alcoholHoleX + 8, cmpHoleY + 2, ap.alcoholJetCurrent || ap.alcoholJet, '#ffd06b', { width:3.8, dropBias:0.21 });
-          ctx.strokeStyle = 'rgba(255,255,255,.45)';
-          ctx.setLineDash([3,4]);
-          ctx.beginPath();
-          ctx.moveTo(waterEnd.endX, rulerY - 14);
-          ctx.lineTo(waterEnd.endX, rulerY + 18);
-          ctx.moveTo(alcoholEnd.endX, rulerY - 14);
-          ctx.lineTo(alcoholEnd.endX, rulerY + 18);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-        ctx.fillStyle = '#7fd1ff';
-        ctx.font = '11px -apple-system,Segoe UI';
-        ctx.fillText(`清水 ${Math.round(ap.waterJetCurrent || ap.waterJet)}cm`, x + 8, waterTank.bottom + 20);
-        ctx.fillStyle = '#ffd06b';
-        ctx.fillText(`酒精 ${Math.round(ap.alcoholJetCurrent || ap.alcoholJet)}cm`, alcoholTank.x + 8, alcoholTank.bottom + 20);
-        ctx.fillStyle = '#cfe2f7';
-        ctx.fillText(`液面 ${ap.waterLevelCurrent.toFixed(1)}cm`, x + 4, waterTank.bottom + 54);
-        ctx.fillText(`液面 ${ap.alcoholLevelCurrent.toFixed(1)}cm`, alcoholTank.x + 4, alcoholTank.bottom + 54);
-      }
-
-      if(focus === 'same'){
-        drawSameHoleScene(W * 0.35, topY, 1);
-      }else if(focus === 'compare'){
-        drawCompareScene(W * 0.28, topY);
-      }else{
-        drawSameHoleScene(W * 0.07, topY, 1);
-        drawCompareScene(W * 0.52, topY);
-      }
+      drawSameHoleScene((W - tankWidth - 40 * pxPerCm - 24) / 2, topY, 1);
     }
 
     function draw29(ctx,W,H){
@@ -4634,31 +4528,12 @@ body #app .toolbar button:disabled{
           const t = ap.sameHoleProgress;
           const ease = 1 - Math.pow(1 - t, 2.2);
           ap.sameHoleLevel = round(ap.sameHoleLevelStart + (ap.sameHoleLevelEnd - ap.sameHoleLevelStart) * ease, 1);
-          ap.sameHoleJetCurrent = round(ap.sameHoleJetStart + (ap.sameHoleJetEnd - ap.sameHoleJetStart) * ease, 1);
+          ap.sameHoleJetCurrent = sameHoleJetCm(ap.sameHoleLevel, ap.sameHoleHoleHeight, ap.sameHoleFallHeight);
           if(t >= 1){
             ap.sameHoleAnimating = false;
             ap.sameHoleObserved = true;
-            ap.lastObservationType = 'depth';
-            ap.tests.push({ type:'depth', startLevel:ap.sameHoleLevelStart, endLevel:ap.sameHoleLevelEnd, startJet:ap.sameHoleJetStart, endJet:ap.sameHoleJetEnd });
+            ap.tests.push({ type:'low', run:ap.observationRun, level:ap.sameHoleLevel, depth:ap.sameHoleLevel - ap.sameHoleHoleHeight, jet:ap.sameHoleJetCurrent });
             setStatus('液面下降时，同一侧孔喷流逐渐变近');
-            updatePills();
-            if(!state.autoPlaying) tryPassStep(false);
-          }
-        }
-        if(ap.compareAnimating){
-          ap.compareProgress = clamp(ap.compareProgress + dt / 1800, 0, 1);
-          const t = ap.compareProgress;
-          const ease = 1 - Math.pow(1 - t, 2.8);
-          ap.waterLevelCurrent = round(ap.compareLevelStart + (ap.compareLevelEnd - ap.compareLevelStart) * ease, 1);
-          ap.alcoholLevelCurrent = round(ap.compareLevelStart + (ap.compareLevelEnd - ap.compareLevelStart) * ease, 1);
-          ap.waterJetCurrent = round(ap.waterJet * ease, 1);
-          ap.alcoholJetCurrent = round(ap.alcoholJet * ease, 1);
-          if(t >= 1){
-            ap.compareAnimating = false;
-            ap.densityObserved = true;
-            ap.lastObservationType = 'density';
-            ap.tests.push({ type:'density', depth:ap.compareDepthCm, waterJet:ap.waterJet, alcoholJet:ap.alcoholJet });
-            setStatus('同深度下清水喷流比酒精更远');
             updatePills();
             if(!state.autoPlaying) tryPassStep(false);
           }
@@ -5111,11 +4986,16 @@ body #app .toolbar button:disabled{
           setVar('area','small'); setVar('forceN',30); await doA('applyPressure', 800); await doA('readPressure', 900); await doR();
         }else if(LAB_ID===28){
           await doStep(0, '步骤1：同孔液面下降观察', 900);
-          await doA('startSameHole', 3600);
-          await doStep(1, '步骤2：同深度比较清水和酒精', 900);
-          await doA('compareDensity', 2200);
-          await doStep(2, '步骤3：记录两类现象', 700);
+          await doAWithCursor('startSameHole', 180);
+          setControlCollapsed(true);
+          setDataCollapsed(true);
+          await doStep(1, '步骤2：观察同孔液面下降', 3400);
+          if(!state.apparatus.sameHoleObserved) throw new Error('AUTO_OBSERVATION_NOT_CONFIRMED');
+          setControlCollapsed(false);
+          await doStep(2, '步骤3：记录高、低液面', 700);
+          await clickElementWithCursor(recordBtn, 620);
           await doR(720);
+          await clickElementWithCursor(recordBtn, 620);
           await doR(720);
         }else if(LAB_ID===29){
           await doStep(0, '步骤1：侧向测压');

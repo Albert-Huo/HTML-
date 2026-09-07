@@ -1626,7 +1626,7 @@ function setDrawerCollapsed(drawer, collapsed) {
       const incidentStart = { x:o.x - Math.sin(theta) * rayLen, y:o.y - Math.cos(theta) * rayLen };
       const reflectEnd = { x:o.x + Math.sin(theta) * rayLen, y:o.y - Math.cos(theta) * rayLen };
       const laser = { x:incidentStart.x - 26, y:incidentStart.y - 13, w:52, h:26 };
-      const foldTab = { x:o.x + boardW * .34, y:board.y + 18, w:86, h:32 };
+      const foldTab = { x:clamp(o.x + boardW * .34, 10, w - 96), y:board.y + 18, w:86, h:32 };
       return { origin:o, board, incidentStart, reflectEnd, laser, foldTab, rayLen };
     }
 
@@ -1859,15 +1859,18 @@ function setDrawerCollapsed(drawer, collapsed) {
       ctx.fillStyle = "#eaf5ff";
       ctx.textAlign = "center";
       ctx.font = "700 17px Arial";
-      ctx.fillText("光的反射定律实验台", origin.x, 34);
-      ctx.font = "13px Arial";
-      ctx.fillStyle = "rgba(234,245,255,.76)";
-      ctx.fillText("拖动黄色激光笔改变入射角；拖动右上手柄折起纸板", origin.x, 58);
+      ctx.fillText("光的反射定律实验台", origin.x, 18);
+      ctx.font = "12px Arial";
+      ctx.fillStyle = "rgba(234,245,255,.9)";
+      ctx.fillText(state.width < 420 ? "拖激光笔调角度，拖手柄折纸板" : "拖动黄色激光笔改变入射角；拖动右上手柄折起纸板", origin.x, 33);
       ctx.fillStyle = "#ffd54f";
       ctx.font = "700 14px Arial";
       ctx.fillText(`入射角 i = ${angle}°`, (incidentStart.x + origin.x) / 2 - 18, (incidentStart.y + origin.y) / 2 - 16);
       ctx.fillStyle = state.boardFold < 45 ? "#3ddc97" : "rgba(61,220,151,.55)";
-      ctx.fillText(state.boardFold < 45 ? `反射角 r = ${angle}°` : "折起纸板上看不到反射光", (reflectEnd.x + origin.x) / 2 + 26, (reflectEnd.y + origin.y) / 2 - 16);
+      const reflectionLabel = state.boardFold < 45 ? `反射角 r = ${angle}°` : "折起纸板上看不到反射光";
+      const reflectionHalfWidth = ctx.measureText(reflectionLabel).width / 2;
+      const reflectionX = clamp((reflectEnd.x + origin.x) / 2 + 26, reflectionHalfWidth + 8, state.width - reflectionHalfWidth - 8);
+      ctx.fillText(reflectionLabel, reflectionX, (reflectEnd.y + origin.y) / 2 - 16);
       ctx.restore();
     }
 
