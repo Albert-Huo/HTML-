@@ -1461,7 +1461,7 @@
         ],
         tableHeaders:['拉力条件','测力计读数(N)','是否分离','备注'],
         controls:[
-          {key:'pullN', label:'拉力设定', type:'range', min:1, max:8, step:0.5, unit:'N', def:3}
+          {key:'pullN', label:'拉力设定', type:'range', min:0, max:10, step:0.5, unit:'N', def:3}
         ],
         actions:[
           {id:'scrape', label:'打磨提示'},
@@ -1710,7 +1710,10 @@
       id:null,
       mode:'',
       offX:0,
-      offY:0
+      offY:0,
+      startX:0,
+      startPullN:0,
+      didMove:false
     };
 
     const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
@@ -1872,6 +1875,7 @@
           clampLevel:0,
           pressQuality:0,
           clampReleased:false,
+          meterOffsetX:0,
           toolX:0,
           toolY:0,
           toolReady:false,
@@ -2176,6 +2180,8 @@
               return false;
             }
             ap.pullN = Number(state.vars.pullN);
+            const meterLayout = getLab15Layout();
+            ap.meterOffsetX = round((clamp(ap.pullN, 0, 10) / 10) * meterLayout.meterVisualTravel, 1);
             const polish = (clamp(ap.leftPolish,0,100) + clamp(ap.rightPolish,0,100)) / 200;
             const threshold = round(2.0 + 2.2 * polish + 2.0 * clamp(ap.pressQuality,0,1) + (ap.clampDone ? 0.6 : 0), 1);
             ap.thresholdN = threshold;
@@ -2761,6 +2767,8 @@
       const meterY = axisY - meterH * 0.5;
       const meterHookX = meterX - (narrow ? 12 : 15);
       const meterRingX = meterX + meterW + ringReach * 0.55;
+      const meterVisualTravel = narrow ? 10 : (compact ? 28 : 72);
+      const meterDragRange = narrow ? 40 : (compact ? 96 : 140);
       const clampFrameX = Math.max(4, lx - (narrow ? 10 : 20));
       const clampFrameRight = Math.min(
         meterHookX - (narrow ? 2 : 8),
@@ -2780,7 +2788,8 @@
         toolW, toolH, toolHomeX, toolHomeY,
         clampTrackX, clampTrackY, clampTrackW, clampHandleX, clampHandleY,
         clampFrameX, clampFrameRight, clampBaseY, clampBaseH, clampReleaseDrop,
-        meterW, meterH, meterX, meterY, meterHookX, meterRingX
+        meterW, meterH, meterX, meterY, meterHookX, meterRingX,
+        meterVisualTravel, meterDragRange
       };
     }
 
@@ -2993,10 +3002,13 @@
 
     function drawLab15SpringScale(ctx, g, value){
       const ratio = clamp((value || 0) / 10, 0, 1);
-      const x = g.meterX;
+      const offsetX = state.apparatus.meterOffsetX || 0;
+      const x = g.meterX + offsetX;
       const y = g.meterY;
       const w = g.meterW;
       const h = g.meterH;
+      const hookX = g.meterHookX + offsetX;
+      const ringX = g.meterRingX + offsetX;
       const screenW = g.narrow ? 44 : (g.compact ? 48 : 60);
       const windowX = x + screenW + (g.narrow ? 7 : 10);
       const windowW = w - screenW - (g.narrow ? 16 : 22);
@@ -3009,11 +3021,11 @@
       ctx.lineWidth = g.narrow ? 2.6 : 3.4;
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(g.meterHookX, g.axisY);
+      ctx.moveTo(hookX, g.axisY);
       ctx.lineTo(x + 3, g.axisY);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(g.meterHookX + (g.narrow ? 4 : 5), g.axisY, g.narrow ? 6 : 8, Math.PI * 0.45, Math.PI * 1.58);
+      ctx.arc(hookX + (g.narrow ? 4 : 5), g.axisY, g.narrow ? 6 : 8, Math.PI * 0.45, Math.PI * 1.58);
       ctx.stroke();
 
       const shell = ctx.createLinearGradient(x, y, x, y + h);
@@ -3098,13 +3110,13 @@
       ctx.lineWidth = g.narrow ? 2.6 : 3.4;
       ctx.beginPath();
       ctx.moveTo(x + w - 2, g.axisY);
-      ctx.lineTo(g.meterRingX - (g.narrow ? 6 : 8), g.axisY);
+      ctx.lineTo(ringX - (g.narrow ? 6 : 8), g.axisY);
       ctx.stroke();
       ctx.beginPath();
-      ctx.arc(g.meterRingX, g.axisY, g.narrow ? 6 : 8, 0, Math.PI * 2);
+      ctx.arc(ringX, g.axisY, g.narrow ? 6 : 8, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
-      return { hookX:g.meterHookX, hookY:g.axisY, ratio };
+      return { hookX, hookY:g.axisY, ringX, ratio };
     }
 
     function drawLab15Scraper(ctx, g){
@@ -3202,11 +3214,12 @@
       ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(g.rx + g.blockW, g.axisY);
+      const meterHookX = g.meterHookX + (ap.meterOffsetX || 0);
       if(ap.clampReleased || ap.tested){
-        ctx.lineTo(g.meterHookX, g.axisY);
+        ctx.lineTo(meterHookX, g.axisY);
       }else{
-        const midX = (g.rx + g.blockW + g.meterHookX) * 0.5;
-        ctx.quadraticCurveTo(midX, g.axisY + (g.narrow ? 6 : 9), g.meterHookX, g.axisY);
+        const midX = (g.rx + g.blockW + meterHookX) * 0.5;
+        ctx.quadraticCurveTo(midX, g.axisY + (g.narrow ? 6 : 9), meterHookX, g.axisY);
       }
       ctx.stroke();
       ctx.strokeStyle = '#dce4e8';
@@ -3214,6 +3227,15 @@
       ctx.arc(g.rx + g.blockW + (g.narrow ? 3 : 4), g.axisY, g.narrow ? 4 : 5.5, 0, Math.PI * 2);
       ctx.stroke();
 
+      if(ap.clampReleased && ap.adhered && !ap.separated){
+        ctx.save();
+        ctx.fillStyle = 'rgba(222,235,244,.92)';
+        ctx.font = `700 ${g.narrow ? 9 : 11}px -apple-system,Segoe UI`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('拖动测力计 →', g.meterX + g.meterW * 0.5, g.meterY - 8);
+        ctx.restore();
+      }
       drawLab15SpringScale(ctx, g, ap.pullN);
       if(!ap.clampDone) drawLab15Scraper(ctx, g);
     }
@@ -3558,6 +3580,24 @@
       updatePills();
     }
 
+    function applyLab15MeterAtStagePoint(stageX, stageY){
+      if(LAB_ID !== 15) return false;
+      const ap = state.apparatus;
+      if(!ap.clampReleased || !ap.adhered || ap.separated) return false;
+      const g = getLab15Layout();
+      const p = stagePointToScene(stageX, stageY);
+      const dx = p.x - lab15Pointer.startX;
+      const rawForce = lab15Pointer.startPullN + (dx / g.meterDragRange) * 10;
+      const nextPullN = clamp(Math.round(rawForce * 2) / 2, 0, 10);
+      ap.pullN = nextPullN;
+      ap.meterOffsetX = round((nextPullN / 10) * g.meterVisualTravel, 1);
+      lab15Pointer.didMove = lab15Pointer.didMove || Math.abs(dx) >= 6;
+      setVar('pullN', nextPullN);
+      setStatus(`正在拉伸：${nextPullN.toFixed(1)}N`);
+      updatePills();
+      return true;
+    }
+
     function avoidControlDockOccludingLab15Meter(){
       if(LAB_ID !== 15) return;
       const stageRect = stageEl.getBoundingClientRect();
@@ -3569,7 +3609,7 @@
         w: dockRect.width,
         h: dockRect.height
       };
-      const meterRect = { x: g.meterX, y: g.meterY, w: g.meterW, h: g.meterH };
+      const meterRect = { x: g.meterX + (state.apparatus.meterOffsetX || 0), y: g.meterY, w: g.meterW, h: g.meterH };
       if(rectOverlap(dockInStage, meterRect)){
         setDockPos(controlDock, 10, 10);
       }
@@ -3581,9 +3621,12 @@
       const endDrag = (e)=>{
         if(lab15Pointer.id !== e.pointerId) return;
         const finishedToolDrag = lab15Pointer.mode === 'tool' && state.apparatus.scraped;
+        const finishedMeterDrag = e.type === 'pointerup' && lab15Pointer.mode === 'meter' && lab15Pointer.didMove && state.apparatus.pullN > 0;
         lab15Pointer.id = null;
         lab15Pointer.mode = '';
+        lab15Pointer.didMove = false;
         if(finishedToolDrag) parkLab15Scraper();
+        if(finishedMeterDrag) performAction('pullTest', true);
       };
 
       scene.addEventListener('pointerdown', (e)=>{
@@ -3593,6 +3636,15 @@
         const g = getLab15Layout();
         const toolRect = { x: ap.toolX, y: ap.toolY, w: g.toolW, h: g.toolH };
         const onClampHandle = Math.hypot(p.x - g.clampHandleX, p.y - g.clampHandleY) <= 22;
+        const meterOffsetX = ap.meterOffsetX || 0;
+        const meterTouchPad = g.compact ? 10 : 8;
+        const meterHitRect = {
+          x:g.meterHookX + meterOffsetX - meterTouchPad,
+          y:g.meterY - meterTouchPad,
+          w:g.meterRingX - g.meterHookX + meterTouchPad * 2,
+          h:g.meterH + meterTouchPad * 2
+        };
+        const onMeter = rectContainsPoint(meterHitRect, p.x, p.y);
         const toolTouchPad = g.compact ? 8 : 6;
         const toolHitRect = {
           x:toolRect.x - toolTouchPad,
@@ -3601,18 +3653,6 @@
           h:toolRect.h + toolTouchPad * 2
         };
         const onTool = rectContainsPoint(toolHitRect, p.x, p.y);
-
-        if(onTool && !onClampHandle){
-          lab15Pointer.mode = 'tool';
-          lab15Pointer.id = e.pointerId;
-          lab15Pointer.offX = clamp(p.x - ap.toolX, 0, g.toolW);
-          lab15Pointer.offY = clamp(p.y - ap.toolY, 0, g.toolH);
-          ap.lastDragX = ap.toolX;
-          ap.lastDragY = ap.toolY;
-          scene.setPointerCapture(e.pointerId);
-          e.preventDefault();
-          return;
-        }
 
         if(onClampHandle){
           if(!ap.scraped){
@@ -3626,6 +3666,34 @@
           lab15Pointer.id = e.pointerId;
           scene.setPointerCapture(e.pointerId);
           e.preventDefault();
+          return;
+        }
+
+        if(onMeter){
+          if(!ap.clampReleased || !ap.adhered || ap.separated || (!state.freeMode && state.currentTask !== 2)){
+            showToast(ap.separated ? '样件已分离，请重置后再测' : '请先压紧并回松夹具，再拖动测力计');
+            return;
+          }
+          lab15Pointer.mode = 'meter';
+          lab15Pointer.id = e.pointerId;
+          lab15Pointer.startX = p.x;
+          lab15Pointer.startPullN = ap.pullN || 0;
+          lab15Pointer.didMove = false;
+          scene.setPointerCapture(e.pointerId);
+          e.preventDefault();
+          return;
+        }
+
+        if(onTool){
+          lab15Pointer.mode = 'tool';
+          lab15Pointer.id = e.pointerId;
+          lab15Pointer.offX = clamp(p.x - ap.toolX, 0, g.toolW);
+          lab15Pointer.offY = clamp(p.y - ap.toolY, 0, g.toolH);
+          ap.lastDragX = ap.toolX;
+          ap.lastDragY = ap.toolY;
+          scene.setPointerCapture(e.pointerId);
+          e.preventDefault();
+          return;
         }
       });
 
@@ -3646,6 +3714,13 @@
         if(lab15Pointer.mode === 'clamp'){
           const stageP = scenePointToStage(p.x, p.y);
           applyLab15ClampAtStagePoint(stageP.x, stageP.y);
+          e.preventDefault();
+          return;
+        }
+
+        if(lab15Pointer.mode === 'meter'){
+          const stageP = scenePointToStage(p.x, p.y);
+          applyLab15MeterAtStagePoint(stageP.x, stageP.y);
           e.preventDefault();
         }
       });
@@ -3861,6 +3936,9 @@
       clearAllTimers();
       lab15Pointer.id = null;
       lab15Pointer.mode = '';
+      lab15Pointer.startX = 0;
+      lab15Pointer.startPullN = 0;
+      lab15Pointer.didMove = false;
       state.stepWarnIdx = -1;
       state.completed = false;
       state.autoPaused = false;
