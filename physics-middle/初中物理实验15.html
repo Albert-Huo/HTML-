@@ -1713,7 +1713,8 @@
       offY:0,
       startX:0,
       startPullN:0,
-      didMove:false
+      didMove:false,
+      meterRecorded:false
     };
 
     const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
@@ -2123,6 +2124,20 @@
       }
     }
 
+    function getLab15SeparationThreshold(){
+      const ap = state.apparatus;
+      const polish = (clamp(ap.leftPolish,0,100) + clamp(ap.rightPolish,0,100)) / 200;
+      return round(2.0 + 2.2 * polish + 2.0 * clamp(ap.pressQuality,0,1) + (ap.clampDone ? 0.6 : 0), 1);
+    }
+
+    function resetLab15Meter(){
+      if(LAB_ID !== 15) return;
+      state.apparatus.pullN = 0;
+      state.apparatus.meterOffsetX = 0;
+      setVar('pullN', 0);
+      updatePills();
+    }
+
     function performAction(actionId, showStep=true){
       const ap = state.apparatus;
       let changed = false;
@@ -2182,8 +2197,7 @@
             ap.pullN = Number(state.vars.pullN);
             const meterLayout = getLab15Layout();
             ap.meterOffsetX = round((clamp(ap.pullN, 0, 10) / 10) * meterLayout.meterVisualTravel, 1);
-            const polish = (clamp(ap.leftPolish,0,100) + clamp(ap.rightPolish,0,100)) / 200;
-            const threshold = round(2.0 + 2.2 * polish + 2.0 * clamp(ap.pressQuality,0,1) + (ap.clampDone ? 0.6 : 0), 1);
+            const threshold = getLab15SeparationThreshold();
             ap.thresholdN = threshold;
             ap.tested = true;
             if(ap.pullN >= threshold){
@@ -3595,6 +3609,10 @@
       setVar('pullN', nextPullN);
       setStatus(`正在拉伸：${nextPullN.toFixed(1)}N`);
       updatePills();
+      if(lab15Pointer.didMove && nextPullN >= getLab15SeparationThreshold() && !lab15Pointer.meterRecorded){
+        lab15Pointer.meterRecorded = true;
+        performAction('pullTest', true);
+      }
       return true;
     }
 
@@ -3620,13 +3638,29 @@
 
       const endDrag = (e)=>{
         if(lab15Pointer.id !== e.pointerId) return;
-        const finishedToolDrag = lab15Pointer.mode === 'tool' && state.apparatus.scraped;
-        const finishedMeterDrag = e.type === 'pointerup' && lab15Pointer.mode === 'meter' && lab15Pointer.didMove && state.apparatus.pullN > 0;
+        const mode = lab15Pointer.mode;
+        const ap = state.apparatus;
+        const finishedToolDrag = mode === 'tool' && ap.scraped;
+        const finalPullN = ap.pullN;
+        const finishedMeterDrag = e.type === 'pointerup' && mode === 'meter' && lab15Pointer.didMove && !lab15Pointer.meterRecorded && finalPullN > 0;
+        const resetMeter = mode === 'meter' && (e.type === 'pointerup' || e.type === 'pointercancel');
         lab15Pointer.id = null;
         lab15Pointer.mode = '';
         lab15Pointer.didMove = false;
+        lab15Pointer.meterRecorded = false;
         if(finishedToolDrag) parkLab15Scraper();
         if(finishedMeterDrag) performAction('pullTest', true);
+        if(resetMeter){
+          const separated = ap.separated;
+          resetLab15Meter();
+          if(e.type === 'pointercancel'){
+            setStatus(separated ? '样件已分离，测力计已复位' : '拖动已取消，测力计已复位');
+          }else if(separated){
+            setStatus(`达到${finalPullN.toFixed(1)}N，样件已分离，测力计已复位`);
+          }else if(finishedMeterDrag){
+            setStatus(`${finalPullN.toFixed(1)}N下未分离，测力计已复位`);
+          }
+        }
       };
 
       scene.addEventListener('pointerdown', (e)=>{
@@ -3679,6 +3713,7 @@
           lab15Pointer.startX = p.x;
           lab15Pointer.startPullN = ap.pullN || 0;
           lab15Pointer.didMove = false;
+          lab15Pointer.meterRecorded = false;
           scene.setPointerCapture(e.pointerId);
           e.preventDefault();
           return;
@@ -3939,6 +3974,7 @@
       lab15Pointer.startX = 0;
       lab15Pointer.startPullN = 0;
       lab15Pointer.didMove = false;
+      lab15Pointer.meterRecorded = false;
       state.stepWarnIdx = -1;
       state.completed = false;
       state.autoPaused = false;
