@@ -475,6 +475,9 @@
   @keyframes codexModeRibbonFlow{0%{background-position:0 0,0 0}100%{background-position:0 0,-260% 0}}
   @keyframes codexModeSweep{0%{transform:skewX(-18deg) translateX(-130%)}100%{transform:skewX(-18deg) translateX(430%)}}
   @keyframes codexModeGlow{0%{box-shadow:0 0 11px rgba(75,216,255,.18), inset 0 0 9px rgba(255,255,255,.05)}100%{box-shadow:0 0 19px rgba(112,255,204,.34), inset 0 0 12px rgba(255,255,255,.10)}}
+  #stage #controlDock,
+  #stage #experimentTab { display:none !important; }
+  #stage #mobileTabs { grid-template-columns:minmax(0,1fr) !important; }
   @media (prefers-reduced-motion:reduce){#stage #modeTag.mode-strip{animation:none !important}#stage #modeTag.mode-strip::before{animation:none !important;display:none !important}}
   @media (min-width:721px){#stage .mobile-tabs,#stage .sheet-close{display:none !important}}
   @media (max-width:720px){
@@ -1322,7 +1325,7 @@
 
   <div id="stage">
     <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
-      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false" hidden><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
       <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button>
     </div>
     <button class="audio-toggle" id="audioToggle" type="button" aria-label="关闭音效" aria-pressed="true" title="关闭音效">🔊</button>
@@ -1346,7 +1349,7 @@
       <canvas id="scene"></canvas>
     </div>
 
-    <div class="dock drawer control" id="controlDock" style="left:10px; bottom:10px;">
+    <div class="dock drawer control" id="controlDock" style="left:10px; bottom:10px;" hidden>
       <div class="dockHead drawer-header" id="controlHead" data-drag-handle>
         <div class="dockTitle drawer-title">实验面板</div>
         <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">收起</button></div>
@@ -1362,8 +1365,8 @@
         <div id="controlFields"></div>
         <div class="btnRow" id="actionBtns"></div>
         <div class="btnRow" style="margin-top:8px;">
-          <button class="sub" id="recordBtn">记录当前数据</button>
-          <button class="sub" id="analyzeBtn">分析结论</button>
+          <button class="sub" id="recordBtn" hidden>记录当前数据</button>
+          <button class="sub" id="analyzeBtn" hidden>分析结论</button>
         </div>
       </div>
     </div>
@@ -1460,19 +1463,13 @@
           '实验体现了分子之间存在引力。'
         ],
         tableHeaders:['拉力条件','测力计读数(N)','是否分离','备注'],
-        controls:[
-          {key:'pullN', label:'拉力设定', type:'range', min:0, max:10, step:0.5, unit:'N', def:3}
-        ],
-        actions:[
-          {id:'scrape', label:'打磨提示'},
-          {id:'press', label:'确认压紧'},
-          {id:'pullTest', label:'拉伸测力'}
-        ],
+        controls:[],
+        actions:[],
         tasks:[
           {text:'先用砂纸/刮刀往返打磨两块接触面。', hint:'在画布中拖动刮刀，直到打磨进度达到100%。'},
           {text:'再用横向夹具压紧金属块，并回松夹具。', hint:'先向左拖动手柄压紧，再向右拖动手柄回松，保持两块贴合。'},
           {text:'沿接触面法线方向拉伸测力。', hint:'夹具回松后，先用3N拉一次（通常未分离），再用7N拉一次（通常分离）；每次拉伸会自动记录。'},
-          {text:'点击“分析结论”，完成本实验。', hint:'结论应包含“分子间有引力”。'}
+          {text:'回答自动出现的结论小测，完成本实验。', hint:'完成3N与7N对比后，系统会自动生成结论并显示选择题。'}
         ]
       },
       16:{
@@ -1930,10 +1927,6 @@
       const idx = clamp(i,0,LAB.tasks.length-1);
       state.currentTask = idx;
       if(prev !== idx) state.stepWarnIdx = -1;
-      if(LAB_ID === 15 && idx === 2 && state.apparatus && !state.apparatus.tested){
-        const def = LAB.controls.find(d=>d.key==='pullN');
-        setVar('pullN', def ? def.def : 3);
-      }
       const t = LAB.tasks[idx];
       taskStepEl.textContent = `步骤 ${idx+1} / ${LAB.tasks.length}`;
       taskTextEl.innerHTML = t.text;
@@ -1958,7 +1951,8 @@
     }
 
     function renderConclusionQuiz(message=''){
-      const quizVisible = state.awaitingQuiz && !state.freeMode && !state.completed;
+      const freeModeBlocksQuiz = state.freeMode && LAB_ID !== 15;
+      const quizVisible = state.awaitingQuiz && !freeModeBlocksQuiz && !state.completed;
       quizCard.hidden = !quizVisible;
       quizCard.classList.toggle('ready', quizVisible);
       quizCard.classList.remove('free-locked');
@@ -1967,7 +1961,7 @@
         quizRow.innerHTML = '';
         return;
       }
-      if(state.freeMode){
+      if(freeModeBlocksQuiz){
         quizText.textContent = '自由模式不进行结论判定，可继续改变拉力并重复测试。';
         quizRow.innerHTML = '';
         return;
@@ -1994,7 +1988,7 @@
     }
 
     function answerConclusionQuiz(answer, fromAuto=false){
-      if(!state.awaitingQuiz || state.freeMode || state.completed) return false;
+      if(!state.awaitingQuiz || (state.freeMode && LAB_ID !== 15) || state.completed) return false;
       if(answer !== 'attraction'){
         renderConclusionQuiz('金属块受到向外拉力却仍保持贴合，说明接触面间存在吸引作用。');
         if(!fromAuto) showToast('答案不正确，请结合“有拉力但未分离”的现象判断。');
@@ -2004,6 +1998,10 @@
       state.quizPassed = true;
       quizRow.innerHTML = '';
       quizText.textContent = '回答正确：分开前需要一定拉力，说明分子之间存在引力。';
+      if(LAB_ID === 15 && state.freeMode){
+        finishLab();
+        return true;
+      }
       return tryPassStep(false, fromAuto);
     }
 
@@ -2374,7 +2372,7 @@
           return { c1:'水50+酒精50', c2:'100.0', c3:String(ap.mixRead), c4:ap.mixRead < 100 ? '体积缩小' : '无明显变化', y:ap.mixRead };
         }
         case 15:{
-          if(!ap.tested){ showToast('请先进行拉伸测力'); return null; }
+          if(!ap.tested || ap.pullN <= 0){ showToast('请先进行一次有效的拉伸测力'); return null; }
           const polishPct = Math.round((ap.leftPolish + ap.rightPolish) * 0.5);
           const clampPct = Math.round(ap.pressQuality * 100);
           return { c1:`拉力${ap.pullN}N`, c2:String(ap.pullN), c3:ap.separated ? '已分离' : '未分离', c4:`打磨${polishPct}%/夹紧${clampPct}%`, y:ap.pullN };
@@ -2418,6 +2416,10 @@
         state.unseenRecordCount = 0;
       }
       refreshDataNotice();
+      if(LAB_ID === 15 && hasLab15ComparisonRecords()){
+        if(lab15Pointer.mode !== 'meter') completeLab15Comparison();
+        return;
+      }
       tryPassStep(false);
     }
 
@@ -2493,6 +2495,25 @@
       analysisText.classList.toggle('ok', ok);
       if(showToastMsg) showToast(ok ? '分析完成：结论成立' : '分析未通过，请补充实验记录');
       if(!state.autoPlaying) tryPassStep(false);
+      return ok;
+    }
+
+    function hasLab15ComparisonRecords(){
+      if(LAB_ID !== 15) return false;
+      const hasStuck = state.records.some(r=>Number(r.c2)===3 && r.c3==='未分离');
+      const hasSeparated = state.records.some(r=>Number(r.c2)===7 && r.c3==='已分离');
+      return hasStuck && hasSeparated;
+    }
+
+    function completeLab15Comparison(){
+      if(LAB_ID !== 15 || state.autoPlaying || state.completed || !hasLab15ComparisonRecords()) return false;
+      setStepUI(LAB.tasks.length - 1);
+      const ok = analyzeConclusion(false);
+      if(ok && state.freeMode){
+        state.awaitingQuiz = true;
+        renderConclusionQuiz();
+        showToast('拉力对比完成，请回答结论小测。');
+      }
       return ok;
     }
 
@@ -3611,7 +3632,7 @@
       updatePills();
       if(lab15Pointer.didMove && nextPullN >= getLab15SeparationThreshold() && !lab15Pointer.meterRecorded){
         lab15Pointer.meterRecorded = true;
-        performAction('pullTest', true);
+        performAction('pullTest', false);
       }
       return true;
     }
@@ -3660,6 +3681,7 @@
           }else if(finishedMeterDrag){
             setStatus(`${finalPullN.toFixed(1)}N下未分离，测力计已复位`);
           }
+          completeLab15Comparison();
         }
       };
 
@@ -3962,6 +3984,12 @@
       refreshDataNotice();
       analysisText.classList.remove('ok');
       analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
+      if(LAB_ID === 15){
+        state.awaitingQuiz = false;
+        state.quizPassed = false;
+        renderConclusionQuiz();
+        if(!state.completed) recalcProgress();
+      }
       renderRecords();
       scheduleChart();
       if(showTip) showToast('数据已清空');
@@ -4028,24 +4056,6 @@
         setStepUI(idx);
         await wait(ms);
       };
-      const doAWithCursor = async (id, ms=950)=>{
-        await clickElementWithCursor(getActionButtonById(id), 700);
-        await doA(id, ms);
-      };
-      const demoSetPullN = async (nextValue)=>{
-        const slider = controlFields.querySelector('input[type="range"]');
-        if(slider){
-          const min = Number(slider.min || '0');
-          const max = Number(slider.max || '1');
-          const ratio = max === min ? 0 : clamp((nextValue - min) / (max - min), 0, 1);
-          const sr = slider.getBoundingClientRect();
-          const p = stagePointFromClient(sr.left + sr.width * ratio, sr.top + sr.height * 0.5);
-          await moveDemoCursorToStage(p.x, p.y, 760);
-          await clickDemoCursor(210);
-        }
-        setVar('pullN', nextValue);
-        await wait(320);
-      };
       const demoLab15Scrape = async ()=>{
         const g = getLab15Layout();
         const pts = [];
@@ -4069,6 +4079,33 @@
         const start = scenePointToStage(g.clampTrackX + 4, g.clampHandleY);
         const end = scenePointToStage(g.clampTrackX + g.clampTrackW - 2, g.clampHandleY);
         await dragDemoCursorPath([start, end], 720, (pt)=>applyLab15ClampAtStagePoint(pt.x, pt.y));
+      };
+      const demoLab15MeterPull = async (forceN)=>{
+        const g = getLab15Layout();
+        const startX = g.meterX + g.meterW * 0.55;
+        const startY = g.meterY + g.meterH * 0.5;
+        const start = scenePointToStage(startX, startY);
+        const end = scenePointToStage(startX + g.meterDragRange * forceN / 10, startY);
+        lab15Pointer.mode = 'meter';
+        lab15Pointer.startX = startX;
+        lab15Pointer.startPullN = 0;
+        lab15Pointer.didMove = false;
+        lab15Pointer.meterRecorded = false;
+        await dragDemoCursorPath([start, end], 920, (pt)=>applyLab15MeterAtStagePoint(pt.x, pt.y));
+        if(!lab15Pointer.meterRecorded) performAction('pullTest', false);
+        const finalPullN = state.apparatus.pullN;
+        const separated = state.apparatus.separated;
+        lab15Pointer.mode = '';
+        lab15Pointer.didMove = false;
+        lab15Pointer.meterRecorded = false;
+        const beforeLen = state.records.length;
+        addRecord();
+        if(state.records.length <= beforeLen) throw new Error('AUTO_RECORD_NOT_PERSISTED');
+        resetLab15Meter();
+        setStatus(separated
+          ? `达到${finalPullN.toFixed(1)}N，样件已分离，测力计已复位`
+          : `${finalPullN.toFixed(1)}N下未分离，测力计已复位`);
+        await wait(700);
       };
 
       try{
@@ -4097,7 +4134,6 @@
           await doR();
         }else if(LAB_ID===15){
           await doStep(0, '步骤1：打磨接触面', 1300);
-          await clickElementWithCursor(getActionButtonById('scrape'), 700);
           await demoLab15Scrape();
           await wait(500);
           await doStep(1, '步骤2：压紧并回松夹具', 1300);
@@ -4106,14 +4142,8 @@
           await demoLab15ReleaseClamp();
           await wait(500);
           await doStep(2, '步骤3：拉伸测力', 1300);
-          await demoSetPullN(3);
-          await doAWithCursor('pullTest', 1700);
-          await wait(780);
-          await doR();
-          await demoSetPullN(7);
-          await doAWithCursor('pullTest', 1800);
-          await wait(800);
-          await doR();
+          await demoLab15MeterPull(3);
+          await demoLab15MeterPull(7);
         }else if(LAB_ID===16){
           await doStep(0, '步骤1：零刻度对齐');
           await doA('alignZero');
@@ -4172,8 +4202,8 @@
           await doR();
         }
 
-        await doStep(3, '步骤4：分析结论', 1200);
-        await clickElementWithCursor(analyzeBtn, 760);
+        await doStep(3, LAB_ID === 15 ? '步骤4：结论小测' : '步骤4：分析结论', 1200);
+        if(LAB_ID !== 15) await clickElementWithCursor(analyzeBtn, 760);
         analyzeConclusion(false);
         recalcProgress();
         if(state.awaitingQuiz) answerConclusionQuiz('attraction', true);
@@ -4209,8 +4239,8 @@
       controlToggleBtn.addEventListener('click', ()=>setControlCollapsed(!state.controlCollapsed));
       dataToggleBtn.addEventListener('click', ()=>setDataCollapsed(!state.dataCollapsed));
 
-      recordBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) addRecord(); });
-      analyzeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) analyzeConclusion(true); });
+      recordBtn.addEventListener('click', ()=>{ if(LAB_ID !== 15 && !state.autoPlaying) addRecord(); });
+      analyzeBtn.addEventListener('click', ()=>{ if(LAB_ID !== 15 && !state.autoPlaying) analyzeConclusion(true); });
       quizRow.addEventListener('click', event=>{
         const button = event.target.closest('button[data-answer]');
         if(button) answerConclusionQuiz(button.dataset.answer, false);
