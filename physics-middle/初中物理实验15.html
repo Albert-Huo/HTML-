@@ -1468,8 +1468,8 @@
         tasks:[
           {text:'先用砂纸/刮刀往返打磨两块接触面。', hint:'在画布中拖动刮刀，直到打磨进度达到100%。'},
           {text:'再用横向夹具压紧金属块，并回松夹具。', hint:'先向左拖动手柄压紧，再向右拖动手柄回松，保持两块贴合。'},
-          {text:'沿接触面法线方向拉伸测力。', hint:'夹具回松后，先用3N拉一次（通常未分离），再用7N拉一次（通常分离）；每次拉伸会自动记录。'},
-          {text:'回答自动出现的结论小测，完成本实验。', hint:'完成3N与7N对比后，系统会自动生成结论并显示选择题。'}
+          {text:'沿接触面法线方向拉伸测力。', hint:'可先用3N观察未分离，再拉到7N；若直接拉到分离，系统也会记录并继续。'},
+          {text:'回答自动出现的结论小测，完成本实验。', hint:'记录有效的分离现象后，系统会自动生成结论并显示选择题。'}
         ]
       },
       16:{
@@ -1734,6 +1734,11 @@
       clearTimeout(showToast.t);
       showToast.t = setTimeout(()=>toastEl.classList.remove('show'), 1400);
     }
+
+    function hideToast(){
+      clearTimeout(showToast.t);
+      toastEl.classList.remove('show');
+    }
     function showCheck(){
       checkmarkEl.classList.add('active');
       clearTimeout(showCheck.t);
@@ -1953,6 +1958,7 @@
     function renderConclusionQuiz(message=''){
       const freeModeBlocksQuiz = state.freeMode && LAB_ID !== 15;
       const quizVisible = state.awaitingQuiz && !freeModeBlocksQuiz && !state.completed;
+      if(quizVisible && LAB_ID === 15) hideToast();
       quizCard.hidden = !quizVisible;
       quizCard.classList.toggle('ready', quizVisible);
       quizCard.classList.remove('free-locked');
@@ -1967,11 +1973,14 @@
         return;
       }
       if(!state.awaitingQuiz){
-        quizText.textContent = '完成接触面处理、压紧和两次拉力对比后，再进行结论小测。';
+        quizText.textContent = '完成接触面处理、压紧和有效拉伸后，再进行结论小测。';
         quizRow.innerHTML = '';
         return;
       }
-      quizText.textContent = message || '处理并压紧的金属块在较小拉力下仍不分开，说明什么？';
+      const hasLowForceRecord = LAB_ID === 15 && state.records.some(r=>Number(r.c2)===3 && r.c3==='未分离');
+      quizText.textContent = message || (hasLowForceRecord
+        ? '处理并压紧的金属块在较小拉力下仍不分开，说明什么？'
+        : '把处理并压紧后的金属块拉开需要达到一定拉力，说明什么？');
       if(!quizRow.children.length){
         [
           ['attraction','分子之间存在引力'],
@@ -1990,8 +1999,8 @@
     function answerConclusionQuiz(answer, fromAuto=false){
       if(!state.awaitingQuiz || (state.freeMode && LAB_ID !== 15) || state.completed) return false;
       if(answer !== 'attraction'){
-        renderConclusionQuiz('金属块受到向外拉力却仍保持贴合，说明接触面间存在吸引作用。');
-        if(!fromAuto) showToast('答案不正确，请结合“有拉力但未分离”的现象判断。');
+        renderConclusionQuiz('金属块需要受到一定拉力才能分开，说明接触面间存在吸引作用。');
+        if(!fromAuto) showToast('答案不正确，请结合“达到一定拉力才分离”的现象判断。');
         return false;
       }
       state.awaitingQuiz = false;
@@ -2416,8 +2425,8 @@
         state.unseenRecordCount = 0;
       }
       refreshDataNotice();
-      if(LAB_ID === 15 && hasLab15ComparisonRecords()){
-        if(lab15Pointer.mode !== 'meter') completeLab15Comparison();
+      if(LAB_ID === 15 && hasLab15ConclusionEvidence()){
+        if(lab15Pointer.mode !== 'meter') completeLab15Evidence();
         return;
       }
       tryPassStep(false);
@@ -2450,8 +2459,13 @@
         case 15:{
           const hasStuck = rs.some(r=>Number(r.c2)===3 && r.c3==='未分离');
           const hasSeparated = rs.some(r=>Number(r.c2)===7 && r.c3==='已分离');
-          ok = hasStuck && hasSeparated;
-          msg = ok ? '结论：接触面处理并压紧后，金属块在较小拉力下不易分离、在更大拉力下可分离，说明分子间存在引力。' : '请完成两次对比拉伸：约3N且未分离、约7N且已分离（系统会自动记录）。';
+          const hasAnySeparation = rs.some(r=>Number(r.c2)>0 && r.c3==='已分离');
+          ok = hasAnySeparation;
+          msg = hasStuck && hasSeparated
+            ? '结论：接触面处理并压紧后，金属块在较小拉力下不易分离、在更大拉力下可分离，说明分子间存在引力。'
+            : (ok
+              ? '结论：处理并压紧后的金属块需要达到一定拉力才能分开，说明分子间存在引力。'
+              : '请完成一次有效拉伸，记录样件达到一定拉力后分离的现象。');
           break;
         }
         case 16:{
@@ -2505,14 +2519,18 @@
       return hasStuck && hasSeparated;
     }
 
-    function completeLab15Comparison(){
-      if(LAB_ID !== 15 || state.autoPlaying || state.completed || !hasLab15ComparisonRecords()) return false;
+    function hasLab15ConclusionEvidence(){
+      if(LAB_ID !== 15) return false;
+      return hasLab15ComparisonRecords() || state.records.some(r=>Number(r.c2)>0 && r.c3==='已分离');
+    }
+
+    function completeLab15Evidence(){
+      if(LAB_ID !== 15 || state.autoPlaying || state.completed || !hasLab15ConclusionEvidence()) return false;
       setStepUI(LAB.tasks.length - 1);
       const ok = analyzeConclusion(false);
       if(ok && state.freeMode){
         state.awaitingQuiz = true;
         renderConclusionQuiz();
-        showToast('拉力对比完成，请回答结论小测。');
       }
       return ok;
     }
@@ -2530,7 +2548,7 @@
         case 15:
           if(step===0) return ap.scraped;
           if(step===1) return !!(ap.clampDone && ap.clampReleased && ap.pressQuality >= 0.82);
-          if(step===2) return rs.some(r=>Number(r.c2)===3 && r.c3==='未分离') && rs.some(r=>Number(r.c2)===7 && r.c3==='已分离');
+          if(step===2) return hasLab15ConclusionEvidence();
           if(step===3) return state.analysisOk;
           return false;
         case 16:
@@ -2577,7 +2595,7 @@
       if(state.currentTask === LAB.tasks.length - 1 && !state.quizPassed){
         state.awaitingQuiz = true;
         renderConclusionQuiz();
-        if(!fromAuto) showToast('拉力对比完成，请回答结论小测。');
+        if(!fromAuto && LAB_ID !== 15) showToast('实验数据已完成，请回答结论小测。');
         return true;
       }
       state.successCooldown = true;
@@ -3681,7 +3699,7 @@
           }else if(finishedMeterDrag){
             setStatus(`${finalPullN.toFixed(1)}N下未分离，测力计已复位`);
           }
-          completeLab15Comparison();
+          completeLab15Evidence();
         }
       };
 
@@ -5636,6 +5654,8 @@
     const lamp = stage?.querySelector('#hintLamp, .hint-lamp');
     const pop = stage?.querySelector('#hintPop');
     const hud = stage?.querySelector('.hud');
+    const readings = stage?.querySelector('.observation-panel');
+    const labArea = stage?.querySelector('#labArea');
     if (!stage || !lamp || !pop || !hud || stage.dataset.stageToolsMounted) return;
     stage.dataset.stageToolsMounted = 'true';
     const wrap = lamp.closest('.hint-lamp-wrap');
@@ -5707,6 +5727,19 @@
         put(audio, 'background', 'rgba(100,120,140,.13)');
         put(audio, 'cursor', 'pointer');
       }
+      if (readings && labArea && window.matchMedia('(max-width:420px)').matches) {
+        const readingsTop = top + 42;
+        put(readings, 'top', pixels(readingsTop));
+        put(readings, 'left', '10px'); put(readings, 'right', '10px');
+        put(readings, 'width', 'auto'); put(readings, 'transform', 'none');
+        const readingsHeight = readings.getBoundingClientRect().height;
+        put(labArea, 'top', pixels(Math.max(154, readingsTop + readingsHeight + 6)));
+        stage.dataset.stageToolsNarrow = 'true';
+      } else if (stage.dataset.stageToolsNarrow === 'true') {
+        for (const key of ['top', 'left', 'right', 'width', 'transform']) readings?.style.removeProperty(key);
+        labArea?.style.removeProperty('top');
+        delete stage.dataset.stageToolsNarrow;
+      }
       put(pop, 'position', 'absolute'); put(pop, 'box-sizing', 'border-box');
       put(pop, 'left', wrap ? '0px' : pixels(left)); put(pop, 'right', 'auto');
       put(pop, 'top', pixels(wrap ? 44 : top + 44)); put(pop, 'bottom', 'auto');
@@ -5731,6 +5764,7 @@
     if (wrap) changes.observe(wrap, { attributes:true, attributeFilter:['class'] });
     const sizes = new ResizeObserver(requestLayout);
     sizes.observe(hud); sizes.observe(stage);
+    if (readings) sizes.observe(readings);
     window.addEventListener('resize', requestLayout);
     document.addEventListener('keydown', onKey);
     document.addEventListener('pointerdown', onOutside, { passive:true });
