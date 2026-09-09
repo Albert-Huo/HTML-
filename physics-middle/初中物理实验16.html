@@ -2077,7 +2077,7 @@ body #app .toolbar button:disabled{
       const len = OBJECT_LENGTHS[ap.object];
       let next = round(clamp(cm, 0, 20), 1);
       const targetEnd = round(ap.objectCm + len, 1);
-      if(snapToObject && Math.abs(next - targetEnd) <= 0.1) next = targetEnd;
+      if(snapToObject && round(Math.abs(next - targetEnd), 1) <= 0.1) next = targetEnd;
       ap.guideCm = next;
       return next;
     }
@@ -2194,6 +2194,18 @@ body #app .toolbar button:disabled{
       }
     }
 
+    function summarizeLab16Records(records){
+      const objects = new Set(records.map(r=>r.c1));
+      const accurateObjects = new Set(records
+        .filter(r=>round(Math.abs(Number(r.c2)-Number(r.c3)), 1) <= 0.1)
+        .map(r=>r.c1));
+      return {
+        objects,
+        accurateObjects,
+        needsCorrection:[...objects].filter(name=>!accurateObjects.has(name))
+      };
+    }
+
     function analyzeConclusion(showToastMsg=true){
       const rs = state.records;
       let ok = false;
@@ -2212,10 +2224,15 @@ body #app .toolbar button:disabled{
           break;
         }
         case 16:{
-          const objs = new Set(rs.map(r=>r.c1));
-          const good = rs.filter(r=>Math.abs(Number(r.c2)-Number(r.c3)) <= 0.1).length;
-          ok = objs.size >= 2 && good >= 2;
-          msg = ok ? '结论：长度测量应先零刻度对齐，再用竖向虚线对准另一端并按 0.1cm 读数；重复测量可提高准确性。' : '请至少测量2种物体，且读数与参考值偏差不大。';
+          const {objects, accurateObjects, needsCorrection} = summarizeLab16Records(rs);
+          ok = accurateObjects.size >= 2;
+          if(ok){
+            msg = '结论：长度测量应先零刻度对齐，再用竖向虚线对准另一端并按 0.1cm 读数；重复测量可提高准确性。';
+          }else if(objects.size < 2){
+            msg = '请至少测量并记录2种不同物体。';
+          }else{
+            msg = `请重新测量${needsCorrection.join('、')}：读数与参考值偏差需不超过0.1cm。`;
+          }
           break;
         }
         case 17:{
@@ -2274,7 +2291,7 @@ body #app .toolbar button:disabled{
         case 16:
           if(step===0) return ap.alignedCount >= 1;
           if(step===1) return rs.length >= 1;
-          if(step===2) return new Set(rs.map(r=>r.c1)).size >= 2;
+          if(step===2) return summarizeLab16Records(rs).accurateObjects.size >= 2;
           if(step===3) return state.analysisOk;
           return false;
         case 17:
@@ -2317,7 +2334,9 @@ body #app .toolbar button:disabled{
               : state.currentTask===1
                 ? '请先拖动虚线对准物体右端并记录，再点击“确认观察”。'
                 : state.currentTask===2
-                  ? '请先更换另一件物体，再完成零刻度对齐、虚线读数和记录后点击“确认观察”。'
+                  ? (summarizeLab16Records(state.records).objects.size < 2
+                    ? '请先更换另一件物体，再完成零刻度对齐、虚线读数和记录后点击“确认观察”。'
+                    : `请重新测量${summarizeLab16Records(state.records).needsCorrection.join('、')}，读数误差需不超过0.1cm。`)
                   : '请先分析出规范测量方法，再点击“确认观察”。';
             warnCurrentStep(msg);
           }else{
