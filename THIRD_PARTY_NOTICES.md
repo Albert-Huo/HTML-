@@ -14,15 +14,15 @@ repository. These resources are not relicensed by this repository.
   Source: https://fonts.googleapis.com/
 
 - Three.js and CSS2DRenderer  
-  Referenced by: `physics-demos/银河系.html`  
+  Referenced by: `physics-popular-science/银河系.html`
   Source: https://cdn.jsdelivr.net/npm/three@0.150.1/
 
 ## External Images
 
 - The Blue Marble / The Earth seen from Apollo 17  
   Referenced by:
-  - `physics-demos/太阳消失后的地球交互版.html`
-  - `physics-demos/太阳忽然消失后的地球交互版.html`
+  - `physics-popular-science/太阳消失后的地球交互版.html`
+  - `physics-popular-science/太阳忽然消失后的地球交互版.html`
 
   Source:
   https://commons.wikimedia.org/wiki/File:The_Earth_seen_from_Apollo_17.jpg
