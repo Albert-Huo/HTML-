@@ -526,6 +526,7 @@
     #stage #controlDock.mobile-sheet .sheet-close{grid-column:2 !important;grid-row:1 !important}
     #stage #controlDock.mobile-sheet .secTitle,#stage #controlDock.mobile-sheet .mini,#stage #controlDock.mobile-sheet .readout,#stage #controlDock.mobile-sheet .status-grid,#stage #controlDock.mobile-sheet .lab-hint,#stage #controlDock.mobile-sheet #stageGuide,#stage #controlDock.mobile-sheet .record-cue,#stage #controlDock.mobile-sheet .source-line,#stage #controlDock.mobile-sheet .chartWrap,#stage #controlDock.mobile-sheet .dock-grid{display:none !important}
     #stage #controlDock.mobile-sheet .controls,#stage #controlDock.mobile-sheet .btnRow,#stage #controlDock.mobile-sheet .btn-row,#stage #controlDock.mobile-sheet .miniBtns,#stage #controlDock.mobile-sheet .quizRow,#stage #controlDock.mobile-sheet .matRow,#stage #controlDock.mobile-sheet .sampleRow,#stage #controlDock.mobile-sheet #actionBtns{grid-column:1 !important;grid-row:auto !important;display:grid !important;grid-template-columns:repeat(auto-fit,minmax(92px,1fr)) !important;gap:8px !important;margin:0 !important;padding:8px !important;border:1px solid rgba(255,255,255,.1) !important;border-radius:9px !important;background:rgba(255,255,255,.055) !important}
+    #stage #controlDock.mobile-sheet #actionBtns:empty{display:none !important}
     #stage #controlDock.mobile-sheet #controlFields{grid-column:1 / -1 !important;display:grid !important;gap:8px !important;margin:0 !important;padding:0 !important}
     #stage #controlDock.mobile-sheet #controlFields .field{margin:0 !important;padding:8px !important;border:1px solid rgba(255,255,255,.1) !important;border-radius:9px !important;background:rgba(255,255,255,.045) !important}
     #stage #controlDock.mobile-sheet .analysis,#stage #controlDock.mobile-sheet .analysisBox,#stage #controlDock.mobile-sheet .codex-final-analysis{grid-column:1 / -1 !important;margin-top:0 !important}
@@ -1410,7 +1411,7 @@ body #app .toolbar button:disabled{
         name:'测量物体运动的速度',
         catalog:'中小学实验教学目录 初中物理 18',
         textbook:'人教版初中物理 速度测量活动（目录条目对齐）',
-        apparatusHint:'器材：斜面木板 + 小车 + 金属片 + 刻度尺 + 秒表。拖动金属片到斜面底端或中部，点击小车释放。',
+        apparatusHint:'器材：斜面木板 + 小车 + 金属片 + 刻度尺 + 秒表。点击小车释放；测速后将小车向斜面顶端拖动，松手即可吸附归位。',
         bullets:[
           '先测小车通过斜面全程 s1 的时间 t1，再求平均速度 v1=s1/t1。',
           '再把金属片移到斜面中部，测上半段路程 s2 的时间 t2，求平均速度 v2=s2/t2。',
@@ -1418,12 +1419,10 @@ body #app .toolbar button:disabled{
         ],
         tableHeaders:['路程段','时间(s)','平均速度(m/s)','备注'],
         controls:[],
-        actions:[
-          {id:'resetCart', label:'小车归位'}
-        ],
+        actions:[],
         tasks:[
           {text:'先将金属片放到斜面底端，释放小车完成整段 <b>s1</b> 测速并记录后，再点“确认观察”。', hint:'提示：点击小车释放；撞击金属片后秒表停止。'},
-          {text:'再把金属片拖到斜面中部，完成上半段 <b>s2</b> 测速并记录后，再点“确认观察”。', hint:'提示：金属片需要吸附到中部标记位。'},
+          {text:'将小车向斜面顶端拖动并松手归位，再把金属片拖到中部，完成上半段 <b>s2</b> 测速并记录。', hint:'顺序：拖车归位 → 金属片吸附到中部 → 点击小车释放。'},
           {text:'比较 <b>v1</b> 与 <b>v2</b> 的大小关系，确认已保留 2 条记录后，再点“确认观察”。', hint:'提示：速度由 v=s/t 计算得到。'},
           {text:'点击“分析结论”后，还需点击“确认观察”才能完成本实验。', hint:'提示：结论要体现“上半段平均速度与全程平均速度不同”，最后别忘了点“确认观察”。'}
         ]
@@ -1713,6 +1712,9 @@ body #app .toolbar button:disabled{
           liveElapsed:0,
           draggingMarker:false,
           dragHoverMode:null,
+          draggingCart:false,
+          cartDragOriginT:null,
+          cartDragReady:false,
           hitFlash:0,
           lastMeasureMode:null
         };
@@ -1758,6 +1760,8 @@ body #app .toolbar button:disabled{
     function setFreeMode(on){
       state.freeMode = !!on;
       if(LAB_ID === 18){
+        cancelExp18CartDrag(true);
+        state.draggingId = null;
         if(state.freeMode){
           setExp18MarkerDistanceCm(Math.max(10, Math.round(state.apparatus.activeDistanceM * 100)));
         }else{
@@ -1935,6 +1939,9 @@ body #app .toolbar button:disabled{
       ap.hitFlash = 0;
       ap.liveElapsed = 0;
       ap.runDuration = 0;
+      ap.draggingCart = false;
+      ap.cartDragOriginT = null;
+      ap.cartDragReady = false;
       if(announce) setStatus('小车已归位');
       updatePills();
       return true;
@@ -1943,6 +1950,7 @@ body #app .toolbar button:disabled{
     function releaseExp18Cart(){
       if(LAB_ID !== 18) return false;
       const ap = state.apparatus;
+      if(ap.draggingCart) return false;
       if(ap.running){ showToast('小车正在下滑'); return false; }
       if(!ap.cartReady){ showToast('请先让小车回到斜面顶端'); return false; }
       ap.running = true;
@@ -2009,6 +2017,30 @@ body #app .toolbar button:disabled{
       if(halfDist < snapThreshold) state.apparatus.dragMarkerT = metric.markerCenterHalfT;
       else if(fullDist < snapThreshold) state.apparatus.dragMarkerT = metric.markerCenterFullT;
       else state.apparatus.dragMarkerT = proj;
+    }
+
+    function updateExp18CartDrag(pt){
+      if(LAB_ID !== 18) return;
+      const ap = state.apparatus;
+      if(!ap.draggingCart || ap.cartReady || typeof ap.cartDragOriginT !== 'number') return;
+      const r = scene.getBoundingClientRect();
+      const g = get18Geometry(r.width, r.height);
+      const vx = pt.x - g.top.x;
+      const vy = pt.y - g.top.y;
+      const projectedT = (vx * g.dx + vy * g.dy) / (g.len * g.len);
+      ap.cartT = clamp(projectedT, 0, ap.cartDragOriginT);
+      const returnThresholdT = clamp(42 / g.len, 0.08, 0.18);
+      ap.cartDragReady = ap.cartDragOriginT - ap.cartT >= returnThresholdT;
+      setStatus(ap.cartDragReady ? '松手后小车将吸附到斜面顶端' : '向斜面顶端拖动小车');
+    }
+
+    function cancelExp18CartDrag(restorePosition=true){
+      if(LAB_ID !== 18) return;
+      const ap = state.apparatus;
+      if(restorePosition && ap.draggingCart && typeof ap.cartDragOriginT === 'number') ap.cartT = ap.cartDragOriginT;
+      ap.draggingCart = false;
+      ap.cartDragOriginT = null;
+      ap.cartDragReady = false;
     }
 
     function initActionButtons(){
@@ -2116,12 +2148,6 @@ body #app .toolbar button:disabled{
             ap.cyclesDone = state.vars.cycles;
             changed = true;
             setStatus(`计时完成：${ap.elapsed}s`);
-          }
-          break;
-        }
-        case 18:{
-          if(actionId === 'resetCart'){
-            changed = resetExp18Cart(true);
           }
           break;
         }
@@ -2487,8 +2513,11 @@ body #app .toolbar button:disabled{
           pillD.textContent = `计次:${state.vars.cycles}次`;
           break;
         case 18:
+          const showLastMeasure = !ap.running && ap.lastTime !== null;
+          const measureLabel = showLastMeasure ? (ap.lastMeasureLabel || ap.activeLabel) : ap.activeLabel;
+          const measureDistanceM = showLastMeasure ? (ap.lastDistanceM ?? ap.activeDistanceM) : ap.activeDistanceM;
           pillA.textContent = `金属片:${ap.markerMode==='custom' ? `${ap.customDistanceCm}cm位置` : (ap.markerMode==='half'?'斜面中部':'斜面底端')}`;
-          pillB.textContent = `路程:${ap.activeLabel}=${ap.activeDistanceM.toFixed(2)}m`;
+          pillB.textContent = `路程:${measureLabel}=${measureDistanceM.toFixed(2)}m`;
           pillC.textContent = `时间:${ap.running ? ap.liveElapsed.toFixed(2)+'s' : (ap.lastTime===null?'--':ap.lastTime+'s')}`;
           pillD.textContent = `速度:${ap.lastSpeed===null?'--':ap.lastSpeed+'m/s'}`;
           break;
@@ -2847,8 +2876,18 @@ body #app .toolbar button:disabled{
       ctx.save();
       ctx.translate(cartX - g.nx*4, cartY - g.ny*4 - 6);
       ctx.rotate(Math.atan2(g.dy, g.dx));
+      if(ap.draggingCart && !ap.cartReady){
+        ctx.shadowColor = ap.cartDragReady ? '#42e49a' : '#7fd1ff';
+        ctx.shadowBlur = ap.cartDragReady ? 18 : 10;
+      }
       ctx.fillStyle = '#66b9ff';
       ctx.fillRect(-30, -18, 60, 22);
+      ctx.shadowBlur = 0;
+      if(ap.draggingCart && !ap.cartReady){
+        ctx.strokeStyle = ap.cartDragReady ? '#42e49a' : '#9edcff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(-32, -32, 64, 43);
+      }
       ctx.fillStyle = '#d9eefc';
       ctx.fillRect(-18, -30, 32, 14);
       ctx.fillStyle = '#3f4f5f';
@@ -2881,36 +2920,42 @@ body #app .toolbar button:disabled{
       ctx.font = 'bold 13px -apple-system,Segoe UI';
       ctx.fillText(`当前目标：${ap.activeLabel} = ${ap.activeDistanceM.toFixed(2)}m`, 36, 41);
 
-      const sx = W - 190, sy = H - 236;
+      const compactStage = window.matchMedia('(max-width:720px)').matches;
+      const swW = 132, swH = 78;
+      const sx = compactStage ? W - swW - 16 : Math.max(144, W - swW - 400);
+      const sy = 54;
+      ctx.save();
       ctx.fillStyle = 'rgba(17,25,35,.96)';
       ctx.beginPath();
-      ctx.roundRect(sx, sy, 154, 102, 18);
+      ctx.roundRect(sx, sy, swW, swH, 14);
       ctx.fill();
       ctx.strokeStyle = '#97b8db';
       ctx.lineWidth = 2;
       ctx.stroke();
       ctx.fillStyle = '#97b8db';
-      ctx.fillRect(sx+58, sy-10, 38, 12);
+      ctx.fillRect(sx+49, sy-8, 34, 10);
       ctx.fillStyle = '#e6f3ff';
       ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText('秒表', sx+58, sy+18);
+      ctx.textAlign = 'center';
+      ctx.fillText('秒表', sx+swW/2, sy+15);
       ctx.fillStyle = '#05090d';
       ctx.beginPath();
-      ctx.roundRect(sx+16, sy+24, 122, 34, 8);
+      ctx.roundRect(sx+10, sy+19, swW-20, 34, 7);
       ctx.fill();
       ctx.fillStyle = '#7fd1ff';
-      ctx.font = 'bold 26px Courier New';
+      ctx.font = 'bold 30px Courier New';
       const dispTime = ap.running ? `${ap.liveElapsed.toFixed(2)}s` : (ap.lastTime===null ? '--' : `${ap.lastTime}s`);
-      ctx.fillText(dispTime, sx+24, sy+49);
+      ctx.fillText(dispTime, sx+swW/2, sy+47);
+      const showLastMeasure = !ap.running && ap.lastTime !== null;
+      const measureLabel = showLastMeasure ? (ap.lastMeasureLabel || ap.activeLabel) : ap.activeLabel;
+      const measureDistanceM = showLastMeasure ? (ap.lastDistanceM ?? ap.activeDistanceM) : ap.activeDistanceM;
       ctx.fillStyle = '#dce8fa';
-      ctx.font = '10px -apple-system,Segoe UI';
-      ctx.fillText(`路程 ${ap.activeLabel}: ${ap.activeDistanceM.toFixed(2)}m`, sx+16, sy+70);
-      ctx.fillText(`速度: ${ap.lastSpeed===null?'--':ap.lastSpeed+' m/s'}`, sx+16, sy+84);
-      ctx.fillText(`记录: ${state.records.length} 条`, sx+16, sy+97);
-
-      ctx.fillStyle = '#eaf2ff';
-      ctx.font = '14px -apple-system,Segoe UI';
-      ctx.fillText('器材操作：拖动金属片切换 s1/s2，点击小车释放，撞击金属片后记录', W*0.06, H-26);
+      ctx.font = '600 11px -apple-system,Segoe UI';
+      ctx.textAlign = 'left';
+      ctx.fillText(`${measureLabel} ${measureDistanceM.toFixed(2)}m`, sx+10, sy+70);
+      ctx.textAlign = 'right';
+      ctx.fillText(`v ${ap.lastSpeed===null?'-- m/s':ap.lastSpeed+'m/s'}`, sx+swW-10, sy+70);
+      ctx.restore();
     }
 
     function draw19(ctx,W,H){
@@ -3036,7 +3081,7 @@ body #app .toolbar button:disabled{
           ap.lastMeasureMode = ap.markerMode;
           ap.lastDistanceM = ap.activeDistanceM;
           ap.lastMeasureLabel = ap.activeLabel;
-          setStatus(`测速完成：${ap.activeLabel}, t=${t}s, v=${v}m/s`);
+          setStatus(`测速完成：${ap.activeLabel}, t=${t}s, v=${v}m/s；向上拖小车归位`);
           updatePills();
         }
       }
@@ -3251,6 +3296,7 @@ body #app .toolbar button:disabled{
       state.completed = false;
       state.successCooldown = false;
       state.stepWarnIdx = -1;
+      state.draggingId = null;
       doneMaskEl.style.display = 'none';
       setDemoCursorVisible(false);
       state.apparatus = makeInitialApparatus();
@@ -3265,6 +3311,7 @@ body #app .toolbar button:disabled{
 
     function requestStopAutoDemo(){
       if(!state.autoPlaying) return;
+      if(LAB_ID === 18) cancelExp18CartDrag(true);
       state.autoPlaying = false;
       state.autoRunId += 1;
       restoreAutoDemoUI();
@@ -3342,6 +3389,36 @@ body #app .toolbar button:disabled{
         if(!releaseExp18Cart()) throw new Error('AUTO_CART_RELEASE_FAILED');
         await wait(120);
       };
+      const waitForExp18Collision = async ()=>{
+        let waited = 0;
+        while(state.apparatus.running && waited < 2400){
+          await wait(80, 'actionMotion');
+          waited += 80;
+        }
+        if(state.apparatus.running || state.apparatus.lastTime === null) throw new Error('AUTO_CART_COLLISION_TIMEOUT');
+      };
+      const dragExp18CartHome = async ()=>{
+        const ap = state.apparatus;
+        if(ap.running || ap.cartReady) throw new Error('AUTO_CART_RETURN_NOT_READY');
+        const startT = ap.cartT;
+        const from = exp18CartCenter();
+        await moveDemoCursorTo(from.x, from.y, 160);
+        await pulseDemoCursor(120);
+        ap.draggingCart = true;
+        ap.cartDragOriginT = startT;
+        ap.cartDragReady = false;
+        for(let i=1;i<=8;i++){
+          ensure();
+          ap.cartT = startT * (1 - i/8);
+          if(i >= 3) ap.cartDragReady = true;
+          const point = exp18CartCenter();
+          await moveDemoCursorTo(point.x, point.y, 45);
+          ensure();
+        }
+        resetExp18Cart(false);
+        setStatus('自动演示：小车已拖回斜面顶端');
+        await wait(180);
+      };
 
       try{
         resetFlow(false);
@@ -3360,7 +3437,7 @@ body #app .toolbar button:disabled{
           setExp18MarkerMode('full');
           await dragExp18Marker('full');
           await releaseExp18CartDemo();
-          await wait(1800);
+          await waitForExp18Collision();
           await doR();
           await clickEl(checkBtn, 160, false);
           if(!tryPassStep(false, true)) throw new Error('AUTO_STEP1_NOT_PASSED');
@@ -3368,10 +3445,10 @@ body #app .toolbar button:disabled{
           setStepUI(1);
           setStatus('自动演示：第二组测速');
           await wait(420);
-          await doA('resetCart', 500, 0);
+          await dragExp18CartHome();
           await dragExp18Marker('half');
           await releaseExp18CartDemo();
-          await wait(1500);
+          await waitForExp18Collision();
           await doR();
           await clickEl(checkBtn, 160, false);
           if(!tryPassStep(false, true)) throw new Error('AUTO_STEP2_NOT_PASSED');
@@ -3398,6 +3475,7 @@ body #app .toolbar button:disabled{
           showToast('自动演示失败，请重试');
         }
       }finally{
+        if(LAB_ID === 18) cancelExp18CartDrag(true);
         if(runId === state.autoRunId){
           restoreAutoDemoUI();
         }
@@ -3442,7 +3520,16 @@ body #app .toolbar button:disabled{
         const pt = getScenePoint(e);
         const marker = exp18MarkerCenter();
         const cart = exp18CartCenter();
-        if(!ap.running && Math.hypot(pt.x - marker.x, pt.y - marker.y) < 36){
+        if(!ap.running && Math.hypot(pt.x - cart.x, pt.y - cart.y) < 44){
+          state.draggingId = 'exp18-cart';
+          ap.draggingCart = !ap.cartReady;
+          ap.cartDragOriginT = ap.cartReady ? null : ap.cartT;
+          ap.cartDragReady = false;
+          scene.setPointerCapture(e.pointerId);
+          e.preventDefault();
+          return;
+        }
+        if(!ap.running && ap.cartReady && Math.hypot(pt.x - marker.x, pt.y - marker.y) < 36){
           state.draggingId = 'exp18-marker';
           ap.draggingMarker = true;
           ap.dragHoverMode = ap.markerMode;
@@ -3452,24 +3539,23 @@ body #app .toolbar button:disabled{
           e.preventDefault();
           return;
         }
-        if(!ap.running && ap.cartReady && Math.hypot(pt.x - cart.x, pt.y - cart.y) < 40){
-          state.draggingId = 'exp18-cart';
-          scene.setPointerCapture(e.pointerId);
-          e.preventDefault();
-        }
       });
 
       scene.addEventListener('pointermove', (e)=>{
-        if(LAB_ID !== 18 || state.draggingId !== 'exp18-marker') return;
-        updateExp18MarkerDrag(getScenePoint(e));
+        if(LAB_ID !== 18) return;
+        if(state.draggingId === 'exp18-marker') updateExp18MarkerDrag(getScenePoint(e));
+        else if(state.draggingId === 'exp18-cart') updateExp18CartDrag(getScenePoint(e));
+        else return;
         e.preventDefault();
       });
 
-      const endScenePointer = (e)=>{
+      const endScenePointer = (e, cancelled=false)=>{
         if(LAB_ID !== 18) return;
         const ap = state.apparatus;
         if(state.draggingId === 'exp18-marker'){
-          if(state.freeMode){
+          if(cancelled){
+            ap.dragMarkerT = null;
+          }else if(state.freeMode){
             setExp18MarkerDistanceCm(ap.dragHoverCm || Math.max(10, Math.round(ap.activeDistanceM * 100)));
             setStatus(`金属片已吸附到 ${state.apparatus.customDistanceCm}cm 位置`);
           }else{
@@ -3481,12 +3567,28 @@ body #app .toolbar button:disabled{
           ap.dragHoverMode = null;
           ap.dragHoverCm = null;
         }else if(state.draggingId === 'exp18-cart'){
-          releaseExp18Cart();
+          const wasReady = ap.cartReady;
+          const originT = typeof ap.cartDragOriginT === 'number' ? ap.cartDragOriginT : ap.cartT;
+          const shouldReturn = !cancelled && !wasReady && ap.cartDragReady;
+          ap.draggingCart = false;
+          ap.cartDragOriginT = null;
+          ap.cartDragReady = false;
+          if(shouldReturn){
+            resetExp18Cart(false);
+            setStatus('小车已吸附到斜面顶端，点击小车可再次发车');
+          }else if(!wasReady){
+            ap.cartT = originT;
+            setStatus(cancelled ? '已取消归位' : '再向斜面顶端拖动一点即可归位');
+          }else if(!cancelled){
+            releaseExp18Cart();
+          }else{
+            setStatus('待开始');
+          }
         }
         state.draggingId = null;
       };
       scene.addEventListener('pointerup', endScenePointer);
-      scene.addEventListener('pointercancel', endScenePointer);
+      scene.addEventListener('pointercancel', (e)=>endScenePointer(e, true));
     }
 
     function init(){
@@ -3755,7 +3857,7 @@ body #app .toolbar button:disabled{
   }
 
   function isMobile(){
-    return window.innerWidth <= 720 || (stage && stage.clientWidth <= 720);
+    return window.innerWidth <= 720;
   }
 
   function syncMobileShell(){
@@ -3853,7 +3955,7 @@ body #app .toolbar button:disabled{
   if (resetBtn) resetBtn.textContent = '重置关卡';
   if (autoDemoBtn) autoDemoBtn.textContent = '演示模式';
   if (freeBtn) freeBtn.textContent = '自由模式';
-  function isMobile(){ return window.innerWidth <= MOBILE_MAX || stage.clientWidth <= MOBILE_MAX; }
+  function isMobile(){ return window.innerWidth <= MOBILE_MAX; }
   function normalizePrefix(el, label){
     if (!el) return;
     let text = (el.textContent || '').trim();
