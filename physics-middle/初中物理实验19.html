@@ -1202,7 +1202,7 @@ body #app .toolbar button:disabled{
         <div class="sampleRow">
           <button class="sampleBtn active" id="sampleSpringBtn">弹簧</button>
           <button class="sampleBtn" id="sampleSpongeBtn">海绵</button>
-          <button class="sub" id="releaseBtn" hidden>松开施力</button>
+          <button class="sub" id="releaseBtn">松开施力</button>
         </div>
         <div class="row" id="stageGuide">拖动舞台中的压板向下施力；压板会按整数牛顿吸附。</div>
         <div class="btnRow" style="margin-top:8px;">
@@ -1210,7 +1210,7 @@ body #app .toolbar button:disabled{
           <button class="sub" id="checkBtn">确认观察 ✅</button>
           <button class="sub" id="analyzeBtn">分析结论</button>
         </div>
-        <div class="analysis" id="analysisText" hidden></div>
+        <div class="analysis" id="analysisText">暂无。请按步骤操作器材并记录数据后分析。</div>
       </div>
     </div>
 
@@ -1255,16 +1255,16 @@ body #app .toolbar button:disabled{
     <h2>实验名：观察力使物体产生形变</h2>
     <ul>
       <li>关键操作与现象：拖动压板向下施力，可观察到弹簧或海绵发生形变；力越大，形变通常越明显。</li>
-      <li>关键操作与现象：切换不同样件后，在相同施力条件下可比较它们的形变表现。</li>
+      <li>关键操作与现象：切换不同样件后，在相近施力条件下可比较不同材料的形变特点。</li>
       <li>原理与结论：力可以使物体产生形变；同一样件受力增大时，形变一般增大；不同材料的形变表现也可能不同。</li>
     </ul>
   </div>
 
   <script>
     const TASKS = [
-      { text:'拖动压板，对<b>弹簧</b>施加 <b>3N</b> 力，观察形变并记录后，再点“确认观察”。', hint:'提示：压板会按整数牛顿吸附；记录后压板会自动回位。'},
-      { text:'继续对<b>弹簧</b>施加 <b>7N</b> 力，再记录对比后，再点“确认观察”。', hint:'提示：保持弹簧样件，增大施力；记录后压板会自动回位。'},
-      { text:'切换到<b>海绵</b>，施加 <b>3N</b> 力并记录后，再点“确认观察”。', hint:'提示：保持施力为 3N，与第一组弹簧记录进行比较。'},
+      { text:'拖动压板，对<b>弹簧</b>施加 <b>3N</b> 力，观察形变并记录后，再点“确认观察”。', hint:'提示：压板会按整数牛顿吸附，先完成“弹簧 3N”记录。'},
+      { text:'继续对<b>弹簧</b>施加 <b>7N</b> 力，再记录对比后，再点“确认观察”。', hint:'提示：保持弹簧样件，增大施力后再次记录。'},
+      { text:'切换到<b>海绵</b>，施加 <b>5N</b> 力并记录后，再点“确认观察”。', hint:'提示：样件需切换为海绵，再完成“海绵 5N”记录。'},
       { text:'点击“分析结论”后，还需点击“确认观察”才能完成本实验。', hint:'提示：结论要体现“力会使物体形变，且一般力越大形变越明显”。'}
     ];
 
@@ -1346,7 +1346,7 @@ body #app .toolbar button:disabled{
     const sampleName = (s)=>s === 'spring' ? '弹簧' : '海绵';
     const recoveryOf = (s)=> s === 'spring' ? 99 : 86;
     const guidedRecords = ()=> state.records.filter(r=>r.mode === 'guided');
-    const guidedConclusionText = '结论：力可以使物体发生形变；同一弹簧受力从 3N 增大到 7N 时，形变量增大；相同施力（3N）下，弹簧与海绵的形变表现不同。';
+    const guidedConclusionText = '结论：力可以使物体发生形变；同一样件受力越大，形变通常越明显；不同材料在相近施力下的形变表现也可能不同。';
     const deformOf = (sample, force)=>{
       const f = Number(force) || 0;
       if(sample === 'spring') return round(Math.min(34, f * 3.2), 1);
@@ -1373,16 +1373,6 @@ body #app .toolbar button:disabled{
       checkmarkEl.classList.add('active');
       clearTimeout(showCheck.t);
       showCheck.t = setTimeout(()=>checkmarkEl.classList.remove('active'), 520);
-    }
-
-    function setAnalysisContent(text=''){
-      analysisText.textContent = text;
-      analysisText.hidden = !text;
-      analysisText.classList.toggle('ok', !!text);
-    }
-
-    function syncContextualControls(){
-      releaseBtn.hidden = !state.freeMode;
     }
 
     function makeInitialApparatus(){
@@ -1579,7 +1569,7 @@ body #app .toolbar button:disabled{
           ? { sample:'spring', force:3, label:'弹簧 3N' }
           : state.currentTask===1
             ? { sample:'spring', force:7, label:'弹簧 7N' }
-            : { sample:'sponge', force:3, label:'海绵 3N' };
+            : { sample:'sponge', force:5, label:'海绵 5N' };
         if(rec.sample !== target.sample || rec.force !== target.force){
           showToast(`当前步骤需要记录“${target.label}”`);
           return false;
@@ -1618,19 +1608,18 @@ body #app .toolbar button:disabled{
         const rsGuided = guidedRecords();
         const spring3 = rsGuided.find(r=>r.sample==='spring' && r.force===3);
         const spring7 = rsGuided.find(r=>r.sample==='spring' && r.force===7);
-        const sponge3 = rsGuided.find(r=>r.sample==='sponge' && r.force===3);
-        ok = !!(spring3 && spring7 && sponge3
-          && Number(spring7.c2) > Number(spring3.c2)
-          && Number(sponge3.c2) !== Number(spring3.c2));
+        const sponge5 = rsGuided.find(r=>r.sample==='sponge' && r.force===5);
+        ok = !!(spring3 && spring7 && sponge5 && Number(spring7.c2) > Number(spring3.c2));
         msg = ok
           ? guidedConclusionText
-          : '请先完成“弹簧 3N、弹簧 7N、海绵 3N”三组记录和两项对比后再分析。';
+          : '请先完成“弹簧 3N、弹簧 7N、海绵 5N”三组记录后再分析。';
         state.guidedAnalysisOk = ok;
         state.analysisMode = ok ? 'guided' : null;
       }
       state.analysisOk = ok;
-      setAnalysisContent(ok ? msg : '');
-      if(showToastMsg) showToast(ok ? '分析完成：结论成立' : msg);
+      analysisText.textContent = msg;
+      analysisText.classList.toggle('ok', ok);
+      if(showToastMsg) showToast(ok ? '分析完成：结论成立' : '分析未通过，请补充实验记录');
       setStatus(ok ? '分析完成，等待确认' : '分析未通过');
       return ok;
     }
@@ -1643,7 +1632,7 @@ body #app .toolbar button:disabled{
         const s7 = rs.find(r=>r.sample==='spring' && r.force===7);
         return !!(s3 && s7 && s7.y > s3.y);
       }
-      if(step===2) return rs.some(r=>r.sample==='sponge' && r.force===3);
+      if(step===2) return rs.some(r=>r.sample==='sponge' && r.force===5);
       if(step===3) return state.guidedAnalysisOk && state.analysisMode === 'guided';
       return false;
     }
@@ -1660,7 +1649,7 @@ body #app .toolbar button:disabled{
             : state.currentTask===1
               ? '请先完成“弹簧 7N”记录并与 3N 对比，再点击“确认观察”。'
               : state.currentTask===2
-                ? '请先切换到海绵并完成“海绵 3N”记录，再点击“确认观察”。'
+                ? '请先切换到海绵并完成“海绵 5N”记录，再点击“确认观察”。'
                 : '请先完成分析结论，再点击“确认观察”。';
           showToast(msg);
         }
@@ -1700,10 +1689,9 @@ body #app .toolbar button:disabled{
       pillD.textContent = `恢复：${ap.recoverPct}%`;
       stageGuide.textContent = state.freeMode
         ? '自由模式：可任意切换样件并探索不同施力导致的形变，再记录与分析。'
-        : '拖动舞台中的压板向下施力；本关卡要求依次完成“弹簧 3N / 弹簧 7N / 海绵 3N”记录。';
+        : '拖动舞台中的压板向下施力；本关卡要求依次完成“弹簧 3N / 弹簧 7N / 海绵 5N”记录。';
       sampleSpringBtn.classList.toggle('active', ap.sample === 'spring');
       sampleSpongeBtn.classList.toggle('active', ap.sample === 'sponge');
-      syncContextualControls();
     }
 
     function clearBadge(){
@@ -1722,7 +1710,8 @@ body #app .toolbar button:disabled{
       state.analysisMode = null;
       state.guidedAnalysisOk = false;
       clearBadge();
-      setAnalysisContent('');
+      analysisText.classList.remove('ok');
+      analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
       renderRecords();
       if(showTip) showToast('数据已清空');
     }
@@ -1816,18 +1805,20 @@ body #app .toolbar button:disabled{
       updateModeHud();
       updateAutoDemoBtn();
       if(state.freeMode){
-        state.analysisOk = false;
-        state.analysisMode = null;
-        setAnalysisContent('');
         taskCard.style.opacity = '.74';
         taskCard.style.filter = 'saturate(.8)';
         setStatus('自由探索');
       }else{
         setSample('spring', false);
         setForce(0, false);
-        state.analysisOk = state.guidedAnalysisOk;
-        state.analysisMode = state.guidedAnalysisOk ? 'guided' : null;
-        setAnalysisContent(state.guidedAnalysisOk ? guidedConclusionText : '');
+        if(state.analysisMode === 'free'){
+          state.analysisOk = false;
+          state.analysisMode = state.guidedAnalysisOk ? 'guided' : null;
+          analysisText.classList.toggle('ok', state.guidedAnalysisOk);
+          analysisText.textContent = state.guidedAnalysisOk
+            ? guidedConclusionText
+            : '暂无。请按步骤操作器材并记录数据后分析。';
+        }
         taskCard.style.opacity = '1';
         taskCard.style.filter = 'none';
         recalcProgress();
@@ -2157,9 +2148,9 @@ body #app .toolbar button:disabled{
         }, 160);
 
         setStepUI(2);
-        setStatus('自动演示：海绵 3N');
+        setStatus('自动演示：海绵 5N');
         await doAction(sampleSpongeBtn, ()=>setSample('sponge', false), 180);
-        await dragForceTo(3);
+        await dragForceTo(5);
         await doRecord();
         await doAction(checkBtn, ()=>{
           if(!tryPassStep(false, true)) throw new Error('AUTO_STEP3_NOT_PASSED');
