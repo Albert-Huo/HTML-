@@ -215,6 +215,7 @@
     .field select{ border:1px solid rgba(255,255,255,.25); border-radius:8px; background:rgba(0,0,0,.4); color:#fff; padding:6px 8px; }
 
     .btnRow{ display:flex; gap:8px; flex-wrap:wrap; }
+    #stage .step-hidden{display:none!important}
     button.main, button.sub{
       border:none;
       border-radius:8px;
@@ -1240,7 +1241,7 @@ body #app .toolbar button:disabled{
         </div>
         <div id="controlFields"></div>
         <div class="btnRow" id="actionBtns"></div>
-        <div class="btnRow" style="margin-top:8px;">
+        <div class="btnRow" id="decisionBtns" style="margin-top:8px;">
           <button class="sub" id="recordBtn">记录当前数据</button>
           <button class="sub" id="checkBtn">确认观察 ✅</button>
           <button class="sub" id="analyzeBtn">分析结论</button>
@@ -1400,10 +1401,10 @@ body #app .toolbar button:disabled{
           {id:'stopWatch', label:'停止计时'}
         ],
         tasks:[
-          {text:'先让摆球稳定摆动，再点“确认观察”。', hint:'提示：先启动摆球。'},
-          {text:'测量 <b>10次完整摆动</b> 的总时长并记录后，再点“确认观察”。', hint:'提示：一次完整摆动，指摆球从同侧最高点出发，再回到同侧最高点。'},
-          {text:'再改为 <b>20次完整摆动</b> 计时并记录比较后，再点“确认观察”。', hint:'提示：引导模式下，这一步只认 20 次完整摆动的数据。'},
-          {text:'点击“分析结论”，确认“总时长/次数”的思路后，再点“确认观察”。', hint:'提示：结论要体现多次计时求单次时间。'}
+          {text:'点击“启动摆球”，让摆球稳定摆动。', hint:'提示：启动成功后会自动进入计时步骤。'},
+          {text:'点击“开始计时”，测量 <b>10次完整摆动</b> 的总时长；辅助停表后记录数据。', hint:'提示：从同侧最高点开始，第10次回到该位置时自动辅助停表。'},
+          {text:'再次点击“开始计时”，测量 <b>20次完整摆动</b> 的总时长；辅助停表后记录数据。', hint:'提示：两组测量保持相同摆动节奏。'},
+          {text:'点击“分析结论”，比较两组数据并完成实验。', hint:'提示：结论要体现多次计时求单次时间。'}
         ]
       },
       18:{
@@ -1528,6 +1529,7 @@ body #app .toolbar button:disabled{
     const recordBtn = $('#recordBtn');
     const checkBtn = $('#checkBtn');
     const analyzeBtn = $('#analyzeBtn');
+    const decisionBtns = $('#decisionBtns');
     const resetBtn = $('#resetBtn');
     const autoDemoBtn = $('#autoDemoBtn');
     const freeBtn = $('#freeBtn');
@@ -1705,7 +1707,14 @@ body #app .toolbar button:disabled{
           measureStartPhase:null,
           measureStartMs:0,
           waitingReference:false,
-          overrun:false
+          overrun:false,
+          targetCycles:0,
+          measurementTempo:'normal',
+          measurementPeriodSec:0,
+          measurementOmega:0,
+          measurementId:0,
+          recordedMeasurementId:-1,
+          guidedTempo:null
         };
         case 18: return { running:false, progress:0, lastTime:null, lastSpeed:null, runCount:0, needsReset:false, rulerMax:3.0 };
         case 19: return { applied:false, lastDeform:0, recoverPct:100, applyCount:0 };
@@ -1737,8 +1746,14 @@ body #app .toolbar button:disabled{
     }
 
     function setStepUI(i){
+      const previousTask = state.currentTask;
       const idx = clamp(i,0,LAB.tasks.length-1);
       state.currentTask = idx;
+      if(LAB_ID === 17 && !state.freeMode){
+        if(state.apparatus && previousTask !== idx && (idx===1 || idx===2)) resetLab17Measurement();
+        if(idx===1) setVar('cycles', 10);
+        if(idx===2) setVar('cycles', 20);
+      }
       const t = LAB.tasks[idx];
       taskStepEl.textContent = `步骤 ${idx+1} / ${LAB.tasks.length}`;
       taskTextEl.innerHTML = t.text;
@@ -1748,10 +1763,19 @@ body #app .toolbar button:disabled{
         d.classList.toggle('done', n<idx || state.completed);
         d.classList.toggle('warn', !state.completed && n===state.stepWarnIdx);
       });
+      syncLab17Controls();
     }
 
     function setFreeMode(on){
+      const wasFree = state.freeMode;
       state.freeMode = !!on;
+      if(LAB_ID === 17 && wasFree && !state.freeMode){
+        resetLab17Measurement();
+        state.apparatus.guidedTempo = null;
+        setVar('tempo', 'normal');
+        if(state.currentTask===1) setVar('cycles', 10);
+        if(state.currentTask===2) setVar('cycles', 20);
+      }
       updateModeHud();
       updateAutoDemoBtn();
       if(state.freeMode){
@@ -1763,6 +1787,7 @@ body #app .toolbar button:disabled{
         taskCard.style.filter = 'none';
         setStatus(state.completed ? '挑战完成' : '待开始');
       }
+      syncLab17Controls();
     }
 
     function setStatus(msg){
@@ -1814,6 +1839,7 @@ body #app .toolbar button:disabled{
         controlFields.appendChild(wrap);
         refreshControlPill(def);
       }
+      syncLab17Controls();
     }
 
     function randIn(a,b){ return a + Math.random()*(b-a); }
@@ -1841,15 +1867,85 @@ body #app .toolbar button:disabled{
       if(def) refreshControlPill(def);
     }
 
+    function lab17PeriodSec(tempo){
+      return tempo === 'slow' ? 1.2 : tempo === 'fast' ? 0.5 : 0.8;
+    }
+
+    function resetLab17Measurement(){
+      if(LAB_ID !== 17 || !state.apparatus) return;
+      const ap = state.apparatus;
+      ap.stopwatchRunning = false;
+      ap.stopwatchStart = 0;
+      ap.elapsed = 0;
+      ap.measured = false;
+      ap.cyclesDone = 0;
+      ap.measureStartPhase = null;
+      ap.measureStartMs = 0;
+      ap.waitingReference = false;
+      ap.overrun = false;
+      ap.targetCycles = 0;
+      ap.measurementPeriodSec = 0;
+      ap.measurementOmega = 0;
+      ap.measurementId += 1;
+      updatePills();
+      syncLab17Controls();
+    }
+
+    function syncLab17Controls(){
+      if(LAB_ID !== 17) return;
+      const ap = state.apparatus;
+      const toggle = (element, show)=>{
+        if(!element) return;
+        element.classList.toggle('step-hidden', !show);
+        if(show) element.style.removeProperty('display');
+        else element.style.setProperty('display', 'none', 'important');
+      };
+      const actionButton = id=>actionBtns?.querySelector(`[data-action-id="${id}"]`);
+      const actionIds = ['startPendulum','startWatch','stopWatch'];
+      const actionVisibility = Object.fromEntries(actionIds.map(id=>[id, false]));
+      const guided = !state.freeMode;
+      const task = state.currentTask;
+
+      if(!guided){
+        actionIds.forEach(id=>{ actionVisibility[id] = true; });
+        toggle(controlFields, true);
+        toggle(recordBtn, true);
+        toggle(checkBtn, false);
+        toggle(analyzeBtn, true);
+        toggle(analysisText, true);
+      }else{
+        toggle(controlFields, false);
+        toggle(checkBtn, false);
+        toggle(analyzeBtn, task===3);
+        toggle(analysisText, task===3 && !analysisText.textContent.startsWith('暂无'));
+        const readyToRecord = !!ap?.measured && ap.recordedMeasurementId !== ap.measurementId;
+        toggle(recordBtn, (task===1 || task===2) && readyToRecord);
+        if(task===0) actionVisibility.startPendulum = !ap?.pendulumOn;
+        if((task===1 || task===2) && !ap?.stopwatchRunning && !ap?.measured){
+          actionVisibility.startWatch = true;
+        }
+        recordBtn.textContent = task===1 ? '记录10次数据' : task===2 ? '记录20次数据' : '记录当前数据';
+      }
+
+      for(const id of actionIds) toggle(actionButton(id), actionVisibility[id]);
+      toggle(actionBtns, actionIds.some(id=>actionVisibility[id]));
+      toggle(decisionBtns, [recordBtn,checkBtn,analyzeBtn].some(button=>button && !button.classList.contains('step-hidden')));
+      controlFields?.querySelectorAll('select,input').forEach(input=>{
+        input.disabled = !!ap?.stopwatchRunning;
+      });
+    }
+
     function initActionButtons(){
       actionBtns.innerHTML = '';
       for(const a of LAB.actions){
         const b = document.createElement('button');
         b.className = a.id.includes('run') || a.id.includes('apply') || a.id.includes('measure') || a.id.includes('stopWatch') ? 'main' : 'sub';
+        b.dataset.actionId = a.id;
         b.textContent = a.label;
         b.addEventListener('click', ()=>{ if(!state.autoPlaying) performAction(a.id, true); });
         actionBtns.appendChild(b);
       }
+      syncLab17Controls();
     }
 
     function performAction(actionId, showStep=true){
@@ -1931,11 +2027,17 @@ body #app .toolbar button:disabled{
           }
           if(actionId === 'startWatch'){
             if(!ap.pendulumOn){ showToast('请先启动摆球'); break; }
-            const periodSec = state.vars.tempo === 'slow' ? 1.2 : state.vars.tempo === 'fast' ? 0.5 : 0.8;
+            if(ap.stopwatchRunning){ showToast('秒表正在计时'); break; }
+            const guidedTarget = state.currentTask===2 ? 20 : 10;
+            const targetCycles = state.freeMode ? Number(state.vars.cycles) : guidedTarget;
+            if(!state.freeMode && !ap.guidedTempo) ap.guidedTempo = state.vars.tempo;
+            const measurementTempo = state.freeMode ? state.vars.tempo : ap.guidedTempo;
+            const periodSec = lab17PeriodSec(measurementTempo);
             const omega = (Math.PI * 2) / (periodSec * 1000);
             const now = performance.now();
             const phase = now * omega;
             const nextPeakPhase = Math.ceil((phase - Math.PI / 2) / (Math.PI * 2)) * (Math.PI * 2) + Math.PI / 2;
+            ap.measurementId += 1;
             ap.stopwatchRunning = true;
             ap.stopwatchStart = 0;
             ap.measureStartPhase = nextPeakPhase;
@@ -1945,6 +2047,10 @@ body #app .toolbar button:disabled{
             ap.cyclesDone = 0;
             ap.measured = false;
             ap.overrun = false;
+            ap.targetCycles = targetCycles;
+            ap.measurementTempo = measurementTempo;
+            ap.measurementPeriodSec = periodSec;
+            ap.measurementOmega = omega;
             changed = true;
             setStatus('秒表计时中，等待起始参考点');
           }
@@ -1954,7 +2060,7 @@ body #app .toolbar button:disabled{
             ap.waitingReference = false;
             ap.elapsed = round(ap.elapsed, 2);
             ap.measured = ap.cyclesDone > 0;
-            const targetCycles = Number(state.vars.cycles);
+            const targetCycles = ap.targetCycles || Number(state.vars.cycles);
             if(ap.cyclesDone === 0){
               setStatus('尚未经过起始参考点，可重新开始计时');
             }else if(state.freeMode){
@@ -2050,6 +2156,12 @@ body #app .toolbar button:disabled{
       if(changed){
         updatePills();
         scheduleChart();
+        if(LAB_ID === 17){
+          syncLab17Controls();
+          if(showStep && !state.freeMode && actionId === 'startPendulum' && state.currentTask===0){
+            tryPassStep(false);
+          }
+        }
       }
       return changed;
     }
@@ -2079,7 +2191,7 @@ body #app .toolbar button:disabled{
         case 17:{
           if(!ap.measured){ showToast('请先完成一次计时'); return null; }
           const single = round(ap.elapsed / ap.cyclesDone, 3);
-          return { c1:`${ap.cyclesDone}次完整摆动`, c2:String(ap.elapsed), c3:String(single), c4:`节奏:${state.vars.tempo}`, y:single };
+        return { c1:`${ap.cyclesDone}次完整摆动`, c2:String(ap.elapsed), c3:String(single), c4:`节奏:${ap.measurementTempo || state.vars.tempo}`, y:single };
         }
         case 18:{
           if(ap.lastTime===null || ap.lastSpeed===null){ showToast('请先发车并计时'); return null; }
@@ -2097,9 +2209,13 @@ body #app .toolbar button:disabled{
       return null;
     }
 
-    function addRecord(){
+    function addRecord(fromAuto=false){
       const rec = buildRecord();
       if(!rec) return false;
+      if(LAB_ID === 17 && state.apparatus.recordedMeasurementId === state.apparatus.measurementId){
+        showToast('本组计时数据已经记录');
+        return false;
+      }
       if(LAB_ID === 17 && !state.freeMode){
         if(!(state.currentTask===1 || state.currentTask===2)){
           showToast('请在需要记录的步骤中再记录数据');
@@ -2120,7 +2236,14 @@ body #app .toolbar button:disabled{
         }
       }
       pushRecord(rec);
-      setStatus(state.freeMode ? '自由探索' : '已记录，等待确认');
+      if(LAB_ID === 17){
+        state.apparatus.recordedMeasurementId = state.apparatus.measurementId;
+        setStatus(state.freeMode ? '自由探索' : '数据已记录，正在进入下一步');
+        syncLab17Controls();
+        if(!state.freeMode && !fromAuto) tryPassStep(false);
+      }else{
+        setStatus(state.freeMode ? '自由探索' : '已记录，等待确认');
+      }
       return true;
     }
 
@@ -2193,6 +2316,7 @@ body #app .toolbar button:disabled{
       state.analysisOk = ok;
       analysisText.textContent = msg;
       analysisText.classList.toggle('ok', ok);
+      if(LAB_ID === 17) syncLab17Controls();
       if(showToastMsg) showToast(ok ? '分析完成：结论成立' : '分析未通过，请补充实验记录');
       setStatus(ok ? '分析完成，等待确认' : '分析未通过');
       return ok;
@@ -2757,7 +2881,9 @@ body #app .toolbar button:disabled{
       const ap = state.apparatus;
       if(LAB_ID === 14 && ap.shaken) ap.bubblePhase += dt*0.004;
       if(LAB_ID === 17 && ap.pendulumOn){
-        const periodSec = state.vars.tempo === 'slow' ? 1.2 : state.vars.tempo === 'fast' ? 0.5 : 0.8;
+        const periodSec = ap.stopwatchRunning && ap.measurementPeriodSec
+          ? ap.measurementPeriodSec
+          : lab17PeriodSec(state.vars.tempo);
         const omega = (Math.PI * 2) / (periodSec * 1000);
         const now = performance.now();
         const phase = now * omega;
@@ -2771,10 +2897,20 @@ body #app .toolbar button:disabled{
             ap.overrun = false;
           }
           if(!ap.waitingReference && ap.stopwatchStart){
-            ap.elapsed = Math.max(0, (now - ap.stopwatchStart) / 1000);
-            ap.cyclesDone = Math.max(0, Math.floor(((phase - ap.measureStartPhase) / (Math.PI * 2)) + 1e-6));
-            if(!state.freeMode){
-              ap.overrun = ap.cyclesDone > Number(state.vars.cycles);
+            const completedCycles = Math.max(0, Math.floor(((phase - ap.measureStartPhase) / (Math.PI * 2)) + 1e-6));
+            if(!state.freeMode && completedCycles >= ap.targetCycles){
+              ap.cyclesDone = ap.targetCycles;
+              ap.elapsed = round(ap.targetCycles * ap.measurementPeriodSec, 2);
+              ap.stopwatchRunning = false;
+              ap.waitingReference = false;
+              ap.measured = true;
+              ap.overrun = false;
+              setStatus(`达到${ap.targetCycles}次完整摆动，已辅助停表`);
+              syncLab17Controls();
+            }else{
+              ap.elapsed = Math.max(0, (now - ap.stopwatchStart) / 1000);
+              ap.cyclesDone = completedCycles;
+              ap.overrun = false;
             }
           }
           updatePills();
@@ -2993,6 +3129,7 @@ body #app .toolbar button:disabled{
       if(!state.autoPlaying) return;
       state.autoPlaying = false;
       state.autoRunId += 1;
+      if(LAB_ID === 17) resetLab17Measurement();
       autoDemoBtn.disabled = true;
       autoDemoBtn.textContent = '正在退出...';
       setDemoCursorVisible(false);
@@ -3042,35 +3179,18 @@ body #app .toolbar button:disabled{
       const doR = async (ms=320)=>{
         const beforeLen = state.records.length;
         await clickEl(recordBtn, 120, false);
-        if(!addRecord()) throw new Error('AUTO_RECORD_FAILED');
+        if(!addRecord(true)) throw new Error('AUTO_RECORD_FAILED');
         if(state.records.length <= beforeLen) throw new Error('AUTO_RECORD_NOT_PERSISTED');
         await /* codex-physics-mode-source:phase-record-confirm */ wait(ms, 'recordConfirm');
       };
-      const waitForCycles = async (target, timeoutMs=18000)=>{
+      const waitForMeasurement = async (target, timeoutMs=18000)=>{
         const start = performance.now();
         while(true){
           ensure();
-          if(state.apparatus.cyclesDone >= target) return;
+          if(state.apparatus.measured && !state.apparatus.stopwatchRunning && state.apparatus.cyclesDone === target) return;
           if(performance.now() - start > timeoutMs) throw new Error(`AUTO_CYCLE_TIMEOUT:${target}`);
           await sleep(40);
         }
-      };
-      const stopAtCycles = async (target, btnIndex, timeoutMs=18000)=>{
-        const btn = actionBtns.children[btnIndex];
-        if(!btn) throw new Error('AUTO_STOP_BTN_MISSING');
-        const {x,y} = centerOf(btn);
-        await moveDemoCursorTo(x, y, 160);
-        const start = performance.now();
-        while(true){
-          ensure();
-          if(state.apparatus.cyclesDone >= target) break;
-          if(performance.now() - start > timeoutMs) throw new Error(`AUTO_STOP_TIMEOUT:${target}`);
-          await sleep(16);
-        }
-        await pulseDemoCursor(110);
-        if(!performAction('stopWatch', false)) throw new Error('AUTO_STOP_ACTION_FAILED');
-        updatePills();
-        await wait(150);
       };
 
       try{
@@ -3087,7 +3207,6 @@ body #app .toolbar button:disabled{
         setStatus('自动演示：启动摆球');
         await wait(420);
         await doA('startPendulum', 900, 0);
-        await clickEl(checkBtn, 160, false);
         if(!tryPassStep(false, true)) throw new Error('AUTO_STEP1_NOT_PASSED');
 
         setStepUI(1);
@@ -3096,9 +3215,8 @@ body #app .toolbar button:disabled{
         setVar('tempo', 'fast');
         setVar('cycles', 10);
         await doA('startWatch', 220, 1);
-        await stopAtCycles(10, 2, 9000);
+        await waitForMeasurement(10, 9000);
         await doR();
-        await clickEl(checkBtn, 160, false);
         if(!tryPassStep(false, true)) throw new Error('AUTO_STEP2_NOT_PASSED');
 
         setStepUI(2);
@@ -3106,9 +3224,8 @@ body #app .toolbar button:disabled{
         await wait(360);
         setVar('cycles', 20);
         await doA('startWatch', 220, 1);
-        await stopAtCycles(20, 2, 15000);
+        await waitForMeasurement(20, 15000);
         await doR();
-        await clickEl(checkBtn, 160, false);
         if(!tryPassStep(false, true)) throw new Error('AUTO_STEP3_NOT_PASSED');
 
         setStepUI(3);
@@ -3117,7 +3234,6 @@ body #app .toolbar button:disabled{
         await clickEl(analyzeBtn, 160, false);
         if(!analyzeConclusion(false)) throw new Error('AUTO_ANALYSIS_NOT_READY');
         await wait(260);
-        await clickEl(checkBtn, 160, false);
         if(!tryPassStep(false, true)) throw new Error('AUTO_STEP4_NOT_PASSED');
       }catch(err){
         if(err && err.message !== 'auto-cancelled' && err.code !== 'MODE_CONTROL_CANCELLED' /* codex-physics-mode-source:cancel-catch */){
@@ -3135,6 +3251,7 @@ body #app .toolbar button:disabled{
         resetBtn.disabled = false;
         freeBtn.disabled = false;
         autoDemoBtn.disabled = false;
+        if(LAB_ID === 17 && (cancelled || failed)) resetLab17Measurement();
         setDemoCursorVisible(false);
         updateModeHud();
         updateAutoDemoBtn();
@@ -3148,9 +3265,13 @@ body #app .toolbar button:disabled{
       controlToggleBtn.addEventListener('click', ()=>setControlCollapsed(!state.controlCollapsed));
       dataToggleBtn.addEventListener('click', ()=>setDataCollapsed(!state.dataCollapsed));
 
-      recordBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) addRecord(); });
+      recordBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) addRecord(false); });
       checkBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) tryPassStep(true); });
-      analyzeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) analyzeConclusion(true); });
+      analyzeBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        const ok = analyzeConclusion(true);
+        if(LAB_ID === 17 && !state.freeMode && ok) tryPassStep(false);
+      });
       resetBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) resetFlow(true); });
       autoDemoBtn.addEventListener('click', ()=>{ if(state.autoPlaying) requestStopAutoDemo(); else autoDemo(); });
       freeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setFreeMode(!state.freeMode); });
