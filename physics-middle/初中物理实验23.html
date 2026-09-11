@@ -980,6 +980,101 @@ body #app .toolbar button:disabled{
     #stage .observation-panel{ top:104px !important; left:96px !important; right:10px !important; width:auto !important; }
   }
 </style>
+<style id="codex-exp23-layout-quiz-v1">
+  body #app #stage#stage[data-lab-id="23"] #actionBtns:empty,
+  body #app #stage#stage[data-lab-id="23"] #controlFields:empty,
+  body #app #stage#stage[data-lab-id="23"] #recordActions[hidden],
+  body #app #stage#stage[data-lab-id="23"] #analysisText[hidden],
+  #lab23QuizCard[hidden]{ display:none !important; }
+
+  .lab23-quiz-card{
+    width:100%;
+    max-width:980px;
+    margin-top:10px;
+    padding:12px 14px;
+    border:1px solid rgba(61,220,151,.4);
+    border-radius:12px;
+    background:linear-gradient(135deg,rgba(61,220,151,.12),rgba(80,150,255,.09));
+    box-shadow:0 10px 24px rgba(0,0,0,.24);
+    display:grid;
+    grid-template-columns:minmax(210px,.85fr) minmax(0,1.65fr);
+    gap:12px;
+    align-items:center;
+  }
+  .lab23-quiz-copy{ min-width:0; }
+  .lab23-quiz-kicker{
+    color:#7fe6b1;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:.04em;
+  }
+  .lab23-quiz-text{
+    margin-top:4px;
+    color:#f4f8ff;
+    font-size:14px;
+    font-weight:700;
+    line-height:1.5;
+  }
+  .lab23-quiz-feedback{
+    min-height:18px;
+    margin-top:5px;
+    color:#ffd166;
+    font-size:12px;
+    line-height:1.45;
+  }
+  .lab23-quiz-options{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:8px;
+  }
+  .lab23-quiz-option{
+    min-height:58px;
+    padding:8px 10px;
+    border:1px solid rgba(255,255,255,.2);
+    border-radius:10px;
+    background:rgba(6,13,22,.7);
+    color:#eaf2ff;
+    font:600 12px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+    cursor:pointer;
+  }
+  .lab23-quiz-option:hover,
+  .lab23-quiz-option:focus-visible{
+    border-color:#7fe6b1;
+    outline:none;
+    box-shadow:0 0 0 2px rgba(61,220,151,.18);
+  }
+  .lab23-quiz-option.wrong{
+    border-color:#ff7f7f;
+    background:rgba(129,35,44,.3);
+  }
+  .lab23-quiz-option.correct{
+    border-color:#7fe6b1;
+    background:rgba(24,118,82,.32);
+  }
+  :root[data-theme="light"] .lab23-quiz-card{
+    border-color:rgba(16,145,98,.34);
+    background:linear-gradient(135deg,rgba(16,145,98,.1),rgba(43,112,203,.07));
+    box-shadow:0 10px 24px rgba(34,52,72,.12);
+  }
+  :root[data-theme="light"] .lab23-quiz-kicker{ color:#087d54; }
+  :root[data-theme="light"] .lab23-quiz-text{ color:#14243a; }
+  :root[data-theme="light"] .lab23-quiz-option{
+    border-color:rgba(36,61,90,.2);
+    background:rgba(255,255,255,.82);
+    color:#16263a;
+  }
+  @media (max-width:720px){
+    .lab23-quiz-card{
+      margin-top:8px;
+      padding:10px;
+      grid-template-columns:minmax(0,1fr);
+      gap:8px;
+    }
+    .lab23-quiz-text{ font-size:13px; }
+    .lab23-quiz-options{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+    .lab23-quiz-option{ min-height:42px; padding:7px 10px; }
+  }
+</style>
 
 </head>
 <body>
@@ -1215,6 +1310,15 @@ body #app .toolbar button:disabled{
     <div class="progress-dots" id="dots"></div>
   </div>
 
+  <section class="lab23-quiz-card" id="lab23QuizCard" aria-labelledby="lab23QuizText" hidden>
+    <div class="lab23-quiz-copy">
+      <div class="lab23-quiz-kicker">结论判断</div>
+      <div class="lab23-quiz-text" id="lab23QuizText">作用在同一辆小车上的两个力，满足什么条件时小车处于平衡状态？</div>
+      <div class="lab23-quiz-feedback" id="lab23QuizFeedback" aria-live="polite"></div>
+    </div>
+    <div class="lab23-quiz-options" id="lab23QuizOptions" role="group" aria-label="二力平衡条件选项"></div>
+  </section>
+
   <div id="stage">
     <div class="hud">
       <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/4</span>
@@ -1243,11 +1347,11 @@ body #app .toolbar button:disabled{
         </div>
         <div id="controlFields"></div>
         <div class="btnRow" id="actionBtns"></div>
-        <div class="btnRow" style="margin-top:8px;">
+        <div class="btnRow" id="recordActions" style="margin-top:8px;">
           <button class="sub" id="recordBtn">记录当前数据</button>
           <button class="sub" id="analyzeBtn">分析结论</button>
         </div>
-        <div class="analysis" id="analysisText" style="margin-top:8px;">暂无。请按步骤操作器材并记录数据后分析。</div>
+        <div class="analysis" id="analysisText" style="margin-top:8px;" hidden>暂无。请按步骤操作器材并记录数据后分析。</div>
       </div>
     </div>
 
@@ -1276,6 +1380,14 @@ body #app .toolbar button:disabled{
       </svg>
     </div>
     <div class="demoCursorPulse" id="demoCursorPulse" aria-hidden="true"></div>
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock">
+        <span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span>
+      </button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock">
+        <span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span>
+      </button>
+    </div>
   </div>
 
   <div class="toolbar">
@@ -1556,7 +1668,7 @@ body #app .toolbar button:disabled{
           {text:'把钩码拖到左右托盘，使两个托盘中的钩码数量不相等，并记录小车向较重一侧运动的现象。', hint:'可先让左侧1个、右侧2个；观察到小车向较重一侧运动后记录。'},
           {text:'再把左右托盘中的钩码数量调成相等，并记录小车保持静止的现象。', hint:'把两侧调成相同数量，且车身保持正对两侧拉线后记录。'},
           {text:'保持左右钩码数量相等，拖动车身扭转一个角度后释放，并记录小车转回原方向的现象。', hint:'第3步必须是“质量相等 + 受力不在同一直线”，释放后观察小车转动。'},
-          {text:'点击“分析结论”，总结二力平衡的条件。', hint:'结论应包含“大小相等、方向相反、作用在同一直线上”。'}
+          {text:'根据前三组实验记录，选择正确的<b>二力平衡条件</b>。', hint:'判断作用在同一物体上的两个力时，要同时比较大小、方向以及是否在同一直线上。'}
         ]
       },
       24:{
@@ -1770,6 +1882,7 @@ body #app .toolbar button:disabled{
 
     const controlFields = $('#controlFields');
     const actionBtns = $('#actionBtns');
+    const recordActions = $('#recordActions');
 
     const controlDock = $('#controlDock');
     const controlHead = $('#controlHead');
@@ -1791,6 +1904,10 @@ body #app .toolbar button:disabled{
 
     const analysisText = $('#analysisText');
     const recordBody = $('#recordBody');
+    const lab23QuizCard = $('#lab23QuizCard');
+    const lab23QuizText = $('#lab23QuizText');
+    const lab23QuizFeedback = $('#lab23QuizFeedback');
+    const lab23QuizOptions = $('#lab23QuizOptions');
 
     const checkmarkEl = $('#checkmark');
     const demoCursorEl = $('#demoCursor');
@@ -1821,6 +1938,7 @@ body #app .toolbar button:disabled{
       vars:{},
       records:[],
       analysisOk:false,
+      lab23QuizPassed:false,
       timers:new Set(),
       rafId:0,
       lastTs:0,
@@ -2043,6 +2161,7 @@ body #app .toolbar button:disabled{
           cartReleased:false,
           dragMode:'',
           dragWeightId:'',
+          dragOriginPlace:'',
           dragSceneX:0,
           dragSceneY:0,
           dragStartAngle:0,
@@ -2062,6 +2181,7 @@ body #app .toolbar button:disabled{
 
     function initUIStatic(){
       document.title = `初中物理实验${LAB_ID}｜${LAB.name}（交互版）`;
+      stageEl.dataset.labId = String(LAB_ID);
       doneText.textContent = `你已完成“${LAB.name}”的核心操作链与数据分析。`;
       expTitle.textContent = `实验名：${LAB.name}`;
       apparatusHint.textContent = `操作与器材：${LAB.apparatusHint}`;
@@ -2108,6 +2228,8 @@ body #app .toolbar button:disabled{
       taskHintEl.textContent = t.hint;
       renderStepDots();
       updateModeTag();
+      renderLab23Quiz();
+      renderLab23ControlState();
     }
 
     function updateModeTag(){/* codex-physics-mode-source:ui-guard */if(document.documentElement.dataset.codexModeControls==="physics-middle-mode-controls-v1")return;/* /codex-physics-mode-source:ui-guard */
@@ -2131,6 +2253,8 @@ body #app .toolbar button:disabled{
         taskCard.style.filter = 'none';
         recalcProgress();
       }
+      renderLab23Quiz();
+      renderLab23ControlState();
     }
 
     function setStatus(msg){
@@ -2786,6 +2910,10 @@ body #app .toolbar button:disabled{
           return { c1:String(ap.lastMass), c2:String(round(ap.lastMass*9.8,2)), c3:String(ap.lastN), c4:'调零后读取', y:ap.lastN };
         }
         case 23:{
+          if(ap.dragMode === 'weight' || ap.dragWeightId || (ap.weights || []).some(weight=>weight.place === 'drag')){
+            showToast('请先放下钩码，再记录实验现象');
+            return null;
+          }
           if(ap.leftCount === 0 && ap.rightCount === 0){ showToast('请先把钩码拖到左右托盘'); return null; }
           if(ap.lastScenario === 'mass_diff'){
             if(Math.abs(ap.cartX || 0) < 16 && Math.abs(ap.cartVX || 0) < 0.08){
@@ -2887,6 +3015,7 @@ body #app .toolbar button:disabled{
         state.unseenRecordCount = 0;
       }
       refreshDataNotice();
+      renderLab23Quiz();
       tryPassStep(false);
     }
 
@@ -3031,6 +3160,7 @@ body #app .toolbar button:disabled{
       }
       state.analysisOk = ok;
       analysisText.textContent = msg;
+      analysisText.hidden = false;
       analysisText.classList.toggle('ok', ok);
       if(showToastMsg) showToast(ok ? '分析完成：结论成立' : '分析未通过，请补充实验记录');
       if(!state.autoPlaying) tryPassStep(false);
@@ -3108,7 +3238,7 @@ body #app .toolbar button:disabled{
             const base = getLab23GuidedRecords();
             return base.some(r=>r.c4.includes('不同直线'));
           }
-          if(step===3) return state.analysisOk;
+          if(step===3) return state.lab23QuizPassed && state.analysisOk;
           return false;
         case 24:
           if(step===0) return ap.slowObserved;
@@ -3164,8 +3294,18 @@ body #app .toolbar button:disabled{
         return false;
       }
       state.successCooldown = true;
+      const passingStep = state.currentTask;
       showCheck();
       trackTimeout(()=>{
+        const stillEligible = !state.freeMode
+          && !state.autoPlaying
+          && !state.completed
+          && state.currentTask === passingStep
+          && checkStepPass(passingStep);
+        if(!stillEligible){
+          state.successCooldown = false;
+          return;
+        }
         if(state.currentTask < LAB.tasks.length - 1) setStepUI(state.currentTask + 1);
         else finishLab();
         state.successCooldown = false;
@@ -3506,6 +3646,90 @@ body #app .toolbar button:disabled{
       return state.records.filter(r=>r.mode !== 'free');
     }
 
+    function lab23GuidedRecordsComplete(){
+      if(LAB_ID !== 23) return false;
+      const base = getLab23GuidedRecords();
+      return base.some(r=>r.c4.includes('质量不等'))
+        && base.some(r=>r.c3 === '平衡' && r.c4.includes('同一直线'))
+        && base.some(r=>r.c4.includes('不同直线'));
+    }
+
+    function renderLab23ControlState(){
+      if(LAB_ID !== 23) return;
+      const guidedConclusionStep = !state.freeMode && state.currentTask === LAB.tasks.length - 1;
+      analyzeBtn.hidden = !state.freeMode;
+      recordBtn.hidden = guidedConclusionStep;
+      recordActions.hidden = recordBtn.hidden && analyzeBtn.hidden;
+      if(!state.analysisOk || (!state.freeMode && !state.lab23QuizPassed)) analysisText.hidden = true;
+    }
+
+    function renderLab23Quiz(){
+      if(LAB_ID !== 23 || !lab23QuizCard) return;
+      const shouldShow = !state.freeMode
+        && !state.completed
+        && state.currentTask === LAB.tasks.length - 1
+        && lab23GuidedRecordsComplete();
+      lab23QuizCard.hidden = !shouldShow;
+      if(shouldShow && !state.lab23QuizPassed){
+        [...lab23QuizOptions.querySelectorAll('button')].forEach((option)=>{ option.disabled = false; });
+      }
+      if(shouldShow && !lab23QuizFeedback.textContent){
+        lab23QuizFeedback.textContent = '请选择最符合三组实验现象的结论。';
+      }
+    }
+
+    function handleLab23QuizAnswer(isCorrect, button){
+      if(LAB_ID !== 23 || state.completed || state.freeMode || state.currentTask !== LAB.tasks.length - 1 || !lab23GuidedRecordsComplete()) return;
+      [...lab23QuizOptions.querySelectorAll('button')].forEach((option)=>option.classList.remove('correct','wrong'));
+      button.classList.add(isCorrect ? 'correct' : 'wrong');
+      if(!isCorrect){
+        state.lab23QuizPassed = false;
+        state.analysisOk = false;
+        analysisText.hidden = true;
+        lab23QuizFeedback.textContent = '还差一个平衡条件。请对照三组记录，再比较大小、方向和作用线。';
+        setStatus('结论未通过，请根据三组记录再判断');
+        showToast('结论不完整，请再试一次');
+        return;
+      }
+      state.lab23QuizPassed = true;
+      lab23QuizFeedback.textContent = '判断正确：三个条件必须同时满足。';
+      const ok = analyzeConclusion(false);
+      if(!ok){
+        state.lab23QuizPassed = false;
+        renderLab23Quiz();
+        showToast('实验记录还不完整，请检查前三组现象');
+        return;
+      }
+      analysisText.hidden = false;
+      [...lab23QuizOptions.querySelectorAll('button')].forEach((option)=>{ option.disabled = true; });
+      renderLab23Quiz();
+      renderLab23ControlState();
+      setStatus('结论正确，三个条件同时满足');
+      showToast('判断正确：已得出二力平衡条件');
+    }
+
+    function initLab23Quiz(){
+      if(LAB_ID !== 23 || !lab23QuizOptions) return;
+      const choices = [
+        { text:'大小相等、方向相反，并且在同一直线上', correct:true },
+        { text:'大小相等、方向相同，并且在同一直线上', correct:false },
+        { text:'大小相等、方向相反，但不在同一直线上', correct:false },
+        { text:'大小不相等、方向相反，并且在同一直线上', correct:false }
+      ];
+      lab23QuizOptions.innerHTML = '';
+      choices.forEach((choice)=>{
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'lab23-quiz-option';
+        button.textContent = choice.text;
+        button.dataset.correct = String(choice.correct);
+        button.addEventListener('click', ()=>handleLab23QuizAnswer(choice.correct, button));
+        lab23QuizOptions.appendChild(button);
+      });
+      renderLab23Quiz();
+      renderLab23ControlState();
+    }
+
     function getLab23WeightSlotPoint(place, idx){
       const g = getLab23Layout();
       if(place === 'reserve'){
@@ -3526,7 +3750,7 @@ body #app .toolbar button:disabled{
     }
 
     function getLab23WeightRenderInfo(ap = state.apparatus){
-      const groups = { reserve:[], left:[], right:[] };
+      const groups = { reserve:[], left:[], right:[], drag:[] };
       (ap.weights || []).forEach(w=>{
         const k = groups[w.place] ? w.place : 'reserve';
         groups[k].push(w);
@@ -3544,6 +3768,9 @@ body #app .toolbar button:disabled{
           });
         });
       }
+      groups.drag.forEach((w)=>{
+        items.push({ id:w.id, place:'drag', x:ap.dragSceneX, y:ap.dragSceneY });
+      });
       return items;
     }
 
@@ -3641,9 +3868,10 @@ body #app .toolbar button:disabled{
 
     function getLab23DropPlace(x, y){
       const g = getLab23Layout();
-      const inLeft = x >= g.leftTrayX - 18 && x <= g.leftTrayX + g.trayW + 18 && y >= g.trayY - 40 && y <= g.trayY + 26;
+      const trayHitPaddingX = 10;
+      const inLeft = x >= g.leftTrayX - trayHitPaddingX && x <= g.leftTrayX + g.trayW + trayHitPaddingX && y >= g.trayY - 40 && y <= g.trayY + 26;
       if(inLeft) return 'left';
-      const inRight = x >= g.rightTrayX - 18 && x <= g.rightTrayX + g.trayW + 18 && y >= g.trayY - 40 && y <= g.trayY + 26;
+      const inRight = x >= g.rightTrayX - trayHitPaddingX && x <= g.rightTrayX + g.trayW + trayHitPaddingX && y >= g.trayY - 40 && y <= g.trayY + 26;
       if(inRight) return 'right';
       const reserveW = g.reserveGapX * (g.reserveCols - 1) + 44;
       const reserveH = g.reserveGapY * 1 + 34;
@@ -3651,19 +3879,8 @@ body #app .toolbar button:disabled{
       return inReserve ? 'reserve' : null;
     }
 
-    function placeLab23Weight(id, place){
+    function refreshLab23WeightCondition(ap = state.apparatus){
       if(LAB_ID !== 23) return;
-      const ap = state.apparatus;
-      const weight = (ap.weights || []).find(w=>w.id === id);
-      if(!weight) return;
-      weight.place = place || 'reserve';
-      ap.dragWeightId = '';
-      ap.dragMode = '';
-      ap.cartReleased = false;
-      ap.twistObserved = false;
-      ap.cartAngV = 0;
-      ap.cartAngle = 0;
-      ap.sameLine = true;
       syncLab23HandlesFromForces(ap);
       if(ap.leftCount === 0 && ap.rightCount === 0){
         ap.cartX = 0;
@@ -3678,10 +3895,69 @@ body #app .toolbar button:disabled{
         setStatus(ap.lastObserved);
       }else{
         ap.lastScenario = 'equal_straight';
-        ap.lastObserved = '质量相等，且在同一直线上，小车保持静止';
+        const returning = Math.abs(ap.cartX || 0) >= 2.5 || Math.abs(ap.cartVX || 0) >= 0.03;
+        ap.lastObserved = returning ? '质量相等，小车回到平衡位置' : '质量相等，且在同一直线上，小车保持静止';
         setStatus(ap.lastObserved);
       }
       updatePills();
+    }
+
+    function resetLab23WeightCondition(ap = state.apparatus){
+      ap.cartReleased = false;
+      ap.twistObserved = false;
+      ap.cartAngV = 0;
+      ap.cartAngle = 0;
+      ap.sameLine = true;
+    }
+
+    function beginLab23WeightDrag(id, x, y){
+      if(LAB_ID !== 23) return null;
+      const ap = state.apparatus;
+      if(ap.dragWeightId) return null;
+      const weight = (ap.weights || []).find(w=>w.id === id);
+      if(!weight || !['reserve','left','right'].includes(weight.place)) return null;
+      const originPlace = weight.place;
+      ap.dragMode = 'weight';
+      ap.dragWeightId = id;
+      ap.dragOriginPlace = originPlace;
+      ap.dragSceneX = x;
+      ap.dragSceneY = y;
+      weight.place = 'drag';
+      if(originPlace === 'left' || originPlace === 'right'){
+        resetLab23WeightCondition(ap);
+        refreshLab23WeightCondition(ap);
+      }
+      return originPlace;
+    }
+
+    function cancelLab23WeightDrag(){
+      if(LAB_ID !== 23) return;
+      const ap = state.apparatus;
+      const weight = (ap.weights || []).find(w=>w.id === ap.dragWeightId);
+      const originPlace = ap.dragOriginPlace || 'reserve';
+      if(weight) weight.place = originPlace;
+      ap.dragMode = '';
+      ap.dragWeightId = '';
+      ap.dragOriginPlace = '';
+      if(originPlace === 'left' || originPlace === 'right'){
+        resetLab23WeightCondition(ap);
+        refreshLab23WeightCondition(ap);
+      }else{
+        updatePills();
+      }
+    }
+
+    function placeLab23Weight(id, place){
+      if(LAB_ID !== 23) return;
+      const ap = state.apparatus;
+      const weight = (ap.weights || []).find(w=>w.id === id);
+      if(!weight) return;
+      weight.place = place || 'reserve';
+      ap.dragWeightId = '';
+      ap.dragMode = '';
+      ap.dragOriginPlace = '';
+      resetLab23WeightCondition(ap);
+      refreshLab23WeightCondition(ap);
     }
 
     function applyLab23CartDragAtScenePoint(x, y){
@@ -4483,7 +4759,7 @@ body #app .toolbar button:disabled{
       ctx.fillRect(g.reserveX - 28, g.reserveY + 12, reserveBarW, 12);
       ctx.fillStyle = '#dfeaff';
       ctx.font = `${g.compact ? 12 : 13}px -apple-system,Segoe UI`;
-      ctx.fillText('备用钩码', g.reserveX - 8, g.reserveY + 52);
+      ctx.fillText('备用钩码', g.reserveX - 8, g.reserveY + (g.compact ? 38 : 48));
 
       const drawPoly = (pts, fill, stroke, width = 1.2)=>{
         ctx.beginPath();
@@ -4590,31 +4866,9 @@ body #app .toolbar button:disabled{
         ctx.stroke();
       });
 
-      const chipX = g.tableX + g.tableW - 142;
-      const chipY = g.tableY - 10;
-      ctx.fillStyle = 'rgba(230,182,108,.94)';
-      ctx.beginPath();
-      ctx.roundRect(chipX, chipY, 124, 26, 12);
-      ctx.fill();
-      ctx.fillStyle = '#fff8e5';
-      ctx.font = `${g.compact ? 11 : 12}px -apple-system,Segoe UI`;
-      ctx.fillText('光滑水平桌面', chipX + 18, chipY + 18);
-
-      ctx.fillStyle = '#dfeaff';
-      ctx.font = `${g.compact ? 12 : 13}px -apple-system,Segoe UI`;
-      ctx.fillText('拖钩码到托盘，观察小车在不同条件下是否保持静止', g.tableX - 4, g.tableY - 52);
-      ctx.fillText('质量相等后，可拖动车身扭转再释放', g.tableX - 4, g.tableY - 32);
-
-      const statusW = Math.min(236, g.tableW * 0.29);
-      const statusX = Math.max(18, g.leftTrayX - 8);
-      const statusY = g.trayY + 38;
-      ctx.fillStyle = 'rgba(15,24,34,.78)';
-      ctx.beginPath();
-      ctx.roundRect(statusX, statusY, statusW, 34, 14);
-      ctx.fill();
-      ctx.fillStyle = ap.lastScenario === 'equal_offline' ? '#ffcf6f' : (ap.balanced ? '#7fe6b1' : '#dfeaff');
-      ctx.font = `${g.compact ? 11 : 12}px -apple-system,Segoe UI`;
-      ctx.fillText(ap.lastObserved || '等待建立实验条件', statusX + 14, statusY + 22);
+      ctx.fillStyle = '#5c4a31';
+      ctx.font = `600 ${g.compact ? 10 : 11}px -apple-system,Segoe UI`;
+      ctx.fillText(g.compact ? '光滑桌面' : '光滑水平桌面', g.tableX + 16, g.tableY + g.tableH - 2);
 
       if((state.currentTask === 2 || state.freeMode) && ap.leftCount > 0 && ap.leftCount === ap.rightCount){
         ctx.strokeStyle = 'rgba(255,207,107,.34)';
@@ -5160,42 +5414,58 @@ body #app .toolbar button:disabled{
     function bindLab23StageInteraction(){
       if(LAB_ID !== 23) return;
 
-      const endDrag = (e)=>{
-        if(lab23Pointer.id !== e.pointerId) return;
+      const resetPointerState = ()=>{
         const ap = state.apparatus;
-        if(lab23Pointer.mode === 'weight'){
-          const drop = getLab23DropPlace(ap.dragSceneX, ap.dragSceneY);
-          placeLab23Weight(lab23Pointer.tokenId, drop || lab23Pointer.originPlace || 'reserve');
-        }else if(lab23Pointer.mode === 'cart'){
-          releaseLab23CartTwist();
-        }
         lab23Pointer.id = null;
         lab23Pointer.mode = '';
         lab23Pointer.tokenId = '';
         lab23Pointer.originPlace = '';
         ap.dragMode = '';
         ap.dragWeightId = '';
+        ap.dragOriginPlace = '';
         updatePills();
+      };
+
+      const endDrag = (e, commit)=>{
+        if(lab23Pointer.id !== e.pointerId) return;
+        const ap = state.apparatus;
+        if(lab23Pointer.mode === 'weight'){
+          if(commit){
+            const drop = getLab23DropPlace(ap.dragSceneX, ap.dragSceneY);
+            placeLab23Weight(lab23Pointer.tokenId, drop || lab23Pointer.originPlace || 'reserve');
+          }else{
+            cancelLab23WeightDrag();
+          }
+        }else if(lab23Pointer.mode === 'cart'){
+          releaseLab23CartTwist();
+        }
+        resetPointerState();
       };
 
       scene.addEventListener('pointerdown', (e)=>{
         if(e.button !== 0) return;
         if(state.autoPlaying) return;
+        if(lab23Pointer.id !== null) return;
         const ap = state.apparatus;
         const p = scenePointFromEvent(e);
         const cartGeom = getLab23CartGeom(ap);
         const weights = [...getLab23WeightRenderInfo(ap)].reverse();
         const hitWeight = weights.find((w)=>Math.abs(p.x - w.x) <= 16 && Math.abs((p.y - 4) - w.y) <= 18);
         if(hitWeight){
+          const originPlace = beginLab23WeightDrag(hitWeight.id, hitWeight.x, hitWeight.y);
+          if(!originPlace) return;
           lab23Pointer.id = e.pointerId;
           lab23Pointer.mode = 'weight';
           lab23Pointer.tokenId = hitWeight.id;
-          lab23Pointer.originPlace = hitWeight.place;
-          ap.dragMode = 'weight';
-          ap.dragWeightId = hitWeight.id;
-          ap.dragSceneX = hitWeight.x;
-          ap.dragSceneY = hitWeight.y;
-          scene.setPointerCapture(e.pointerId);
+          lab23Pointer.originPlace = originPlace;
+          try{
+            scene.setPointerCapture(e.pointerId);
+          }catch(error){
+            console.warn('[lab23] 无法捕获钩码拖拽指针', error);
+            cancelLab23WeightDrag();
+            resetPointerState();
+            return;
+          }
           e.preventDefault();
           return;
         }
@@ -5239,8 +5509,9 @@ body #app .toolbar button:disabled{
         e.preventDefault();
       });
 
-      scene.addEventListener('pointerup', endDrag);
-      scene.addEventListener('pointercancel', endDrag);
+      scene.addEventListener('pointerup', (e)=>endDrag(e, true));
+      scene.addEventListener('pointercancel', (e)=>endDrag(e, false));
+      scene.addEventListener('lostpointercapture', (e)=>endDrag(e, false));
     }
 
     function updateDynamic(dt){
@@ -5544,12 +5815,23 @@ body #app .toolbar button:disabled{
     function clearData(showTip=true){
       state.records = [];
       state.analysisOk = false;
+      state.lab23QuizPassed = false;
       state.unseenRecordCount = 0;
       refreshDataNotice();
       analysisText.classList.remove('ok');
       analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
+      analysisText.hidden = true;
+      if(lab23QuizFeedback) lab23QuizFeedback.textContent = '';
+      if(lab23QuizOptions){
+        [...lab23QuizOptions.querySelectorAll('button')].forEach((option)=>{
+          option.disabled = false;
+          option.classList.remove('correct','wrong');
+        });
+      }
       renderRecords();
       scheduleChart();
+      renderLab23Quiz();
+      renderLab23ControlState();
       if(showTip) showToast('数据已清空');
     }
 
@@ -5557,6 +5839,10 @@ body #app .toolbar button:disabled{
       clearAllTimers();
       lab15Pointer.id = null;
       lab15Pointer.mode = '';
+      lab23Pointer.id = null;
+      lab23Pointer.mode = '';
+      lab23Pointer.tokenId = '';
+      lab23Pointer.originPlace = '';
       state.stepWarnIdx = -1;
       state.completed = false;
       state.successCooldown = false;
@@ -5629,14 +5915,21 @@ body #app .toolbar button:disabled{
         const toScene = place === 'left' || place === 'right' ? getLab23TrayScenePoint(place) : getLab23ReserveDropPoint();
         const from = scenePointToStage(fromScene.x, fromScene.y);
         const to = scenePointToStage(toScene.x, toScene.y);
-        await dragDemoCursorPath([from, to], 780, (pt)=>{
-          const sp = stagePointToScene(pt.x, pt.y);
-          state.apparatus.dragMode = 'weight';
-          state.apparatus.dragWeightId = id;
-          state.apparatus.dragSceneX = sp.x;
-          state.apparatus.dragSceneY = sp.y;
-        });
-        placeLab23Weight(id, place);
+        const originPlace = beginLab23WeightDrag(id, fromScene.x, fromScene.y);
+        if(!originPlace) throw new Error('lab23-weight-drag-not-started');
+        let committed = false;
+        try{
+          await dragDemoCursorPath([from, to], 780, (pt)=>{
+            const sp = stagePointToScene(pt.x, pt.y);
+            state.apparatus.dragSceneX = sp.x;
+            state.apparatus.dragSceneY = sp.y;
+          });
+          ensure();
+          placeLab23Weight(id, place);
+          committed = true;
+        }finally{
+          if(!committed) cancelLab23WeightDrag();
+        }
         await wait(holdMs);
       };
       const demoLab23TwistCart = async ()=>{
@@ -5873,10 +6166,21 @@ body #app .toolbar button:disabled{
           setVar('liquid','oil'); setVar('depth',18); await doA('switchLiquid', 600); await doA('probePressure', 900); await doR();
         }
 
-        await doStep(3, '步骤4：分析结论', 1200);
-        await clickElementWithCursor(analyzeBtn, 760);
-        analyzeConclusion(false);
-        recalcProgress();
+        await doStep(3, LAB_ID === 23 ? '步骤4：选择二力平衡条件' : '步骤4：分析结论', 1200);
+        if(LAB_ID === 23){
+          const correctOption = lab23QuizOptions?.querySelector('[data-correct="true"]');
+          if(!correctOption || lab23QuizCard.hidden) throw new Error('lab23-quiz-not-ready');
+          await clickElementWithCursor(correctOption, 760);
+          correctOption.click();
+          if(!state.lab23QuizPassed) throw new Error('lab23-quiz-answer-rejected');
+          await wait(420);
+          recalcProgress();
+          if(!state.completed || !state.lab23QuizPassed) throw new Error('lab23-quiz-not-completed');
+        }else{
+          await clickElementWithCursor(analyzeBtn, 760);
+          analyzeConclusion(false);
+          recalcProgress();
+        }
         await wait(900);
       }catch(err){
         if(err && err.message !== 'auto-cancelled' && err.code !== 'MODE_CONTROL_CANCELLED' /* codex-physics-mode-source:cancel-catch */){
@@ -5940,6 +6244,7 @@ body #app .toolbar button:disabled{
 
     function init(){
       initUIStatic();
+      initLab23Quiz();
       initTaskUI();
       state.apparatus = makeInitialApparatus();
       if(LAB_ID === 23) syncLab23HandlesFromForces();
