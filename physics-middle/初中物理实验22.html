@@ -1269,6 +1269,11 @@ body #app .toolbar button:disabled{
       </div>
     </div>
 
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab active" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="true"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button>
+    </div>
+
     <div class="checkmark" id="checkmark"><div></div></div>
     <div class="demoCursor" id="demoCursor" aria-hidden="true">
       <svg viewBox="0 0 24 24" role="img" aria-label="自动演示鼠标">
@@ -1530,7 +1535,7 @@ body #app .toolbar button:disabled{
         tasks:[
           {text:'先点击弹簧测力计，观察它的量程和每个小格表示多少牛。', hint:'本实验量程应识别为 0~5N，每小格表示 0.1N。'},
           {text:'再拖动调零滑钮，使空载时指针与零刻度线重合。', hint:'必须在舞台中完成调零。'},
-          {text:'拖动挂钩，依次让指针指到 1N、3N、5N 的位置，感受这三个大小不同的力。', hint:'按 1N → 3N → 5N 的顺序完成，感受完成后挂钩会回到零位。'},
+          {text:'拖动挂钩，依次让指针指到 1N、3N、5N 的位置，感受这三个大小不同的力。', hint:'依次拉到 1N、3N、5N；每次到达目标后都松开挂钩，待指针回到 0N（与零刻度线重合）再继续。'},
           {text:'先把文具袋挂在挂钩上测得 F1，再沿水平方向拖动桌面上的文具袋测得 F2，并分别记录。', hint:'F1 记录后会自动切换到水平拉动场景，再测量 F2。'},
           {text:'点击“分析结论”，总结使用弹簧测力计时的操作要求。', hint:'结论应包含量程、调零、拉力方向、示数稳定后读数等要点。'}
         ]
@@ -4006,13 +4011,12 @@ body #app .toolbar button:disabled{
     function getLab22F2StableHandleX(ap=state.apparatus){
       if(LAB_ID !== 22) return 0;
       const g = getLab22Layout();
-      const forcePerPx = g.compact ? 0.042 : 0.040;
       const bagShift = (ap.bagX || g.deskBagX) - g.deskBagX;
-      const stableExtension = g.pullStableForce / forcePerPx;
+      const stableExtension = g.pullStableForce / g.forcePerPx;
       return clamp(
         g.pullRestX + bagShift + stableExtension,
         g.pullRestX + (g.compact ? 18 : 20),
-        g.pullMaxX - (g.compact ? 10 : 12)
+        g.pullMaxX - (g.compact ? 4 : 12)
       );
     }
 
@@ -4023,59 +4027,70 @@ body #app .toolbar button:disabled{
       const H = rect.height;
       const compact = W <= 760;
       const meterX = W * (compact ? 0.082 : 0.10);
-      const meterY = H - (compact ? 356 : 386);
+      const meterY = compact ? Math.max(12, H - 346) : H - 386;
       const meterW = compact ? 58 : 66;
-      const meterH = compact ? 168 : 178;
-      const scaleTop = meterY + 42;
-      const scaleBottom = meterY + meterH - 34;
+      const meterH = compact ? 158 : 178;
+      const scaleTop = meterY + (compact ? 38 : 42);
+      const scaleBottom = meterY + meterH - (compact ? 30 : 34);
       const hookX = meterX + meterW * 0.5;
       const hookRestY = meterY + meterH + (compact ? 8 : 10);
-      const zeroTrackX = meterX + meterW + (compact ? 24 : 28);
-      const zeroTrackY = meterY + 44;
-      const zeroTrackH = meterH - 86;
+      const zeroTrackX = meterX + meterW + (compact ? 18 : 28);
+      const zeroTrackY = meterY + (compact ? 40 : 44);
+      const zeroTrackH = meterH - (compact ? 78 : 86);
       const zeroTrackW = 12;
       const zeroKnobX = zeroTrackX + zeroTrackW * 0.5;
       const zeroKnobY = zeroTrackY + clamp(ap.zeroOffset || 0, 0, 1) * zeroTrackH;
       const hookPxPerN = compact ? 13 : 15;
       const hookDragY = hookRestY + (ap.hookPullN || 0) * hookPxPerN;
+      const zeroHitRadius = compact ? 22 : 16;
+      const hookHitRadius = compact ? 22 : 18;
+      const handleHitRadius = compact ? 22 : 28;
+      const minTouchSize = compact ? 44 : 36;
       const bagW = compact ? 34 : 38;
       const bagH = compact ? 50 : 56;
-      const bagHomeX = W * (compact ? 0.07 : 0.08);
-      const bagHomeY = H - (compact ? 176 : 190);
+      const bagHomeX = W * (compact ? 0.72 : 0.08);
+      const bagHomeY = H - (compact ? 98 : 190);
       const hookBagX = hookX - bagW * 0.5;
       const hookBagY = hookRestY + 8;
-      const deskX = W * (compact ? 0.32 : 0.38);
+      const deskX = W * (compact ? 0.06 : 0.38);
       const deskY = H - 154;
-      const deskW = Math.round(W * (compact ? 0.54 : 0.40));
+      const deskW = Math.round(W * (compact ? 0.88 : 0.40));
       const deskH = 20;
-      const deskBagW = compact ? 58 : 64;
-      const deskBagH = compact ? 30 : 34;
-      const deskBagX = deskX + 22;
+      const deskBagW = compact ? clamp(W * 0.16, 44, 58) : 64;
+      const deskBagH = compact ? 28 : 34;
+      const deskBagX = deskX + (compact ? 0 : 22);
       const deskBagY = deskY - deskBagH;
       const deskBagRingX = deskBagX + deskBagW + 4;
       const deskBagRingY = deskBagY + deskBagH * 0.5;
       const hHookX = deskBagRingX + 12;
       const hHookY = deskBagRingY;
-      const hGaugeW = compact ? 146 : 174;
-      const hGaugeX = deskX + deskW - hGaugeW - (compact ? 24 : 34);
-      const hGaugeY = deskY - 68;
+      const hGaugeW = compact ? clamp(W * 0.42, 120, 154) : 174;
+      const hGaugeX = compact ? hHookX + 12 : deskX + deskW - hGaugeW - 34;
+      const hGaugeY = deskY - (compact ? 64 : 68);
       const hGaugeH = compact ? 54 : 58;
-      const pullRestX = hGaugeX + hGaugeW + (compact ? 16 : 18);
-      const pullTravel = compact ? 132 : 156;
-      const pullMaxX = pullRestX + pullTravel;
-      const pullForceMax = compact ? 5.54 : 6.24;
+      const pullRestX = hGaugeX + hGaugeW + (compact ? 12 : 18);
+      const pullMaxX = compact ? Math.max(pullRestX + 24, W - handleHitRadius) : pullRestX + 156;
       const pullStableForce = compact ? 1.98 : 2.02;
-      const pullStableX = pullRestX + (compact ? 46 : 52);
-      const deskZone = { x: deskX - 24, y: deskY - deskBagH - 42, w: deskW + 136, h: deskBagH + 92 };
+      const availablePull = Math.max(1, pullMaxX - pullRestX);
+      const stableExtension = compact ? Math.min(38, Math.max(18, availablePull - 4)) : pullStableForce / 0.040;
+      const forcePerPx = compact ? pullStableForce / stableExtension : 0.040;
+      const pullForceMax = availablePull * forcePerPx;
+      const pullStableX = pullRestX + stableExtension;
+      const deskZone = {
+        x:Math.max(0, deskX - 12),
+        y:deskY - deskBagH - 42,
+        w:Math.min(W - Math.max(0, deskX - 12), deskW + 32),
+        h:deskBagH + 92
+      };
       const inspectRect = { x: meterX, y: meterY, w: meterW, h: meterH };
       const scaleInfoX = compact ? meterX + meterW + 10 : meterX - 4;
       const scaleInfoY = compact ? Math.max(8, meterY - 44) : meterY - 44;
-      const scaleInfoW = compact ? 168 : 184;
+      const scaleInfoW = compact ? 132 : 184;
       const scaleInfoH = 30;
       const zeroLabelX = zeroTrackX - 10;
       const zeroLabelY = zeroTrackY + zeroTrackH + 12;
-      const forceChipX = zeroTrackX + 20;
-      const forceChipY = meterY + 24;
+      const forceChipX = compact ? scaleInfoX : zeroTrackX + 20;
+      const forceChipY = compact ? meterY + 54 : meterY + 24;
       if(!ap.bagX && !ap.bagY){
         ap.bagX = bagHomeX;
         ap.bagY = bagHomeY;
@@ -4085,12 +4100,13 @@ body #app .toolbar button:disabled{
         W, H, compact,
         meterX, meterY, meterW, meterH, scaleTop, scaleBottom,
         hookX, hookRestY, hookDragY, hookPxPerN,
+        zeroHitRadius, hookHitRadius, handleHitRadius, minTouchSize,
         zeroTrackX, zeroTrackY, zeroTrackH, zeroTrackW, zeroKnobX, zeroKnobY,
         scaleInfoX, scaleInfoY, scaleInfoW, scaleInfoH, zeroLabelX, zeroLabelY, forceChipX, forceChipY,
         bagW, bagH, bagHomeX, bagHomeY, hookBagX, hookBagY,
         deskX, deskY, deskW, deskH, deskBagX, deskBagY, deskBagW, deskBagH, deskBagRingX, deskBagRingY, deskZone,
         hGaugeX, hGaugeY, hGaugeW, hGaugeH, hHookX, hHookY,
-        pullRestX, pullMaxX, pullStableX, pullStableForce, pullForceMax,
+        pullRestX, pullMaxX, pullStableX, pullStableForce, pullForceMax, forcePerPx,
         inspectRect
       };
     }
@@ -4127,16 +4143,21 @@ body #app .toolbar button:disabled{
       return { x:ap.bagX || g.bagHomeX, y:ap.bagY || g.bagHomeY, w:g.bagW, h:g.bagH };
     }
 
+    function expandLab22TouchRect(rect, minSize){
+      const dx = Math.max(0, minSize - rect.w) * 0.5;
+      const dy = Math.max(0, minSize - rect.h) * 0.5;
+      return { x:rect.x - dx, y:rect.y - dy, w:rect.w + dx * 2, h:rect.h + dy * 2 };
+    }
+
     function getLab22HandleRect(){
       const g = getLab22Layout();
       const ap = state.apparatus;
       const handleX = (ap.horizontalPullX || g.pullRestX);
-      const gaugeX = g.hGaugeX + (handleX - g.pullRestX);
       return {
-        x:gaugeX + g.hGaugeW - 34,
-        y:g.hHookY - 28,
-        w:Math.max(58, handleX - (gaugeX + g.hGaugeW - 34) + 20),
-        h:56
+        x:handleX - g.handleHitRadius,
+        y:g.hHookY - g.handleHitRadius,
+        w:g.handleHitRadius * 2,
+        h:g.handleHitRadius * 2
       };
     }
 
@@ -4181,6 +4202,18 @@ body #app .toolbar button:disabled{
         ap.measureState = ap.zeroed ? '空载已调零' : '请继续调零';
       }
       if(becameZeroed){
+        if(!state.freeMode && state.currentTask === 1 && lab22Pointer.mode === 'zero'){
+          const pointerId = lab22Pointer.id;
+          lab22Pointer.id = null;
+          lab22Pointer.mode = '';
+          if(pointerId !== null && scene.hasPointerCapture(pointerId)){
+            try{
+              scene.releasePointerCapture(pointerId);
+            }catch(error){
+              console.warn('实验22调零完成后释放指针捕获失败', error);
+            }
+          }
+        }
         setStatus('测力计已调零');
         if(announce) showToast('已对准0N');
         updatePills();
@@ -4343,12 +4376,16 @@ body #app .toolbar button:disabled{
       const horizontalDisplay = ap.horizontalDisplayN ?? ((ap.bagOnDesk || ap.horizontalPullDragging || ap.horizontalLocked) ? (ap.displayN || 0) : 0);
       const pointerRatio = clamp(verticalDisplay / 5, 0, 1);
       const pointerY = g.scaleTop + (g.scaleBottom - g.scaleTop) * pointerRatio;
+      const f2Scene = ap.bagOnDesk || ap.horizontalPullDragging || ap.horizontalLocked;
+      const showVerticalMeter = !g.compact || !f2Scene;
+      const showDesk = !g.compact || state.currentTask >= 3 || state.freeMode || f2Scene;
 
-      ctx.fillStyle = '#dcecff';
-      ctx.fillRect(g.meterX, g.meterY, g.meterW, g.meterH);
-      ctx.strokeStyle = '#6eb4ff';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(g.meterX, g.meterY, g.meterW, g.meterH);
+      if(showVerticalMeter){
+        ctx.fillStyle = '#dcecff';
+        ctx.fillRect(g.meterX, g.meterY, g.meterW, g.meterH);
+        ctx.strokeStyle = '#6eb4ff';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(g.meterX, g.meterY, g.meterW, g.meterH);
 
       const readoutX = g.meterX + 8;
       const readoutY = g.meterY + 12;
@@ -4419,41 +4456,65 @@ body #app .toolbar button:disabled{
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      const panelAlpha = ap.inspectFlash > 0 ? 0.96 : 0.78;
-      ctx.fillStyle = `rgba(12,20,30,${panelAlpha})`;
-      ctx.beginPath();
-      ctx.roundRect(g.scaleInfoX, g.scaleInfoY, g.scaleInfoW, g.scaleInfoH, 12);
-      ctx.fill();
-      ctx.strokeStyle = ap.rangeObserved ? 'rgba(127,230,177,.75)' : 'rgba(160,190,230,.45)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-      ctx.fillStyle = '#dfeaff';
-      ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText('量程 0~5N  ｜  每小格 0.1N', g.scaleInfoX + 12, g.scaleInfoY + 20);
+        if(!g.compact || state.currentTask === 0 || ap.inspectFlash > 0){
+          const panelAlpha = ap.inspectFlash > 0 ? 0.96 : 0.78;
+          ctx.fillStyle = `rgba(12,20,30,${panelAlpha})`;
+          ctx.beginPath();
+          ctx.roundRect(g.scaleInfoX, g.scaleInfoY, g.scaleInfoW, g.scaleInfoH, 12);
+          ctx.fill();
+          ctx.strokeStyle = ap.rangeObserved ? 'rgba(127,230,177,.75)' : 'rgba(160,190,230,.45)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          ctx.fillStyle = '#dfeaff';
+          ctx.font = `${g.compact ? 11 : 12}px -apple-system,Segoe UI`;
+          ctx.fillText(g.compact ? '0–5N · 0.1N/格' : '量程 0~5N  ｜  每小格 0.1N', g.scaleInfoX + (g.compact ? 10 : 12), g.scaleInfoY + 20);
+        }
 
-      ctx.fillStyle = 'rgba(12,20,30,.84)';
-      ctx.beginPath();
-      ctx.roundRect(g.zeroLabelX - 10, g.zeroLabelY - 14, 52, 22, 11);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(160,190,230,.45)';
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      ctx.fillStyle = '#dfeaff';
-      ctx.fillText('调零', g.zeroLabelX + 6, g.zeroLabelY + 1);
+        if(!g.compact || !ap.zeroed || state.currentTask === 1){
+          ctx.fillStyle = 'rgba(12,20,30,.84)';
+          ctx.beginPath();
+          ctx.roundRect(g.zeroLabelX - 10, g.zeroLabelY - 14, 52, 22, 11);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(160,190,230,.45)';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+          ctx.fillStyle = '#dfeaff';
+          ctx.fillText('调零', g.zeroLabelX + 6, g.zeroLabelY + 1);
+        }
 
-      for(const n of [1,3,5]){
-        const x = g.forceChipX;
-        const y = g.forceChipY + [1,3,5].indexOf(n) * 34;
-        ctx.fillStyle = ap.feelDone[n] ? 'rgba(127,230,177,.22)' : 'rgba(20,30,44,.9)';
-        ctx.beginPath();
-        ctx.roundRect(x, y, 54, 24, 12);
-        ctx.fill();
-        ctx.strokeStyle = ap.feelDone[n] ? '#7fe6b1' : 'rgba(175,198,224,.45)';
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        ctx.fillStyle = ap.feelDone[n] ? '#7fe6b1' : '#dfeaff';
-        ctx.font = '12px -apple-system,Segoe UI';
-        ctx.fillText(`${n}N`, x + 16, y + 16);
+        if(g.compact && (state.currentTask === 2 || state.freeMode)){
+          ctx.fillStyle = 'rgba(20,30,44,.9)';
+          ctx.beginPath();
+          ctx.roundRect(g.forceChipX, g.forceChipY, 132, 30, 15);
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(175,198,224,.45)';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+          ctx.font = '11px -apple-system,Segoe UI';
+          [1,3,5].forEach((n, index) => {
+            const x = g.forceChipX + 19 + index * 38;
+            ctx.fillStyle = ap.feelDone[n] ? '#7fe6b1' : '#dfeaff';
+            ctx.fillText(`${n}N`, x, g.forceChipY + 19);
+            ctx.beginPath();
+            ctx.arc(x - 7, g.forceChipY + 15, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }else if(!g.compact){
+          for(const n of [1,3,5]){
+            const x = g.forceChipX;
+            const y = g.forceChipY + [1,3,5].indexOf(n) * 34;
+            ctx.fillStyle = ap.feelDone[n] ? 'rgba(127,230,177,.22)' : 'rgba(20,30,44,.9)';
+            ctx.beginPath();
+            ctx.roundRect(x, y, 54, 24, 12);
+            ctx.fill();
+            ctx.strokeStyle = ap.feelDone[n] ? '#7fe6b1' : 'rgba(175,198,224,.45)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+            ctx.fillStyle = ap.feelDone[n] ? '#7fe6b1' : '#dfeaff';
+            ctx.font = '12px -apple-system,Segoe UI';
+            ctx.fillText(`${n}N`, x + 16, y + 16);
+          }
+        }
       }
 
       const bag = getLab22BagRect();
@@ -4461,11 +4522,13 @@ body #app .toolbar button:disabled{
         drawLab22Bag(ctx, bag.x, bag.y, bag.w, bag.h);
       }
 
-      ctx.fillStyle = '#c79a62';
-      ctx.fillRect(g.deskX, g.deskY, g.deskW, g.deskH);
-      ctx.fillStyle = '#8a6134';
-      ctx.fillRect(g.deskX + 4, g.deskY + g.deskH, g.deskW - 8, 8);
-      if(ap.bagOnDesk || state.currentTask >= 3 || state.freeMode){
+      if(showDesk){
+        ctx.fillStyle = '#c79a62';
+        ctx.fillRect(g.deskX, g.deskY, g.deskW, g.deskH);
+        ctx.fillStyle = '#8a6134';
+        ctx.fillRect(g.deskX + 4, g.deskY + g.deskH, g.deskW - 8, 8);
+      }
+      if(f2Scene){
         if(ap.bagOnDesk){
           drawLab22Bag(ctx, bag.x, bag.y, bag.w, bag.h);
         }
@@ -4530,9 +4593,11 @@ body #app .toolbar button:disabled{
         ctx.beginPath();
         ctx.arc(handleX, hookY, 10, 0, Math.PI * 2);
         ctx.stroke();
-        ctx.fillStyle = '#dfeaff';
-        ctx.font = '12px -apple-system,Segoe UI';
-        ctx.fillText('水平拉动区', gaugeX + 4, g.hGaugeY - 10);
+        if(!g.compact){
+          ctx.fillStyle = '#dfeaff';
+          ctx.font = '12px -apple-system,Segoe UI';
+          ctx.fillText('水平拉动区', gaugeX + 4, g.hGaugeY - 10);
+        }
         const f2HintTextMap = {
           idle:'暂不可记录',
           static:'未起动',
@@ -4560,18 +4625,20 @@ body #app .toolbar button:disabled{
         ctx.fillText(f2HintText, f2HintX + 12, f2HintY + 16);
       }
 
-      ctx.fillStyle = '#dfeaff';
-      ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText(`零位：${ap.zeroed ? '已对准0N' : `${getLab22ZeroBias(ap).toFixed(2)}N 偏移`}`, W * 0.06, H - 136);
-      ctx.fillText(`状态：${ap.measureState}`, W * 0.06, H - 112);
-      if(ap.readReady){
-        ctx.fillStyle = '#7fe6b1';
-        ctx.fillText(`稳定示数：${ap.lastMeasureKind || '--'} = ${ap.lastN.toFixed(2)}N，可记录`, W * 0.06, H - 88);
-      }else{
-        ctx.fillStyle = '#ffcf6f';
-        const next = getLab22NextFeelTarget();
-        const tip = next !== null ? `下一目标：感受 ${next}N` : (state.currentTask >= 3 ? '请完成 F1 与 F2 两组测量' : '请继续当前步骤');
-        ctx.fillText(tip, W * 0.06, H - 88);
+      if(!g.compact){
+        ctx.fillStyle = '#dfeaff';
+        ctx.font = '12px -apple-system,Segoe UI';
+        ctx.fillText(`零位：${ap.zeroed ? '已对准0N' : `${getLab22ZeroBias(ap).toFixed(2)}N 偏移`}`, W * 0.06, H - 136);
+        ctx.fillText(`状态：${ap.measureState}`, W * 0.06, H - 112);
+        if(ap.readReady){
+          ctx.fillStyle = '#7fe6b1';
+          ctx.fillText(`稳定示数：${ap.lastMeasureKind || '--'} = ${ap.lastN.toFixed(2)}N，可记录`, W * 0.06, H - 88);
+        }else{
+          ctx.fillStyle = '#ffcf6f';
+          const next = getLab22NextFeelTarget();
+          const tip = next !== null ? `下一目标：感受 ${next}N` : (state.currentTask >= 3 ? '请完成 F1 与 F2 两组测量' : '请继续当前步骤');
+          ctx.fillText(tip, W * 0.06, H - 88);
+        }
       }
     }
 
@@ -5220,10 +5287,11 @@ body #app .toolbar button:disabled{
         const p = scenePointFromEvent(e);
         const g = getLab22Layout();
         const bagRect = getLab22BagRect();
+        const bagHitRect = expandLab22TouchRect(bagRect, g.minTouchSize);
         const handleRect = getLab22HandleRect();
-        const onZeroKnob = Math.hypot(p.x - g.zeroKnobX, p.y - g.zeroKnobY) <= 16;
-        const onHook = Math.hypot(p.x - g.hookX, p.y - g.hookDragY) <= 18;
-        const onBag = rectContainsPoint(bagRect, p.x, p.y);
+        const onZeroKnob = Math.hypot(p.x - g.zeroKnobX, p.y - g.zeroKnobY) <= g.zeroHitRadius;
+        const onHook = Math.hypot(p.x - g.hookX, p.y - g.hookDragY) <= g.hookHitRadius;
+        const onBag = rectContainsPoint(bagHitRect, p.x, p.y);
         const onHandle = rectContainsPoint(handleRect, p.x, p.y);
         const onMeter = rectContainsPoint(g.inspectRect, p.x, p.y);
 
@@ -5426,7 +5494,7 @@ body #app .toolbar button:disabled{
           const accelScale = g.compact ? 0.00014 : 0.00016;
           const damping = g.compact ? 0.00022 : 0.00020;
           const dragCoeff = g.compact ? 0.018 : 0.017;
-          const forcePerPx = g.compact ? 0.042 : 0.040;
+          const forcePerPx = g.forcePerPx;
           const bagShift = (ap.bagX || g.deskBagX) - g.deskBagX;
           const stableHandleX = getLab22F2StableHandleX(ap);
           let handleX = ap.horizontalPullX || g.pullRestX;
@@ -5919,7 +5987,7 @@ body #app .toolbar button:disabled{
         const start = scenePointToStage(g.pullRestX, g.hHookY);
         const startForce = 2.35;
         const holdForce = g.pullStableForce;
-        const forcePerPx = g.compact ? 0.042 : 0.040;
+        const forcePerPx = g.forcePerPx;
         const startExtension = startForce / forcePerPx;
         const holdExtension = holdForce / forcePerPx;
         await moveDemoCursorToStage(start.x, start.y, 420);
@@ -7883,6 +7951,23 @@ body #app .toolbar button:disabled{
       padding:8px 4px !important;
       font-size:12px !important;
       white-space:nowrap !important;
+    }
+  }
+</style>
+<style id="codex-exp22-mobile-control-compact-v1">
+  @media (max-width:720px){
+    body #app #stage#stage #controlDock.mobile-sheet #controlBody{
+      gap:6px !important;
+      padding:6px !important;
+    }
+    body #app #stage#stage #controlDock.mobile-sheet :is(#controlFields,#actionBtns):empty{
+      display:none !important;
+    }
+    body #app #stage#stage #controlDock.mobile-sheet #controlBody > .btnRow:not(#actionBtns){
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+      gap:6px !important;
+      padding:5px !important;
+      border-radius:8px !important;
     }
   }
 </style>
