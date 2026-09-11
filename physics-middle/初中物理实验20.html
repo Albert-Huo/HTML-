@@ -221,7 +221,22 @@
     button.main:active,button.sub:active{transform:scale(.98)}
     button.main:disabled,button.sub:disabled{opacity:.5;cursor:not-allowed}
     .analysis{font-size:12px;line-height:1.6;color:#e3efff;border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px;background:rgba(0,0,0,.24);margin-top:8px}
+    #analyzeBtn[hidden],.analysis[hidden]{display:none!important}
     .analysis.ok{border-color:rgba(61,220,151,.4)}
+    .observation-summary{
+      display:grid;
+      gap:4px;
+      margin-bottom:8px;
+      padding:9px 10px;
+      border:1px solid rgba(127,209,255,.3);
+      border-radius:10px;
+      background:rgba(31,94,135,.18);
+      color:#e6f3ff;
+      line-height:1.45;
+    }
+    .observation-summary[hidden]{display:none}
+    .observation-summary span{color:#8fd6ff;font-size:11px;font-weight:800}
+    .observation-summary strong{font-size:12px;font-weight:650}
     table.record{width:100%;border-collapse:collapse;font-size:12px}
     table.record th,table.record td{border:1px solid rgba(255,255,255,.12);padding:4px 5px;text-align:center}
     table.record th{background:rgba(255,255,255,.08);color:#dce9ff;font-weight:700}
@@ -1200,9 +1215,9 @@ body #app .toolbar button:disabled{
           <button class="sub" id="resetBallBtn">小球归位</button>
           <button class="sub" id="recordBtn">记录当前数据</button>
           <button class="sub" id="checkBtn">确认观察 ✅</button>
-          <button class="sub" id="analyzeBtn">分析结论</button>
+          <button class="sub" id="analyzeBtn" hidden>分析结论</button>
         </div>
-        <div class="analysis" id="analysisText">暂无。请按步骤操作器材并记录数据后分析。</div>
+        <div class="analysis" id="analysisText" hidden>暂无。请按步骤操作器材并记录数据后分析。</div>
       </div>
     </div>
 
@@ -1212,6 +1227,10 @@ body #app .toolbar button:disabled{
         <div class="dockBtns drawer-actions"><button class="iconBtn" id="dataToggleBtn">展开</button></div>
       </div>
       <div class="dockBody collapsed drawer-body" id="dataBody">
+        <div class="observation-summary" id="observationSummary" hidden>
+          <span>本次观察</span>
+          <strong id="observationSummaryText"></strong>
+        </div>
         <table class="record">
           <thead>
             <tr><th>场景</th><th>磁体位置</th><th>观察结果</th><th>备注</th></tr>
@@ -1255,7 +1274,7 @@ body #app .toolbar button:disabled{
   <script>
     const TASKS = [
       { text:'把<b>条形磁体</b>拖到静止小铁球附近，观察小铁球由静止开始运动，记录后再点“确认观察”。', hint:'提示：这一步不需要释放小球，磁体靠近静止小球后会直接产生吸引。' },
-      { text:'把磁体拖到小铁球<b>运动前方（甲）</b>，再点击<b>释放杆</b>让小铁球下滚，观察它先减速、再被磁体吸引加速靠近，记录后再点“确认观察”。', hint:'提示：这一步磁体要放在小铁球前方，现象应是“先慢下来，再明显靠近磁体”。' },
+      { text:'把磁体拖到小铁球<b>运动前方（甲）</b>，再点击<b>释放杆</b>让小铁球下滚，观察它加速靠近磁体，记录后再点“确认观察”。', hint:'提示：前方磁体的吸引力与小球运动方向一致，小球会越来越快地靠近磁体。' },
       { text:'把磁体拖到小铁球运动路径<b>侧旁（乙）</b>，再点击<b>释放杆</b>让小铁球下滚，观察小铁球先沿原方向前进，后段再向磁体一侧偏转，记录后再点“确认观察”。', hint:'提示：这一步的关键现象是“后段偏向侧旁磁体”，不是一开始就拐弯。' },
       { text:'点击“分析结论”后，还需点击“确认观察”才能完成本实验。', hint:'提示：结论要体现“力可以改变物体的运动状态”。' }
     ];
@@ -1284,6 +1303,8 @@ body #app .toolbar button:disabled{
     const dataBody = $('#dataBody');
     const dataToggleBtn = $('#dataToggleBtn');
     const dataNotice = $('#dataNotice');
+    const observationSummary = $('#observationSummary');
+    const observationSummaryText = $('#observationSummaryText');
     const resetBallBtn = $('#resetBallBtn');
     const recordBtn = $('#recordBtn');
     const checkBtn = $('#checkBtn');
@@ -1357,6 +1378,19 @@ body #app .toolbar button:disabled{
       showCheck.t = setTimeout(()=>checkmarkEl.classList.remove('active'), 520);
     }
 
+    function renderObservationSummary(){
+      const observation = state.apparatus && state.apparatus.lastObservation;
+      observationSummary.hidden = !observation;
+      observationSummaryText.textContent = observation
+        ? `${observation.sceneLabel} · ${observation.resultText}`
+        : '';
+    }
+
+    function clearCurrentObservation(){
+      if(state.apparatus) state.apparatus.lastObservation = null;
+      renderObservationSummary();
+    }
+
     function makeInitialApparatus(){
       return {
         magnetAnchor:'park',
@@ -1374,6 +1408,7 @@ body #app .toolbar button:disabled{
         motion:null,
         lastObservation:null,
         trail:[],
+        ballSpin:0,
         releasePulse:0,
         released:false
       };
@@ -1381,70 +1416,68 @@ body #app .toolbar button:disabled{
 
     function get20Geometry(W,H){
       const narrow = W < 760;
+      const floorY = H - (narrow ? 52 : 64);
       const table = {
-        x: narrow ? 30 : 104,
-        y: narrow ? 164 : 154,
-        w: narrow ? W - 60 : W - 208,
-        h: narrow ? H - 266 : H - 254
+        x: narrow ? 24 : 72,
+        y: narrow ? 72 : 66,
+        w: narrow ? W - 48 : W - 144,
+        h: Math.max(narrow ? 150 : 200, floorY - (narrow ? 28 : 32) - (narrow ? 72 : 66))
       };
       const inner = {
-        x: table.x + (narrow ? 15 : 18),
-        y: table.y + (narrow ? 15 : 18),
-        w: table.w - (narrow ? 30 : 36),
-        h: table.h - (narrow ? 30 : 36)
+        x: table.x + (narrow ? 14 : 18),
+        y: table.y + (narrow ? 14 : 18),
+        w: table.w - (narrow ? 28 : 36),
+        h: table.h - (narrow ? 28 : 36)
       };
-      const rampTop = { x: inner.x + (narrow ? 56 : 90), y: inner.y + (narrow ? 34 : 42) };
-      const rampBottom = { x: rampTop.x + (narrow ? 88 : 120), y: rampTop.y + (narrow ? 68 : 82) };
-      const restBall = { x: inner.x + inner.w * (narrow ? 0.58 : 0.62), y: inner.y + inner.h * (narrow ? 0.5 : 0.53) };
+      const pathY = inner.y + inner.h * (narrow ? 0.64 : 0.62);
+      const rampRun = clamp(inner.w * (narrow ? 0.27 : 0.23), narrow ? 56 : 118, narrow ? 96 : 160);
+      const rampRise = clamp(inner.h * (narrow ? 0.22 : 0.25), narrow ? 30 : 48, narrow ? 46 : 66);
+      const rampTop = { x: inner.x + (narrow ? 20 : 42), y: pathY - rampRise };
+      const rampBottom = { x: rampTop.x + rampRun, y:pathY };
       const rampVec = { x:rampBottom.x - rampTop.x, y:rampBottom.y - rampTop.y };
       const rampLen = Math.hypot(rampVec.x, rampVec.y) || 1;
       const rampTangent = { x:rampVec.x / rampLen, y:rampVec.y / rampLen };
       const rampNormal = { x:-rampTangent.y, y:rampTangent.x };
-      const pathTangent = { x:rampTangent.x, y:rampTangent.y };
-      const pathNormal = { x:pathTangent.y, y:-pathTangent.x };
-      const pathStart = {
-        x: rampBottom.x + pathTangent.x * (narrow ? 16 : 18),
-        y: rampBottom.y + pathTangent.y * (narrow ? 16 : 18)
-      };
-      const maxLenX = (inner.x + inner.w - (narrow ? 78 : 102) - pathStart.x) / Math.max(pathTangent.x, 0.01);
-      const maxLenY = (inner.y + inner.h - (narrow ? 56 : 72) - pathStart.y) / Math.max(pathTangent.y, 0.01);
-      const pathLen = Math.max(narrow ? 150 : 220, Math.min(maxLenX, maxLenY));
-      const pathEnd = {
-        x: pathStart.x + pathTangent.x * pathLen,
-        y: pathStart.y + pathTangent.y * pathLen
-      };
+      const pathTangent = { x:1, y:0 };
+      const pathNormal = { x:0, y:-1 };
+      const pathStart = { x:rampBottom.x, y:pathY };
+      const pathEnd = { x:inner.x + inner.w - (narrow ? 14 : 20), y:pathY };
+      const pathLen = Math.max(1, pathEnd.x - pathStart.x);
       const alongPath = (t, offset=0)=>({
         x: pathStart.x + (pathEnd.x - pathStart.x) * t + pathNormal.x * offset,
         y: pathStart.y + (pathEnd.y - pathStart.y) * t + pathNormal.y * offset
       });
-      const sideGuide = { ...alongPath(0.34, narrow ? 18 : 22) };
-      const sideMagnet = { ...alongPath(0.34, narrow ? 30 : 38) };
+      const sideOffset = clamp(inner.h * (narrow ? 0.19 : 0.2), narrow ? 28 : 40, narrow ? 38 : 54);
+      const restBall = { ...alongPath(narrow ? 0.48 : 0.46, 0) };
+      const sideGuide = { ...alongPath(0.36, 0) };
+      const sideMagnet = { ...alongPath(0.6, sideOffset) };
       const anchors = {
-        park:{ x: table.x + table.w - (narrow ? 56 : 86), y: table.y + (narrow ? 46 : 52), angle:-0.2, label:'待放置', kind:'park' },
-        rest:{ x:restBall.x + (narrow ? 64 : 76), y:restBall.y - 14, angle:-0.22, label:'静止球旁', kind:'rest' },
-        front:{ ...alongPath(0.76, 0), angle:0.02, label:'前方（甲）', kind:'front' },
+        park:{ x:inner.x + inner.w - (narrow ? 34 : 46), y:inner.y + (narrow ? 22 : 30), angle:-0.16, label:'待放置', kind:'park' },
+        rest:{ x:Math.min(restBall.x + (narrow ? 48 : 64), inner.x + inner.w - (narrow ? 34 : 42)), y:restBall.y - (narrow ? 18 : 22), angle:-0.16, label:'静止球旁', kind:'rest' },
+        front:{ ...alongPath(0.84, 0), angle:Math.PI / 2, label:'前方（甲）', kind:'front' },
         side:{ ...sideMagnet, angle:0.2, label:'侧旁（乙）', kind:'side' },
-        rear:{ ...alongPath(0.32, narrow ? -52 : -62), angle:-0.28, label:'后侧', kind:'rear' },
-        high:{ x:rampBottom.x + (narrow ? 12 : 20), y:rampBottom.y - (narrow ? 64 : 78), angle:0.32, label:'高处旁', kind:'high' }
+        rear:{ ...alongPath(0.28, -(narrow ? 28 : 42)), angle:-0.2, label:'后侧', kind:'rear' },
+        high:{ x:rampTop.x + rampRun * 0.58, y:rampTop.y - (narrow ? 16 : 22), angle:0.28, label:'高处旁', kind:'high' }
       };
-      const frontTarget = { ...alongPath(0.7, 0) };
-      const weakTarget = { ...alongPath(0.74, 0) };
-      const sideTarget = {
-        x: sideGuide.x + pathTangent.x * (narrow ? 14 : 18) + pathNormal.x * (narrow ? 34 : 40),
-        y: sideGuide.y + pathTangent.y * (narrow ? 14 : 18) + pathNormal.y * (narrow ? 34 : 40)
-      };
+      const frontTarget = { x:anchors.front.x - (narrow ? 22 : 24), y:pathY };
+      const weakTarget = { ...alongPath(0.88, 0) };
+      const sideTarget = { ...alongPath(0.76, sideOffset * 0.72) };
       const sideControl = {
-        x: sideGuide.x + (sideTarget.x - sideGuide.x) * 0.28,
-        y: sideGuide.y + (sideTarget.y - sideGuide.y) * 0.72
+        x: sideGuide.x + (sideTarget.x - sideGuide.x) * 0.45,
+        y: sideGuide.y + (sideTarget.y - sideGuide.y) * 0.28
       };
-      const deflectEntry = { ...alongPath(0.24, 0) };
+      const deflectEntry = { ...alongPath(0.3, 0) };
       return {
+        narrow,
+        floorY,
         table,
         inner,
         rampTop,
         rampBottom,
+        rampLen,
         pathStart,
         pathEnd,
+        pathLen,
         restBall,
         rampTangent,
         rampNormal,
@@ -1473,6 +1506,24 @@ body #app .toolbar button:disabled{
       freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
     }
 
+    function hideAnalysisResult(){
+      analysisText.hidden = true;
+      controlBody.scrollTop = 0;
+    }
+
+    function revealAnalysisResult(){
+      analysisText.hidden = false;
+      requestAnimationFrame(()=>{
+        controlBody.scrollTop = Math.max(0, controlBody.scrollHeight - controlBody.clientHeight);
+      });
+    }
+
+    function syncAnalysisVisibility(){
+      const canAnalyze = state.freeMode || state.currentTask === TASKS.length - 1;
+      analyzeBtn.hidden = !canAnalyze;
+      if(!canAnalyze) hideAnalysisResult();
+    }
+
     function setStepUI(i){
       const idx = clamp(i, 0, TASKS.length - 1);
       state.currentTask = idx;
@@ -1484,6 +1535,7 @@ body #app .toolbar button:disabled{
         d.classList.toggle('done', n < idx || state.completed);
         d.classList.toggle('warn', !state.completed && n === state.stepWarnIdx);
       });
+      syncAnalysisVisibility();
     }
     function initTaskUI(){
       dotsEl.innerHTML = TASKS.map(()=>'<span class="dot"></span>').join('');
@@ -1533,7 +1585,9 @@ body #app .toolbar button:disabled{
       state.apparatus.ballState = '静止';
       state.apparatus.motion = null;
       state.apparatus.trail = [];
+      state.apparatus.ballSpin = 0;
       state.apparatus.released = false;
+      clearCurrentObservation();
       updatePills();
     }
 
@@ -1546,7 +1600,9 @@ body #app .toolbar button:disabled{
       state.apparatus.ballState = '待释放';
       state.apparatus.motion = null;
       state.apparatus.trail = [];
+      state.apparatus.ballSpin = 0;
       state.apparatus.released = false;
+      clearCurrentObservation();
       updatePills();
     }
 
@@ -1591,9 +1647,9 @@ body #app .toolbar button:disabled{
         type,
         sceneLabel:'前方磁体（甲）',
         magnetLabel:'前方',
-        resultText:'小铁球先在水平桌面上逐渐减速，接近前方磁体时又明显加速并被吸附过去',
-        meterText:'先减速，近磁铁时再加速',
-        note:`${modeLabel} · 先减速后被吸引加速`
+        resultText:'小铁球在水平桌面上速度增大，越来越快地靠近前方磁体',
+        meterText:'速度增大，靠近磁体',
+        note:`${modeLabel} · 运动速度增大`
       };
       if(type === 'deflect') return {
         type,
@@ -1624,10 +1680,10 @@ body #app .toolbar button:disabled{
     function startObservationMotion(type, announce=true){
       if(state.apparatus.motion) return false;
       const rect = scene.getBoundingClientRect();
-      const isNarrow = rect.width < 760;
       const g = get20Geometry(rect.width, rect.height);
       const ap = state.apparatus;
       const from = { x:ap.ballX, y:ap.ballY };
+      clearCurrentObservation();
       ap.trail = [{ x:from.x, y:from.y }];
       if(type === 'start_move'){
         ap.motion = {
@@ -1643,6 +1699,8 @@ body #app .toolbar button:disabled{
       if(type === 'speed_up'){
         const rampExit = { x:g.pathStart.x, y:g.pathStart.y };
         const frontProj = projectToPath(g.targets.front, rampExit, g.pathTangent, g.pathNormal);
+        const magnetProj = projectToPath(g.anchors.front, rampExit, g.pathTangent, g.pathNormal);
+        const entrySpeed = clamp(g.pathLen * 0.55, 72, 160);
         ap.motion = {
           type,
           start:performance.now(),
@@ -1651,31 +1709,30 @@ body #app .toolbar button:disabled{
           phase:'ramp',
           rampTop:{ x:g.rampTop.x, y:g.rampTop.y },
           rampExit,
-          rampControl:{ x:(g.rampTop.x + rampExit.x) / 2 - 10, y:g.rampTop.y + 26 },
-          rampLen: Math.hypot(rampExit.x - g.rampTop.x, rampExit.y - g.rampTop.y) || 1,
-          rampU:0,
+          rampLen:g.rampLen,
+          rampS:0,
           rampSpeed:0,
+          rampExitSpeed:entrySpeed,
+          rampAccel:(entrySpeed * entrySpeed) / (2 * g.rampLen),
           tangent:{ x:g.pathTangent.x, y:g.pathTangent.y },
           normal:{ x:g.pathNormal.x, y:g.pathNormal.y },
           frontS: frontProj.s,
+          magnetS:magnetProj.s,
           frontTarget:{ x:g.targets.front.x, y:g.targets.front.y },
+          trackAccel:clamp(g.pathLen * 0.68, 92, 290),
           s:0,
           vS:0
         };
-        ap.ballState = '先减速，接近磁体后再加速';
+        ap.ballState = '向前方磁体加速';
         ap.released = true;
-        if(announce) setStatus('小铁球先逐渐减速，接近前方磁体时又加速靠近');
+        if(announce) setStatus('小铁球速度增大，越来越快地靠近前方磁体');
         return true;
       }
       if(type === 'deflect'){
         const rampExit = { x:g.pathStart.x, y:g.pathStart.y };
         const entryProj = projectToPath(g.targets.deflectEntry, rampExit, g.pathTangent, g.pathNormal);
         const stopProj = projectToPath(g.targets.side, rampExit, g.pathTangent, g.pathNormal);
-        const magnetProj = projectToPath(g.anchors.side, rampExit, g.pathTangent, g.pathNormal);
-        const curvePull = {
-          x: g.targets.sideGuide.x + g.pathTangent.x * (isNarrow ? 12 : 14) + g.pathNormal.x * (isNarrow ? 36 : 44),
-          y: g.targets.sideGuide.y + g.pathTangent.y * (isNarrow ? 12 : 14) + g.pathNormal.y * (isNarrow ? 36 : 44)
-        };
+        const entrySpeed = clamp(g.pathLen * 0.52, 70, 154);
         ap.motion = {
           type,
           start:performance.now(),
@@ -1684,22 +1741,21 @@ body #app .toolbar button:disabled{
           phase:'ramp',
           rampTop:{ x:g.rampTop.x, y:g.rampTop.y },
           rampExit,
-          rampControl:{ x:(g.rampTop.x + rampExit.x) / 2 - 8, y:g.rampTop.y + 28 },
-          rampLen: Math.hypot(rampExit.x - g.rampTop.x, rampExit.y - g.rampTop.y) || 1,
-          rampU:0,
+          rampLen:g.rampLen,
+          rampS:0,
           rampSpeed:0,
+          rampExitSpeed:entrySpeed,
+          rampAccel:(entrySpeed * entrySpeed) / (2 * g.rampLen),
           tangent:{ x:g.pathTangent.x, y:g.pathTangent.y },
           normal:{ x:g.pathNormal.x, y:g.pathNormal.y },
           entryS: entryProj.s,
-          magS: magnetProj.s,
-          stopS: stopProj.s + (isNarrow ? 22 : 28),
+          stopS: stopProj.s,
           stopN: stopProj.n,
           stopTarget:{ x:g.targets.side.x, y:g.targets.side.y },
           curveStart:null,
-          curveLead:null,
-          curveLeadLen: isNarrow ? 104 : 126,
-          curveDuration: isNarrow ? 1.84 : 2.08,
-          curvePull,
+          curveControl1:null,
+          curveControl2:null,
+          curveDuration:0,
           minX: g.inner.x + 11,
           maxX: g.inner.x + g.inner.w - 11,
           minY: g.inner.y + 11,
@@ -1715,22 +1771,27 @@ body #app .toolbar button:disabled{
         return true;
       }
       if(type === 'weak'){
+        const rampExit = { x:g.pathStart.x, y:g.pathStart.y };
+        const weakProj = projectToPath(g.targets.weak, rampExit, g.pathTangent, g.pathNormal);
+        const entrySpeed = clamp(g.pathLen * 0.5, 68, 148);
         ap.motion = {
           type,
           start:performance.now(),
-          duration:1740,
+          lastTs:performance.now(),
+          elapsed:0,
+          phase:'ramp',
           rampTop:{ x:g.rampTop.x, y:g.rampTop.y },
-          rampExit:{ x:g.pathStart.x, y:g.pathStart.y },
-          from:{ x:g.pathStart.x, y:g.pathStart.y },
-          c1:{
-            x:g.pathStart.x + g.pathTangent.x * 100,
-            y:g.pathStart.y + g.pathTangent.y * 100
-          },
-          c2:{
-            x:g.targets.weak.x - g.pathTangent.x * 84,
-            y:g.targets.weak.y - g.pathTangent.y * 84
-          },
-          to:{ x:g.targets.weak.x, y:g.targets.weak.y }
+          rampExit,
+          rampLen:g.rampLen,
+          rampS:0,
+          rampSpeed:0,
+          rampExitSpeed:entrySpeed,
+          rampAccel:(entrySpeed * entrySpeed) / (2 * g.rampLen),
+          tangent:{ x:g.pathTangent.x, y:g.pathTangent.y },
+          weakS:weakProj.s,
+          weakTarget:{ x:g.targets.weak.x, y:g.targets.weak.y },
+          s:0,
+          vS:0
         };
         ap.ballState = '沿原方向下滚';
         ap.released = true;
@@ -1787,7 +1848,7 @@ body #app .toolbar button:disabled{
           return false;
         }
         if(state.currentTask === 1 && rec.resultType !== 'speed_up'){
-          showToast('当前步骤需要记录“前方磁体使小铁球先慢后快地靠近”的现象');
+          showToast('当前步骤需要记录“前方磁体使小铁球加速靠近”的现象');
           return false;
         }
         if(state.currentTask === 2 && rec.resultType !== 'deflect'){
@@ -1840,6 +1901,7 @@ body #app .toolbar button:disabled{
       state.analysisOk = ok;
       analysisText.textContent = msg;
       analysisText.classList.toggle('ok', ok);
+      revealAnalysisResult();
       if(showToastMsg) showToast(ok ? '分析完成：结论成立' : '分析未通过，请补充实验记录');
       setStatus(ok ? '分析完成，等待确认' : '分析未通过');
       return ok;
@@ -1869,7 +1931,7 @@ body #app .toolbar button:disabled{
           const msg = state.currentTask === 0
             ? '请先完成“静止小铁球被磁体吸引”记录，再点击“确认观察”。'
             : state.currentTask === 1
-              ? '请先完成“前方磁体使小铁球先慢后快地靠近”记录，再点击“确认观察”。'
+              ? '请先完成“前方磁体使小铁球加速靠近”记录，再点击“确认观察”。'
               : state.currentTask === 2
                 ? '请先完成“侧旁磁体使小铁球偏转”记录，再点击“确认观察”。'
                 : '请先完成分析结论，再点击“确认观察”。';
@@ -1944,12 +2006,15 @@ body #app .toolbar button:disabled{
       clearBadge();
       analysisText.classList.remove('ok');
       analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
+      hideAnalysisResult();
       renderRecords();
       if(showTip) showToast('数据已清空');
     }
 
     function setFreeMode(on){
+      hideAnalysisResult();
       state.freeMode = !!on;
+      syncAnalysisVisibility();
       updateModeHud();
       updateAutoDemoBtn();
       if(state.freeMode){
@@ -2124,38 +2189,81 @@ body #app .toolbar button:disabled{
       if(strokeStyle){ ctx.strokeStyle = strokeStyle; ctx.stroke(); }
     }
     function drawBoard(ctx, g){
-      const {table, inner} = g;
-      drawRoundedRect(ctx, table.x, table.y, table.w, table.h, 18, '#dcc09b', '#8a6747');
-      drawRoundedRect(ctx, inner.x, inner.y, inner.w, inner.h, 12, '#dff0fb', '#99c0d6');
+      const {table, inner, floorY} = g;
+      const legHeight = Math.max(18, floorY - (table.y + table.h));
+      ctx.fillStyle = '#755033';
+      ctx.fillRect(table.x + 18, table.y + table.h - 2, 13, legHeight + 4);
+      ctx.fillRect(table.x + table.w - 31, table.y + table.h - 2, 13, legHeight + 4);
+      const frame = ctx.createLinearGradient(table.x, table.y, table.x, table.y + table.h);
+      frame.addColorStop(0, '#e0bc87');
+      frame.addColorStop(1, '#ae7642');
+      drawRoundedRect(ctx, table.x, table.y, table.w, table.h, 18, frame, '#6e472a');
+      drawRoundedRect(ctx, inner.x, inner.y, inner.w, inner.h, 12, '#dcebf2', '#8fb2c2');
       const gloss = ctx.createLinearGradient(inner.x, inner.y, inner.x, inner.y + inner.h);
-      gloss.addColorStop(0, 'rgba(255,255,255,.22)');
-      gloss.addColorStop(1, 'rgba(255,255,255,.03)');
-      ctx.fillStyle = gloss;
+      gloss.addColorStop(0, 'rgba(255,255,255,.28)');
+      gloss.addColorStop(1, 'rgba(112,163,188,.06)');
       drawRoundedRect(ctx, inner.x, inner.y, inner.w, inner.h, 12, gloss);
-      ctx.strokeStyle = 'rgba(255,255,255,.18)';
+      ctx.strokeStyle = 'rgba(86,125,144,.16)';
       ctx.lineWidth = 1;
-      for(let i=1;i<8;i++){
-        const y = inner.y + inner.h * (i / 8);
+      for(let i=1;i<7;i++){
+        const y = inner.y + inner.h * (i / 7);
         ctx.beginPath();
         ctx.moveTo(inner.x + 8, y);
         ctx.lineTo(inner.x + inner.w - 8, y);
         ctx.stroke();
       }
-      ctx.fillStyle = '#b48b5b';
-      ctx.fillRect(table.x + 18, table.y + table.h, 12, 34);
-      ctx.fillRect(table.x + table.w - 30, table.y + table.h, 12, 34);
-      ctx.fillRect(table.x + 18, table.y + 18, 12, 34);
-      ctx.fillRect(table.x + table.w - 30, table.y + 18, 12, 34);
+      ctx.strokeStyle = 'rgba(104,68,37,.3)';
+      ctx.beginPath();
+      ctx.moveTo(table.x + 28, table.y + 8);
+      ctx.lineTo(table.x + table.w - 28, table.y + 8);
+      ctx.stroke();
+    }
+    function drawRunway(ctx, g){
+      const {pathStart, pathEnd, pathTangent, pathNormal} = g;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(59,100,121,.44)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([7,6]);
+      ctx.beginPath();
+      ctx.moveTo(pathStart.x, pathStart.y);
+      ctx.lineTo(pathEnd.x, pathEnd.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const arrow = {
+        x:pathEnd.x - pathTangent.x * 10,
+        y:pathEnd.y - pathTangent.y * 10
+      };
+      ctx.fillStyle = 'rgba(59,100,121,.7)';
+      ctx.beginPath();
+      ctx.moveTo(arrow.x + pathTangent.x * 8, arrow.y + pathTangent.y * 8);
+      ctx.lineTo(arrow.x - pathTangent.x * 5 + pathNormal.x * 4, arrow.y - pathTangent.y * 5 + pathNormal.y * 4);
+      ctx.lineTo(arrow.x - pathTangent.x * 5 - pathNormal.x * 4, arrow.y - pathTangent.y * 5 - pathNormal.y * 4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
     function drawRamp(ctx, g){
-      const {rampTop, rampBottom, rampNormal} = g;
-      const topHalf = 18;
-      const bottomHalf = 12;
+      const {rampTop, rampBottom, rampNormal, rampTangent, narrow} = g;
+      const topHalf = narrow ? 13 : 18;
+      const bottomHalf = narrow ? 10 : 14;
       const a1 = { x:rampTop.x + rampNormal.x * topHalf, y:rampTop.y + rampNormal.y * topHalf };
       const a2 = { x:rampTop.x - rampNormal.x * topHalf, y:rampTop.y - rampNormal.y * topHalf };
       const b1 = { x:rampBottom.x + rampNormal.x * bottomHalf, y:rampBottom.y + rampNormal.y * bottomHalf };
       const b2 = { x:rampBottom.x - rampNormal.x * bottomHalf, y:rampBottom.y - rampNormal.y * bottomHalf };
-      ctx.fillStyle = '#d4dce4';
+      ctx.save();
+      ctx.fillStyle = 'rgba(38,24,13,.26)';
+      ctx.beginPath();
+      ctx.moveTo(a1.x + 4, a1.y + 6);
+      ctx.lineTo(b1.x + 4, b1.y + 6);
+      ctx.lineTo(b2.x + 4, b2.y + 6);
+      ctx.lineTo(a2.x + 4, a2.y + 6);
+      ctx.closePath();
+      ctx.fill();
+      const plank = ctx.createLinearGradient(rampTop.x, rampTop.y, rampBottom.x, rampBottom.y);
+      plank.addColorStop(0, '#ead4ab');
+      plank.addColorStop(.55, '#d1a66f');
+      plank.addColorStop(1, '#b77d45');
+      ctx.fillStyle = plank;
       ctx.beginPath();
       ctx.moveTo(a1.x, a1.y);
       ctx.lineTo(b1.x, b1.y);
@@ -2163,43 +2271,56 @@ body #app .toolbar button:disabled{
       ctx.lineTo(a2.x, a2.y);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#7f8892';
+      ctx.strokeStyle = '#76502e';
       ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.strokeStyle = '#edf3f8';
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,245,220,.72)';
+      ctx.lineWidth = narrow ? 2 : 3;
       ctx.beginPath();
-      ctx.moveTo(rampTop.x + rampNormal.x * 8, rampTop.y + rampNormal.y * 8);
-      ctx.lineTo(rampBottom.x + rampNormal.x * 5, rampBottom.y + rampNormal.y * 5);
+      ctx.moveTo(rampTop.x + rampNormal.x * (topHalf - 4), rampTop.y + rampNormal.y * (topHalf - 4));
+      ctx.lineTo(rampBottom.x + rampNormal.x * (bottomHalf - 3), rampBottom.y + rampNormal.y * (bottomHalf - 3));
       ctx.stroke();
       ctx.beginPath();
-      ctx.moveTo(rampTop.x - rampNormal.x * 8, rampTop.y - rampNormal.y * 8);
-      ctx.lineTo(rampBottom.x - rampNormal.x * 5, rampBottom.y - rampNormal.y * 5);
+      ctx.moveTo(rampTop.x - rampNormal.x * (topHalf - 4), rampTop.y - rampNormal.y * (topHalf - 4));
+      ctx.lineTo(rampBottom.x - rampNormal.x * (bottomHalf - 3), rampBottom.y - rampNormal.y * (bottomHalf - 3));
       ctx.stroke();
-      ctx.strokeStyle = 'rgba(112,124,136,.55)';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(rampTop.x, rampTop.y);
-      ctx.lineTo(rampBottom.x, rampBottom.y);
-      ctx.stroke();
+      ctx.strokeStyle = 'rgba(112,72,38,.34)';
+      ctx.lineWidth = 1;
+      for(let i=1;i<5;i++){
+        const t = i / 5;
+        const center = linePoint(rampTop, rampBottom, t);
+        const half = topHalf + (bottomHalf - topHalf) * t - 4;
+        ctx.beginPath();
+        ctx.moveTo(center.x + rampNormal.x * half, center.y + rampNormal.y * half);
+        ctx.lineTo(center.x - rampNormal.x * half, center.y - rampNormal.y * half);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#7b5637';
+      const support = narrow ? 8 : 11;
+      drawRoundedRect(ctx, rampTop.x - rampTangent.x * 4 - support / 2, rampTop.y - rampTangent.y * 4 - support / 2, support, support, 3, '#7b5637', '#5b3a22');
+      ctx.restore();
     }
     function drawRelease(ctx, g){
-      const {release, rampTop} = g;
-      drawRoundedRect(ctx, release.x - 10, release.y - 36, 20, 70, 9, '#c9d3df', '#f5f8ff');
-      ctx.strokeStyle = '#6c7b88';
-      ctx.lineWidth = 3;
+      const {release, rampTop, narrow} = g;
+      const postH = narrow ? 34 : 42;
+      const postW = narrow ? 8 : 10;
+      drawRoundedRect(ctx, release.x - postW / 2, release.y - postH / 2, postW, postH, 4, '#aab8c4', '#eef6fc');
+      ctx.strokeStyle = '#5d6c78';
+      ctx.lineWidth = narrow ? 2 : 3;
       ctx.beginPath();
-      ctx.moveTo(release.x + 4, release.y - 10);
-      ctx.lineTo(rampTop.x - 8, rampTop.y - 4);
+      ctx.moveTo(release.x + 2, release.y - 5);
+      ctx.lineTo(rampTop.x - 5, rampTop.y - 2);
       ctx.stroke();
-      ctx.fillStyle = '#dce8f5';
-      ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText('释放杆', release.x - 24, release.y - 44);
+      ctx.fillStyle = '#33475a';
+      ctx.font = `700 ${narrow ? 10 : 12}px -apple-system,Segoe UI`;
+      ctx.textAlign = 'left';
+      ctx.fillText('释放杆', release.x + (narrow ? 8 : 10), release.y - postH / 2 - 6);
+      ctx.textAlign = 'start';
       if(state.apparatus.ballScene === 'slope' && !state.apparatus.motion){
         ctx.strokeStyle = 'rgba(255,215,117,.85)';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(release.x, release.y - 2, 18 + state.apparatus.releasePulse * 3, 0, Math.PI * 2);
+        ctx.arc(release.x, release.y - 1, (narrow ? 13 : 16) + state.apparatus.releasePulse * 2, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
@@ -2214,8 +2335,8 @@ body #app .toolbar button:disabled{
       ctx.fillRect(-18, -5, 36, 3);
       ctx.restore();
     }
-    function drawBall(ctx, x, y){
-      const grad = ctx.createRadialGradient(x - 4, y - 6, 2, x, y, 12);
+    function drawBall(ctx, x, y, spin=0){
+      const grad = ctx.createRadialGradient(-4, -6, 2, 0, 0, 12);
       grad.addColorStop(0, '#adb4bb');
       grad.addColorStop(.28, '#5c646c');
       grad.addColorStop(1, '#090c10');
@@ -2223,12 +2344,21 @@ body #app .toolbar button:disabled{
       ctx.beginPath();
       ctx.ellipse(x + 2, y + 10, 11, 5, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.save();
+      ctx.translate(x, y);
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,.5)';
       ctx.stroke();
+      ctx.rotate(spin);
+      ctx.strokeStyle = 'rgba(210,225,236,.48)';
+      ctx.lineWidth = 1.3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 6, -1.05, 1.05);
+      ctx.stroke();
+      ctx.restore();
     }
     function drawTrail(ctx, trail){
       if(!trail || trail.length < 2) return;
@@ -2245,17 +2375,18 @@ body #app .toolbar button:disabled{
     function draw20(ctx, W, H){
       const ap = state.apparatus;
       const g = get20Geometry(W,H);
-      const floorY = H - 70;
+      const floorY = g.floorY;
       ctx.fillStyle = '#2f343a';
       ctx.fillRect(0, floorY, W, 70);
       ctx.fillStyle = 'rgba(255,255,255,.08)';
       ctx.fillRect(0, floorY, W, 2);
 
       drawBoard(ctx, g);
+      drawRunway(ctx, g);
       drawRamp(ctx, g);
       drawRelease(ctx, g);
       drawTrail(ctx, ap.trail);
-      drawBall(ctx, ap.ballX, ap.ballY);
+      drawBall(ctx, ap.ballX, ap.ballY, ap.ballSpin);
       drawMagnet(ctx, ap.magnetX, ap.magnetY, ap.magnetAngle);
 
       if(!state.freeMode){
@@ -2272,27 +2403,6 @@ body #app .toolbar button:disabled{
         }
       }
 
-      ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillStyle = '#d7e7f7';
-      ctx.fillText(ap.ballScene === 'rest' ? '静止观察区' : '短斜坡释放区', W < 760 ? 60 : 126, W < 760 ? 126 : 118);
-
-      const narrow = W < 760;
-      const meter = narrow
-        ? { x: W - 176, y: H - 214, w: 152, h: 102 }
-        : { x: W - 232, y: H - 220, w: 188, h: 108 };
-      const panelX = meter.x, panelY = meter.y, panelW = meter.w, panelH = meter.h;
-      drawRoundedRect(ctx, panelX, panelY, panelW, panelH, 18, 'rgba(18,28,40,.88)', '#95b7d8');
-      ctx.fillStyle = '#dce9ff';
-      ctx.font = `bold ${narrow ? 13 : 14}px -apple-system,Segoe UI`;
-      ctx.fillText('现象指示仪', panelX + (narrow ? 38 : 56), panelY + 22);
-      drawRoundedRect(ctx, panelX + 16, panelY + 28, panelW - 32, 34, 10, '#0a1119');
-      ctx.fillStyle = '#7fd1ff';
-      ctx.font = `bold ${narrow ? 13 : 14}px -apple-system,Segoe UI`;
-      ctx.fillText(ap.lastObservation ? (ap.lastObservation.meterText || ap.lastObservation.resultText) : '等待观察', panelX + 24, panelY + 49);
-      ctx.fillStyle = '#dce9ff';
-      ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText(`磁体位置: ${state.freeMode ? '自由' : (ap.magnetAnchor === 'rest' ? '静止球旁' : ap.magnetAnchor === 'front' ? '前方' : ap.magnetAnchor === 'side' ? '侧旁' : '待放置')}`, panelX + 18, panelY + 76);
-      ctx.fillText(`小球状态: ${ap.ballState}`, panelX + 18, panelY + 94);
     }
 
     function drawScene(){
@@ -2315,13 +2425,6 @@ body #app .toolbar button:disabled{
         y: k*k*k*p0.y + 3*k*k*t*p1.y + 3*k*t*t*p2.y + t*t*t*p3.y
       };
     }
-    function quadratic(p0,p1,p2,t){
-      const k = 1 - t;
-      return {
-        x: k*k*p0.x + 2*k*t*p1.x + t*t*p2.x,
-        y: k*k*p0.y + 2*k*t*p1.y + t*t*p2.y
-      };
-    }
     function linePoint(p0, p1, t){
       return {
         x: p0.x + (p1.x - p0.x) * t,
@@ -2329,10 +2432,6 @@ body #app .toolbar button:disabled{
       };
     }
     function vecDot(ax, ay, bx, by){ return ax * bx + ay * by; }
-    function smoothstep01(t){
-      const v = clamp(t, 0, 1);
-      return v * v * (3 - 2 * v);
-    }
     function projectToPath(point, origin, tangent, normal){
       const dx = point.x - origin.x;
       const dy = point.y - origin.y;
@@ -2348,119 +2447,117 @@ body #app .toolbar button:disabled{
         if(trail.length > 42) trail.shift();
       }
     }
+    function advanceRampPhysics(motion, ap, dt, nextPhase){
+      motion.rampSpeed = Math.min(motion.rampExitSpeed, motion.rampSpeed + motion.rampAccel * dt);
+      motion.rampS = Math.min(motion.rampLen, motion.rampS + motion.rampSpeed * dt);
+      const position = linePoint(motion.rampTop, motion.rampExit, motion.rampS / motion.rampLen);
+      ap.ballX = round(position.x, 2);
+      ap.ballY = round(position.y, 2);
+      if(motion.rampS < motion.rampLen) return false;
+      motion.phase = nextPhase;
+      motion.s = 0;
+      motion.vS = motion.rampSpeed;
+      ap.ballX = round(motion.rampExit.x, 2);
+      ap.ballY = round(motion.rampExit.y, 2);
+      return true;
+    }
+
     function advanceFrontPhysics(motion, ap, dt){
       motion.elapsed += dt;
       if(motion.phase === 'ramp'){
-        motion.rampSpeed = Math.min(motion.rampSpeed + 920 * dt, 340);
-        motion.rampU = Math.min(1, motion.rampU + (motion.rampSpeed * dt) / motion.rampLen);
-        const u = smoothstep01(motion.rampU);
-        const pos = quadratic(motion.rampTop, motion.rampControl, motion.rampExit, u);
-        ap.ballX = round(pos.x, 2);
-        ap.ballY = round(pos.y, 2);
-        if(motion.rampU >= 1){
-          motion.phase = 'coast';
-          motion.s = 0;
-          motion.vS = Math.max(motion.rampSpeed * 0.76, 168);
-          ap.ballX = round(motion.rampExit.x, 2);
-          ap.ballY = round(motion.rampExit.y, 2);
-        }
-      }else{
-        const dist = motion.frontS - motion.s;
-        if(motion.phase === 'coast'){
-          const magnetic = dist < 54 ? 10 + 900 / (dist * dist + 1800) : 0;
-          const rolling = 104 + motion.vS * 0.82;
-          motion.vS = Math.max(0, motion.vS + (magnetic - rolling) * dt);
-          if(dist > 118) motion.vS = Math.max(motion.vS, 74);
-          else if(dist > 82) motion.vS = Math.max(motion.vS, 28);
-          else if(dist > 56) motion.vS = Math.max(motion.vS, 6);
-          if(dist < 32 || motion.elapsed > 2.35){
-            motion.phase = 'pause';
-            motion.pauseElapsed = 0;
-            motion.vS = Math.min(motion.vS, 6);
-          }
-        }else if(motion.phase === 'pause'){
-          motion.pauseElapsed += dt;
-          if(motion.pauseElapsed < 0.18){
-            motion.vS = Math.max(10, motion.vS - (28 + motion.vS * 1.9) * dt);
-          }else if(motion.pauseElapsed < 0.32){
-            motion.vS = Math.max(8, motion.vS - (22 + motion.vS * 1.8) * dt);
-          }else{
-            motion.vS = Math.max(8, motion.vS - (8 + motion.vS * 0.8) * dt);
-          }
-          if(motion.pauseElapsed > 0.46 || dist < 20){
-            motion.phase = 'capture';
-            motion.vS = Math.max(motion.vS, 5);
-          }
-        }else{
-          const captureGate = smoothstep01((32 - dist) / 18);
-          const magnetic = 420 + captureGate * 520 + 12800 / (dist * dist + 520);
-          const rolling = 34 + motion.vS * 0.26;
-          motion.vS = Math.max(18, motion.vS + (magnetic - rolling) * dt);
-        }
-        motion.s += motion.vS * dt;
-        if(motion.s >= motion.frontS - 4 || motion.elapsed > 4.6){
-          ap.ballX = round(motion.frontTarget.x, 2);
-          ap.ballY = round(motion.frontTarget.y, 2);
-          return true;
-        }
-        ap.ballX = round(motion.rampExit.x + motion.tangent.x * motion.s, 2);
-        ap.ballY = round(motion.rampExit.y + motion.tangent.y * motion.s, 2);
+        advanceRampPhysics(motion, ap, dt, 'track');
+        return false;
       }
+      const distanceToMagnet = Math.max(0, motion.magnetS - motion.s);
+      const proximity = 1 - clamp(distanceToMagnet / Math.max(motion.magnetS, 1), 0, 1);
+      const magneticAcceleration = motion.trackAccel * (0.36 + 0.64 * proximity * proximity);
+      motion.vS += magneticAcceleration * dt;
+      motion.s += motion.vS * dt;
+      if(motion.s >= motion.frontS || motion.elapsed > 4.2){
+        ap.ballX = round(motion.frontTarget.x, 2);
+        ap.ballY = round(motion.frontTarget.y, 2);
+        return true;
+      }
+      ap.ballX = round(motion.rampExit.x + motion.tangent.x * motion.s, 2);
+      ap.ballY = round(motion.rampExit.y + motion.tangent.y * motion.s, 2);
       return false;
     }
+
     function advanceDeflectPhysics(motion, ap, dt){
       motion.elapsed += dt;
       if(motion.phase === 'ramp'){
-        motion.rampSpeed = Math.min(motion.rampSpeed + 900 * dt, 332);
-        motion.rampU = Math.min(1, motion.rampU + (motion.rampSpeed * dt) / motion.rampLen);
-        const u = smoothstep01(motion.rampU);
-        const pos = quadratic(motion.rampTop, motion.rampControl, motion.rampExit, u);
-        ap.ballX = round(pos.x, 2);
-        ap.ballY = round(pos.y, 2);
-        if(motion.rampU >= 1){
-          motion.phase = 'glide';
-          motion.s = 0;
-          motion.vS = Math.max(motion.rampSpeed * 0.72, 156);
-          ap.ballX = round(motion.rampExit.x, 2);
-          ap.ballY = round(motion.rampExit.y, 2);
-        }
-      }else if(motion.phase === 'glide'){
-        const dist = motion.magS - motion.s;
-        const rolling = 104 + motion.vS * 0.82;
-        motion.vS = Math.max(0, motion.vS - rolling * dt);
-        if(dist > 118) motion.vS = Math.max(motion.vS, 74);
-        else if(dist > 82) motion.vS = Math.max(motion.vS, 28);
-        else if(dist > 56) motion.vS = Math.max(motion.vS, 6);
+        advanceRampPhysics(motion, ap, dt, 'glide');
+        return false;
+      }
+      if(motion.phase === 'glide'){
+        motion.vS = Math.max(motion.rampExitSpeed * 0.88, motion.vS - 12 * dt);
         motion.s += motion.vS * dt;
         ap.ballX = round(motion.rampExit.x + motion.tangent.x * motion.s, 2);
         ap.ballY = round(motion.rampExit.y + motion.tangent.y * motion.s, 2);
         if(motion.s >= motion.entryS){
           motion.phase = 'curve';
-          motion.curveStart = { x: ap.ballX, y: ap.ballY };
-          motion.curveLead = {
-            x: ap.ballX + motion.tangent.x * motion.curveLeadLen + motion.normal.x * (motion.curveLeadLen * 0.44),
-            y: ap.ballY + motion.tangent.y * motion.curveLeadLen + motion.normal.y * (motion.curveLeadLen * 0.44)
+          motion.curveStart = { x:ap.ballX, y:ap.ballY };
+          const remaining = Math.max(1, motion.stopS - motion.entryS);
+          motion.curveDuration = clamp((remaining / Math.max(motion.vS, 1)) * 1.16, 0.72, 1.5);
+          const startLead = motion.vS * motion.curveDuration / 3;
+          const endLead = motion.vS * 0.62 * motion.curveDuration / 3;
+          motion.curveControl1 = {
+            x:motion.curveStart.x + motion.tangent.x * startLead,
+            y:motion.curveStart.y + motion.tangent.y * startLead
+          };
+          motion.curveControl2 = {
+            x:motion.stopTarget.x - motion.tangent.x * endLead,
+            y:motion.stopTarget.y - motion.tangent.y * endLead
           };
           motion.curveElapsed = 0;
         }
-      }else{
-        motion.curveElapsed += dt;
-        motion.curveU = smoothstep01(motion.curveElapsed / motion.curveDuration);
-        const pos = cubic(motion.curveStart, motion.curveLead, motion.curvePull, motion.stopTarget, motion.curveU);
-        ap.ballX = round(clamp(pos.x, motion.minX, motion.maxX), 2);
-        ap.ballY = round(clamp(pos.y, motion.minY, motion.maxY), 2);
-        if(motion.curveU >= 0.995 || motion.elapsed > 4.2){
-          ap.ballX = round(motion.stopTarget.x, 2);
-          ap.ballY = round(motion.stopTarget.y, 2);
-          return true;
-        }
+        return false;
       }
+      motion.curveElapsed += dt;
+      motion.curveU = clamp(motion.curveElapsed / motion.curveDuration, 0, 1);
+      const position = cubic(
+        motion.curveStart,
+        motion.curveControl1,
+        motion.curveControl2,
+        motion.stopTarget,
+        motion.curveU
+      );
+      ap.ballX = round(clamp(position.x, motion.minX, motion.maxX), 2);
+      ap.ballY = round(clamp(position.y, motion.minY, motion.maxY), 2);
+      if(motion.curveU >= 1 || motion.elapsed > 4.4){
+        ap.ballX = round(motion.stopTarget.x, 2);
+        ap.ballY = round(motion.stopTarget.y, 2);
+        return true;
+      }
+      return false;
+    }
+
+    function advanceWeakPhysics(motion, ap, dt){
+      motion.elapsed += dt;
+      if(motion.phase === 'ramp'){
+        advanceRampPhysics(motion, ap, dt, 'track');
+        return false;
+      }
+      motion.vS = Math.max(32, motion.vS - (18 + motion.vS * 0.08) * dt);
+      motion.s += motion.vS * dt;
+      if(motion.s >= motion.weakS || motion.elapsed > 4.2){
+        ap.ballX = round(motion.weakTarget.x, 2);
+        ap.ballY = round(motion.weakTarget.y, 2);
+        return true;
+      }
+      ap.ballX = round(motion.rampExit.x + motion.tangent.x * motion.s, 2);
+      ap.ballY = round(motion.rampExit.y + motion.tangent.y * motion.s, 2);
       return false;
     }
 
     function finishObservation(type){
       state.apparatus.lastObservation = makeObservation(type);
-      state.apparatus.ballState = type === 'start_move' ? '已靠近磁体' : (type === 'speed_up' ? '已靠上前方磁体' : (type === 'deflect' ? '已向侧旁偏转停下' : '已停止'));
+      state.apparatus.ballState = type === 'start_move'
+        ? '已靠近磁体'
+        : (type === 'speed_up'
+            ? '已加速靠近前方磁体'
+            : (type === 'deflect' ? '已向侧旁偏转停下' : '已停止'));
+      renderObservationSummary();
       updatePills();
     }
 
@@ -2472,6 +2569,9 @@ body #app .toolbar button:disabled{
       const dt = Math.min(Math.max((ts - (motion.lastTs || ts)) / 1000, 0.001), 0.032);
       motion.lastTs = ts;
       const p = motion.duration ? clamp((ts - motion.start) / motion.duration, 0, 1) : 0;
+      const beforeX = ap.ballX;
+      const beforeY = ap.ballY;
+      let finished = false;
       if(motion.type === 'start_move'){
         const mx = ap.magnetX;
         const my = ap.magnetY;
@@ -2479,39 +2579,20 @@ body #app .toolbar button:disabled{
         const dy = my - motion.from.y;
         const len = Math.hypot(dx, dy) || 1;
         const target = { x: mx - dx / len * 22, y: my - dy / len * 22 };
-        const eased = 1 - Math.pow(1 - p, 2.2);
+        const eased = p * p;
         ap.ballX = round(motion.from.x + (target.x - motion.from.x) * eased, 2);
         ap.ballY = round(motion.from.y + (target.y - motion.from.y) * eased, 2);
+        finished = p >= 1;
       }else if(motion.type === 'speed_up'){
-        if(advanceFrontPhysics(motion, ap, dt)){
-          pushTrailPoint(ap);
-          ap.motion = null;
-          finishObservation(motion.type);
-          return;
-        }
+        finished = advanceFrontPhysics(motion, ap, dt);
       }else if(motion.type === 'deflect'){
-        if(advanceDeflectPhysics(motion, ap, dt)){
-          pushTrailPoint(ap);
-          ap.motion = null;
-          finishObservation(motion.type);
-          return;
-        }
+        finished = advanceDeflectPhysics(motion, ap, dt);
       }else if(motion.type === 'weak'){
-        if(p < 0.36){
-          const t = p / 0.36;
-          const eased = t * t;
-          const pos = quadratic(motion.rampTop, { x:(motion.rampTop.x + motion.rampExit.x) / 2 - 8, y:motion.rampTop.y + 26 }, motion.rampExit, eased);
-          ap.ballX = round(pos.x, 2);
-          ap.ballY = round(pos.y, 2);
-        }else{
-          const t = 1 - Math.pow(1 - ((p - 0.36) / 0.64), 1.45);
-          const pos = cubic(motion.from, motion.c1, motion.c2, motion.to, t);
-          ap.ballX = round(pos.x, 2);
-          ap.ballY = round(pos.y, 2);
-        }
+        finished = advanceWeakPhysics(motion, ap, dt);
       }
+      ap.ballSpin += Math.hypot(ap.ballX - beforeX, ap.ballY - beforeY) / 10;
       pushTrailPoint(ap);
-      if(p >= 1){
+      if(finished){
         ap.motion = null;
         finishObservation(motion.type);
       }
@@ -2738,17 +2819,17 @@ body #app .toolbar button:disabled{
         await doRecord('start_move');
         await doAction(checkBtn, ()=>{ if(!tryPassStep(false, true)) throw new Error('AUTO_STEP1_NOT_PASSED'); }, 180);
 
-        setStatus('自动演示：前方先慢后快地靠近');
+        setStatus('自动演示：前方磁体使小球加速');
         await autoDragMagnetTo('front', ensure);
         await autoReleaseBall(ensure);
-        await waitMotion(3200);
+        await waitMotion(5000);
         await doRecord('speed_up');
         await doAction(checkBtn, ()=>{ if(!tryPassStep(false, true)) throw new Error('AUTO_STEP2_NOT_PASSED'); }, 180);
 
         setStatus('自动演示：后段向侧旁偏转');
         await autoDragMagnetTo('side', ensure);
         await autoReleaseBall(ensure);
-        await waitMotion(3400);
+        await waitMotion(5200);
         await doRecord('deflect');
         await doAction(checkBtn, ()=>{ if(!tryPassStep(false, true)) throw new Error('AUTO_STEP3_NOT_PASSED'); }, 180);
 
@@ -2933,7 +3014,7 @@ body #app .toolbar button:disabled{
         restoreFreeEntry:(snapshot) => restoreModeWorld(snapshot, {
           getState:() => state,
           reset:() => { setFreeMode(false); resetFlow(false); },
-          refresh:() => { updateModeHud(); updateAutoDemoBtn(); updatePills(); renderRecords();  },
+          refresh:() => { updateModeHud(); updateAutoDemoBtn(); updatePills(); renderRecords(); syncAnalysisVisibility(); },
         }),
         pauseApparatus() {
           codexModePauseStarted = performance.now();
@@ -3091,7 +3172,7 @@ body #app .toolbar button:disabled{
   }
 
   function isMobile(){
-    return window.innerWidth <= 720 || (stage && stage.clientWidth <= 720);
+    return window.innerWidth <= 720;
   }
 
   function syncMobileShell(){
@@ -3189,7 +3270,7 @@ body #app .toolbar button:disabled{
   if (resetBtn) resetBtn.textContent = '重置关卡';
   if (autoDemoBtn) autoDemoBtn.textContent = '演示模式';
   if (freeBtn) freeBtn.textContent = '自由模式';
-  function isMobile(){ return window.innerWidth <= MOBILE_MAX || stage.clientWidth <= MOBILE_MAX; }
+  function isMobile(){ return window.innerWidth <= MOBILE_MAX; }
   function normalizePrefix(el, label){
     if (!el) return;
     let text = (el.textContent || '').trim();
