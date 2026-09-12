@@ -1276,6 +1276,14 @@ body #app .toolbar button:disabled{
       </svg>
     </div>
     <div class="demoCursorPulse" id="demoCursorPulse" aria-hidden="true"></div>
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock">
+        <span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span>
+      </button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock">
+        <span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span>
+      </button>
+    </div>
   </div>
 
   <div class="toolbar">
@@ -1595,21 +1603,22 @@ body #app .toolbar button:disabled{
       25:{
         name:'探究阻力对运动的影响',
         catalog:'中小学实验教学目录 初中物理 25',
-        textbook:'人教版初中物理 八下（阻力与运动实验）',
-        apparatusHint:'器材：斜面、小车、水平木板、棉布。先铺棉布，再去掉棉布，比较小车滑行距离。',
+        textbook:'人教版初中物理 八下（阻力与运动实验 · 三组对比扩展）',
+        apparatusHint:'器材：斜面、小车、水平木板、毛巾、棉布。只更换水平面材料，从同一起点由静止释放。',
         bullets:[
-          '先把棉布铺在水平木板上，让小车从斜面顶端由静止滑下，观察它在棉布上的滑行距离。',
-          '再去掉木板上的棉布，用同一起点重复实验，比较小车在木板上的滑行距离。',
-          '结论：表面越光滑、阻力越小，小车滑行越远，运动状态越不容易改变。'
+          '三组对比扩展：依次使用毛巾、棉布、木板，保持同一小车、同一斜面和同一释放点，每次由静止释放。',
+          '分别记录三组模拟滑行距离。本页模型设定毛巾、棉布、木板的阻力依次减小；具体实物的阻力需通过实验判断。',
+          '比较：阻力越小，小车滑行越远。进一步推理：若不受阻力，运动物体将保持匀速直线运动；这不是第四组实测。'
         ],
-        tableHeaders:['表面条件','滑行距离(cm)','现象','备注'],
+        tableHeaders:['表面条件','模拟距离(cm)','现象','备注'],
         controls:[],
         actions:[],
         tasks:[
-          {text:'先把棉布铺到水平木板上，再点击斜面顶端的小车释放并记录滑行距离。', hint:'引导模式下需先铺棉布，再从斜面顶端释放小车。'},
-          {text:'再把棉布移回托盘，用同一起点重复实验并记录木板上的滑行距离。', hint:'去掉棉布后再释放小车，比较滑行距离变化。'},
-          {text:'比较棉布面与木板面的两次滑行距离。', hint:'两组记录都完成后，会自动进入分析前的比较步骤。'},
-          {text:'点击“分析结论”，完成本实验。', hint:'结论应体现“阻力越小，小车滑行越远”。'}
+          {text:'把毛巾铺到水平木板上，点击斜面顶端的小车，由静止释放并记录距离。', hint:'第一组：毛巾面。停稳后点击“记录当前数据”，小车自动回到同一起点。'},
+          {text:'把毛巾放回托盘，铺上棉布，从同一起点由静止释放并记录距离。', hint:'第二组：棉布面。只更换水平面材料，斜面与释放点不变。'},
+          {text:'把棉布放回托盘，露出木板，从同一起点由静止释放并记录距离。', hint:'第三组：木板面。停稳后记录，不要用前一组结果代替。'},
+          {text:'比较毛巾、棉布、木板三组模拟滑行距离。', hint:'三种材料各有有效记录，且滑行距离依次增大，才能进入分析。'},
+          {text:'点击“分析结论”，总结阻力对运动的影响。', hint:'区分三组模拟观察与“无阻力时保持匀速直线运动”的推理。'}
         ]
       },
       26:{
@@ -1746,6 +1755,12 @@ body #app .toolbar button:disabled{
     };
 
     const LAB = LABS[LAB_ID];
+    const LAB25_SURFACE_ORDER = ['towel','cloth','wood'];
+    const LAB25_SURFACES = {
+      towel:{name:'毛巾', label:'毛巾面', distance:14.8, observation:'在毛巾上较快停下', color:'#ffd47a'},
+      cloth:{name:'棉布', label:'棉布面', distance:24.8, observation:'在棉布上滑行稍远', color:'#ede7d2'},
+      wood:{name:'木板', label:'木板面', distance:61.5, observation:'在木板上滑行更远', color:'#7fe6b1'}
+    };
     const OBJECT_LENGTHS = { pencil:12.6, eraser:4.3, key:6.8 };
 
     const $ = (s)=>document.querySelector(s);
@@ -1843,6 +1858,8 @@ body #app .toolbar button:disabled{
       id:null,
       mode:'',
       clothFrom:'tray',
+      material:'cloth',
+      originSurface:'wood',
       x:0,
       y:0
     };
@@ -2024,8 +2041,11 @@ body #app .toolbar button:disabled{
         case 23: return { leftApplied:false, rightApplied:false, leftN:0, rightN:0, ringOffset:0, balanced:false, tests:[] };
         case 24: return { moving:false, cartX:0.18, launchSpeed:0, blockSlip:0, brakeProgress:0, lastSpeedLevel:0, lastMode:'slow', slowObserved:false, quickObserved:false, tests:[] };
         case 25: return {
+          placedSurface:'wood',
           clothPlaced:false,
           draggingCloth:false,
+          dragSurface:'cloth',
+          dragFrom:'tray',
           dragClothX:0,
           dragClothY:0,
           cartState:'ready',
@@ -2040,6 +2060,7 @@ body #app .toolbar button:disabled{
           lastSurface:'',
           lastObservation:'',
           compared:false,
+          guidedAnalysisOk:false,
           tests:[]
         };
         case 26: return { leftTorque:0, rightTorque:0, balanced:false, tests:[] };
@@ -2791,12 +2812,17 @@ body #app .toolbar button:disabled{
           return { c1:modeText, c2:String(ap.lastSpeedLevel || state.vars.speedLevel), c3:String(ap.blockSlip), c4:'木块前冲位移', y:ap.blockSlip };
         }
         case 25:{
-          if(ap.lastDist <= 0 || !ap.lastSurface){ showToast('请先完成一次滑行观察'); return null; }
+          if(ap.cartState !== 'settled' || !Number.isFinite(ap.lastDist) || ap.lastDist <= 0 || !LAB25_SURFACES[ap.lastSurface] || ap.lastSurface !== ap.runSurface || ap.lastSurface !== ap.placedSurface){
+            showToast('请先完成本组滑行，停稳后再记录'); return null;
+          }
+          if(!state.freeMode && ap.lastSurface !== LAB25_SURFACE_ORDER[state.currentTask]){
+            showToast('请按当前步骤完成对应材料的实验'); return null;
+          }
           return {
-            c1:ap.lastSurface === 'cloth' ? '棉布面' : '木板面',
+            c1:LAB25_SURFACES[ap.lastSurface].label,
             c2:String(ap.lastDist),
-            c3:ap.lastObservation || (ap.lastSurface === 'cloth' ? '在棉布上较快停下' : '在木板上滑行更远'),
-            c4:`${state.freeMode ? '自由模式' : '引导模式'}记录`,
+            c3:ap.lastObservation || LAB25_SURFACES[ap.lastSurface].observation,
+            c4:`同一起点 · 模拟结果（${state.freeMode ? '自由' : '引导'}）`,
             y:ap.lastDist,
             surface:ap.lastSurface,
             mode:state.freeMode ? 'free' : 'guided'
@@ -2849,7 +2875,13 @@ body #app .toolbar button:disabled{
       }
       refreshDataNotice();
       if(LAB_ID === 25){
-        state.apparatus.compared = state.records.filter(r=>r.mode !== 'free').length >= 2;
+        if(rec.mode === 'guided'){
+          state.apparatus.guidedAnalysisOk = false;
+          state.analysisOk = false;
+          analysisText.classList.remove('ok');
+          analysisText.textContent = '三组记录齐全后，点击“分析结论”比较模拟结果。';
+        }
+        state.apparatus.compared = hasLab25Comparison(state.records.filter(r=>r.mode === 'guided'));
         resetLab25Cart(false);
         recalcProgress();
       }else{
@@ -2950,11 +2982,9 @@ body #app .toolbar button:disabled{
           break;
         }
         case 25:{
-          const guided = state.freeMode ? rs : rs.filter(r=>r.mode !== 'free');
-          const cloth = guided.filter(r=>r.surface === 'cloth').map(r=>Number(r.c2));
-          const wood = guided.filter(r=>r.surface === 'wood').map(r=>Number(r.c2));
-          ok = cloth.length >= 1 && wood.length >= 1 && Math.max(...wood) > Math.max(...cloth);
-          msg = ok ? '结论：木板面阻力较小，小车滑行更远；阻力越小，物体运动状态越不容易改变。' : '请至少完成一组棉布面和一组木板面的滑行距离记录，并保证木板面更远。';
+          ok = hasLab25Comparison(state.freeMode ? rs : rs.filter(r=>r.mode === 'guided'));
+          if(!state.freeMode) state.apparatus.guidedAnalysisOk = ok;
+          msg = ok ? '三组模拟观察：毛巾、棉布、木板的阻力依次减小，滑行距离依次增大。结论：阻力越小，运动状态越不容易改变。进一步推理：若不受阻力，物体将保持匀速直线运动（非实测）。' : '请完成毛巾、棉布、木板三组独立记录，比较距离是否依次增大。';
           break;
         }
         case 26:{
@@ -3070,15 +3100,9 @@ body #app .toolbar button:disabled{
           if(step===3) return state.analysisOk;
           return false;
         case 25:
-          if(step===0) return rs.some(r=>r.mode !== 'free' && r.surface === 'cloth');
-          if(step===1) return rs.some(r=>r.mode !== 'free' && r.surface === 'wood');
-          if(step===2){
-            const guided = rs.filter(r=>r.mode !== 'free');
-            const cloth = guided.filter(r=>r.surface === 'cloth').map(r=>Number(r.c2));
-            const wood = guided.filter(r=>r.surface === 'wood').map(r=>Number(r.c2));
-            return cloth.length >= 1 && wood.length >= 1 && Math.max(...wood) > Math.max(...cloth);
-          }
-          if(step===3) return state.analysisOk;
+          if(step<3) return rs.some(r=>r.mode === 'guided' && r.surface === LAB25_SURFACE_ORDER[step] && Number.isFinite(Number(r.c2)) && Number(r.c2)>0);
+          if(step===3) return hasLab25Comparison(rs.filter(r=>r.mode === 'guided'));
+          if(step===4) return state.analysisOk && ap.guidedAnalysisOk && hasLab25Comparison(rs.filter(r=>r.mode === 'guided'));
           return false;
         case 26:
           if(step===0) return ap.tests.filter(t=>t.balanced).length >= 1;
@@ -3123,7 +3147,16 @@ body #app .toolbar button:disabled{
       }
       state.successCooldown = true;
       showCheck();
+      const passingStep = state.currentTask;
+      const passingApparatus = state.apparatus;
+      const passingRecords = state.records;
       trackTimeout(()=>{
+        if(LAB_ID === 25 && (state.freeMode || state.autoPlaying || state.completed ||
+          state.apparatus !== passingApparatus || state.records !== passingRecords ||
+          state.currentTask !== passingStep || !checkStepPass(passingStep))){
+          state.successCooldown = false;
+          return;
+        }
         if(state.currentTask < LAB.tasks.length - 1) setStepUI(state.currentTask + 1);
         else finishLab();
         state.successCooldown = false;
@@ -3218,7 +3251,7 @@ body #app .toolbar button:disabled{
           pillD.textContent = `记录:${state.records.length}条`;
           break;
         case 25:
-          pillA.textContent = `表面:${ap.clothPlaced ? '棉布面' : '木板面'}`;
+          pillA.textContent = `表面:${LAB25_SURFACES[ap.placedSurface].label}`;
           pillB.textContent = `小车:${ap.cartState === 'running' ? '滑行中' : ap.cartState === 'settled' ? '已停下' : '待释放'}`;
           pillC.textContent = `距离:${ap.lastDist || 0}cm`;
           pillD.textContent = `记录:${state.records.length}条`;
@@ -4107,42 +4140,59 @@ body #app .toolbar button:disabled{
       const H = rect.height || 640;
       const floorY = H - 70;
       const tableTop = H - 182;
-      const tableLeft = W * 0.1;
-      const tableRight = W * 0.9;
-      const boardY = tableTop - 18;
-      const boardH = 18;
-      const inclineTop = { x: W * 0.19, y: boardY - 112 };
-      const inclineBase = { x: W * 0.285, y: boardY - 10 };
-      const curveExit = { x: W * 0.318, y: boardY - 2 };
-      const boardLeft = curveExit.x - 8;
-      const boardRight = tableRight - 32;
+      const tableLeft = W * 0.08;
+      const tableRight = W * 0.94;
+      const boardY = tableTop - 6;
+      const boardH = 12;
+      const surfaceY = boardY - 6;
+      const rampLeft = W * 0.09;
+      const bendX = W * 0.32;
+      const curveExit = { x: W * 0.43, y: surfaceY };
+      const bendW = curveExit.x - bendX;
+      // Scale the rise with the available run: narrow screens must not make the ramp steeper.
+      const rampSlope = Math.min(0.5, 90 / (bendX - rampLeft + bendW * 0.5));
+      const inclineTop = { x:rampLeft, y:surfaceY - rampSlope*(bendX - rampLeft + bendW*0.5) };
+      const inclineBase = { x:bendX, y:surfaceY - rampSlope*bendW*0.5 };
+      const cartScale = clamp(W / 650, 0.52, 0.78);
+      const cartW = 72 * cartScale;
+      const cartH = 28 * cartScale;
+      const wheelRadius = 8 * cartScale;
+      // Start measuring once both wheel contacts have entered the horizontal section.
+      const entryX = curveExit.x + cartW * 0.28;
+      const entryY = surfaceY - wheelRadius;
+      const boardLeft = entryX;
+      const boardRight = tableRight - 18;
       const boardW = boardRight - boardLeft;
       const boardCm = 80;
       const cmToPx = boardW / boardCm;
       const rulerY = boardY + 28;
-      const clothRect = { x: boardLeft + 6, y: boardY - 8, w: boardW - 12, h: 24 };
-      const clothZone = { x: boardLeft, y: boardY - 16, w: boardW, h: 40 };
+      const clothRect = { x:curveExit.x, y:surfaceY, w:boardRight - curveExit.x, h:4 };
+      const clothZone = { x:curveExit.x, y:surfaceY - 12, w:boardRight - curveExit.x, h:28 };
       const clothDropZone = expandRect(clothZone, 26, 18);
-      const trayRect = { x: W * 0.12, y: floorY - 46, w: 122, h: 26 };
+      const trayRect = { x: W * 0.12, y: floorY - 36, w:176, h:26 };
+      const towelFoldRect = { x:trayRect.x + 12, y:trayRect.y - 20, w:64, h:20 };
+      const clothFoldRect = { x:trayRect.x + 100, y:trayRect.y - 20, w:64, h:20 };
       const trayDropZone = expandRect({ x: trayRect.x + 4, y: trayRect.y - 26, w: trayRect.w - 8, h: trayRect.h + 34 }, 24, 16);
-      const cartScale = 0.72;
-      const entryX = curveExit.x;
-      const entryY = curveExit.y;
-      const cartTop = {
-        x: inclineTop.x + 18,
-        y: inclineTop.y + 9
-      };
+      const releaseX = inclineTop.x + cartW*0.5 + 6;
       const inclineAngle = Math.atan2(inclineBase.y - inclineTop.y, inclineBase.x - inclineTop.x);
-      const slopeCp1 = { x: inclineTop.x + 54, y: inclineTop.y + 32 };
-      const slopeCp2 = { x: curveExit.x - 34, y: boardY - 8 };
-      const slopeDuration = 620;
-      const cartW = 72 * cartScale;
-      const cartH = 28 * cartScale;
+      const bendControl = { x:bendX + bendW*0.5, y:surfaceY };
+      const entrySpeed = 0.047;
+      const slopeDuration = 2*(entryX - releaseX) / (entrySpeed*cmToPx);
       return {
         W, H, floorY, tableTop, tableLeft, tableRight, boardY, boardH,
         inclineTop, inclineBase, curveExit, boardLeft, boardRight, boardW, boardCm, cmToPx, rulerY,
-        clothRect, clothZone, clothDropZone, trayRect, trayDropZone, cartScale, cartTop, entryX, entryY, inclineAngle, slopeCp1, slopeCp2, slopeDuration, cartW, cartH
+        clothRect, clothZone, clothDropZone, trayRect, trayDropZone, towelFoldRect, clothFoldRect, cartScale, releaseX, entryX, entryY, inclineAngle, bendControl, rampSlope, surfaceY, wheelRadius, entrySpeed, slopeDuration, cartW, cartH
       };
+    }
+
+    function getLab25TrackPoint(x, g=getLab25Layout()){
+      if(x <= g.inclineBase.x){
+        return { x, y:g.inclineTop.y + (x - g.inclineTop.x)*g.rampSlope, slope:g.rampSlope };
+      }
+      if(x >= g.curveExit.x) return { x, y:g.surfaceY, slope:0 };
+      const bendW = g.curveExit.x - g.inclineBase.x;
+      const remaining = (g.curveExit.x - x) / bendW;
+      return { x, y:g.surfaceY - g.rampSlope*bendW*0.5*remaining*remaining, slope:g.rampSlope*remaining };
     }
 
     function cubicBezierPoint(p0, p1, p2, p3, t){
@@ -4166,24 +4216,31 @@ body #app .toolbar button:disabled{
     function getLab25CartPose(){
       const g = getLab25Layout();
       const ap = state.apparatus;
-      if(!ap || ap.cartState === 'ready'){
-        return { x:g.cartTop.x, y:g.cartTop.y, angle:g.inclineAngle };
-      }
-      if(ap.phase === 'slope'){
+      let trackX = g.releaseX;
+      if(ap && ap.cartState !== 'ready' && ap.phase === 'slope'){
         const p = clamp((ap.slopeMs || 0) / g.slopeDuration, 0, 1);
-        const point = cubicBezierPoint(g.cartTop, g.slopeCp1, g.slopeCp2, { x:g.entryX, y:g.entryY }, p);
-        const tangent = cubicBezierTangent(g.cartTop, g.slopeCp1, g.slopeCp2, { x:g.entryX, y:g.entryY }, p);
-        return {
-          x: point.x,
-          y: point.y,
-          angle: Math.atan2(tangent.y, tangent.x)
-        };
+        trackX = g.releaseX + (g.entryX - g.releaseX)*p*p;
+      }else if(ap && ap.cartState !== 'ready'){
+        trackX = g.entryX + (ap.boardDistCm || 0)*g.cmToPx;
       }
-      const distPx = (ap.boardDistCm || 0) * g.cmToPx;
+      // Solve the two support points at the fixed axle spacing, including the curved join.
+      const halfAxle = g.cartW*0.28;
+      let low = 0, high = halfAxle;
+      for(let i=0;i<16;i++){
+        const halfX = (low + high)*0.5;
+        const rear = getLab25TrackPoint(trackX - halfX, g);
+        const front = getLab25TrackPoint(trackX + halfX, g);
+        if(Math.hypot(front.x - rear.x, front.y - rear.y) > halfAxle*2) high = halfX;
+        else low = halfX;
+      }
+      const halfX = (low + high)*0.5;
+      const rear = getLab25TrackPoint(trackX - halfX, g);
+      const front = getLab25TrackPoint(trackX + halfX, g);
+      const angle = Math.atan2(front.y - rear.y, front.x - rear.x);
       return {
-        x: g.entryX + distPx,
-        y: g.entryY,
-        angle: 0
+        x:trackX + g.wheelRadius*Math.sin(angle),
+        y:(rear.y + front.y)*0.5 - g.wheelRadius*Math.cos(angle),
+        angle
       };
     }
 
@@ -4193,8 +4250,13 @@ body #app .toolbar button:disabled{
     }
 
     function getLab25TrayClothScenePoint(){
+      return getLab25TrayMaterialScenePoint('cloth');
+    }
+
+    function getLab25TrayMaterialScenePoint(surface){
       const g = getLab25Layout();
-      return { x: g.trayRect.x + 16 + 35, y: g.trayRect.y - 18 + 9 };
+      const rect = surface === 'towel' ? g.towelFoldRect : g.clothFoldRect;
+      return { x:rect.x + rect.w*0.5, y:rect.y + rect.h*0.5 };
     }
 
     function getLab25BoardClothScenePoint(){
@@ -4208,11 +4270,34 @@ body #app .toolbar button:disabled{
     }
 
     function setLab25ClothPlaced(on, showStatus=true){
-      if(LAB_ID !== 25) return;
+      return setLab25Surface(on ? 'cloth' : 'wood', showStatus);
+    }
+
+    function hasLab25Comparison(records){
+      const distances = LAB25_SURFACE_ORDER.map(surface=>records
+        .filter(r=>r.surface === surface && Number.isFinite(Number(r.c2)) && Number(r.c2)>0)
+        .map(r=>Number(r.c2)));
+      return distances.every(group=>group.length>0) &&
+        Math.max(...distances[0]) < Math.max(...distances[1]) &&
+        Math.max(...distances[1]) < Math.max(...distances[2]);
+    }
+
+    function setLab25Surface(surface, showStatus=true){
+      if(LAB_ID !== 25 || !LAB25_SURFACES[surface]) return false;
       const ap = state.apparatus;
-      ap.clothPlaced = !!on;
-      if(showStatus) setStatus(ap.clothPlaced ? '棉布已铺到水平木板上' : '棉布已移回托盘');
+      if(ap.cartState === 'running') return false;
+      if(ap.placedSurface !== surface){
+        // A changed surface invalidates an unrecorded stop; never pair it with the new material.
+        resetLab25Cart(false);
+        ap.lastDist = 0;
+        ap.lastSurface = '';
+        ap.lastObservation = '';
+      }
+      ap.placedSurface = surface;
+      ap.clothPlaced = surface !== 'wood';
+      if(showStatus) setStatus(surface === 'wood' ? '布料已移回托盘，露出木板面' : `${LAB25_SURFACES[surface].name}已铺到水平木板上`);
       updatePills();
+      return true;
     }
 
     function resetLab25Cart(showStatus=true){
@@ -4226,7 +4311,7 @@ body #app .toolbar button:disabled{
       ap.boardDecel = 0;
       ap.targetDistCm = 0;
       ap.runSurface = '';
-      if(showStatus) setStatus(ap.clothPlaced ? '棉布已铺好，可释放小车' : '木板裸露，可释放小车');
+      if(showStatus) setStatus(`${LAB25_SURFACES[ap.placedSurface].label}已准备好，可释放小车`);
       updatePills();
     }
 
@@ -4239,64 +4324,58 @@ body #app .toolbar button:disabled{
       ap.boardDistCm = ap.targetDistCm;
       ap.lastDist = round(ap.targetDistCm, 1);
       ap.lastSurface = ap.runSurface;
-      ap.lastObservation = ap.runSurface === 'cloth' ? '在棉布上较快停下' : '在木板上滑行更远';
+      ap.lastObservation = LAB25_SURFACES[ap.runSurface].observation;
       ap.tests.push({ surface:ap.runSurface, dist:ap.lastDist });
-      ap.compared = ap.tests.some(t=>t.surface === 'cloth') && ap.tests.some(t=>t.surface === 'wood');
-      setStatus(`小车在${ap.lastSurface === 'cloth' ? '棉布面' : '木板面'}滑行 ${ap.lastDist}cm`);
+      setStatus(`小车在${LAB25_SURFACES[ap.lastSurface].label}滑行 ${ap.lastDist}cm（模拟）`);
       updatePills();
     }
 
     function releaseLab25Cart(showWarnings=true){
       if(LAB_ID !== 25) return false;
       const ap = state.apparatus;
-      if(ap.cartState === 'running') return false;
+      if(ap.cartState === 'running' || ap.draggingCloth) return false;
       if(ap.cartState === 'settled'){
         resetLab25Cart(true);
         return false;
       }
-      if(!state.freeMode && !state.autoPlaying){
-        if(state.currentTask === 0 && !ap.clothPlaced){
+      if(!state.freeMode && state.currentTask < 3){
+        const expected = LAB25_SURFACE_ORDER[state.currentTask];
+        if(ap.placedSurface !== expected){
           if(showWarnings){
-            warnCurrentStep('步骤1需要先把棉布铺到水平木板上');
-            showToast('请先把棉布拖到水平木板上');
-          }
-          return false;
-        }
-        if(state.currentTask === 1 && ap.clothPlaced){
-          if(showWarnings){
-            warnCurrentStep('步骤2需要先移走棉布，再做木板面的实验');
-            showToast('请先把棉布移回托盘');
+            warnCurrentStep(`当前步骤需要${LAB25_SURFACES[expected].label}`);
+            showToast(`请先准备${LAB25_SURFACES[expected].label}`);
           }
           return false;
         }
       }
-      ap.runSurface = ap.clothPlaced ? 'cloth' : 'wood';
-      ap.targetDistCm = round((ap.runSurface === 'cloth' ? 24.8 : 61.5) + randIn(-1.4, 1.4), 1);
+      ap.runSurface = ap.placedSurface;
+      ap.targetDistCm = round(LAB25_SURFACES[ap.runSurface].distance + randIn(-1.4, 1.4), 1);
       ap.cartState = 'running';
       ap.phase = 'slope';
       ap.slopeMs = 0;
       ap.boardDistCm = 0;
-      ap.boardSpeed = 0.047;
+      ap.boardSpeed = getLab25Layout().entrySpeed;
       ap.boardDecel = (ap.boardSpeed * ap.boardSpeed) / (2 * Math.max(1, ap.targetDistCm));
-      setStatus(`小车已从斜面顶端释放（${ap.runSurface === 'cloth' ? '棉布面' : '木板面'}）`);
+      setStatus(`小车已从同一起点由静止释放（${LAB25_SURFACES[ap.runSurface].label}）`);
       updatePills();
       return true;
     }
 
-    function drawLab25Cloth(ctx, rect, alpha=1){
+    function drawLab25Cloth(ctx, rect, alpha=1, material='cloth'){
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#f2efe4';
+      ctx.fillStyle = material === 'towel' ? '#e9bd67' : '#f2efe4';
       ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-      ctx.strokeStyle = '#d4ceb8';
+      ctx.strokeStyle = material === 'towel' ? '#b68c40' : '#d4ceb8';
       ctx.lineWidth = 1.4;
       ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
-      ctx.strokeStyle = 'rgba(210,201,172,.55)';
+      ctx.strokeStyle = material === 'towel' ? 'rgba(142,98,33,.55)' : 'rgba(210,201,172,.55)';
       for(let i=0;i<9;i++){
         const x = rect.x + 10 + i*(rect.w-20)/8;
         ctx.beginPath();
         ctx.moveTo(x, rect.y + 2);
-        ctx.lineTo(x - 6, rect.y + rect.h - 2);
+        if(material === 'towel') ctx.quadraticCurveTo(x + 4, rect.y + rect.h*0.5, x, rect.y + rect.h - 2);
+        else ctx.lineTo(x - 6, rect.y + rect.h - 2);
         ctx.stroke();
       }
       ctx.restore();
@@ -4321,53 +4400,45 @@ body #app .toolbar button:disabled{
       ctx.fillRect(g.tableLeft + 36, g.tableTop + 18, 18, 124);
       ctx.fillRect(g.tableRight - 54, g.tableTop + 18, 18, 124);
 
-      ctx.fillStyle = '#e2c087';
+      // A low wooden support rests on the table; the running board is one continuous piece.
+      ctx.fillStyle = '#8e6b45';
       ctx.beginPath();
-      ctx.moveTo(g.inclineTop.x - 30, g.inclineTop.y - 10);
-      ctx.lineTo(g.inclineTop.x + 24, g.inclineTop.y + 2);
-      ctx.bezierCurveTo(
-        g.slopeCp1.x + 12, g.slopeCp1.y - 2,
-        g.slopeCp2.x + 18, g.slopeCp2.y + 8,
-        g.curveExit.x + 8, g.boardY + 10
-      );
-      ctx.lineTo(g.curveExit.x - 8, g.boardY + 18);
-      ctx.bezierCurveTo(
-        g.slopeCp2.x - 6, g.slopeCp2.y + 12,
-        g.slopeCp1.x - 24, g.slopeCp1.y + 10,
-        g.inclineTop.x - 44, g.inclineTop.y + 10
-      );
+      ctx.moveTo(g.inclineTop.x + 4, g.inclineTop.y + g.boardH);
+      ctx.lineTo(g.inclineBase.x - 8, g.tableTop);
+      ctx.lineTo(g.inclineTop.x + 4, g.tableTop);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = '#f4e1b9';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#b48c59';
+      ctx.lineWidth = 1;
       ctx.stroke();
-      ctx.strokeStyle = 'rgba(180,145,92,.55)';
-      ctx.lineWidth = 1.2;
-      for(let i=0;i<4;i++){
-        const t = i / 3;
-        const sx = g.inclineTop.x - 18 + 18*t;
-        const sy = g.inclineTop.y + 4 + 5*t;
-        const ex = g.inclineBase.x - 2 + 10*t;
-        const ey = g.boardY + 4 + 3*t;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(ex, ey);
-        ctx.stroke();
-      }
-
-      ctx.fillStyle = '#d8b274';
-      ctx.fillRect(g.boardLeft, g.boardY - 6, g.boardW, 12);
-      ctx.fillStyle = '#f0d6a5';
-      ctx.fillRect(g.boardLeft, g.boardY - 2, g.boardW, 4);
-      ctx.fillStyle = '#e1bf84';
+      const wood = ctx.createLinearGradient(0, g.inclineTop.y, 0, g.tableTop);
+      wood.addColorStop(0, '#edcf97');
+      wood.addColorStop(1, '#c69a5f');
+      ctx.fillStyle = wood;
       ctx.beginPath();
-      ctx.moveTo(g.inclineBase.x - 8, g.boardY - 6);
-      ctx.quadraticCurveTo(g.curveExit.x - 10, g.boardY - 10, g.boardLeft + 10, g.boardY - 2);
-      ctx.lineTo(g.boardLeft + 10, g.boardY + 6);
-      ctx.quadraticCurveTo(g.curveExit.x - 6, g.boardY + 8, g.inclineBase.x - 12, g.boardY + 4);
+      ctx.moveTo(g.inclineTop.x, g.inclineTop.y);
+      ctx.lineTo(g.inclineBase.x, g.inclineBase.y);
+      ctx.quadraticCurveTo(g.bendControl.x, g.bendControl.y, g.curveExit.x, g.curveExit.y);
+      ctx.lineTo(g.boardRight, g.surfaceY);
+      ctx.lineTo(g.boardRight, g.surfaceY + g.boardH);
+      ctx.lineTo(g.curveExit.x, g.surfaceY + g.boardH);
+      ctx.quadraticCurveTo(g.bendControl.x, g.bendControl.y + g.boardH, g.inclineBase.x, g.inclineBase.y + g.boardH);
+      ctx.lineTo(g.inclineTop.x, g.inclineTop.y + g.boardH);
       ctx.closePath();
       ctx.fill();
-      if(ap.clothPlaced) drawLab25Cloth(ctx, g.clothRect, 0.96);
+      ctx.strokeStyle = '#b58b53';
+      ctx.stroke();
+      ctx.strokeStyle = '#f6deb0';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(g.inclineTop.x, g.inclineTop.y);
+      ctx.lineTo(g.inclineBase.x, g.inclineBase.y);
+      ctx.quadraticCurveTo(g.bendControl.x, g.bendControl.y, g.curveExit.x, g.curveExit.y);
+      ctx.lineTo(g.boardRight, g.surfaceY);
+      ctx.stroke();
+      if(ap.placedSurface !== 'wood' && !(ap.draggingCloth && ap.dragFrom === 'board')){
+        drawLab25Cloth(ctx, g.clothRect, 0.96, ap.placedSurface);
+      }
 
       ctx.strokeStyle = '#d7d2bd';
       ctx.lineWidth = 2;
@@ -4384,7 +4455,7 @@ body #app .toolbar button:disabled{
         ctx.moveTo(x, g.rulerY);
         ctx.lineTo(x, g.rulerY + 10);
         ctx.stroke();
-        ctx.fillText(String(cm), x - 6, g.rulerY + 24);
+        if(g.boardW >= 180 || cm % 20 === 0) ctx.fillText(String(cm), x - 6, g.rulerY + 24);
       }
       for(let cm=5; cm<80; cm+=10){
         const x = g.boardLeft + cm * g.cmToPx;
@@ -4399,23 +4470,26 @@ body #app .toolbar button:disabled{
       ctx.fillRect(g.trayRect.x, g.trayRect.y + 6, g.trayRect.w, 12);
       ctx.fillStyle = '#b78b52';
       ctx.fillRect(g.trayRect.x + 8, g.trayRect.y, g.trayRect.w - 16, 8);
-      if(!ap.clothPlaced && !ap.draggingCloth){
-        drawLab25Cloth(ctx, { x:g.trayRect.x + 16, y:g.trayRect.y - 18, w:70, h:18 }, 0.98);
+      for(const material of ['towel','cloth']){
+        if(ap.placedSurface !== material && !(ap.draggingCloth && ap.dragSurface === material)){
+          drawLab25Cloth(ctx, material === 'towel' ? g.towelFoldRect : g.clothFoldRect, 0.98, material);
+        }
       }
       if(ap.draggingCloth){
-        drawLab25Cloth(ctx, { x:ap.dragClothX - 36, y:ap.dragClothY - 10, w:72, h:20 }, 0.92);
+        drawLab25Cloth(ctx, { x:ap.dragClothX - 32, y:ap.dragClothY - 10, w:64, h:20 }, 0.92, ap.dragSurface);
       }
 
       const pose = getLab25CartPose();
       drawCartAtAngle(ctx, pose.x, pose.y, g.cartScale, pose.angle);
 
       ctx.fillStyle = 'rgba(13,18,28,.94)';
-      ctx.fillRect(g.inclineTop.x - 74, g.inclineTop.y - 46, 76, 22);
+      const releaseLabelX = Math.max(8, g.inclineTop.x);
+      ctx.fillRect(releaseLabelX, g.inclineTop.y - 64, 96, 22);
       ctx.strokeStyle = 'rgba(164,189,219,.45)';
-      ctx.strokeRect(g.inclineTop.x - 74, g.inclineTop.y - 46, 76, 22);
+      ctx.strokeRect(releaseLabelX, g.inclineTop.y - 64, 96, 22);
       ctx.fillStyle = '#dfeaff';
       ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText('斜面顶端', g.inclineTop.x - 62, g.inclineTop.y - 31);
+      ctx.fillText('同一起点释放', releaseLabelX + 10, g.inclineTop.y - 49);
       if(ap.cartState === 'ready'){
         ctx.fillStyle = '#7fe6b1';
         ctx.beginPath();
@@ -4428,7 +4502,7 @@ body #app .toolbar button:disabled{
 
       if(ap.lastDist > 0){
         const markX = g.entryX + ap.lastDist * g.cmToPx;
-        ctx.strokeStyle = ap.lastSurface === 'cloth' ? '#ffd47a' : '#7fe6b1';
+        ctx.strokeStyle = LAB25_SURFACES[ap.lastSurface].color;
         ctx.lineWidth = 2;
         ctx.setLineDash([6, 6]);
         ctx.beginPath();
@@ -4445,13 +4519,10 @@ body #app .toolbar button:disabled{
         ctx.fillText(`${ap.lastDist.toFixed(1)}cm`, markX - 22, g.boardY - 34);
       }
 
-      ctx.fillStyle = 'rgba(13,18,28,.88)';
-      ctx.fillRect(22, g.floorY - 52, 166, 38);
-      ctx.strokeStyle = 'rgba(124,210,168,.45)';
-      ctx.strokeRect(22, g.floorY - 52, 166, 38);
       ctx.fillStyle = '#dfeaff';
       ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText(ap.clothPlaced ? '棉布拖回托盘' : '拖棉布到木板', 34, g.floorY - 28);
+      ctx.fillText('毛巾', g.towelFoldRect.x + 20, g.trayRect.y + 17);
+      ctx.fillText('棉布', g.clothFoldRect.x + 20, g.trayRect.y + 17);
       ctx.fillStyle = 'rgba(13,18,28,.9)';
       ctx.fillRect(W - 250, 18, 210, 28);
       ctx.strokeStyle = 'rgba(164,189,219,.42)';
@@ -4900,34 +4971,54 @@ body #app .toolbar button:disabled{
         if(lab25Pointer.mode === 'cloth'){
           const p = scenePointFromEvent(e);
           const g = getLab25Layout();
-          if(rectContainsPoint(g.clothDropZone, p.x, p.y)){
-            setLab25ClothPlaced(true, true);
-          }else if(rectContainsPoint(g.trayDropZone, p.x, p.y)){
-            setLab25ClothPlaced(false, true);
-          }else{
-            ap.clothPlaced = lab25Pointer.clothFrom === 'board';
+          if(e.type === 'pointerup'){
+            if(rectContainsPoint(g.clothDropZone, p.x, p.y)){
+              setLab25Surface(lab25Pointer.material, true);
+            }else if(rectContainsPoint(g.trayDropZone, p.x, p.y) && lab25Pointer.clothFrom === 'board'){
+              setLab25Surface('wood', true);
+            }
           }
           ap.draggingCloth = false;
         }
         lab25Pointer.id = null;
         lab25Pointer.mode = '';
+        try{
+          if(scene.hasPointerCapture(e.pointerId)) scene.releasePointerCapture(e.pointerId);
+        }catch(err){ console.warn('[lab25] pointer capture release failed', err); }
       };
 
       scene.addEventListener('pointerdown', (e)=>{
-        if(state.autoPlaying) return;
+        if(state.autoPlaying || lab25Pointer.id !== null) return;
         const ap = state.apparatus;
         const g = getLab25Layout();
         const p = scenePointFromEvent(e);
-        const clothRect = ap.clothPlaced ? g.clothRect : { x:g.trayRect.x + 16, y:g.trayRect.y - 18, w:70, h:18 };
+        const fabrics = ['towel','cloth'].map(material=>({
+          material,
+          from:ap.placedSurface === material ? 'board' : 'tray',
+          rect:ap.placedSurface === material ? expandRect(g.clothRect, 8, 20) :
+            expandRect(material === 'towel' ? g.towelFoldRect : g.clothFoldRect, 10, 12)
+        }));
+        const hit = fabrics.find(item=>rectContainsPoint(item.rect, p.x, p.y));
         const cartPt = getLab25CartScenePoint();
-        if(rectContainsPoint(expandRect(clothRect, 10, 8), p.x, p.y)){
+        if(hit){
+          if(ap.cartState === 'running'){ showToast('小车滑行中，请勿更换材料'); return; }
           lab25Pointer.id = e.pointerId;
           lab25Pointer.mode = 'cloth';
-          lab25Pointer.clothFrom = ap.clothPlaced ? 'board' : 'tray';
+          lab25Pointer.clothFrom = hit.from;
+          lab25Pointer.material = hit.material;
+          lab25Pointer.originSurface = ap.placedSurface;
           ap.draggingCloth = true;
+          ap.dragSurface = hit.material;
+          ap.dragFrom = hit.from;
           ap.dragClothX = p.x;
           ap.dragClothY = p.y;
-          scene.setPointerCapture(e.pointerId);
+          try{ scene.setPointerCapture(e.pointerId); }
+          catch(err){
+            console.warn('[lab25] pointer capture failed', err);
+            ap.draggingCloth = false;
+            lab25Pointer.id = null;
+            lab25Pointer.mode = '';
+          }
           e.preventDefault();
           return;
         }
@@ -4947,7 +5038,7 @@ body #app .toolbar button:disabled{
           ap.dragClothX += (drop.x - ap.dragClothX) * 0.35;
           ap.dragClothY += (drop.y - ap.dragClothY) * 0.35;
         }else if(rectContainsPoint(g.trayDropZone, p.x, p.y)){
-          const tray = getLab25TrayClothScenePoint();
+          const tray = getLab25TrayMaterialScenePoint(lab25Pointer.material);
           ap.dragClothX += (tray.x - ap.dragClothX) * 0.35;
           ap.dragClothY += (tray.y - ap.dragClothY) * 0.35;
         }else{
@@ -4959,6 +5050,7 @@ body #app .toolbar button:disabled{
 
       scene.addEventListener('pointerup', endDrag);
       scene.addEventListener('pointercancel', endDrag);
+      scene.addEventListener('lostpointercapture', endDrag);
     }
 
     function updateDynamic(dt){
@@ -4982,15 +5074,18 @@ body #app .toolbar button:disabled{
         ap.cartX = clamp(ap.cartX + dt/1700, 0.14, 0.82);
       }
       if(LAB_ID === 25 && ap.cartState === 'running'){
+        let boardDt = dt;
         if(ap.phase === 'slope'){
           ap.slopeMs += dt;
-          if(ap.slopeMs >= getLab25Layout().slopeDuration){
-            ap.phase = 'board';
-            ap.slopeMs = getLab25Layout().slopeDuration;
-          }
-        }else if(ap.phase === 'board'){
-          ap.boardDistCm += ap.boardSpeed * dt;
-          ap.boardSpeed = Math.max(0, ap.boardSpeed - ap.boardDecel * dt);
+          const duration = getLab25Layout().slopeDuration;
+          if(ap.slopeMs < duration) return;
+          boardDt = ap.slopeMs - duration;
+          ap.phase = 'board';
+          ap.slopeMs = duration;
+        }
+        if(ap.phase === 'board'){
+          ap.boardDistCm += ap.boardSpeed*boardDt - 0.5*ap.boardDecel*boardDt*boardDt;
+          ap.boardSpeed = Math.max(0, ap.boardSpeed - ap.boardDecel*boardDt);
           if(ap.boardSpeed <= 0.001 || ap.boardDistCm >= ap.targetDistCm){
             completeLab25Run();
           }
@@ -5183,12 +5278,20 @@ body #app .toolbar button:disabled{
     function clearData(showTip=true){
       state.records = [];
       state.analysisOk = false;
+      if(LAB_ID === 25 && state.apparatus){
+        state.apparatus.guidedAnalysisOk = false;
+        state.apparatus.compared = false;
+        state.completed = false;
+        state.successCooldown = false;
+        doneMaskEl.style.display = 'none';
+      }
       state.unseenRecordCount = 0;
       refreshDataNotice();
       analysisText.classList.remove('ok');
       analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
       renderRecords();
       scheduleChart();
+      if(LAB_ID === 25 && state.apparatus) recalcProgress();
       if(showTip) showToast('数据已清空');
     }
 
@@ -5415,32 +5518,48 @@ body #app .toolbar button:disabled{
           setVar('stopMode','slow'); setVar('speedLevel',3); await doA('launchCart', 800); await doA('testInertia', 950); await doR();
           setVar('stopMode','quick'); setVar('speedLevel',4); await doA('launchCart', 800); await doA('testInertia', 950); await doR();
         }else if(LAB_ID===25){
-          await doStep(0, '步骤1：铺棉布后释放小车');
-          await moveDemoCursorToStage(...Object.values(getLab25TrayClothScenePoint()), 280);
-          const clothFrom = getLab25TrayClothScenePoint();
-          const clothTo = getLab25BoardDropPoint();
-          await dragDemoCursorPath([clothFrom, clothTo], 320);
-          setLab25ClothPlaced(true, false);
-          await wait(260);
-          const cartA = getLab25CartScenePoint();
-          await moveDemoCursorToStage(cartA.x, cartA.y, 420);
-          await clickDemoCursor(180);
-          releaseLab25Cart(false);
-          await wait(2600);
-          await doR();
-          await doStep(1, '步骤2：移走棉布再释放');
-          const clothBoard = getLab25BoardClothScenePoint();
-          const clothTray = getLab25TrayClothScenePoint();
-          await dragDemoCursorPath([clothBoard, clothTray], 340);
-          setLab25ClothPlaced(false, false);
-          await wait(260);
-          const cartB = getLab25CartScenePoint();
-          await moveDemoCursorToStage(cartB.x, cartB.y, 420);
-          await clickDemoCursor(180);
-          releaseLab25Cart(false);
-          await wait(3600);
-          await doR();
-          await doStep(2, '步骤3：比较两次距离');
+          const waitForCartStop = async ()=>{
+            let elapsed = 0;
+            while(state.apparatus.cartState === 'running'){
+              if(elapsed >= 12000) throw new Error('lab25-cart-not-settled');
+              await wait(100, 'actionMotion');
+              elapsed += 100;
+            }
+            await wait(500, 'recordConfirm');
+          };
+          const dragMaterial = async (material, fromBoard)=>{
+            const from = fromBoard ? getLab25BoardClothScenePoint() : getLab25TrayMaterialScenePoint(material);
+            const to = fromBoard ? getLab25TrayMaterialScenePoint(material) : getLab25BoardDropPoint();
+            const ap = state.apparatus;
+            ap.dragSurface = material;
+            ap.dragFrom = fromBoard ? 'board' : 'tray';
+            try{
+              await dragDemoCursorPath([scenePointToStage(from.x, from.y), scenePointToStage(to.x, to.y)], 640, point=>{
+                const p = stagePointToScene(point.x, point.y);
+                ap.draggingCloth = true;
+                ap.dragClothX = p.x;
+                ap.dragClothY = p.y;
+              });
+              if(state.autoStopRequested || runId !== state.autoRunId) throw new Error('auto-cancelled');
+              if(!setLab25Surface(fromBoard ? 'wood' : material, false)) throw new Error('lab25-surface-not-ready');
+            }finally{ ap.draggingCloth = false; }
+            await wait(400, 'recordConfirm');
+          };
+          for(let index=0;index<LAB25_SURFACE_ORDER.length;index++){
+            const material = LAB25_SURFACE_ORDER[index];
+            await doStep(index, `步骤${index+1}：${LAB25_SURFACES[material].label}对比`);
+            if(index>0) await dragMaterial(LAB25_SURFACE_ORDER[index-1], true);
+            if(material !== 'wood') await dragMaterial(material, false);
+            const cart = getLab25CartScenePoint();
+            const cartStage = scenePointToStage(cart.x, cart.y);
+            await moveDemoCursorToStage(cartStage.x, cartStage.y, 420);
+            await clickDemoCursor(180);
+            if(!releaseLab25Cart(false)) throw new Error('lab25-release-rejected');
+            await waitForCartStop();
+            await doR();
+            if(!state.records.some(r=>r.mode === 'guided' && r.surface === material)) throw new Error('lab25-record-missing');
+          }
+          await doStep(3, '步骤4：比较三组距离');
         }else if(LAB_ID===26){
           await doStep(0, '步骤1：第一组平衡');
           setVar('leftArm',10); setVar('leftForce',3); setVar('rightArm',15); setVar('rightForce',2);
@@ -5492,7 +5611,8 @@ body #app .toolbar button:disabled{
           setVar('liquid','oil'); setVar('depth',18); await doA('switchLiquid', 600); await doA('probePressure', 900); await doR();
         }
 
-        await doStep(3, '步骤4：分析结论', 1200);
+        const analysisStep = LAB_ID === 25 ? 4 : 3;
+        await doStep(analysisStep, `步骤${analysisStep+1}：分析结论`, 1200);
         await clickElementWithCursor(analyzeBtn, 760);
         analyzeConclusion(false);
         recalcProgress();
@@ -5504,6 +5624,7 @@ body #app .toolbar button:disabled{
         }
       }finally{
         if(runId === state.autoRunId){
+          if(LAB_ID === 25) state.apparatus.draggingCloth = false;
           const stopped = state.autoStopRequested;
           state.autoPlaying = false;
           state.autoStopRequested = false;
