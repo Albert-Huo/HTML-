@@ -528,6 +528,7 @@
     #stage #controlDock.mobile-sheet .sheet-close{grid-column:2 !important;grid-row:1 !important}
     #stage #controlDock.mobile-sheet .secTitle,#stage #controlDock.mobile-sheet .mini,#stage #controlDock.mobile-sheet .readout,#stage #controlDock.mobile-sheet .status-grid,#stage #controlDock.mobile-sheet .lab-hint,#stage #controlDock.mobile-sheet #stageGuide,#stage #controlDock.mobile-sheet .record-cue,#stage #controlDock.mobile-sheet .source-line,#stage #controlDock.mobile-sheet .chartWrap,#stage #controlDock.mobile-sheet .dock-grid{display:none !important}
     #stage #controlDock.mobile-sheet .controls,#stage #controlDock.mobile-sheet .btnRow,#stage #controlDock.mobile-sheet .btn-row,#stage #controlDock.mobile-sheet .miniBtns,#stage #controlDock.mobile-sheet .quizRow,#stage #controlDock.mobile-sheet .matRow,#stage #controlDock.mobile-sheet .sampleRow,#stage #controlDock.mobile-sheet #actionBtns{grid-column:1 !important;grid-row:auto !important;display:grid !important;grid-template-columns:repeat(auto-fit,minmax(92px,1fr)) !important;gap:8px !important;margin:0 !important;padding:8px !important;border:1px solid rgba(255,255,255,.1) !important;border-radius:9px !important;background:rgba(255,255,255,.055) !important}
+    #stage #controlDock.mobile-sheet #actionBtns:empty{display:none !important}
     #stage #controlDock.mobile-sheet #controlFields{grid-column:1 / -1 !important;display:grid !important;gap:8px !important;margin:0 !important;padding:0 !important}
     #stage #controlDock.mobile-sheet #controlFields .field{margin:0 !important;padding:8px !important;border:1px solid rgba(255,255,255,.1) !important;border-radius:9px !important;background:rgba(255,255,255,.045) !important}
     #stage #controlDock.mobile-sheet .analysis,#stage #controlDock.mobile-sheet .analysisBox,#stage #controlDock.mobile-sheet .codex-final-analysis{grid-column:1 / -1 !important;margin-top:0 !important}
@@ -1276,6 +1277,14 @@ body #app .toolbar button:disabled{
       </svg>
     </div>
     <div class="demoCursorPulse" id="demoCursorPulse" aria-hidden="true"></div>
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock">
+        <span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span>
+      </button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock">
+        <span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span>
+      </button>
+    </div>
   </div>
 
   <div class="toolbar">
@@ -1570,9 +1579,9 @@ body #app .toolbar button:disabled{
         name:'观察惯性现象',
         catalog:'中小学实验教学目录 初中物理 24',
         textbook:'人教版初中物理 八下（惯性现象实验）',
-        apparatusHint:'器材：小球支座与金属片装置、小车与车上物体装置。先拨出金属片，再观察小车急刹和急启。',
+        apparatusHint:'器材按关卡呈现：先按压并释放弹片，击飞小球下方金属片；再观察小车急刹和急启。',
         bullets:[
-          '先拨动小球下方金属片，观察小球并没有随金属片飞出，而是竖直下落。',
+          '向下压弹片并松手，弹片快速击飞小球下方的金属片；小球基本竖直下落。',
           '再观察小车突然刹车时物体前倾、突然启动时物体后仰。',
           '结论：物体具有保持原来运动状态的性质，即惯性。'
         ],
@@ -1580,7 +1589,7 @@ body #app .toolbar button:disabled{
         controls:[],
         actions:[],
         tasks:[
-          {text:'先拨动小球下方的金属片，观察小球未随金属片飞出而竖直下落，并记录现象。', hint:'拖动左侧金属片的手柄把金属片拨出。'},
+          {text:'向下压弹片并松手，观察金属片被击飞后小球基本竖直下落，并记录现象。', hint:'直接向下压弯绿色弹片，蓄力到提示线后松手。'},
           {text:'再触发“急刹”情景，观察小车突然刹车时车上物体前倾，并记录现象。', hint:'点击右侧“急刹”触发片。'},
           {text:'再触发“急启”情景，观察小车突然启动时车上物体后仰，并记录现象。', hint:'点击右侧“急启”触发片。'},
           {text:'点击“分析结论”，归纳两个装置共同说明的惯性现象。', hint:'结论应包含“物体具有保持原来运动状态的性质”。'}
@@ -1842,13 +1851,8 @@ body #app .toolbar button:disabled{
     const lab24Pointer = {
       id:null,
       mode:'',
-      startX:0,
       startY:0,
-      startOffset:0,
-      startTs:0,
-      lastTs:0,
-      lastX:0,
-      peakSpeed:0
+      startCompression:0
     };
 
     const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
@@ -2027,6 +2031,11 @@ body #app .toolbar button:disabled{
         case 22: return { zeroed:false, hung:false, lastN:0, lastMass:0, hangMass:0, needRehang:false, tests:[] };
         case 23: return { leftApplied:false, rightApplied:false, leftN:0, rightN:0, ringOffset:0, balanced:false, tests:[] };
         case 24: return {
+          freeScene:'ball',
+          springCompression:0,
+          springState:'ready',
+          plateStruck:false,
+          plateVelocity:0,
           stripOffset:0,
           stripEjected:false,
           stripReturning:false,
@@ -2098,6 +2107,13 @@ body #app .toolbar button:disabled{
     function setStepUI(i){
       const prev = state.currentTask;
       const idx = clamp(i,0,LAB.tasks.length-1);
+      if(LAB_ID === 24 && state.apparatus && prev !== idx){
+        const previousScene = getLab24GuidedScene(prev);
+        const nextScene = getLab24GuidedScene(idx);
+        clearLab24Pointer();
+        if(previousScene === 'ball' && nextScene !== 'ball') resetLab24BallScene();
+        if(previousScene === 'cart' && nextScene !== 'cart') resetLab24CarScene();
+      }
       state.currentTask = idx;
       if(prev !== idx) state.stepWarnIdx = -1;
       if(LAB_ID === 15 && idx === 2 && state.apparatus && !state.apparatus.tested){
@@ -2121,7 +2137,15 @@ body #app .toolbar button:disabled{
     }
 
     function setFreeMode(on){
-      state.freeMode = !!on;
+      const nextFreeMode = !!on;
+      if(LAB_ID === 24 && state.apparatus){
+        clearLab24Pointer();
+        if(nextFreeMode){
+          const guidedScene = getLab24GuidedScene();
+          state.apparatus.freeScene = guidedScene === 'cart' ? 'cart' : 'ball';
+        }
+      }
+      state.freeMode = nextFreeMode;
       updateModeTag();
       freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
       refreshAutoDemoButton();
@@ -2228,57 +2252,76 @@ body #app .toolbar button:disabled{
     function easeInOutCubic(t){ const x = clamp(t, 0, 1); return x < 0.5 ? 4*x*x*x : 1 - Math.pow(-2*x + 2, 3) / 2; }
     function easeOutQuad(t){ const x = clamp(t, 0, 1); return 1 - (1-x)*(1-x); }
 
-    function getLab24Layout(W = scene.getBoundingClientRect().width, H = scene.getBoundingClientRect().height){
-      const compact = W < 820;
-      if(compact){
-        const ballArea = { x: W*0.08, y: H*0.12, w: W*0.84, h: H*0.34 };
-        const carArea = { x: W*0.06, y: H*0.52, w: W*0.88, h: H*0.34 };
-        return buildLab24Layout(ballArea, carArea, W, H, compact);
-      }
-      const ballArea = { x: W*0.06, y: H*0.16, w: W*0.32, h: H*0.62 };
-      const carArea = { x: W*0.44, y: H*0.16, w: W*0.48, h: H*0.62 };
-      return buildLab24Layout(ballArea, carArea, W, H, compact);
+    function getLab24GuidedScene(taskIndex = state.currentTask){
+      if(taskIndex === 0) return 'ball';
+      if(taskIndex === 1 || taskIndex === 2) return 'cart';
+      return 'summary';
     }
 
-    function buildLab24Layout(ballArea, carArea, W, H, compact){
-      const pillarX = ballArea.x + ballArea.w * 0.36;
-      const pillarY = ballArea.y + 44;
-      const pillarW = Math.max(16, ballArea.w * 0.08);
-      const pillarH = ballArea.h * 0.44;
-      const capY = pillarY + 4;
-      const stripX = pillarX + pillarW - 2;
-      const stripY = capY + 4;
-      const stripW = ballArea.w * 0.34;
-      const stripH = 10;
-      const ballHomeX = stripX + Math.min(26, stripW * 0.18);
-      const ballHomeY = stripY - 13;
-      const stripMaxPull = ballArea.w * 0.22;
-      const stripReleaseThreshold = Math.max(22, stripMaxPull * 0.42);
-      const stripFastPullMs = 360;
-      const stripMediumPullMs = 620;
-      const stripHandle = { x: stripX + stripW - 12, y: stripY + stripH * 0.5, r: 9 };
-      const baseY = ballArea.y + ballArea.h - 26;
-      const resetBallChip = { x: ballArea.x + ballArea.w - 84, y: ballArea.y + ballArea.h - 44, w: 74, h: 28 };
+    function getLab24VisibleScene(){
+      if(state.freeMode) return state.apparatus?.freeScene === 'cart' ? 'cart' : 'ball';
+      return getLab24GuidedScene();
+    }
 
-      const roadX = carArea.x + 20;
-      const roadY = carArea.y + carArea.h * 0.66;
-      const roadW = carArea.w - 40;
-      const roadH = 28;
-      const carStart = 0.12;
-      const carBrakeStop = 0.58;
-      const carStartEnd = 0.6;
+    function getLab24Layout(W = scene.getBoundingClientRect().width, H = scene.getBoundingClientRect().height){
+      const compact = W < 820;
+      const apparatusArea = compact
+        ? { x:W*0.055, y:H*0.12, w:W*0.89, h:H*0.72 }
+        : { x:W*0.08, y:H*0.13, w:W*0.84, h:H*0.68 };
+      const pillarW = clamp(apparatusArea.w * 0.085, 24, 38);
+      const pillarX = apparatusArea.x + apparatusArea.w * (compact ? 0.25 : 0.31);
+      const pillarY = apparatusArea.y + apparatusArea.h * 0.27;
+      const baseY = apparatusArea.y + apparatusArea.h - 34;
+      const pillarH = baseY - pillarY;
+      const stripX = pillarX + pillarW - 2;
+      const stripY = pillarY + 12;
+      const stripW = clamp(apparatusArea.w * 0.38, 112, 226);
+      const stripH = compact ? 11 : 13;
+      const ballRadius = compact ? 14 : 17;
+      const ballHomeX = stripX + stripW * 0.34;
+      const ballHomeY = stripY - ballRadius;
+      const springMaxCompression = clamp(apparatusArea.h * 0.17, 34, 54);
+      const springReleaseThreshold = Math.max(24, springMaxCompression * 0.62);
+      const springAnchor = { x:stripX - 42, y:stripY + 88 };
+      const springHandle = { x:stripX - 25, y:stripY + 49, r:18 };
+      const springContact = { x:stripX - 5, y:stripY + stripH * 0.5 };
+      const plateRect = { x:stripX, y:stripY, w:stripW, h:stripH };
+      const stripMaxPull = Math.max(stripW * 0.92, apparatusArea.w * 0.38);
+      const supportClearance = ballHomeX + ballRadius + 2 - stripX;
+      const resetBallChip = { x:apparatusArea.x + apparatusArea.w - 92, y:apparatusArea.y + (state.freeMode ? 84 : 50), w:80, h:30 };
+
+      const roadX = apparatusArea.x + apparatusArea.w * 0.08;
+      const roadY = apparatusArea.y + apparatusArea.h * 0.66;
+      const roadW = apparatusArea.w * 0.84;
+      const roadH = compact ? 28 : 34;
+      const carStart = 0.08;
+      const carBrakeStop = 0.62;
+      const carStartEnd = 0.66;
       const carMinX = roadX + 28;
-      const carMaxX = roadX + roadW - 94;
-      const brakeChip = { x: carArea.x + carArea.w * 0.50, y: carArea.y + carArea.h - 44, w: 70, h: 30 };
-      const startChip = { x: carArea.x + carArea.w * 0.72, y: carArea.y + carArea.h - 44, w: 70, h: 30 };
+      const carMaxX = roadX + roadW - (compact ? 88 : 116);
+      const chipY = apparatusArea.y + apparatusArea.h - 60;
+      const cartActionW = compact ? 64 : 76;
+      const cartActionGap = 8;
+      const startChip = { x:apparatusArea.x + apparatusArea.w - 12 - cartActionW, y:chipY, w:cartActionW, h:32 };
+      const brakeChip = { x:startChip.x - cartActionGap - cartActionW, y:chipY, w:cartActionW, h:32 };
+      const carObservationRect = { x:apparatusArea.x + apparatusArea.w - (compact ? 148 : 180), y:apparatusArea.y + (state.freeMode ? 50 : 14), w:compact ? 134 : 166, h:28 };
+      const freeBallChip = { x:apparatusArea.x + 12, y:apparatusArea.y + 10, w:92, h:30 };
+      const freeCartChip = { x:apparatusArea.x + 112, y:apparatusArea.y + 10, w:92, h:30 };
+      const summaryCards = [0,1,2].map((_, index)=>({
+        x:apparatusArea.x + 16,
+        y:apparatusArea.y + 48 + index * ((apparatusArea.h - 76) / 3),
+        w:apparatusArea.w - 32,
+        h:Math.min(58, (apparatusArea.h - 94) / 3)
+      }));
 
       return {
-        W, H, compact, ballArea, carArea,
-        pillarX, pillarY, pillarW, pillarH, capY,
-        ballHomeX, ballHomeY, stripX, stripY, stripW, stripH,
-        stripMaxPull, stripReleaseThreshold, stripFastPullMs, stripMediumPullMs, stripHandle, baseY, resetBallChip,
+        W, H, compact, apparatusArea,
+        pillarX, pillarY, pillarW, pillarH,
+        ballHomeX, ballHomeY, ballRadius, stripX, stripY, stripW, stripH,
+        plateRect, stripMaxPull, supportClearance, springMaxCompression, springReleaseThreshold,
+        springAnchor, springHandle, springContact, baseY, resetBallChip,
         roadX, roadY, roadW, roadH, carStart, carBrakeStop, carStartEnd, carMinX, carMaxX,
-        brakeChip, startChip
+        brakeChip, startChip, carObservationRect, freeBallChip, freeCartChip, summaryCards
       };
     }
 
@@ -2286,14 +2329,9 @@ body #app .toolbar button:disabled{
       return lerp(g.carMinX, g.carMaxX, clamp(progress, 0, 1));
     }
 
-    function getLab24Observation(key, profile='fast'){
+    function getLab24Observation(key){
       if(key === 'ball'){
-        const phenomenon = profile === 'slow'
-          ? '小球略随金属片带偏后落下'
-          : profile === 'medium'
-            ? '小球下落前有轻微偏移'
-            : '小球未随金属片飞出，竖直下落';
-        return { key:'ball', scene:'小球实验', action:'拨动金属片', phenomenon, rank:1 };
+        return { key:'ball', scene:'小球实验', action:'按压并释放弹片', phenomenon:'金属片飞出，小球基本竖直下落', rank:1 };
       }
       if(key === 'brake'){
         return { key:'brake', scene:'小车急刹', action:'突然刹车', phenomenon:'车上物体前倾', rank:2 };
@@ -2304,6 +2342,10 @@ body #app .toolbar button:disabled{
     function resetLab24BallScene(){
       const ap = state.apparatus;
       const g = getLab24Layout();
+      ap.springCompression = 0;
+      ap.springState = 'ready';
+      ap.plateStruck = false;
+      ap.plateVelocity = 0;
       ap.stripOffset = 0;
       ap.stripEjected = false;
       ap.stripReturning = false;
@@ -2312,7 +2354,7 @@ body #app .toolbar button:disabled{
       ap.ballY = g.ballHomeY;
       ap.ballVY = 0;
       ap.ballVX = 0;
-      ap.ballFallProfile = 'fast';
+      ap.ballFallProfile = 'spring';
       if(ap.lastObservation && ap.lastObservation.key === 'ball') ap.lastObservation = null;
     }
 
@@ -2330,32 +2372,108 @@ body #app .toolbar button:disabled{
       }
     }
 
-    function triggerLab24BallLaunch(profile='fast'){
+    function clearLab24Pointer(){
+      const pointerId = lab24Pointer.id;
+      lab24Pointer.id = null;
+      lab24Pointer.mode = '';
+      lab24Pointer.startY = 0;
+      lab24Pointer.startCompression = 0;
+      if(pointerId !== null){
+        try{
+          if(scene.hasPointerCapture(pointerId)) scene.releasePointerCapture(pointerId);
+        }catch(error){
+          console.warn('[lab24] pointer release failed', pointerId, error);
+        }
+      }
+    }
+
+    function beginLab24SpringPress(pointerId, sceneY){
+      const ap = state.apparatus;
+      if(lab24Pointer.id !== null || ap.ballState !== 'ready' || ap.springState !== 'ready') return false;
+      lab24Pointer.id = pointerId;
+      lab24Pointer.mode = 'spring';
+      lab24Pointer.startY = sceneY;
+      lab24Pointer.startCompression = ap.springCompression;
+      ap.springState = 'pressed';
+      setStatus('正在按压弹片蓄力');
+      updatePills();
+      return true;
+    }
+
+    function moveLab24Spring(pointerId, sceneY){
+      if(lab24Pointer.id !== pointerId || lab24Pointer.mode !== 'spring') return false;
       const ap = state.apparatus;
       const g = getLab24Layout();
+      ap.springCompression = clamp(
+        lab24Pointer.startCompression + Math.max(0, sceneY - lab24Pointer.startY),
+        0,
+        g.springMaxCompression
+      );
+      ap.springState = 'pressed';
+      setStatus(ap.springCompression >= g.springReleaseThreshold ? '弹片蓄力完成，松手击发' : '继续向下压弹片');
+      return true;
+    }
+
+    function releaseLab24Spring(pointerId, cancelled=false){
+      if(lab24Pointer.id !== pointerId || lab24Pointer.mode !== 'spring') return false;
+      const ap = state.apparatus;
+      const g = getLab24Layout();
+      const charged = ap.springCompression >= g.springReleaseThreshold;
+      clearLab24Pointer();
+      if(cancelled || !charged){
+        ap.springState = 'returning';
+        setStatus(cancelled ? '操作已取消，弹片复位' : '蓄力不足，弹片复位');
+        return false;
+      }
+      ap.springState = 'releasing';
+      ap.plateStruck = false;
+      ap.plateVelocity = 0;
+      ap.stripOffset = 0;
+      ap.stripEjected = false;
+      ap.lastObservation = null;
+      setStatus('已松手，观察弹片回弹击片');
+      return true;
+    }
+
+    function strikeLab24Plate(){
+      const ap = state.apparatus;
+      if(ap.plateStruck || ap.ballState !== 'ready') return false;
+      ap.plateStruck = true;
       ap.stripEjected = true;
-      ap.stripReturning = false;
+      ap.plateVelocity = 0.34;
+      ap.springState = 'struck';
+      setStatus('弹片击中金属片，金属片快速飞出');
+      return true;
+    }
+
+    function startLab24BallFall(){
+      const ap = state.apparatus;
+      const g = getLab24Layout();
+      if(ap.ballState !== 'ready') return false;
       ap.ballState = 'falling';
-      const carryRatio = profile === 'slow' ? 0.5 : profile === 'medium' ? 0.22 : 0.04;
-      ap.ballX = g.ballHomeX + ap.stripOffset * carryRatio;
+      ap.ballX = g.ballHomeX;
       ap.ballY = g.ballHomeY;
       ap.ballVY = 0;
-      ap.ballFallProfile = profile;
-      ap.ballVX = profile === 'slow' ? 0.028 : profile === 'medium' ? 0.012 : 0;
-      ap.lastObservation = null;
-      setStatus(profile === 'fast' ? '金属片被迅速拨出，小球立即下落' : '金属片被拨出，小球开始下落');
-      updatePills();
+      ap.ballVX = 0;
+      ap.ballFallProfile = 'spring';
+      setStatus('支撑已移开，小球开始基本竖直下落');
+      return true;
     }
 
     function triggerLab24Car(mode){
       const ap = state.apparatus;
-      if(mode !== 'brake' && mode !== 'start') return;
+      if(mode !== 'brake' && mode !== 'start') return false;
+      if(ap.carMode !== 'idle'){
+        showToast('请等待本次小车运动结束');
+        return false;
+      }
       resetLab24CarScene();
       ap.carMode = mode;
       ap.carAnimT = 0;
       ap.carProgress = 0;
       setStatus(mode === 'brake' ? '小车正在急刹观察' : '小车正在急启观察');
       updatePills();
+      return true;
     }
 
     function refreshControlPill(def){
@@ -4275,91 +4393,132 @@ body #app .toolbar button:disabled{
       ctx.fillText(`状态：${ap.balanced ? '平衡（合力约0）' : '不平衡（小环偏移）'}`, W*0.35, cy+58);
     }
 
-    function draw24(ctx,W,H){
-      const ap = state.apparatus;
-      const g = getLab24Layout(W, H);
-      const ballActive = state.freeMode || state.currentTask === 0;
-      const brakeActive = state.freeMode || state.currentTask === 1;
-      const startActive = state.freeMode || state.currentTask === 2;
-
+    function drawLab24Frame(ctx, g){
+      const area = g.apparatusArea;
       ctx.fillStyle = 'rgba(12,18,28,.9)';
-      ctx.strokeStyle = 'rgba(125,158,190,.2)';
+      ctx.strokeStyle = 'rgba(125,158,190,.24)';
       ctx.lineWidth = 1.4;
-      for(const area of [g.ballArea, g.carArea]){
-        ctx.beginPath();
-        ctx.roundRect(area.x, area.y, area.w, area.h, 22);
-        ctx.fill();
-        ctx.stroke();
+      ctx.beginPath();
+      ctx.roundRect(area.x, area.y, area.w, area.h, 22);
+      ctx.fill();
+      ctx.stroke();
+      if(state.freeMode){
+        drawLab24Chip(ctx, g.freeBallChip, '小球装置', state.apparatus.freeScene !== 'cart');
+        drawLab24Chip(ctx, g.freeCartChip, '小车装置', state.apparatus.freeScene === 'cart');
       }
+    }
 
+    function drawLab24BallScene(ctx, g){
+      const ap = state.apparatus;
+      const area = g.apparatusArea;
+      const titleY = area.y + (state.freeMode ? 66 : 32);
       ctx.fillStyle = '#dfeaff';
-      ctx.font = '14px -apple-system,Segoe UI';
-      ctx.fillText('小球实验区', g.ballArea.x + 6, g.ballArea.y - 10);
-      ctx.fillText('小车实验区', g.carArea.x + 6, g.carArea.y - 10);
+      ctx.font = '600 15px -apple-system,Segoe UI';
+      ctx.fillText('小球惯性实验', area.x + 18, titleY);
 
-      ctx.fillStyle = '#4a5b70';
-      ctx.fillRect(g.ballArea.x + 22, g.baseY, g.ballArea.w - 44, 12);
-      ctx.fillStyle = '#2d3947';
-      ctx.fillRect(g.ballArea.x + 14, g.baseY + 12, g.ballArea.w - 28, 9);
-      ctx.fillStyle = '#4e6178';
+      ctx.fillStyle = '#44566c';
+      ctx.fillRect(area.x + 24, g.baseY, area.w - 48, 13);
+      ctx.fillStyle = '#2b3644';
+      ctx.fillRect(area.x + 16, g.baseY + 13, area.w - 32, 9);
+      ctx.fillStyle = '#52677f';
       ctx.fillRect(g.pillarX, g.pillarY, g.pillarW, g.pillarH);
+      ctx.fillStyle = '#7088a1';
+      ctx.fillRect(g.pillarX - 7, g.pillarY - 2, g.pillarW + 14, 12);
 
       const stripX = g.stripX + ap.stripOffset;
-      ctx.fillStyle = '#7aa8d8';
+      if(ap.stripOffset > 5){
+        ctx.strokeStyle = 'rgba(125,190,255,.28)';
+        ctx.lineWidth = 3;
+        for(let i=1;i<=3;i++){
+          ctx.beginPath();
+          ctx.moveTo(stripX - i*18, g.stripY + g.stripH*0.5);
+          ctx.lineTo(stripX - i*7, g.stripY + g.stripH*0.5);
+          ctx.stroke();
+        }
+      }
+      const plateGrad = ctx.createLinearGradient(stripX, g.stripY, stripX, g.stripY + g.stripH);
+      plateGrad.addColorStop(0, '#d8e6ef');
+      plateGrad.addColorStop(0.5, '#8fa8bb');
+      plateGrad.addColorStop(1, '#62788c');
+      ctx.fillStyle = plateGrad;
       ctx.fillRect(stripX, g.stripY, g.stripW, g.stripH);
-      ctx.fillStyle = '#d4eefc';
-      ctx.fillRect(stripX + g.stripW - 24, g.stripY - 5, 18, g.stripH + 10);
-      ctx.strokeStyle = ballActive ? '#ffcf6f' : 'rgba(225,239,255,.35)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(stripX + g.stripW - 16, g.stripY + g.stripH * 0.5, 11, 0, Math.PI*2);
-      ctx.stroke();
+      ctx.strokeStyle = 'rgba(235,247,255,.65)';
+      ctx.strokeRect(stripX, g.stripY, g.stripW, g.stripH);
 
-      const readyCarry = state.freeMode && lab24Pointer.mode === 'strip' ? ap.stripOffset * 0.22 : 0;
-      const ballX = ap.ballState === 'ready' ? g.ballHomeX + readyCarry : ap.ballX;
+      const compression = ap.springCompression || 0;
+      const springHandleY = g.springHandle.y + compression;
+      const contactX = g.springContact.x - compression * 0.18;
+      const contactY = g.springContact.y + compression * 0.08;
+      ctx.strokeStyle = '#56d59b';
+      ctx.lineWidth = g.compact ? 7 : 9;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(g.springAnchor.x, g.springAnchor.y);
+      ctx.quadraticCurveTo(g.springHandle.x - compression*0.08, springHandleY, contactX, contactY);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      ctx.fillStyle = '#274257';
+      ctx.beginPath();
+      ctx.arc(g.springAnchor.x, g.springAnchor.y, 9, 0, Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle = '#9bc4df';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = ap.springState === 'pressed' ? '#ffcf6f' : '#8bf0bd';
+      ctx.beginPath();
+      ctx.arc(g.springHandle.x, springHandleY, 10, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.save();
+      ctx.setLineDash([4,4]);
+      ctx.strokeStyle = 'rgba(255,207,111,.58)';
+      ctx.beginPath();
+      ctx.moveTo(g.springHandle.x - 24, g.springHandle.y + g.springReleaseThreshold);
+      ctx.lineTo(g.springHandle.x + 28, g.springHandle.y + g.springReleaseThreshold);
+      ctx.stroke();
+      ctx.restore();
+      ctx.fillStyle = '#ffcf6f';
+      ctx.font = '11px -apple-system,Segoe UI';
+      ctx.fillText('松手线', g.springHandle.x + 34, g.springHandle.y + g.springReleaseThreshold + 4);
+
+      const ballX = ap.ballState === 'ready' ? g.ballHomeX : ap.ballX;
       const ballY = ap.ballState === 'ready' ? g.ballHomeY : ap.ballY;
       const shadowAlpha = ap.ballState === 'ready' ? 0.14 : clamp((ballY - g.ballHomeY) / (g.baseY - g.ballHomeY), 0.2, 0.52);
       ctx.fillStyle = `rgba(0,0,0,${shadowAlpha})`;
       ctx.beginPath();
-      ctx.ellipse(ballX, g.baseY + 6, 14, 6, 0, 0, Math.PI*2);
+      ctx.ellipse(ballX, g.baseY + 6, g.ballRadius, 6, 0, 0, Math.PI*2);
       ctx.fill();
-      const ballGrad = ctx.createRadialGradient(ballX - 6, ballY - 8, 2, ballX, ballY, 16);
+      const ballGrad = ctx.createRadialGradient(ballX - 6, ballY - 8, 2, ballX, ballY, g.ballRadius + 3);
       ballGrad.addColorStop(0, '#f2f6fb');
-      ballGrad.addColorStop(0.28, '#7e8794');
+      ballGrad.addColorStop(0.28, '#858f9d');
       ballGrad.addColorStop(0.72, '#2a3038');
       ballGrad.addColorStop(1, '#0d1116');
       ctx.fillStyle = ballGrad;
       ctx.beginPath();
-      ctx.arc(ballX, ballY, 13, 0, Math.PI*2);
+      ctx.arc(ballX, ballY, g.ballRadius, 0, Math.PI*2);
       ctx.fill();
       ctx.strokeStyle = 'rgba(255,255,255,.24)';
       ctx.stroke();
 
-      if(ap.ballState !== 'ready'){
-        drawLab24Chip(ctx, g.resetBallChip, '复位小球', false);
-      }
+      const observationRect = { x:area.x + area.w - (g.compact ? 148 : 172), y:area.y + (state.freeMode ? 50 : 14), w:g.compact ? 134 : 158, h:28 };
+      drawLab24Chip(ctx, observationRect, ap.ballObserved ? '现象：基本竖直下落' : '现象：等待击发', ap.ballObserved);
+      if(ap.ballState !== 'ready') drawLab24Chip(ctx, g.resetBallChip, '复位装置', false);
+    }
 
-      const ballHintRect = { x: g.ballArea.x + 10, y: g.ballArea.y + g.ballArea.h - 34, w: 128, h: 22 };
-      const ballObsRect = { x: g.ballArea.x + 10, y: g.ballArea.y + 12, w: 176, h: 22 };
-      const ballHintText = state.freeMode ? '拖动金属片' : '迅速拨动金属片';
-      const ballObsText = !ap.ballObserved
-        ? '现象：等待拨片'
-        : ap.ballFallProfile === 'slow'
-          ? '现象：带偏后落下'
-          : ap.ballFallProfile === 'medium'
-            ? '现象：轻微偏移后下落'
-            : '现象：竖直下落';
-      drawLab24Chip(ctx, ballHintRect, ballHintText, ballActive);
-      drawLab24Chip(ctx, ballObsRect, ballObsText, ap.ballObserved);
-
-      const tableTopY = g.carArea.y + 20;
+    function drawLab24CartScene(ctx, g){
+      const ap = state.apparatus;
+      const area = g.apparatusArea;
+      const titleY = area.y + (state.freeMode ? 66 : 32);
+      ctx.fillStyle = '#dfeaff';
+      ctx.font = '600 15px -apple-system,Segoe UI';
+      ctx.fillText('小车惯性实验', area.x + 18, titleY);
       ctx.fillStyle = '#d8b07a';
-      ctx.fillRect(g.carArea.x + 24, tableTopY, g.carArea.w - 48, 22);
+      ctx.fillRect(area.x + 28, area.y + area.h*0.20, area.w - 56, 22);
       ctx.fillStyle = '#b28454';
-      ctx.fillRect(g.carArea.x + 24, tableTopY + 22, g.carArea.w - 48, 10);
+      ctx.fillRect(area.x + 28, area.y + area.h*0.20 + 22, area.w - 56, 10);
       ctx.fillStyle = '#b6956c';
-      ctx.fillRect(g.carArea.x + 34, tableTopY + 26, 18, g.carArea.h - 64);
-      ctx.fillRect(g.carArea.x + g.carArea.w - 52, tableTopY + 26, 18, g.carArea.h - 64);
+      ctx.fillRect(area.x + 40, area.y + area.h*0.20 + 28, 18, area.h*0.42);
+      ctx.fillRect(area.x + area.w - 58, area.y + area.h*0.20 + 28, 18, area.h*0.42);
       ctx.fillStyle = '#6d7e93';
       ctx.fillRect(g.roadX, g.roadY, g.roadW, g.roadH);
       ctx.fillStyle = '#3c4a58';
@@ -4367,26 +4526,64 @@ body #app .toolbar button:disabled{
       for(let i=0;i<18;i++){
         const tx = g.roadX + 10 + i * ((g.roadW - 20) / 18);
         ctx.fillStyle = i % 2 ? 'rgba(225,235,245,.22)' : 'rgba(225,235,245,.14)';
-        ctx.fillRect(tx, g.roadY + 8, 18, 4);
+        ctx.fillRect(tx, g.roadY + 8, Math.min(18, g.roadW/22), 4);
       }
-      const roadLabelRect = { x: g.carArea.x + g.carArea.w - 156, y: g.carArea.y + 12, w: 132, h: 24 };
-      drawLab24Chip(ctx, roadLabelRect, '光滑水平桌面', false);
-
       const carX = getLab24CarX(g, ap.carProgress || g.carStart);
       const carY = g.roadY + g.roadH - 4;
-      drawLab24Car(ctx, carX, carY, g.compact ? 0.88 : 1, ap.passengerLean, ap.passengerShift, ap.passengerHeight);
+      drawLab24Car(ctx, carX, carY, g.compact ? 0.98 : 1.18, ap.passengerLean, ap.passengerShift, ap.passengerHeight);
 
+      const brakeActive = state.freeMode || state.currentTask === 1;
+      const startActive = state.freeMode || state.currentTask === 2;
       drawLab24Chip(ctx, g.brakeChip, '急刹', brakeActive);
       drawLab24Chip(ctx, g.startChip, '急启', startActive);
-      const carObsRect = { x: g.carArea.x + 10, y: g.carArea.y + g.carArea.h - 34, w: 150, h: 22 };
-      const carObsText = !ap.lastObservation
-        ? '现象：等待触发'
-        : ap.lastObservation.key === 'brake'
-          ? '现象：前倾'
-          : ap.lastObservation.key === 'start'
-            ? '现象：后仰'
-            : '现象：等待触发';
-      drawLab24Chip(ctx, carObsRect, carObsText, !!ap.lastObservation);
+      const observation = ap.lastObservation?.key === 'brake'
+        ? '现象：物体前倾'
+        : ap.lastObservation?.key === 'start'
+          ? '现象：物体后仰'
+          : '现象：等待触发';
+      drawLab24Chip(ctx, g.carObservationRect, observation, !!ap.lastObservation);
+    }
+
+    function drawLab24Summary(ctx, g){
+      const ap = state.apparatus;
+      const area = g.apparatusArea;
+      ctx.fillStyle = '#dfeaff';
+      ctx.font = '600 16px -apple-system,Segoe UI';
+      ctx.fillText('三组惯性现象', area.x + 18, area.y + 31);
+      const cards = [
+        { done:ap.ballObserved, title:'弹片击飞金属片', result:'小球基本竖直下落' },
+        { done:ap.brakeObserved, title:'小车突然刹车', result:'车上物体向前倾' },
+        { done:ap.startObserved, title:'小车突然启动', result:'车上物体向后仰' }
+      ];
+      cards.forEach((card, index)=>{
+        const rect = g.summaryCards[index];
+        ctx.fillStyle = card.done ? 'rgba(39,190,132,.14)' : 'rgba(255,255,255,.045)';
+        ctx.strokeStyle = card.done ? 'rgba(93,232,174,.58)' : 'rgba(170,196,220,.2)';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 13);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = card.done ? '#68e2ad' : '#7890aa';
+        ctx.beginPath();
+        ctx.arc(rect.x + 20, rect.y + rect.h*0.5, 8, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#eef6ff';
+        ctx.font = '600 13px -apple-system,Segoe UI';
+        ctx.fillText(card.title, rect.x + 38, rect.y + rect.h*0.43);
+        ctx.fillStyle = card.done ? '#bff5dc' : '#93a8bf';
+        ctx.font = '12px -apple-system,Segoe UI';
+        ctx.fillText(card.done ? card.result : '尚未记录', rect.x + 38, rect.y + rect.h*0.74);
+      });
+    }
+
+    function draw24(ctx,W,H){
+      const g = getLab24Layout(W, H);
+      const visibleScene = getLab24VisibleScene();
+      drawLab24Frame(ctx, g);
+      if(visibleScene === 'ball') drawLab24BallScene(ctx, g);
+      else if(visibleScene === 'cart') drawLab24CartScene(ctx, g);
+      else drawLab24Summary(ctx, g);
     }
 
     function draw25(ctx,W,H){
@@ -4905,85 +5102,62 @@ body #app .toolbar button:disabled{
         return false;
       };
 
-      const maybeLaunchBall = (pointerId)=>{
-        const ap = state.apparatus;
-        const g = getLab24Layout();
-        if(ap.ballState !== 'ready' || ap.stripOffset < g.stripReleaseThreshold) return false;
-        const now = performance.now();
-        const totalDx = Math.max(0, ap.stripOffset - lab24Pointer.startOffset);
-        const totalDt = Math.max(1, now - lab24Pointer.startTs);
-        const avgSpeed = totalDx / totalDt;
-        const fastEnough = totalDt <= g.stripFastPullMs || lab24Pointer.peakSpeed >= 0.16 || avgSpeed >= 0.11;
-        if(!state.freeMode && !fastEnough){
-          setStatus('需迅速抽出金属片，才能清楚观察小球下落');
-          return false;
-        }
-        const profile = !state.freeMode
-          ? 'fast'
-          : totalDt <= g.stripFastPullMs
-            ? 'fast'
-            : totalDt <= g.stripMediumPullMs
-              ? 'medium'
-              : 'slow';
-        triggerLab24BallLaunch(profile);
-        lab24Pointer.id = null;
-        lab24Pointer.mode = '';
-        try{ scene.releasePointerCapture(pointerId); }catch{}
-        return true;
-      };
-
-      const endDrag = (e)=>{
-        if(lab24Pointer.id !== e.pointerId) return;
-        if(lab24Pointer.mode === 'strip'){
-          const ap = state.apparatus;
-          const g = getLab24Layout();
-          const now = performance.now();
-          const totalDx = Math.max(0, ap.stripOffset - lab24Pointer.startOffset);
-          const totalDt = Math.max(1, now - lab24Pointer.startTs);
-          const avgSpeed = totalDx / totalDt;
-          const fastEnough = totalDt <= g.stripFastPullMs || lab24Pointer.peakSpeed >= 0.16 || avgSpeed >= 0.11;
-          if(ap.stripOffset >= g.stripReleaseThreshold){
-            if(ap.ballState === 'ready' && !maybeLaunchBall(e.pointerId) && !state.freeMode && !fastEnough){
-              ap.stripReturning = true;
-              setStatus('需迅速抽出金属片，才能清楚观察小球下落');
-              showToast('这一步要快速抽出金属片');
-            }
-          }else ap.stripReturning = true;
-        }
-        lab24Pointer.id = null;
-        lab24Pointer.mode = '';
-      };
-
       scene.addEventListener('pointerdown', (e)=>{
         if(state.autoPlaying) return;
         const p = scenePointFromEvent(e);
         const g = getLab24Layout();
         const ap = state.apparatus;
+        if(lab24Pointer.id !== null && lab24Pointer.id !== e.pointerId) return;
 
-        const handleHit = Math.hypot(p.x - (g.stripX + ap.stripOffset + g.stripW - 16), p.y - (g.stripY + g.stripH * 0.5)) <= 14;
-        if(handleHit){
-          if(!allowBall()) return;
-          lab24Pointer.id = e.pointerId;
-          lab24Pointer.mode = 'strip';
-          lab24Pointer.startX = p.x;
-          lab24Pointer.startOffset = ap.stripOffset;
-          lab24Pointer.startTs = performance.now();
-          lab24Pointer.lastTs = lab24Pointer.startTs;
-          lab24Pointer.lastX = p.x;
-          lab24Pointer.peakSpeed = 0;
-          scene.setPointerCapture(e.pointerId);
+        if(state.freeMode && rectContainsPoint(g.freeBallChip, p.x, p.y)){
+          clearLab24Pointer();
+          resetLab24CarScene();
+          ap.freeScene = 'ball';
+          setStatus('自由探索：小球装置');
           e.preventDefault();
           return;
         }
-
-        if(ap.ballState !== 'ready' && rectContainsPoint(g.resetBallChip, p.x, p.y)){
+        if(state.freeMode && rectContainsPoint(g.freeCartChip, p.x, p.y)){
+          clearLab24Pointer();
           resetLab24BallScene();
-          setStatus('小球装置已复位');
-          updatePills();
+          ap.freeScene = 'cart';
+          setStatus('自由探索：小车装置');
           e.preventDefault();
           return;
         }
 
+        if(getLab24VisibleScene() === 'ball'){
+          const handleY = g.springHandle.y + ap.springCompression;
+          const springHit = Math.hypot(p.x - g.springHandle.x, p.y - handleY) <= g.springHandle.r;
+          if(springHit){
+            if(!allowBall()) return;
+            if(!beginLab24SpringPress(e.pointerId, p.y)) return;
+            try{
+              scene.setPointerCapture(e.pointerId);
+            }catch(error){
+              console.warn('[lab24] pointer capture failed', e.pointerId, error);
+              clearLab24Pointer();
+              resetLab24BallScene();
+              setStatus('指针操作未建立，请重试');
+              updatePills();
+              e.preventDefault();
+              return;
+            }
+            e.preventDefault();
+            return;
+          }
+
+          if(ap.ballState !== 'ready' && rectContainsPoint(g.resetBallChip, p.x, p.y)){
+            clearLab24Pointer();
+            resetLab24BallScene();
+            setStatus('小球装置已复位');
+            updatePills();
+            e.preventDefault();
+          }
+          return;
+        }
+
+        if(getLab24VisibleScene() !== 'cart') return;
         if(rectContainsPoint(g.brakeChip, p.x, p.y)){
           if(!allowBrake()) return;
           triggerLab24Car('brake');
@@ -4999,25 +5173,26 @@ body #app .toolbar button:disabled{
       });
 
       scene.addEventListener('pointermove', (e)=>{
-        if(lab24Pointer.id !== e.pointerId || lab24Pointer.mode !== 'strip') return;
+        if(lab24Pointer.id !== e.pointerId || lab24Pointer.mode !== 'spring') return;
         const p = scenePointFromEvent(e);
-        const ap = state.apparatus;
-        const g = getLab24Layout();
-        const dx = Math.max(0, p.x - lab24Pointer.startX);
-        ap.stripOffset = clamp(lab24Pointer.startOffset + dx, 0, g.stripMaxPull);
-        ap.stripReturning = false;
-        const now = performance.now();
-        const dt = Math.max(1, now - lab24Pointer.lastTs);
-        const speed = Math.max(0, p.x - lab24Pointer.lastX) / dt;
-        lab24Pointer.peakSpeed = Math.max(lab24Pointer.peakSpeed, speed);
-        lab24Pointer.lastTs = now;
-        lab24Pointer.lastX = p.x;
-        maybeLaunchBall(e.pointerId);
+        if(moveLab24Spring(e.pointerId, p.y)) e.preventDefault();
+      });
+
+      scene.addEventListener('pointerup', (e)=>{
+        if(lab24Pointer.id !== e.pointerId) return;
+        releaseLab24Spring(e.pointerId, false);
         e.preventDefault();
       });
 
-      scene.addEventListener('pointerup', endDrag);
-      scene.addEventListener('pointercancel', endDrag);
+      scene.addEventListener('pointercancel', (e)=>{
+        if(lab24Pointer.id !== e.pointerId) return;
+        releaseLab24Spring(e.pointerId, true);
+      });
+
+      scene.addEventListener('lostpointercapture', (e)=>{
+        if(lab24Pointer.id !== e.pointerId) return;
+        releaseLab24Spring(e.pointerId, true);
+      });
     }
 
     function updateDynamic(dt){
@@ -5039,61 +5214,85 @@ body #app .toolbar button:disabled{
       }
       if(LAB_ID === 24){
         const g = getLab24Layout();
-        if(ap.stripReturning){
-          ap.stripOffset += (0 - ap.stripOffset) * Math.min(1, dt * 0.02);
-          if(Math.abs(ap.stripOffset) < 0.8){
-            ap.stripOffset = 0;
-            ap.stripReturning = false;
+        const visibleScene = getLab24VisibleScene();
+        if(visibleScene === 'ball'){
+          if(ap.springState === 'returning'){
+            ap.springCompression += (0 - ap.springCompression) * Math.min(1, dt * 0.022);
+            if(ap.springCompression < 0.5){
+              ap.springCompression = 0;
+              ap.springState = 'ready';
+            }
           }
-        }
-        if(ap.stripEjected){
-          ap.stripOffset = Math.min(g.stripMaxPull, ap.stripOffset + dt * 0.64);
-          if(ap.stripOffset >= g.stripMaxPull - 1){
-            ap.stripOffset = g.stripMaxPull;
-            ap.stripEjected = false;
+          if(ap.springState === 'releasing' || ap.springState === 'struck'){
+            ap.springCompression = Math.max(0, ap.springCompression - dt * 0.12);
+            if(ap.springState === 'releasing' && ap.springCompression <= g.springReleaseThreshold * 0.44){
+              strikeLab24Plate();
+            }
+            if(ap.springState === 'struck' && ap.springCompression <= 0){
+              ap.springState = 'released';
+            }
           }
-        }
-        if(ap.ballState === 'falling'){
-          ap.ballVY += dt * 0.00065;
-          ap.ballY += ap.ballVY * dt;
-          ap.ballX += ap.ballVX * dt;
-          ap.ballVX *= Math.exp(-dt * 0.0042);
-          if(ap.ballY >= g.baseY - 14){
-            ap.ballY = g.baseY - 14;
-            ap.ballState = 'settled';
-            ap.ballObserved = true;
-            ap.lastObservation = getLab24Observation('ball', ap.ballFallProfile);
-            setStatus(ap.ballFallProfile === 'fast' ? '小球未随金属片飞出，而是立即下落' : `小球${ap.lastObservation.phenomenon}`);
-            updatePills();
+          if(ap.stripEjected){
+            ap.stripOffset = Math.min(g.stripMaxPull, ap.stripOffset + dt * Math.max(0.2, ap.plateVelocity));
+            ap.plateVelocity = Math.max(0.2, ap.plateVelocity * Math.exp(-dt * 0.0012));
+            if(ap.ballState === 'ready' && ap.stripOffset >= g.supportClearance){
+              startLab24BallFall();
+            }
+            if(ap.stripOffset >= g.stripMaxPull - 1){
+              ap.stripOffset = g.stripMaxPull;
+              ap.stripEjected = false;
+              ap.plateVelocity = 0;
+            }
+          }
+          if(ap.ballState === 'falling'){
+            ap.ballVY += dt * 0.00065;
+            ap.ballY += ap.ballVY * dt;
+            ap.ballX += ap.ballVX * dt;
+            if(ap.ballY >= g.baseY - g.ballRadius){
+              ap.ballY = g.baseY - g.ballRadius;
+              ap.ballState = 'settled';
+              ap.ballObserved = true;
+              ap.lastObservation = getLab24Observation('ball');
+              setStatus('观察到金属片飞出，小球基本竖直下落');
+              updatePills();
+            }
           }
         }
 
-        if(ap.carMode === 'brake'){
+        if(visibleScene === 'cart' && ap.carMode === 'brake'){
           ap.carAnimT += dt;
           const t = ap.carAnimT;
-          if(t < 520){
+          if(t < 360){
             ap.carProgress = g.carStart;
             ap.passengerLean = 0;
             ap.passengerShift = 0;
             ap.passengerHeight = 0;
-          }else if(t < 1260){
-            const u = (t - 520) / 740;
-            ap.carProgress = lerp(g.carStart, 0.46, easeInOutCubic(u));
+          }else if(t < 920){
+            const u = (t - 360) / 560;
+            ap.carProgress = lerp(g.carStart, 0.24, u * u);
             ap.passengerLean = 0;
             ap.passengerShift = 0;
             ap.passengerHeight = 0;
-          }else if(t < 1460){
-            const u = (t - 1260) / 200;
-            ap.carProgress = lerp(0.46, g.carBrakeStop, easeOutQuad(u));
-            ap.passengerLean = lerp(0, 0.72, u);
-            ap.passengerShift = lerp(0, 15, u);
-            ap.passengerHeight = lerp(0, -2.2, u);
-          }else if(t < 1940){
-            const u = (t - 1460) / 480;
+          }else if(t < 1375){
+            const u = (t - 920) / 455;
+            ap.carProgress = lerp(0.24, 0.50, u);
+            ap.passengerLean = 0;
+            ap.passengerShift = 0;
+            ap.passengerHeight = 0;
+          }else if(t < 2005){
+            const u = (t - 1375) / 630;
+            const reaction = easeOutCubic(Math.min(1, u * 1.8));
+            ap.carProgress = lerp(0.50, g.carBrakeStop, easeOutCubic(u));
+            ap.passengerLean = lerp(0, 0.72, reaction);
+            ap.passengerShift = lerp(0, 15, reaction);
+            ap.passengerHeight = lerp(0, -2.2, reaction);
+          }else if(t < 2645){
+            const u = (t - 2005) / 640;
+            const settle = 1 - easeInOutCubic(u);
             ap.carProgress = g.carBrakeStop;
-            ap.passengerLean = 0.72 * Math.exp(-u * 2.6) * Math.cos(u * 8.8);
-            ap.passengerShift = 15 + 4 * Math.exp(-u * 2.4) * Math.sin(u * 8.8);
-            ap.passengerHeight = -2.2 * Math.exp(-u * 2.3) * Math.cos(u * 6.4);
+            ap.passengerLean = 0.72 * settle;
+            ap.passengerShift = 15 * settle;
+            ap.passengerHeight = -2.2 * settle;
           }else{
             ap.carMode = 'idle';
             ap.carProgress = g.carBrakeStop;
@@ -5105,7 +5304,7 @@ body #app .toolbar button:disabled{
             setStatus('观察到急刹时车上物体前倾');
             updatePills();
           }
-        }else if(ap.carMode === 'start'){
+        }else if(visibleScene === 'cart' && ap.carMode === 'start'){
           ap.carAnimT += dt;
           const t = ap.carAnimT;
           if(t < 460){
@@ -5341,8 +5540,7 @@ body #app .toolbar button:disabled{
       clearAllTimers();
       lab15Pointer.id = null;
       lab15Pointer.mode = '';
-      lab24Pointer.id = null;
-      lab24Pointer.mode = '';
+      clearLab24Pointer();
       state.stepWarnIdx = -1;
       state.completed = false;
       state.successCooldown = false;
@@ -5560,26 +5758,21 @@ body #app .toolbar button:disabled{
             }
           };
           const g = ()=>getLab24Layout();
-          await doStep(0, '步骤1：拨动金属片');
+          await doStep(0, '步骤1：按压弹片');
           let layout = g();
-          const handleStart = scenePointToStage(layout.stripX + layout.stripW - 16, layout.stripY + layout.stripH * 0.5);
-          const handleEnd = scenePointToStage(layout.stripX + layout.stripW - 16 + layout.stripReleaseThreshold + 34, layout.stripY + layout.stripH * 0.5);
-          await dragDemoCursorPath([handleStart, handleEnd], 520, (pt, idx)=>{
+          const handleStart = scenePointToStage(layout.springHandle.x, layout.springHandle.y);
+          const handleEnd = scenePointToStage(layout.springHandle.x, layout.springHandle.y + layout.springReleaseThreshold + 10);
+          beginLab24SpringPress(999, layout.springHandle.y);
+          await dragDemoCursorPath([handleStart, handleEnd], 720, (pt, idx)=>{
             if(idx === 0){
-              lab24Pointer.id = 999;
-              lab24Pointer.mode = 'strip';
-              lab24Pointer.startX = handleStart.x;
-              lab24Pointer.startOffset = state.apparatus.stripOffset;
+              setStatus('演示：向下压弹片蓄力');
             }
             const scenePt = stagePointToScene(pt.x, pt.y);
-            state.apparatus.stripOffset = clamp(lab24Pointer.startOffset + Math.max(0, pt.x - handleStart.x), 0, getLab24Layout().stripMaxPull);
-            state.apparatus.stripReturning = false;
-            if(Math.abs(pt.x - handleEnd.x) < 6){
-              lab24Pointer.id = null;
-              lab24Pointer.mode = '';
-              triggerLab24BallLaunch();
-            }
+            moveLab24Spring(999, scenePt.y);
           });
+          await wait(360);
+          ensure();
+          releaseLab24Spring(999, false);
           await waitForObs('ball', 2200);
           await doR();
 
@@ -5589,7 +5782,7 @@ body #app .toolbar button:disabled{
           await moveDemoCursorToStage(p.x, p.y, 620);
           await clickDemoCursor(220);
           triggerLab24Car('brake');
-          await waitForObs('brake', 2400);
+          await waitForObs('brake', 3400);
           await doR();
 
           await doStep(2, '步骤3：急启观察');
@@ -5672,6 +5865,11 @@ body #app .toolbar button:disabled{
       }finally{
         if(runId === state.autoRunId){
           const stopped = state.autoStopRequested;
+          if(LAB_ID === 24 && stopped){
+            clearLab24Pointer();
+            if(getLab24VisibleScene() === 'ball') resetLab24BallScene();
+            else if(getLab24VisibleScene() === 'cart') resetLab24CarScene();
+          }
           state.autoPlaying = false;
           state.autoStopRequested = false;
           showDemoCursor(false);
