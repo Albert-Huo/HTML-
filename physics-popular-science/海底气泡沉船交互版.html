@@ -1,9 +1,36 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<script id="codex-science-ui-scheduler-v1">
+(() => {
+  'use strict';
+  if (window.__codexScienceUiSchedulerV1) throw new Error('[science UI] 重复界面调度实例');
+  // Capture browser scheduling before the experiment installs its pausable clock.
+  // Existing UI owners still allocate, cancel and dispose their own handles.
+  window.__codexScienceUiSchedulerV1 = Object.freeze({
+    requestAnimationFrame: window.requestAnimationFrame.bind(window),
+    cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
+    setTimeout: window.setTimeout.bind(window),
+    clearTimeout: window.clearTimeout.bind(window)
+  });
+})();
+</script>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>海底气泡沉船 · 交互版</title>
+  <script id="codex-theme-bootstrap">
+    (() => {
+      const themeKey = "xingnian.physics.theme";
+      let theme = "dark";
+      try {
+        const storedTheme = localStorage.getItem(themeKey);
+        if (storedTheme === "light" || storedTheme === "dark") theme = storedTheme;
+      } catch (error) {
+        console.warn("[theme-pilot] failed to read saved theme", error);
+      }
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
 <style>
   :root{
     --card-bg: rgba(255,255,255,0.08);
@@ -1077,18 +1104,451 @@ body {
 }
 
 </style>
+<style id="codex-science-shell-style">
+/* Layout and visual tokens reuse the accepted experiment 35/41 shell. */
+body #app #taskCard{width:100%!important;max-width:980px!important;position:relative!important;background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:12px!important;padding:12px 14px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;opacity:1!important;filter:none!important}
+body #app #taskCard.free-mode{opacity:.42!important;filter:grayscale(.86) saturate(.42)!important}
+body #app #taskCard .task-step{display:block!important;position:static!important;grid-column:auto!important;grid-row:auto!important;background:rgba(255,255,255,.16)!important;border-radius:8px!important;padding:6px 10px!important;font-weight:700!important;font-size:15px!important;color:#fff!important}
+body #app #taskCard .task-text{grid-column:auto!important;grid-row:auto!important;min-width:0;line-height:1.55!important;font-size:15px!important}
+body #app #taskCard #taskText{font-size:15px!important;color:#fff!important}
+body #app #taskCard #taskHint{color:#ffd54f!important;font-size:12px!important;opacity:.95!important;margin-top:2px}
+body #app #taskCard .progress-dots{display:flex!important;grid-column:auto!important;grid-row:auto!important;gap:6px!important;align-items:center!important}
+body #app #scienceHud.hud{position:absolute!important;left:10px!important;top:10px!important;right:auto!important;bottom:auto!important;z-index:20!important;display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:8px!important;background:rgba(0,0,0,.48)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:10px!important;padding:6px 8px!important;width:auto!important;max-width:calc(100% - 20px)!important;font-size:12px!important}
+body #app #scienceHud .tag{color:#dce9ff!important;border:1px solid rgba(255,255,255,.26)!important;border-radius:999px!important;padding:2px 8px!important;font-weight:700!important;font-size:12px!important;background:rgba(255,255,255,.06)!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-width:100%!important}
+html body #app #scienceHud :is(#modeTag,#statusTag){white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere!important;min-width:0!important;max-width:100%!important}
+body #app #stage{overflow:visible!important;touch-action:pan-y pinch-zoom}
+body #app #stage > :is(#container,#galaxyCanvas){margin-top:var(--science-apparatus-top,100px)!important}
+body #app #stage > .science-apparatus{margin-top:var(--science-apparatus-top,100px)!important}
+body #app #stage #magnifier{position:relative!important;z-index:1!important}
+body #app #stage :is(#controlDock,#dataDock){position:absolute!important;display:block!important;width:164px;min-height:0!important;max-height:none!important;opacity:1!important;pointer-events:auto!important;transform:none!important;border-radius:12px;z-index:30;background:rgba(15,15,15,.58);backdrop-filter:blur(6px);overflow:visible!important}
+body #app #stage .drawer-body{padding:10px;overflow:auto;max-height:320px;touch-action:pan-y pinch-zoom}
+body #app #stage .drawer.collapsed .drawer-body{display:none}
+body #app #stage .drawer-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;cursor:grab;user-select:none;touch-action:none}
+body #app #stage .dockTitle{display:flex;gap:6px;align-items:center;font-size:13px;font-weight:700;color:#e7f0ff}
+body #app #stage .drawer-actions{display:flex;gap:6px}
+body #app #stage .iconBtn{border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#dce9ff;font-size:12px;padding:6px 8px;min-height:30px;cursor:pointer}
+body #app #stage .science-panel-controls{position:static!important;inset:auto!important;transform:none!important;width:100%!important;max-width:none!important;height:auto!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;box-shadow:none!important}
+body #app #stage .science-panel-controls button,body #app :is(#scienceRecordBtn,.science-record-button){min-width:44px!important;min-height:44px!important;height:auto!important;white-space:normal!important;overflow-wrap:anywhere;padding:8px;font-size:13px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.075);color:#d9e8f8;cursor:pointer}
+html body #app #stage:is(#stage) #controlDock .science-panel-controls :is(input[type="range"],input[type="number"],select){min-width:44px!important;min-height:44px!important;max-width:100%!important;box-sizing:border-box!important}
+body #app :is(#scienceRecordBtn,.science-record-button){width:auto!important;max-width:100%!important;box-sizing:border-box!important;margin-top:8px;background:#2e7d32;color:white}
+body #app #stage .hint-lamp{display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#ffd54f;cursor:pointer}
+body #app #stage .hint-pop{display:none;padding:10px 12px;border:1px solid rgba(255,209,102,.36);border-radius:10px;background:rgba(16,18,20,.96);color:#f4efe2;font-size:13px;line-height:1.55}
+body #app #stage .hint-pop.open{display:block}
+body #app #stage .hint-lamp.flash{animation:scienceLampFlash .6s ease}
+@keyframes scienceLampFlash{50%{box-shadow:0 0 22px rgba(255,77,79,.86);border-color:#ff4d4f}}
+body #app #stage table.record{width:100%;border-collapse:collapse;font-size:13px;line-height:1.5;color:#e8f4ff}
+body #app #stage table.record th,body #app #stage table.record td{border:1px solid rgba(255,255,255,.12);padding:4px 5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+body #app #stage .empty{font-size:13px;line-height:1.5;color:#aebbc8;padding:4px 0}
+body #app #stage .empty[hidden]{display:none!important}
+body #app #stage .dataNotice{display:none;background:#ff3b30;color:#fff;min-width:18px;height:18px;padding:0 4px;border-radius:999px;font-size:11px;line-height:18px;text-align:center}
+body #app #stage .dataNotice.show{display:inline-block;animation:scienceBadgeFlash 1s infinite}
+@keyframes scienceBadgeFlash{50%{box-shadow:0 0 10px #ff3b30}}
+body #app .science-global-toolbar.toolbar{display:flex!important;flex-wrap:wrap!important;gap:9px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+body #app .science-global-toolbar button{width:auto!important;min-height:44px!important;font-size:13px!important;font-weight:800!important;padding:9px 12px!important;color:#d9e8f8!important;background:rgba(255,255,255,.075)!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:8px!important}
+body #app .science-global-toolbar button:disabled{opacity:.5!important;cursor:not-allowed!important}
+body #app :is(.explanation,.explain){font-size:15px!important;line-height:1.66!important;color:#e8f4ff}
+body #app :is(.explanation,.explain) h2{font-size:20px!important;line-height:1.35!important;color:#9bd3ff!important;margin-bottom:8px}
+body #app #stage :is(.mobile-tabs,.sheet-close){display:none!important}
+body #app #themeToggle{border:1px solid transparent!important;border-radius:999px!important;background:transparent!important;color:#cbd5e1!important}
+@media(min-width:721px){
+/* Keep both standard header anchors reachable when their bodies overlap. */
+html body #app #stage:is(#stage) :is(#controlDock,#dataDock)[data-codex-desktop-panel="1"]{z-index:auto!important;backdrop-filter:none!important;filter:none!important;isolation:auto!important}
+html body #app #stage:is(#stage) :is(#controlDock,#dataDock)[data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{z-index:calc(100 + var(--codex-panel-z))!important}
+html body #app #stage:is(#stage) :is(#controlDock,#dataDock)[data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{z-index:var(--codex-panel-z)!important}
+html body #app #stage:is(#stage) [data-codex-panel-header="1"] button{white-space:nowrap!important;padding:4px!important;line-height:1.3!important}
+}
+@media(max-width:720px){
+body #app #taskCard{grid-template-columns:minmax(0,1fr) auto!important;gap:4px 8px!important;padding:8px 10px!important;border-radius:10px!important}
+body #app #taskCard .task-step{position:absolute!important;width:1px!important;min-width:1px!important;max-width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+body #app #taskCard .task-text{grid-column:1!important;grid-row:1!important;font-size:15px!important;line-height:1.38!important}
+body #app #taskCard .progress-dots{grid-column:2!important;grid-row:1!important;justify-content:flex-end!important;justify-self:end;gap:5px!important}
+body #app #taskCard .dot{width:8px!important;height:8px!important;outline-width:1px}
+body #app #stage{padding-bottom:68px!important}
+body #app #stage .mobile-tabs{position:absolute!important;left:12px!important;right:12px!important;bottom:8px!important;top:auto!important;z-index:44!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;padding:5px!important;border:1px solid rgba(91,188,255,.24);border-radius:11px;background:rgba(9,12,16,.94);width:auto!important;max-width:none!important}
+body #app #stage .mobile-tabs.attached{border-top:0;border-radius:0 0 12px 12px}
+body #app #stage .mobile-tab{position:relative;border:0;border-radius:8px;padding:9px 10px;min-height:44px;background:rgba(255,255,255,.04);color:#cfe4ff;font-weight:900;font-size:13px;cursor:pointer}
+body #app #stage #mobileTabs :is(#experimentTab,#dataTab){display:block!important;height:auto!important;min-height:44px!important;padding:9px 10px!important}
+body #app #stage .mobile-tab.active{background:rgba(61,220,151,.16);color:#effff7;box-shadow:inset 0 0 0 1px rgba(61,220,151,.56)}
+body #app #stage .mobile-badge{position:absolute;top:0;right:10px;min-width:18px;height:18px;border-radius:999px;background:#ff3b30;color:white;font-size:11px;display:none}
+body #app #stage .mobile-badge.show{display:grid;place-items:center}
+body #app #stage .drawer.mobile-sheet{left:12px!important;right:12px!important;bottom:var(--science-mobile-sheet-bottom,62px)!important;top:auto!important;display:block!important;width:calc(100% - 24px)!important;max-width:none!important;border-radius:12px 12px 0 0!important;background:rgba(9,21,33,.96)!important;border:1px solid rgba(91,188,255,.32)!important;z-index:43!important}
+body #app #stage :is(#controlDock,#dataDock).mobile-sheet.collapsed{display:none!important}
+body #app #stage .drawer.mobile-sheet .drawer-header{display:none!important}
+body #app #stage .drawer.mobile-sheet .drawer-body{display:block!important;max-height:var(--science-mobile-sheet-limit,188px)!important;padding:8px 48px 8px 8px!important;overflow:auto!important}
+body #app #stage .sheet-close{position:absolute;right:8px;top:8px;display:grid!important;place-items:center;width:36px;min-width:36px;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:50%;background:rgba(255,255,255,.055);color:#e3f0ff}
+body #app #stage .sheet-close-icon{width:12px;height:8px;fill:none;stroke:currentColor;stroke-width:2}
+body #app #stage table.record,body #app #stage table.record tbody{display:block}
+body #app #stage table.record thead{display:none}
+body #app #stage table.record tr{display:grid;gap:6px;padding:8px;margin-bottom:8px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.045)}
+body #app #stage table.record td{border:0;display:grid;padding:0;font-size:13px;line-height:1.5}
+body #app #stage table.record td::before{content:attr(data-label);font-size:11px;font-weight:800;color:#8fb4d8}
+body #app .science-global-toolbar.toolbar{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;padding:6px!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:11px!important;background:rgba(255,255,255,.035)!important}
+body #app .science-global-toolbar button{width:100%!important;min-width:0!important;padding:8px 6px!important}
+}
+html[data-theme="light"] body #app #taskCard{background:rgba(255,255,255,.94)!important;border-color:#d7dce5!important;color:#20242c!important}
+html[data-theme="light"] body #app #taskCard .task-step{background:#eef1f6!important;color:#20242c!important}
+html[data-theme="light"] body #app #taskCard #taskText{color:#20242c!important}
+html[data-theme="light"] body #app #taskCard #taskHint{color:#7a4d00!important}
+html[data-theme="light"] body #app #stage table.record td::before{color:#3f5368!important}
+html[data-theme="light"] body #app :is(.explanation,.explain){color:#273448!important}
+html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!important}
+</style>
+  <style id="codex-theme-pilot-style">
+    :root[data-theme="dark"]{color-scheme:dark}
+    .theme-app-contents{display:contents}
+    @property --codex-mode-ring-angle{syntax:"<angle>";inherits:false;initial-value:0deg}
+    body #app #stage :is(#modeTag,#modeChip){
+      position:relative!important;isolation:isolate!important;min-width:158px!important;width:auto!important;max-width:none!important;
+      box-sizing:border-box!important;border:2px solid transparent!important;border-radius:999px!important;padding:4px 12px!important;
+      font-weight:900!important;color:#fff!important;white-space:nowrap!important;text-align:center!important;overflow:hidden!important;text-overflow:clip!important;
+      background:linear-gradient(rgba(6,10,14,.94),rgba(6,10,14,.94)) padding-box,
+        conic-gradient(from var(--codex-mode-ring-angle),#ff4c4c 0deg 45deg,#ff9a3d 45deg 90deg,#f7e94c 90deg 135deg,#54e86d 135deg 180deg,#40e0d0 180deg 225deg,#4aa3ff 225deg 270deg,#8757ff 270deg 315deg,#ec5cff 315deg 360deg) border-box!important;
+      box-shadow:0 0 13px rgba(75,216,255,.20)!important;
+      animation:codexModeRingTurn 8s linear infinite!important;
+    }
+    body #app #stage :is(#modeTag,#modeChip)::before,
+    body #app #stage :is(#modeTag,#modeChip)::after{content:none!important;display:none!important}
+    @keyframes codexModeRingTurn{to{--codex-mode-ring-angle:1turn}}
+    :root[data-theme="light"]{
+      color-scheme:light;
+      --theme-page:#f6f7fb;
+      --theme-surface:#fff;
+      --theme-surface-soft:#eef1f6;
+      --theme-text:#20242c;
+      --theme-muted:#667085;
+      --theme-border:#d7dce5;
+      --theme-accent:#155e75;
+    }
+    .theme-spectrum-row{
+      width:100%;max-width:980px;display:grid;grid-template-columns:minmax(0,1fr) 44px;
+      align-items:center;gap:8px;margin:0 0 12px;
+    }
+    .theme-spectrum-row #spectrum{grid-column:1;grid-row:1;width:100%!important;max-width:none!important;margin:0!important}
+    .theme-toolbar{
+      grid-column:2;grid-row:1;width:44px;max-width:none;min-height:44px;margin:0;
+      display:flex;align-items:center;justify-content:flex-end;
+    }
+    .theme-toggle{
+      width:44px;height:44px;padding:0;display:grid;place-items:center;
+      border:1px solid transparent;border-radius:999px;background:transparent;
+      color:#cbd5e1;cursor:pointer;touch-action:manipulation;
+      transition:color .18s ease,background .18s ease,border-color .18s ease,transform .08s ease;
+    }
+    .theme-toggle:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12)}
+    .theme-toggle:active{transform:scale(.96)}
+    .theme-toggle:focus-visible{outline:3px solid #5bbcff;outline-offset:3px}
+    .theme-icon{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+    :root[data-theme="dark"] .theme-icon-moon,
+    :root[data-theme="light"] .theme-icon-sun{display:none}
+    :root[data-theme="light"] .theme-toggle{color:#5f6170}
+    :root[data-theme="light"] .theme-toggle:hover{background:#eef1f6;border-color:#d7dce5}
+    :root[data-theme="light"] body{background:var(--theme-page)!important;color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .task-card{
+      background:rgba(255,255,255,.94)!important;border-color:var(--theme-border)!important;
+      color:var(--theme-text)!important;box-shadow:0 10px 28px rgba(31,41,55,.08)!important;
+    }
+    :root[data-theme="light"] body #app .task-card .task-step{
+      background:var(--theme-surface-soft)!important;border-color:#cbd3de!important;color:var(--theme-text)!important;
+    }
+    :root[data-theme="light"] body #app .task-card .task-text{color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .task-card .task-hint,
+    :root[data-theme="light"] body #app .task-card #taskHint{color:#7a4d00!important}
+    :root[data-theme="light"] body #app .task-card .dot:not(.active):not(.done):not(.warn){
+      background:#98a2b3!important;outline-color:#667085!important;
+    }
+    :root[data-theme="light"] body #app .task-card .dot{position:relative}
+    :root[data-theme="light"] body #app .task-card .dot::after{
+      content:"";position:absolute;inset:-4px;border:1px solid #475467;border-radius:inherit;pointer-events:none;
+    }
+    :root[data-theme="light"] body #app #stage{color:var(--theme-stage-ink,var(--ink,var(--fg,#eaf2ff)))!important}
+    :root[data-theme="light"] body #app .toolbar{
+      background:rgba(255,255,255,.78)!important;border-color:var(--theme-border)!important;
+      box-shadow:0 8px 24px rgba(31,41,55,.06)!important;
+    }
+    :root[data-theme="light"] body #app .toolbar button{
+      background:#e5eaf1!important;color:#253041!important;border:1px solid #cbd3de!important;
+    }
+    :root[data-theme="light"] body #app .toolbar button:hover{background:#d9e1eb!important}
+    :root[data-theme="light"] body #app .explanation{
+      background:var(--theme-surface)!important;border-color:var(--theme-border)!important;
+      color:var(--theme-text)!important;box-shadow:0 10px 28px rgba(31,41,55,.07)!important;
+    }
+    :root[data-theme="light"] body #app .explanation :where(p,ul,ol,li,dl,dt,dd){color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .explanation .formula,
+    :root[data-theme="light"] body #app .explanation .formula *{color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .explanation h2{color:var(--theme-accent)!important}
+    :root[data-theme="light"] body #app #stage #controlDock,
+    :root[data-theme="light"] body #app #stage #dataDock{
+      background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+      color:var(--theme-text)!important;box-shadow:0 16px 38px rgba(31,41,55,.18)!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockHead,
+    :root[data-theme="light"] body #app #stage #dataDock .dockHead,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-header,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-header,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-header,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-header,
+    :root[data-theme="light"] body #app #stage #controlDock .panelHead,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsHead{
+      background:rgba(238,241,246,.96)!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .dockTitle,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-title,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-title,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-title,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-title,
+    :root[data-theme="light"] body #app #stage #controlDock .panelHead .title,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsHead .title{
+      color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockBody,
+    :root[data-theme="light"] body #app #stage #dataDock .dockBody,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-body,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-body,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-body,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-body,
+    :root[data-theme="light"] body #app #stage #controlDock .panelBody,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsBody{
+      background:rgba(255,255,255,.92)!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock label,
+    :root[data-theme="light"] body #app #stage #dataDock label,
+    :root[data-theme="light"] body #app #stage #controlDock h3,
+    :root[data-theme="light"] body #app #stage #dataDock h3,
+    :root[data-theme="light"] body #app #stage #controlDock h4,
+    :root[data-theme="light"] body #app #stage #dataDock h4,
+    :root[data-theme="light"] body #app #stage #controlDock .source-line,
+    :root[data-theme="light"] body #app #stage #dataDock .source-line,
+    :root[data-theme="light"] body #app #stage #controlDock .mini,
+    :root[data-theme="light"] body #app #stage #dataDock .mini{color:#475467!important}
+    :root[data-theme="light"] body #app #stage #controlDock .secTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .secTitle{color:#475467!important}
+    :root[data-theme="light"] body #app #stage #controlDock .status-grid .pill,
+    :root[data-theme="light"] body #app #stage #dataDock .status-grid .pill{background:#e5eaf1!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock .pill,
+    :root[data-theme="light"] body #app #stage #dataDock .pill,
+    :root[data-theme="light"] body #app #stage #controlDock .pill-box,
+    :root[data-theme="light"] body #app #stage #dataDock .pill-box{background:#e5eaf1!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock .pill *,
+    :root[data-theme="light"] body #app #stage #dataDock .pill *,
+    :root[data-theme="light"] body #app #stage #controlDock .pill-box *,
+    :root[data-theme="light"] body #app #stage #dataDock .pill-box *{color:inherit!important}
+    :root[data-theme="light"] body #app #stage #controlDock span:not([class]),
+    :root[data-theme="light"] body #app #stage #dataDock span:not([class]),
+    :root[data-theme="light"] body #app #stage #controlDock .lab-hint,
+    :root[data-theme="light"] body #app #stage #dataDock .lab-hint,
+    :root[data-theme="light"] body #app #stage #controlDock .cardTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .cardTitle,
+    :root[data-theme="light"] body #app #stage #controlDock small,
+    :root[data-theme="light"] body #app #stage #dataDock small,
+    :root[data-theme="light"] body #app #stage #controlDock .val,
+    :root[data-theme="light"] body #app #stage #dataDock .val{color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock b,
+    :root[data-theme="light"] body #app #stage #dataDock b{color:inherit!important}
+    :root[data-theme="light"] body #app #stage #controlDock .codex-panel-note,
+    :root[data-theme="light"] body #app #stage #dataDock .codex-panel-note{background:#eef1f6!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock button:not(.main):not(.sub):not(.danger):not(.warn):not(.good),
+    :root[data-theme="light"] body #app #stage #dataDock button:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+      background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good),
+    :root[data-theme="light"] body #app #stage #dataDock button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+      background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock button.main,
+    :root[data-theme="light"] body #app #stage #dataDock button.main{background:#2e7d32!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock button.sub,
+    :root[data-theme="light"] body #app #stage #dataDock button.sub{background:#475467!important;border-color:#475467!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock .analysisBox,
+    :root[data-theme="light"] body #app #stage #dataDock .analysisBox{background:#f5f7fa!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .analysis.ok{background:#f5f7fa!important;border-color:#6fcf9f!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .record-cue.ready,
+    :root[data-theme="light"] body #app #stage .record-cue.done{background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important}
+    :root[data-theme="light"] body #app #stage .record-cue.warn{background:#fff4d6!important;border-color:#e0a44c!important;color:#7a4d00!important}
+    :root[data-theme="light"] body #app #stage #dataNotice,
+    :root[data-theme="light"] body #app #stage .dataNotice,
+    :root[data-theme="light"] body #app #stage .dockNotice,
+    :root[data-theme="light"] body #app #stage .notice-badge,
+    :root[data-theme="light"] body #app #stage .dock-badge,
+    :root[data-theme="light"] body #app #stage #dataDock .badge,
+    :root[data-theme="light"] body #app #stage .mobile-badge{background:#b42318!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock input,
+    :root[data-theme="light"] body #app #stage #controlDock select,
+    :root[data-theme="light"] body #app #stage #dataDock input,
+    :root[data-theme="light"] body #app #stage #dataDock select{
+      background:#fff!important;border-color:#cbd3de!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .record-cue:not(.ready):not(.warn):not(.done),
+    :root[data-theme="light"] body #app #stage .empty,
+    :root[data-theme="light"] body #app #stage .analysis:not(.ok){
+      background:#f5f7fa!important;border-color:#d7dce5!important;color:#344054!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .iconBtn,
+    :root[data-theme="light"] body #app #stage #dataDock .iconBtn,
+    :root[data-theme="light"] body #app #stage #controlDock .mini:not(div),
+    :root[data-theme="light"] body #app #stage #dataDock .mini:not(div),
+    :root[data-theme="light"] body #app #stage #controlDock .sheet-close,
+    :root[data-theme="light"] body #app #stage #dataDock .sheet-close{
+      background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+    }
+    :root[data-theme="light"] body #app #stage #dataDock table,
+    :root[data-theme="light"] body #app #stage #dataDock table th,
+    :root[data-theme="light"] body #app #stage #dataDock table td,
+    :root[data-theme="light"] body #app #stage #dataDock table.record,
+    :root[data-theme="light"] body #app #stage #dataDock table.record th,
+    :root[data-theme="light"] body #app #stage #dataDock table.record td,
+    :root[data-theme="light"] body #app #stage #dataDock table.table,
+    :root[data-theme="light"] body #app #stage #dataDock table.table th,
+    :root[data-theme="light"] body #app #stage #dataDock table.table td{
+      border-color:#d7dce5!important;color:#344054!important;
+    }
+    :root[data-theme="light"] body #app #stage #dataDock table th,
+    :root[data-theme="light"] body #app #stage #dataDock table.record th,
+    :root[data-theme="light"] body #app #stage #dataDock table.table th{
+      background:#eef1f6!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .chartWrap{
+      background:#101722!important;border-color:#334155!important;color:#eaf2ff!important;
+    }
+    :root[data-theme="light"] body #app #stage .mobile-tabs{
+      background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+    }
+    :root[data-theme="light"] body #app #stage .mobile-tab{background:#eef1f6!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .mobile-tab.active{
+      background:#d9f5e8!important;color:#14532d!important;box-shadow:inset 0 0 0 1px #6fcf9f!important;
+    }
+    :root[data-theme="light"] body #app .modal{
+      background:#fff!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app .modal h3{color:#155e75!important}
+    :root[data-theme="light"] body #app .modal p{color:#475467!important}
+    :root[data-theme="light"] body #app .toast{
+      background:#fff!important;border-color:#cbd3de!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .hint-pop,
+    :root[data-theme="light"] body #app #stage .helpCard{
+      background:#fff!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .hint-pop b,
+    :root[data-theme="light"] body #app #stage .helpCard b{color:#155e75!important}
+    @media(min-width:721px){
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"]{
+        width:164px!important;min-width:164px!important;max-width:164px!important;
+        left:var(--codex-panel-left)!important;top:var(--codex-panel-top)!important;
+        right:auto!important;bottom:auto!important;z-index:var(--codex-panel-z)!important;
+        overflow:visible!important;background:transparent!important;box-shadow:none!important;transition:none!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{
+        width:164px!important;min-width:164px!important;max-width:164px!important;
+        height:44px!important;min-height:44px!important;max-height:44px!important;box-sizing:border-box!important;
+        display:flex!important;align-items:center!important;flex-flow:row nowrap!important;gap:8px!important;
+        padding-top:0!important;padding-bottom:0!important;padding-left:10px!important;padding-right:10px!important;overflow:hidden!important;
+        position:relative!important;z-index:2!important;
+        touch-action:none!important;border:1px solid rgba(148,163,184,.32)!important;border-radius:12px!important;
+        background:rgba(15,23,42,.90)!important;box-shadow:0 8px 22px rgba(0,0,0,.28)!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*{min-height:0!important;max-height:40px!important;box-sizing:border-box!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:first-child{flex:1 1 auto!important;min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:last-child{flex:0 0 auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"] button{max-height:40px!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)){
+        gap:4px!important;
+        padding-left:6px!important;padding-right:6px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :first-child{
+        gap:2px!important;overflow:visible!important;text-overflow:clip!important;font-size:12px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) #dataNotice{
+        position:relative!important;z-index:3!important;flex:0 0 auto!important;
+        min-width:14px!important;height:16px!important;padding:0 2px!important;
+        font-size:10px!important;line-height:16px!important;box-sizing:border-box!important;pointer-events:auto!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child{
+        gap:3px!important;min-width:0!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child > button{
+        min-width:0!important;padding-left:4px!important;padding-right:4px!important;font-size:10px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{
+        position:absolute!important;z-index:1!important;display:none!important;box-sizing:border-box!important;
+        width:var(--codex-panel-body-width)!important;max-width:var(--codex-panel-body-width)!important;
+        max-height:var(--codex-panel-body-height)!important;overflow:auto!important;
+        border:1px solid rgba(148,163,184,.32)!important;border-radius:12px!important;
+        background:rgba(15,23,42,.88)!important;box-shadow:0 16px 38px rgba(0,0,0,.34)!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-open="1"] [data-codex-panel-body="1"]{display:block!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-x="right"] [data-codex-panel-body="1"]{left:0!important;right:auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-x="left"] [data-codex-panel-body="1"]{left:auto!important;right:0!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-y="down"] [data-codex-panel-body="1"]{top:100%!important;bottom:auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-y="up"] [data-codex-panel-body="1"]{top:auto!important;bottom:100%!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-dragging="1"] [data-codex-panel-body="1"]{pointer-events:none!important}
+      body #app #stage:is(#stage) #controlDock[data-codex-desktop-panel="1"]~#dataDock[data-codex-desktop-panel="1"]{opacity:1!important;pointer-events:auto!important;transform:none!important}
+      body #app #stage:is(#stage) #controlDrawer.open~#dataDrawer{opacity:1!important;pointer-events:auto!important;transform:none!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"]{background:transparent!important;box-shadow:none!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{background:rgba(255,255,255,.92)!important;color:#20242c!important;border-color:#cbd3de!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{background:rgba(255,255,255,.90)!important;color:#20242c!important;border-color:#cbd3de!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+        background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+        background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.main{
+        background:#2e7d32!important;color:#fff!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.sub{
+        background:#475467!important;border-color:#475467!important;color:#fff!important;
+      }
+    }
+    @media(max-width:720px){
+      .theme-spectrum-row{gap:6px;margin-bottom:10px}
+      .theme-toolbar{min-height:44px;margin:0}
+      .theme-toggle{width:44px;height:44px}
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet{
+        background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+      }
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .dock-body,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .dock-body,
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .drawer-body,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .drawer-body,
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .panelBody,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .resultsBody{
+        background:rgba(255,255,255,.92)!important;color:#20242c!important;
+      }
+    }
+    @media(prefers-reduced-motion:reduce){
+      .theme-toggle,
+      body,.task-card,.toolbar,.explanation,#controlDock,#dataDock{transition:none!important}
+      body #app #stage :is(#modeTag,#modeChip){animation:none!important;--codex-mode-ring-angle:0deg}
+    }
+  </style>
+<style id="codex-submarine-host-style">
+html body #app #topBar{display:flex!important;align-items:center!important;gap:8px!important;min-height:44px!important;width:100%!important}html body #app #topBar>#spectrum{flex:1 1 0!important;min-width:0!important;margin:0!important;max-width:none!important}
+html body #app #stage:is(#stage){height:calc(var(--science-apparatus-top,100px) + 522px + var(--science-apparatus-bottom,12px))!important;min-height:calc(var(--science-apparatus-top,100px) + 522px + var(--science-apparatus-bottom,12px))!important;max-height:none!important;overflow:visible!important}
+html body #app #submarineViewport{position:absolute;left:12px;right:12px;top:var(--science-apparatus-top,100px);height:520px;min-width:0;overflow:hidden;border-radius:12px;isolation:isolate;z-index:0}html body #app #submarineViewport #stageWrap{position:relative!important;width:100%!important;height:520px!important;min-height:520px!important;max-height:none!important;max-width:none!important;margin:0!important}html body #app #submarineScene{position:relative;width:100%;height:100%;border-radius:12px;overflow:hidden;background:linear-gradient(to top,var(--ocean-bottom) 60%,#87ceeb 60%);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+html body #app #submarineInstruction{margin:0;padding:10px 12px;color:#e8f4ff;background:#172033;border-radius:12px;line-height:1.55;overflow-wrap:anywhere}html[data-theme="light"] body #app #submarineInstruction{color:#16364d;background:#e3edf7}
+html body #app #submarineObservation{display:grid;gap:8px;padding:11px 14px;border:1px solid #ffffff20;border-radius:12px;color:#e8f4ff;background:#ffffff0f;line-height:1.5}html body #app #submarineObservation p{margin:0;min-width:0;overflow-wrap:anywhere}html body #app #submarineObservation output{font:inherit!important;color:inherit!important;opacity:1!important}html[data-theme="light"] body #app #submarineObservation{color:#16364d;background:#f2f7fc;border-color:#c9d6e3}
+html body #app #stage:is(#stage) #submarineControlBar{grid-template-columns:minmax(0,1fr)!important;min-width:0!important;gap:10px!important}html body #app #submarineControlBar .rateTicks{display:flex!important;flex-wrap:wrap!important;gap:8px!important;opacity:1!important;line-height:1.4!important;color:#d4e3f0!important}html body #app #submarineControlBar #rateLabel{color:#d4e3f0!important;overflow-wrap:anywhere!important}html body #app #submarineControlBar #rateSlider{width:100%!important}html[data-theme="light"] body #app #submarineControlBar :is(#rateLabel,.rateTicks){color:#16364d!important}
+html[data-theme="light"] body #app #scienceHud :is(#modeTag,#statusTag){color:#16364d!important;background:#e3edf7!important;border-color:#c9d6e3!important;opacity:1!important;text-shadow:none!important}
+html body #app .toolbar:has(#stepResetBtn){display:none!important}html body #doneMask{z-index:3000!important}html body #doneMask .modal{max-height:calc(100vh - 24px);overflow-y:auto;box-sizing:border-box}html body #doneMask #okBtn,html body #app .science-global-toolbar button{min-height:44px!important;white-space:normal!important;overflow-wrap:anywhere!important}
+html body #submarineAutoCursor{transform:none!important;transition:opacity .18s ease!important;opacity:1!important;background:none!important;border:0!important}html body #submarineAutoCursor.tap svg{animation:submarineCursorPress 220ms ease-in-out both!important}@keyframes submarineCursorPress{0%,100%{opacity:1}50%{opacity:.7}}
+@media(min-width:721px){html body #app #submarineControlBar::before{content:"";display:block;height:54px;pointer-events:none}}
+@media(max-width:720px){html body #app #stage:is(#stage){height:calc(var(--science-apparatus-top,100px) + 522px + var(--science-apparatus-bottom,68px))!important;min-height:calc(var(--science-apparatus-top,100px) + 522px + var(--science-apparatus-bottom,68px))!important}html body #app #stage .drawer.mobile-sheet{bottom:var(--science-mobile-sheet-bottom,62px)!important}}
+</style>
 </head>
 <body>
 <main id="app">
   <!-- 顶部彩条 -->
-  <div id="spectrum"></div>
+  <div id="topBar"><div id="spectrum"></div><button id="themeToggle" type="button" aria-label="切换到白天模式"></button></div>
 
   <!-- 步骤卡 -->
   <div class="task-card" id="taskCard">
     <div class="task-step" id="taskStep">步骤 1 / 3</div>
     <div class="task-text">
       <div id="taskText">
-        保持<strong>气泡速率为「低」</strong>，点击右上角<strong>「冒泡」</strong>几次，观察：船依然稳定漂浮。
+        保持<strong>气泡速率为「低」</strong>，点击实验面板中的<strong>「冒泡」</strong>几次，观察：船依然稳定漂浮。
       </div>
       <div class="task-hint" id="taskHint">提示：速率低，气泡不够密集，不足以明显改变浮力平衡。</div>
     </div>
@@ -1100,8 +1560,8 @@ body {
   </div>
 
   <!-- 舞台 -->
-  <div id="stageWrap">
-    <div id="stage" class="lab-area">
+  <div id="stage" class="codex-runtime-stage"><div id="submarineViewport"><div id="stageWrap">
+    <div id="submarineScene" class="lab-area">
       <div class="ocean" id="ocean">
         <div class="surface"></div>
       </div>
@@ -1144,11 +1604,12 @@ body {
     </div>
   </div>
 
+  </div></div>
   <!-- 底部三按钮 -->
   <div class="toolbar">
     <button id="stepResetBtn">步骤重置</button>
-    <button id="autoDemoBtn">自动演示</button>
-    <button id="freeBtn">自由模式</button>
+    <button id="submarineNativeAutoBtn">自动演示</button>
+    <button id="submarineNativeFreeBtn">自由模式</button>
   </div>
 
   <div class="toast" id="toast">再试一试：请按当前步骤的提示来操作</div>
@@ -1173,7 +1634,8 @@ body {
 
 <script>
 /* ===== DOM 引用 ===== */
-var stage       = document.getElementById('stage');
+(function(){
+var stage       = document.getElementById('submarineScene');
 var ocean       = document.getElementById('ocean');
 var ship        = document.getElementById('ship');
 
@@ -1193,8 +1655,8 @@ var dots        = [
 ];
 
 var stepResetBtn = document.getElementById('stepResetBtn');
-var autoDemoBtn  = document.getElementById('autoDemoBtn');
-var freeBtn      = document.getElementById('freeBtn');
+var autoDemoBtn  = document.getElementById('submarineNativeAutoBtn');
+var freeBtn      = document.getElementById('submarineNativeFreeBtn');
 var checkmark    = document.getElementById('checkmark');
 var toast        = document.getElementById('toast');
 var doneMask     = document.getElementById('doneMask');
@@ -1220,11 +1682,60 @@ var MIN_BUBBLES_STEP1    = 2;
 var transitioningStep    = false;
 var ignoreBubbleEvents   = false;
 
+
+// Lifetime only: the original CSS bubble events remain the sole count owner.
+let sbDestroyed=false,sbPaused=false,sbGeneration=0,sbAccepted=false,sbConclusion=false,sbFailure=null,sbEntry=null,sbAutoResolve=null,sbRestoring=false;
+let sbCursor=null,sbCursorTarget=null,sbTeaching='',sbAutoOrigin=null,sbModalOrigin=null,sbHostChanges=null;
+let sbClock=performance.now(),sbAnchor=performance.now(),sbSliderValue=rateSlider.value;
+const sbNativeTimeout=window.__codexDemoClock.nativeSetTimeout,sbNativeClear=window.__codexDemoClock.nativeClearTimeout,sbTimers=new Map(),sbEvents=new AbortController(),sbPausedAnimations=new Set(),sbInert=new Map(),sbBubbleMeta=new WeakMap(),sbBubbleNodes=new Set();
+const AUTO_DEMO_TIMING=Object.freeze({panel:180,aim:360,press:220,action:820,observe:780,record:360,confirm:420,transition:460,conclusion:620,poll:40});
+const sbNow=()=>sbPaused?sbClock:sbClock+performance.now()-sbAnchor;
+function sbArm(e){e.started=sbNow();e.id=sbNativeTimeout(()=>{if(!sbTimers.has(e)||e.token!==sbGeneration||sbDestroyed)return;sbTimers.delete(e);e.fn();sbSync();},e.remaining);}
+function sbSchedule(fn,ms,kind='work',resolve=null){if(sbDestroyed){resolve?.(false);return null;}const e={fn,delay:ms,remaining:ms,kind,resolve,token:sbGeneration,id:null,started:sbNow()};sbTimers.set(e,e);if(!sbPaused)sbArm(e);return e;}
+function sbClear(e){if(!e)return;if(e.id!==null)sbNativeClear(e.id);sbTimers.delete(e);e.resolve?.(false);}
+const setTimeout=(fn,ms)=>sbSchedule(fn,ms,/createSingleBubble|tick/.test(String(fn))?'spawn':'feedback'),clearTimeout=sbClear;
+function sbWait(ms,token=sbGeneration){return new Promise(resolve=>{if(sbDestroyed||token!==sbGeneration)return resolve(false);sbSchedule(()=>resolve(token===sbGeneration&&!sbDestroyed),ms,'wait',resolve);});}
+function sbState(){return{teachingPhase:sbTeaching,mode:autoPlaying?'auto':freeMode?'free':'guided',currentTask,completed,bubbleRate,totalBubbles,tiltTriggered,sinkTriggered,transitioningStep,ignoreBubbleEvents,paused:sbPaused,destroyed:sbDestroyed,taskAccepted:sbAccepted,predicate:!!tasks[currentTask]?.pass(),conclusionShown:sbConclusion,failureCode:sbFailure,clock:sbNow(),ownedTimers:sbTimers.size,ownedFrames:0,ownedAutoWaits:[...sbTimers.keys()].filter(e=>e.kind==='wait').length,bubbleNodes:sbBubbleNodes.size,ownedMotions:sbAnimations().length};}
+function sbSync(){if(sbDestroyed)return;sbTrackCursor();const ob=document.getElementById('submarineObservation');if(ob){ob.querySelector('#submarineRate').textContent=rateLabel.textContent;ob.querySelector('#submarineCount').textContent=String(totalBubbles)+' 个（原动画结束累计，非密度测量）';ob.querySelector('#submarineShip').textContent=ship.classList.contains('sink')?'原明显下沉示意':ship.classList.contains('tilt')?'原倾斜示意':'原稳定漂浮示意';ob.querySelector('#submarineModel').textContent='倾斜触发 '+String(tiltTriggered)+' / 下沉触发 '+String(sinkTriggered)+'（原计数阈值示意）';}const s=sbState();window.__codexScienceShell?.syncState?.(s);window.__codexScienceShell?.syncPresentation?.(s);const mode=document.getElementById('modeTag'),status=document.getElementById('statusTag'),reset=document.getElementById('resetBtn'),auto=document.getElementById('autoDemoBtn'),free=document.getElementById('freeBtn');if(mode)mode.textContent='模式：'+(autoPlaying?'演示模式 · '+(sbPaused?'已暂停':'自动运行'):freeMode?'自由模式 · 自主探索':'闯关模式 · 关卡 '+Math.min(currentTask+1,tasks.length)+'/'+tasks.length);if(status)status.textContent='状态：'+(sbFailure?'真实观察未记录，未推进':sbPaused?'原气泡动画已暂停':completed?'三任务完成':autoPlaying?sbTeaching||'按原速率与气泡提示观察':sbAccepted?'原真实条件已记录，待确认':'按原速率与气泡提示观察');if(reset)reset.textContent=autoPlaying?(sbPaused?'继续演示':'暂停演示'):freeMode?'重置操作':'重置关卡';if(auto){auto.textContent=autoPlaying?'退出演示':'演示模式';auto.disabled=freeMode;}if(free){free.textContent=freeMode?'退出自由模式':'自由模式';free.disabled=autoPlaying;free.setAttribute('aria-pressed',String(freeMode));}rateSlider.disabled=autoPlaying;bubbleBtn.disabled=autoPlaying;sceneResetBtn.disabled=autoPlaying||(!freeMode&&sbAccepted);autoDemoBtn.disabled=freeMode;freeBtn.disabled=autoPlaying;taskCard.style.opacity=freeMode?.25:1;taskCard.style.filter=freeMode?'grayscale(0.6)':'none';}
+function sbAnimations(){return document.getAnimations().filter(a=>[ship,ocean,checkmark,toast].some(n=>n===a.effect?.target||n.contains(a.effect?.target)));}
+function sbFX(){return sbAnimations().map(a=>({animation:a,keyframes:a.effect.getKeyframes(),timing:a.effect.getTiming(),time:a.currentTime,running:a.playState==='running'||sbPausedAnimations.has(a)}));}
+function sbRestoreFX(list){const keep=new Set(list.map(s=>s.animation));for(const a of sbAnimations())if(!keep.has(a))a.cancel();sbPausedAnimations.clear();for(const s of list){s.animation.effect.setKeyframes(s.keyframes);s.animation.effect.updateTiming(s.timing);s.animation.pause();s.animation.currentTime=s.time;if(s.running){if(sbPaused)sbPausedAnimations.add(s.animation);else s.animation.play();}}}
+function sbPause(){if(sbDestroyed||sbPaused)return false;const now=sbNow();sbClock=now;sbAnchor=performance.now();sbPaused=true;for(const e of sbTimers.keys()){if(e.id!==null)sbNativeClear(e.id);e.remaining=Math.max(0,e.remaining-(now-e.started));e.id=null;}for(const a of sbAnimations())if(a.playState==='running'){sbPausedAnimations.add(a);a.pause();}window.labSoundBus?.hush();sbSync();return true;}
+function sbResume(event){if(sbDestroyed||!sbPaused)return false;if(event?.isTrusted)window.labSoundBus?.unlock(event);sbAnchor=performance.now();sbPaused=false;for(const e of sbTimers.keys())sbArm(e);for(const a of sbPausedAnimations)if(a.playState!=='idle'&&a.playState!=='finished')a.play();sbPausedAnimations.clear();sbSync();return true;}
+function sbClearWork(){sbCursorTarget=null;sbTeaching='';if(sbCursor)sbCursor.style.display='none';sbGeneration++;for(const e of [...sbTimers.keys()])sbClear(e);sbAutoResolve?.(false);sbAutoResolve=null;window.labSoundBus?.hush();}
+function sbClearBubbleLife(){for(const n of sbBubbleNodes){const m=sbBubbleMeta.get(n);m.active=false;for(const a of n.getAnimations())a.cancel();}sbBubbleNodes.clear();}
+function sbVisible(n){return n instanceof HTMLElement&&n!==document.body&&!n.disabled&&!n.hidden&&!n.closest('[inert]')&&getComputedStyle(n).display!=='none'&&n.getBoundingClientRect().width>0&&n.getBoundingClientRect().height>0;}
+function sbClose(){const open=doneMask.style.display==='flex';doneMask.style.display='none';doneMask.setAttribute('aria-hidden','true');for(const[n,v]of sbInert)n.inert=v;sbInert.clear();if(open||document.activeElement===okBtn)[sbModalOrigin,document.getElementById('resetBtn'),rateSlider].find(n=>sbVisible(n)&&!doneMask.contains(n))?.focus({preventScroll:true});}
+function sbOpenModal(origin){sbModalOrigin=origin;for(let branch=doneMask;branch.parentElement&&branch!==document.body;branch=branch.parentElement){for(const n of branch.parentElement.children){if(n===branch)continue;sbInert.set(n,n.inert);n.inert=true;}}doneMask.style.display='flex';doneMask.setAttribute('aria-hidden','false');okBtn.focus({preventScroll:true});}
+function sbShowDone(){if(sbDestroyed||freeMode||!completed||sbConclusion)return false;sbConclusion=true;sbOpenModal(autoPlaying?sbAutoOrigin:document.activeElement);sbSync();return true;}
+function sbRecord(){sbSync();const shell=window.__codexScienceShell,ob=document.getElementById('submarineObservation'),before=shell?.getRecords?.(),s=sbState(),action='原气泡计数真实任务 '+(currentTask+1);if(!s.predicate||!ob||ob.querySelectorAll('p output').length!==4||!Array.isArray(before))return false;const values=[...ob.querySelectorAll('output')].map(n=>n.closest('p').textContent.trim()).join('；');if(shell.record(action,{validated:true,task:currentTask+1})!==true)return false;const after=shell.getRecords(),r=after.at(-1);return after.length===before.length+1&&r.task===currentTask+1&&r.mode===s.mode&&r.action===action&&r.values===values;}
+function sbCapture(){const now=sbNow();return{modalOpen:doneMask.style.display==='flex',modalOrigin:sbModalOrigin,teachingPhase:sbTeaching,task:currentTask,completed,rate:bubbleRate,count:totalBubbles,tilt:tiltTriggered,sink:sinkTriggered,transitioning:transitioningStep,ignore:ignoreBubbleEvents,accepted:sbAccepted,conclusion:sbConclusion,failure:sbFailure,paused:sbPaused,clock:now,slider:rateSlider.value,dom:[ship,taskStepEl,taskTextEl,taskHintEl,checkmark,toast,rateLabel,...dots].map(node=>({node,style:node.style.cssText,className:node.className,html:[taskStepEl,taskTextEl,taskHintEl,toast,rateLabel].includes(node)?node.innerHTML:null})),bubbles:[...sbBubbleNodes].map(node=>({node,style:node.style.cssText,className:node.className,meta:{...sbBubbleMeta.get(node)}})),fx:sbFX(),timers:[...sbTimers.keys()].filter(e=>e.kind!=='wait').map(e=>({fn:e.fn,delay:e.delay,remaining:sbPaused?e.remaining:Math.max(0,e.remaining-(now-e.started)),kind:e.kind})),records:window.__codexScienceShell?.getRecordState?.()||{records:[],unseen:0},geometry:sbGeometry()};}
+function sbRestore(s,free,keepRecords=false){const records=window.__codexScienceShell?.getRecordState?.();sbClearWork();sbClose();sbClearBubbleLife();for(const n of ocean.querySelectorAll('.bubble'))n.remove();sbRestoring=true;sbPaused=s.paused;sbClock=s.clock;sbAnchor=performance.now();sbTeaching=s.teachingPhase;currentTask=s.task;completed=s.completed;bubbleRate=s.rate;totalBubbles=s.count;tiltTriggered=s.tilt;sinkTriggered=s.sink;transitioningStep=s.transitioning;ignoreBubbleEvents=s.ignore;sbAccepted=s.accepted;sbConclusion=s.conclusion;sbFailure=s.failure;freeMode=free;autoPlaying=false;rateSlider.value=s.slider;sbSliderValue=s.slider;for(const d of s.dom){d.node.style.cssText=d.style;d.node.className=d.className;if(d.html!==null)d.node.innerHTML=d.html;}for(const b of s.bubbles){b.node.style.cssText=b.style;b.node.className=b.className;Object.assign(sbBubbleMeta.get(b.node),b.meta,{token:sbGeneration});sbBubbleNodes.add(b.node);ocean.appendChild(b.node);}getComputedStyle(ship).bottom;getComputedStyle(ocean).height;sbRestoreFX(s.fx);for(const e of s.timers){if(free&&['accepted','advance','conclusion'].includes(e.kind))continue;const next=sbSchedule(e.fn,e.remaining,e.kind);next.delay=e.delay;}window.__codexScienceShell?.restoreRecordState?.(keepRecords?records:s.records);sbRestoring=false;sbReflow(s.geometry);sbSync();if(!free&&s.modalOpen)sbOpenModal(s.modalOrigin);}
+function sbSetFree(on){if(sbDestroyed||autoPlaying||!!on===freeMode)return false;if(on){sbEntry=sbCapture();sbRestore(sbEntry,true);}else{sbRestore(sbEntry,false,true);sbEntry=null;}return true;}
+function sbReset(event){if(sbDestroyed)return false;if(autoPlaying)return sbPaused?sbResume(event):sbPause();if(freeMode){sbRestore(sbEntry,true);return true;}sbClearWork();sbClose();sbClearBubbleLife();for(const a of sbAnimations())a.cancel();sbPausedAnimations.clear();sbClock=sbNow();sbAnchor=performance.now();sbPaused=false;sbAccepted=false;sbConclusion=false;sbFailure=null;stepReset();checkmark.classList.remove('active');toast.classList.remove('show');window.__codexScienceShell?.clearRecords?.();sbSync();return true;}
+function sbCancel(){if(sbDestroyed)return false;autoPlaying=false;freeMode=false;sbEntry=null;return sbReset();}
+function sbDestroy(){if(sbDestroyed)return false;sbClock=sbNow();sbAnchor=performance.now();sbPaused=true;sbClearWork();sbClose();for(const a of sbAnimations())a.cancel();sbPausedAnimations.clear();for(const n of sbBubbleNodes)sbBubbleMeta.get(n).active=false;autoPlaying=false;freeMode=false;sbDestroyed=true;sbHostChanges?.disconnect();sbEvents.abort();const mode=document.getElementById('modeTag'),status=document.getElementById('statusTag');if(mode)mode.textContent='模式：已关闭';if(status)status.textContent='状态：实验已关闭';rateSlider.oninput=null;bubbleBtn.onclick=null;sceneResetBtn.onclick=null;stepResetBtn.onclick=null;autoDemoBtn.onclick=null;freeBtn.onclick=null;okBtn.onclick=null;sbEntry=null;window.__codexScienceShell?.destroy?.();return true;}
+function sbGeometry(){const s=shipRect(),o=ocean.getBoundingClientRect();return{left:o.left+ocean.clientLeft,shipLeft:s.left-o.left-ocean.clientLeft,shipWidth:s.width,bottom:o.top+ocean.clientTop+ocean.clientHeight,stageHeight:stage.clientHeight};}
+function sbReflow(old){if(sbDestroyed)return;const g=sbGeometry();for(const n of sbBubbleNodes){const m=sbBubbleMeta.get(n),width=parseFloat(n.style.width),previous=old||m.geometry,fraction=(parseFloat(n.style.left)-previous.shipLeft)/Math.max(10,previous.shipWidth-width),nextLeft=g.shipLeft+fraction*Math.max(10,g.shipWidth-width),nextRise=riseDistanceToShipBottom(),oldRise=m.rise;n.style.left=nextLeft+'px';n.style.setProperty('--rise',nextRise+'px');for(const a of n.getAnimations()){if(a.animationName!=='rise')continue;const time=a.currentTime,frames=a.effect.getKeyframes().map(f=>{if(f.transform&&f.transform!=='none'){const matrix=new DOMMatrix(f.transform);f.transform='translateY('+(matrix.m42*nextRise/oldRise)+'px)';}return f;});a.effect.setKeyframes(frames);a.currentTime=time;}if(m.arrived)n.style.transform='translateY('+(-nextRise)+'px)';m.rise=nextRise;m.geometry=g;}sbSync();}
+async function sbUntil(cond,ms,token){const start=sbNow();while(!cond()){if(sbFailure||sbDestroyed||token!==sbGeneration||sbNow()-start>ms)return false;if(!await sbWait(AUTO_DEMO_TIMING.poll,token))return false;}return!sbFailure&&!sbDestroyed&&token===sbGeneration;}
+// Root inserts actual dataDock/recordBody last-row visibility and white M2 2
+// cursor aim360/press220/record360 here. This seam follows a persisted record.
+async function sbConfirmRecordBeforeAdvance(token){window.__codexScienceShell.open('control',false,true);window.__codexScienceShell.open('data',true,true);sbTeaching='查看真实记录';sbSync();const row=()=>document.querySelector('#recordBody tr:last-child');if(!await sbWait(AUTO_DEMO_TIMING.panel,token)||!await sbUntil(()=>row()&&sbPoint(row(),true),3000,token)||!await sbWait(AUTO_DEMO_TIMING.aim,token))return false;sbCursor.classList.add('tap');if(!await sbWait(AUTO_DEMO_TIMING.press,token))return false;sbCursor.classList.remove('tap');if(!await sbWait(AUTO_DEMO_TIMING.record,token))return false;sbTeaching='记录确认';sbSync();if(!await sbWait(AUTO_DEMO_TIMING.confirm,token))return false;sbCursorTarget=null;sbCursor.style.display='none';return true;}
+async function sbAutoWork(token){const plans=[[1,4,180,2600],[2,20,120,2600],[3,25,100,3200]];for(const[rate,count,interval,view]of plans){if(!await sbAutoTarget(rateSlider,token))return false;sbSetRate(rate,true);sbTeaching='原档位冒泡与观察';sbSync();spawnMany(count,interval,true);if(!await sbWait(view,token))return false;if(rate===3){while(!sinkTriggered){if(sbFailure||token!==sbGeneration||sbDestroyed)return false;sbBubbleInput(true);if(!await sbWait(400+2600,token))return false;}}if(!await sbUntil(()=>sbAccepted,6000,token)||!await sbWait(AUTO_DEMO_TIMING.action,token)||!await sbWait(AUTO_DEMO_TIMING.observe,token)||!await sbConfirmRecordBeforeAdvance(token)||!await sbAdvance(token))return false;if(!completed&&!await sbWait(AUTO_DEMO_TIMING.transition,token))return false;}return sbUntil(()=>sbConclusion,AUTO_DEMO_TIMING.conclusion+1000,token);}
+function sbStartAuto(event){if(sbDestroyed||freeMode||autoPlaying)return Promise.resolve(false);sbAutoOrigin=event?.currentTarget instanceof HTMLElement?event.currentTarget:document.activeElement;sbReset();if(event?.isTrusted)window.labSoundBus?.unlock(event);autoPlaying=true;sbSync();const token=sbGeneration;return new Promise(resolve=>{sbAutoResolve=resolve;sbAutoWork(token).then(value=>{if(token!==sbGeneration||sbDestroyed)return;sbAutoResolve=null;autoPlaying=false;sbSync();resolve(value);},error=>{if(token!==sbGeneration||sbDestroyed)return;console.error('[submarine] auto failed',error);sbAutoResolve=null;autoPlaying=false;sbSync();resolve(false);});});}
+function sbSetRate(value,fromAuto=false){if(sbDestroyed||sbPaused||(autoPlaying&&!fromAuto))return false;rateSlider.value=String(value);sbSliderValue=rateSlider.value;bubbleRate=parseInt(rateSlider.value,10)||1;updateRateLabel();sbSync();return true;}
+function sbBubbleInput(fromAuto=false){if(sbDestroyed||sbPaused||(autoPlaying&&!fromAuto)||(!freeMode&&sbAccepted))return false;spawnBurst(false);return true;}
+
+function sbPoint(n,reveal=false){sbCursorTarget=n;if(sbDestroyed||!n?.isConnected||getComputedStyle(n).display==='none'||getComputedStyle(n).visibility==='hidden'||n.closest('[inert]'))return false;const body=n.closest('.drawer-body'),dock=n.closest('.drawer');if(dock?.classList.contains('collapsed'))return false;if(reveal){document.getElementById('stage').scrollIntoView({block:'center'});if(body){const r=n.getBoundingClientRect(),clip=body.getBoundingClientRect();if(r.top<clip.top||r.bottom>clip.bottom)body.scrollTop+=r.top-clip.top-Math.max(0,(clip.height-Math.min(r.height,clip.height))/2);}}const r=n.getBoundingClientRect(),clip=body?.getBoundingClientRect(),left=Math.max(0,r.left,clip?.left??r.left),right=Math.min(innerWidth,r.right,clip?.right??r.right),top=Math.max(0,r.top,clip?.top??r.top),bottom=Math.min(innerHeight,r.bottom,clip?.bottom??r.bottom);if(right<=left||bottom<=top)return false;if(!sbCursor){sbCursor=document.createElement('div');sbCursor.id='submarineAutoCursor';sbCursor.setAttribute('aria-hidden','true');sbCursor.innerHTML='<svg width="26" height="32" viewBox="0 0 26 32" aria-hidden="true"><path d="M2 2 L2 25 L8 20 L13 30 L18 27 L13 18 L23 18 Z" fill="white" stroke="#17202a" stroke-width="1.6" stroke-linejoin="round"/></svg>';sbCursor.style.cssText='position:fixed;width:26px;height:32px;z-index:2147483646;pointer-events:none;filter:drop-shadow(0 2px 3px #0008)';document.body.append(sbCursor);}sbCursor.style.display='block';sbCursor.style.left=((left+right)/2-2)+'px';sbCursor.style.top=((top+bottom)/2-2)+'px';return true;}
+function sbTrackCursor(){if(autoPlaying&&sbCursorTarget)sbPoint(sbCursorTarget);}
+async function sbAutoTarget(n,token){window.__codexScienceShell.open('data',false,true);window.__codexScienceShell.open('control',true,true);sbTeaching='瞄准原速率滑杆';sbSync();if(!await sbWait(AUTO_DEMO_TIMING.panel,token)||!await sbUntil(()=>sbPoint(n,true),3000,token)||!await sbWait(AUTO_DEMO_TIMING.aim,token))return false;sbCursor.classList.add('tap');if(!await sbWait(AUTO_DEMO_TIMING.press,token))return false;sbCursor.classList.remove('tap');return true;}
+function sbMount(){const toolbar=stepResetBtn.closest('.toolbar');toolbar.hidden=true;toolbar.style.display='none';toolbar.classList.add('codex-legacy-toolbar');document.querySelector('#stage .in-canvas').id='submarineControlBar';const ob=document.createElement('section');ob.id='submarineObservation';ob.setAttribute('aria-label','原气泡与船姿观察，非密度或船舶安全测量');ob.innerHTML='<p>原速率档位：<output id="submarineRate"></output></p><p>原结束计数：<output id="submarineCount"></output></p><p>原船姿：<output id="submarineShip"></output></p><p>原触发状态：<output id="submarineModel"></output></p>';document.getElementById('stage').after(ob);doneMask.setAttribute('aria-hidden','true');okBtn.style.minWidth='44px';okBtn.style.minHeight='44px';const listen=(n,type,fn,o={})=>n.addEventListener(type,fn,{...o,signal:sbEvents.signal});listen(rateSlider,'input',()=>{if(!sbSetRate(rateSlider.value))rateSlider.value=sbSliderValue;});listen(bubbleBtn,'click',()=>sbBubbleInput());listen(sceneResetBtn,'click',()=>{if(sbDestroyed||sbPaused||autoPlaying||(!freeMode&&sbAccepted))return;for(const e of [...sbTimers.keys()])if(e.kind==='spawn')sbClear(e);clearBubbles(false);sbSync();});listen(stepResetBtn,'click',sbReset);listen(autoDemoBtn,'click',sbStartAuto);listen(freeBtn,'click',()=>sbSetFree(!freeMode));listen(okBtn,'click',sbClose);listen(document,'keydown',e=>{if(doneMask.style.display!=='flex')return;if(e.key==='Escape'){e.preventDefault();sbClose();}else if(e.key==='Tab'){e.preventDefault();okBtn.focus();}});listen(document,'focusin',e=>{if(doneMask.style.display==='flex'&&!doneMask.contains(e.target))okBtn.focus();});listen(window,'resize',()=>sbReflow());listen(window,'pagehide',sbDestroy,{once:true});const bind=()=>{listen(document.getElementById('resetBtn'),'click',sbReset);listen(document.getElementById('autoDemoBtn'),'click',event=>autoPlaying?sbCancel():sbStartAuto(event));listen(document.getElementById('freeBtn'),'click',()=>sbSetFree(!freeMode));sbSync();};if(document.readyState==='loading')listen(document,'DOMContentLoaded',bind,{once:true});else bind();window.__codexPageControllerV1={startAutoDemo:sbStartAuto,pause:sbPause,resume:sbResume,cancel:sbCancel,reset:sbReset,setFreeMode:sbSetFree,getState:sbState,destroy:sbDestroy};sbSync();}
+
 /* ===== 步骤定义（严格：必须调对速率 + 条件满足才通过） ===== */
 var tasks = [
   {
     id:'low_rate',
-    text:'保持<strong>气泡速率为「低」</strong>，点击右上角<strong>「冒泡」</strong>几次，观察：船依然稳定漂浮。',
+    text:'保持<strong>气泡速率为「低」</strong>，点击实验面板中的<strong>「冒泡」</strong>几次，观察：船依然稳定漂浮。',
     hint:'提示：速率低、气泡稀疏时，船底附近水的平均密度变化不大。',
     pass:function(){
       return bubbleRate === 1 &&
@@ -1289,7 +1800,7 @@ function showToast(msg){
 }
 
 function showDone(){
-  doneMask.style.display = 'flex';
+  return sbShowDone();
 }
 
 /* shipRect & 距离计算 */
@@ -1298,13 +1809,15 @@ function shipRect(){
 }
 function riseDistanceToShipBottom(){
   var sr = shipRect();
-  var d = window.innerHeight - sr.bottom;
+  var oceanRect = ocean.getBoundingClientRect();
+  var d = oceanRect.top + ocean.clientTop + ocean.clientHeight - sr.bottom;
   if (d < 80) d = 80;
   return d;
 }
 
 /* ===== 清空场景（用于按钮 & 步骤间自动复位） ===== */
 function clearBubbles(silent){
+  sbClearBubbleLife();
   var list = ocean.querySelectorAll('.bubble');
   for (var i=0; i<list.length; i++){
     var node = list[i];
@@ -1325,6 +1838,7 @@ function clearBubbles(silent){
 
 /* ===== 气泡逻辑 ===== */
 function createSingleBubble(isFromAuto){
+  if(sbDestroyed||sbPaused)return;
   var b = document.createElement('div');
   b.className = 'bubble';
 
@@ -1347,13 +1861,19 @@ function createSingleBubble(isFromAuto){
   if (maxX <= minX) maxX = minX + 10;
   var left = minX + Math.random()*(maxX - minX);
 
-  b.style.left = left + 'px';
+  var oceanRect = ocean.getBoundingClientRect();
+  b.style.left = (left - oceanRect.left - ocean.clientLeft) + 'px';
   b.style.bottom = '0px';
 
   ocean.appendChild(b);
 
-  b.addEventListener('animationend', function(){
-    if (ignoreBubbleEvents) return;  // 旧气泡直接忽略
+  var meta={active:true,arrived:false,token:sbGeneration,rise,geometry:sbGeometry()};
+  sbBubbleMeta.set(b,meta);sbBubbleNodes.add(b);
+  if(sbPaused)for(const a of b.getAnimations()){sbPausedAnimations.add(a);a.pause();}
+  b.addEventListener('animationend', function(event){
+    if(sbDestroyed||sbPaused||!meta.active||meta.arrived||meta.token!==sbGeneration||b.parentElement!==ocean||(!freeMode&&ignoreBubbleEvents)||event.target!==b)return;
+    meta.arrived=true;
+    rise=meta.rise; // Same logical rise, remapped only when ocean geometry changes.
 
     b.style.animation = 'none';
     b.style.transform = 'translateY(' + (-rise) + 'px)';
@@ -1370,10 +1890,11 @@ function createSingleBubble(isFromAuto){
       ship.classList.add('sink');
     }
 
-    if (!freeMode && !autoPlaying && !isFromAuto){
+    sbSync();
+    if (!freeMode){
       nextTaskIfPassed();
     }
-  });
+  },{signal:sbEvents.signal});
 }
 
 /* 按当前速率一次“冒泡”：速率越高，单次冒出的气泡越多 */
@@ -1403,52 +1924,35 @@ function spawnMany(count, interval, isFromAuto){
   tick();
 }
 
-/* ===== 步骤推进逻辑（带锁 & 自动复位） ===== */
+
 function nextTaskIfPassed(){
-  if (completed || transitioningStep) return;
-  var t = tasks[currentTask];
-  if (!t) return;
-
-  if (t.pass()){
-    transitioningStep = true;
-    ignoreBubbleEvents = true;  // 后续旧气泡一律忽略
-    showCheck();
-
-    var prevIndex = currentTask;
-    setTimeout(function(){
-      dots[prevIndex].classList.remove('active');
-      dots[prevIndex].classList.add('done');
-
-      currentTask++;
-      if (currentTask >= tasks.length){
-        completed = true;
-        clearBubbles(true); // 最终也顺便清一下
-        showDone();
-      } else {
-        // 步骤之间自动复位场景，相当于把“重置场景”整合进下一步
-        clearBubbles(true);
-        dots[currentTask].classList.add('active');
-        setStepUI(currentTask);
-      }
-
-      ignoreBubbleEvents = false;
-      transitioningStep  = false;
-    }, 520);
-  }
+  if(sbDestroyed||sbPaused||sbRestoring||freeMode||completed||transitioningStep||sbAccepted||sbFailure)return false;
+  var t=tasks[currentTask];
+  if(!t||!t.pass())return false;
+  if(!sbRecord()){sbFailure='AUTO_RECORD_NOT_PERSISTED';sbSync();return false;}
+  sbAccepted=true;
+  transitioningStep=true;
+  ignoreBubbleEvents=true;
+  showCheck();
+  if(!autoPlaying)sbSchedule(()=>sbSchedule(()=>sbAdvance(sbGeneration),520,'advance'),AUTO_DEMO_TIMING.confirm,'accepted');
+  sbSync();return true;
 }
+function sbAdvance(token){return new Promise(resolve=>{
+  if(sbDestroyed||sbPaused||freeMode||!sbAccepted||token!==sbGeneration)return resolve(false);
+  const advance=()=>{
+    if(sbDestroyed||freeMode||!sbAccepted||token!==sbGeneration)return resolve(false);
+    const prevIndex=currentTask;
+    dots[prevIndex].classList.remove('active');dots[prevIndex].classList.add('done');
+    currentTask++;
+    if(currentTask>=tasks.length){completed=true;clearBubbles(true);sbSchedule(sbShowDone,AUTO_DEMO_TIMING.conclusion,'conclusion');}
+    else{clearBubbles(true);dots[currentTask].classList.add('active');setStepUI(currentTask);}
+    ignoreBubbleEvents=false;transitioningStep=false;sbAccepted=false;sbSync();resolve(true);
+  };
+  if(autoPlaying)sbSchedule(advance,520,'advance',resolve);else advance();
+});}
+function setFreeMode(on){return sbSetFree(on);}
+function autoDemo(){return sbStartAuto();}
 
-/* ===== 自由模式、步骤重置 ===== */
-function setFreeMode(on){
-  freeMode = on;
-  taskCard.style.opacity = on ? 0.25 : 1;
-  taskCard.style.filter  = on ? 'grayscale(0.6)' : 'none';
-  freeBtn.textContent    = on ? '退出自由模式' : '自由模式';
-  autoDemoBtn.disabled   = on;
-  if (on){
-    toast.classList.remove('show');
-    doneMask.style.display = 'none';
-  }
-}
 
 function stepReset(){
   autoPlaying        = false;
@@ -1468,86 +1972,7 @@ function stepReset(){
   updateRateLabel();
 }
 
-/* ===== 自动演示 ===== */
-function autoDemo(){
-  if (freeMode || autoPlaying) return;
-  autoPlaying = true;
-  stepReset();
-
-  // Step 1：低速、少量冒泡
-  bubbleRate = 1;
-  rateSlider.value = '1';
-  updateRateLabel();
-  setStepUI(0);
-
-  spawnMany(4, 180, true);
-  setTimeout(function(){
-    nextTaskIfPassed();
-
-    // Step 2：中速，冒泡到“倾斜”
-    setStepUI(1);
-    bubbleRate = 2;
-    rateSlider.value = '2';
-    updateRateLabel();
-
-    spawnMany(20, 120, true);
-    setTimeout(function(){
-      nextTaskIfPassed();
-
-      // Step 3：系统已自动复位 → 高速，再次冒泡到“明显下沉”
-      setStepUI(2);
-      bubbleRate = 3;
-      rateSlider.value = '3';
-      updateRateLabel();
-
-      spawnMany(25, 100, true);
-      setTimeout(function(){
-        nextTaskIfPassed();
-        autoPlaying = false;
-      }, 3200);
-    }, 2600);
-  }, 2600);
-}
-
-/* ===== 交互绑定 ===== */
-rateSlider.oninput = function(){
-  bubbleRate = parseInt(this.value, 10) || 1;
-  updateRateLabel();
-};
-
-bubbleBtn.onclick = function(){
-  spawnBurst(false);
-};
-
-sceneResetBtn.onclick = function(){
-  clearBubbles(false);
-};
-
-stepResetBtn.onclick = function(){
-  stepReset();
-};
-
-autoDemoBtn.onclick = function(){
-  autoDemo();
-};
-
-freeBtn.onclick = function(){
-  setFreeMode(!freeMode);
-};
-
-okBtn.onclick = function(){
-  doneMask.style.display = 'none';
-};
-
-/* ===== 防止 iOS 连续点击导致页面放大（双击缩放） ===== */
-var lastTouchEnd = 0;
-document.addEventListener('touchend', function(e){
-  var now = Date.now();
-  if (now - lastTouchEnd <= 300){
-    e.preventDefault();
-  }
-  lastTouchEnd = now;
-}, false);
+/* Original generic/button bindings retired; sbMount binds the same native owner. */
 
 /* ===== 初始化 ===== */
 function init(){
@@ -1558,9 +1983,9 @@ function init(){
 }
 init();
 
-window.addEventListener('resize', function(){
-  riseDistanceToShipBottom();
-});
+sbMount();
+document.addEventListener('DOMContentLoaded',()=>{if(sbDestroyed)return;const note=document.createElement('p');note.textContent='仅屏幕定性示意：本页按原动画结束计数触发船姿，档位、数量与18/38阈值不是水密度、浮力或船舶安全测量，也不证明真实沉船事故机制。切勿释放气体、入水或驾驶船舶尝试本页现象，不能据此判断船舶安全。';document.getElementById('submarineObservation').append(note);const help=document.createElement('p');help.id='submarineInstruction';help.textContent='在实验面板调节原速率档位并点击“冒泡”；键盘可用Home、End和方向键。数据面板保存屏幕观察，不是实测报告。';document.getElementById('stage').before(help);document.addEventListener('scroll',sbTrackCursor,{capture:true,passive:true,signal:sbEvents.signal});window.addEventListener('load',()=>{if(sbDestroyed)return;sbHostChanges=new MutationObserver(sbTrackCursor);for(const id of['controlDock','dataDock'])sbHostChanges.observe(document.getElementById(id),{attributes:true,attributeFilter:['style','class'],subtree:true});sbSync();},{once:true,signal:sbEvents.signal});},{once:true,signal:sbEvents.signal});
+})();
 </script>
 
 <script>
@@ -1625,6 +2050,10 @@ window.addEventListener('resize', function(){
   </section>
 </div>
 <script id="codexDemoShellRuntimeV2">(() => {
+
+  window.__codexDemoShellV2={retired:true,owner:'submarine-native'};
+  return;
+
   if (window.__codexDemoShellV2) return;
   window.__codexDemoShellV2 = true;
 
@@ -2186,5 +2615,1440 @@ window.addEventListener('resize', function(){
 </script>
 <!-- CODEX_DEMO_SHELL_V2_END -->
 </main>
+<script type="application/json" id="codex-science-shell-config">{"controls":["#submarineControlBar"],"observation":"#submarineObservation","taskCount":3,"presentation":true,"unbound":true,"stageClass":"codex-runtime-stage","cursorSelector":"#submarineAutoCursor","cursorTip":{"x":2,"y":2}}</script>
+<script type="text/plain" id="codex-science-theme-icons">
+      <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+      </svg>
+      <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"></path>
+      </svg>
+    </script>
+<script id="codex-science-shell-adapter">
+(() => {
+  'use strict';
+  function mount() {
+    const stage=document.getElementById('stage'),app=document.getElementById('app');
+    const events=new AbortController();let destroyed=false;
+    const listen=(node,type,handler,options={})=>node.addEventListener(type,handler,{...options,signal:events.signal});
+    const config=JSON.parse(document.getElementById('codex-science-shell-config').textContent);
+    const recordBridge=config.recordBridge?window[config.recordBridge]:null;
+    if(config.recordBridge&&(!recordBridge||!['record','getRecords','getRecordState','restoreRecordState','clearRecords','markRead','renderRecords'].every(key=>typeof recordBridge[key]==='function')||![recordBridge.button,recordBridge.list,recordBridge.empty].every(node=>node instanceof HTMLElement)))throw new Error('[science-shell] 缺少原生记录桥或实际记录节点');
+    if(!stage||!app)throw new Error('[science-shell] 缺少实验舞台或页面容器');
+    const task=document.querySelector(config.task||'.task-card,.taskCard,.xn-stepcard');
+    if(!task)throw new Error('[science-shell] 缺少原关卡卡片');
+    if(!config.task)task.id='taskCard';task.classList.add('task-card');
+    if(config.taskStep)document.querySelector(config.taskStep).classList.add('task-step');
+    if(config.taskText)document.querySelector(config.taskText).parentElement.classList.add('task-text');
+    if(config.taskDots)task.querySelector(config.taskDots).classList.add('progress-dots');
+    if(config.stageClass)stage.classList.add(config.stageClass);
+    if(config.explanation){const node=document.querySelector(config.explanation);if(!node)throw new Error('[science-shell] 缺少冻结说明');app.append(node);node.classList.add('explanation');}
+    const hud=document.getElementById('modeTag')?.parentElement;
+    if(!hud)throw new Error('[science-shell] 缺少原模式状态');
+    hud.id='scienceHud';hud.classList.add('hud');stage.prepend(hud);
+    if(config.apparatus){const apparatus=document.querySelector(config.apparatus);if(!apparatus)throw new Error('[science-shell] 缺少冻结场景 '+config.apparatus);apparatus.classList.add('science-apparatus');}
+    document.getElementById('modeTag').classList.add('mode-strip');
+    const makePanel=(kind,title)=>{
+      const old=document.getElementById(kind==='control'?'codexControlDock':'codexDataDock');
+      const panel=old||document.createElement('section');panel.id=kind+'Dock';
+      panel.classList.add('dock','drawer',kind,'collapsed');panel.dataset.scienceStandardPanel='true';
+      panel.setAttribute('aria-label',title);panel.hidden=false;
+      panel.removeAttribute('aria-hidden');
+      if(!old)panel.innerHTML='<div class="dockHead drawer-header" data-drag-handle><span class="dockTitle drawer-title"></span><div class="dockBtns drawer-actions"><button class="iconBtn mini codex-panel-toggle" type="button">展开</button></div></div><div class="dockBody drawer-body"></div>';
+      const header=panel.querySelector('.drawer-header,.codex-drawer-header');header.classList.add('dockHead','drawer-header');header.dataset.dragHandle='';
+      const body=panel.querySelector('.drawer-body,.codex-drawer-body');body.classList.add('dockBody','drawer-body');
+      const titleNode=header.querySelector('.drawer-title,.codex-drawer-title');titleNode.classList.add('dockTitle');
+      if(!old)titleNode.textContent=title;
+      const toggle=header.querySelector('button');toggle.id=kind+'ToggleBtn';toggle.classList.add('iconBtn','mini');toggle.textContent='展开';toggle.setAttribute('aria-controls',panel.id);
+      if(!toggle.parentElement.classList.contains('drawer-actions')){const actions=document.createElement('div');actions.className='dockBtns drawer-actions';header.append(actions);actions.append(toggle);}
+      if(config.unbound&&kind==='data')body.replaceChildren();
+      const close=body.querySelector('.sheet-close,.codex-sheet-close')||document.createElement('button');
+      close.id=kind+'SheetCloseBtn';close.type='button';close.classList.add('sheet-close');close.setAttribute('aria-label','收起'+title);close.title='收起';
+      close.innerHTML='<svg class="sheet-close-icon" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg>';body.append(close);
+      stage.append(panel);return {panel,body,toggle,close,old:Boolean(old)&&!config.unbound};
+    };
+    const control=makePanel('control','实验面板'),data=makePanel('data','数据面板');
+    for(const selector of config.controls){
+      const node=document.querySelector(selector);if(!node)throw new Error('[science-shell] 缺少冻结的控件 '+selector);
+      control.body.append(node);node.classList.add('science-panel-controls');
+    }
+    const tabs=document.getElementById('mobileTabs')||document.createElement('div');tabs.id='mobileTabs';tabs.classList.add('mobile-tabs');
+    if(!tabs.querySelector('#experimentTab')||!tabs.querySelector('#dataTab'))tabs.innerHTML='<button class="mobile-tab" id="experimentTab" type="button">实验面板</button><button class="mobile-tab" id="dataTab" type="button">数据面板</button>';
+    const experimentTab=tabs.querySelector('#experimentTab'),dataTab=tabs.querySelector('#dataTab');
+    tabs.hidden=false;tabs.removeAttribute('aria-hidden');
+    experimentTab.setAttribute('aria-controls','controlDock');dataTab.setAttribute('aria-controls','dataDock');stage.append(tabs);
+    const badge=document.getElementById('codexDataNotice')||document.createElement('span');badge.id='dataNotice';badge.classList.add('badge','dataNotice');
+    if(!badge.isConnected)data.panel.querySelector('.dockTitle').append(badge);
+    let tabBadge=document.getElementById('codexDataTabBadge');
+    if(!tabBadge){tabBadge=document.createElement('span');dataTab.append(tabBadge);}tabBadge.id='dataTabBadge';tabBadge.classList.add('mobile-badge');
+    const recordButton=recordBridge?.button||document.createElement('button');recordButton.type='button';recordButton.classList.add('main','science-record-button');recordButton.dataset.scienceRecordButton='true';if(!recordBridge){recordButton.id='scienceRecordBtn';recordButton.textContent='记录观察';}control.body.append(recordButton);
+    let records=recordBridge?null:[],unseen=0;
+    const table=recordBridge?null:document.createElement('table');if(table){table.className='record';table.id='scienceRecordTable';table.innerHTML='<thead><tr><th>次数</th><th>模式与关卡</th><th>操作</th><th>观察快照</th></tr></thead><tbody id="recordBody"></tbody>';}
+    const empty=recordBridge?.empty||document.createElement('div');if(!recordBridge){empty.className='empty';empty.textContent='暂无观察记录。';}
+    data.body.prepend(empty,recordBridge?.list||table);
+    if(recordBridge&&config.recordCount){const count=document.querySelector(config.recordCount);if(!count)throw new Error('[science-shell] 缺少原生记录计数');const label=document.createElement('p');label.className='science-record-count';label.append('观察记录：',count);data.body.prepend(label);}
+    if(recordBridge&&config.recordLegacyHost){const host=document.querySelector(config.recordLegacyHost);if(!host||host.contains(recordBridge.list)||host.contains(recordBridge.empty))throw new Error('[science-shell] 原生记录节点尚未迁入实际面板');host.remove();}
+    const sync=()=>{
+      if(destroyed)return;
+      const mobile=matchMedia('(max-width:720px)').matches;
+      if(mobile&&!control.panel.classList.contains('collapsed')&&!data.panel.classList.contains('collapsed'))control.panel.classList.add('collapsed');
+      for(const item of [control,data]){item.panel.classList.toggle('mobile-sheet',mobile);const open=!item.panel.classList.contains('collapsed');item.toggle.textContent=open?'收起':'展开';item.toggle.setAttribute('aria-expanded',String(open));}
+      const openControl=!control.panel.classList.contains('collapsed'),openData=!data.panel.classList.contains('collapsed');
+      experimentTab.classList.toggle('active',openControl);experimentTab.setAttribute('aria-expanded',String(openControl));dataTab.classList.toggle('active',openData);dataTab.setAttribute('aria-expanded',String(openData));tabs.classList.toggle('attached',openControl||openData);
+      if(recordBridge){if(openData&&recordBridge.getRecordState().unseen)recordBridge.markRead();unseen=recordBridge.getRecordState().unseen;}else if(openData)unseen=0;
+      for(const b of [badge,tabBadge]){b.textContent=unseen>99?'99+':String(unseen);b.classList.toggle('show',unseen>0&&!openData);b.setAttribute('aria-hidden',String(!unseen||openData));}
+    };
+    function open(kind,on=true,exclusive=false){if(destroyed)return;const target=kind==='control'?control:data,other=kind==='control'?data:control;const mobile=matchMedia('(max-width:720px)').matches;if(!mobile&&window.__codexDesktopPanels?.setOpen?.(target.panel.id,on,exclusive)){sync();return;}if((exclusive||mobile)&&on){other.panel.classList.add('collapsed');other.body.classList.add('collapsed');}target.panel.classList.toggle('collapsed',!on);target.body.classList.toggle('collapsed',!on);sync();}
+    for(const item of [control,data]){
+      if(!item.old)listen(item.toggle,'click',()=>{if(item.panel.dataset.codexDesktopPanel==='1'&&!matchMedia('(max-width:720px)').matches)return;open(item===control?'control':'data',item.panel.classList.contains('collapsed'));});
+      listen(item.close,'click',()=>open(item===control?'control':'data',false));
+    }
+    if(!control.old){listen(experimentTab,'click',()=>open('control',control.panel.classList.contains('collapsed')));listen(dataTab,'click',()=>open('data',data.panel.classList.contains('collapsed')));}
+    const panelsChanged=new MutationObserver(sync);for(const item of [control,data])panelsChanged.observe(item.panel,{attributes:true,attributeFilter:['class']});
+    const recordsChanged=recordBridge?new MutationObserver(sync):null;recordsChanged?.observe(recordBridge.list,{childList:true});
+    function render(){if(recordBridge){recordBridge.renderRecords();return;}const body=table.tBodies[0];body.replaceChildren();records.forEach((record,index)=>{const row=body.insertRow();row.dataset.recordId=record.id;[String(index+1),`${{guided:'闯关',free:'自由',auto:'演示'}[record.mode]} · 关卡 ${record.task}`,record.action,record.values].forEach((value,i)=>{const cell=row.insertCell();cell.dataset.label=['次数','模式与关卡','操作','观察快照'][i];cell.textContent=value;});});empty.hidden=records.length>0;}
+    function record(action='手动记录',options={}){
+      const state=window.__codexPageControllerV1?.getState();
+      if(destroyed||!state||state.destroyed||state.paused||(state.mode==='auto'&&!options.validated))return false;
+      const index=state.currentTask??state.taskIndex;
+      if(!Number.isInteger(index))return false;
+      const task=options.validated?options.task:Math.min(index+1,config.taskCount||3);
+      if(options.validated&&(state.mode==='free'||task!==index+1))return false;
+      if(recordBridge){const accepted=recordBridge.record(action,options);sync();return accepted;}
+      const observation=document.querySelector(config.observation);if(!observation)return false;
+      const values=[...observation.querySelectorAll('output')].map(node=>node.closest('p')?.textContent.trim()||node.value||node.textContent).filter(Boolean).join('；');
+      if(!values)return false;
+      records.push({id:String(records.length+1)+':'+performance.now(),task,mode:state.mode,action,values});render();if(data.panel.classList.contains('collapsed'))unseen++;sync();return true;
+    }
+    if(!recordBridge)listen(recordButton,'click',()=>record());
+    const syncState=state=>{recordButton.disabled=destroyed||state.destroyed||state.paused||state.mode==='auto';};
+    function syncPresentation(state){
+      if(destroyed||!state)return;syncState(state);
+      const index=state.currentTask??state.taskIndex,count=config.taskCount||3;
+      const free=state.mode==='free',auto=state.mode==='auto';
+      task.classList.toggle('free-mode',free);task.dataset.mode=free?'free':'challenge';
+      document.getElementById('modeTag').textContent=`模式：${auto?'演示模式 · '+(state.paused?'已暂停':'自动运行'):free?'自由模式 · 自主探索':`闯关模式 · 关卡 ${Math.min(index+1,count)}/${count}`}`;
+      document.querySelector(config.taskStep||'#taskStep').textContent=`关卡 ${Math.min(index+1,count)} / ${count}${state.completed?' · 已完成':''}`;
+      const reset=document.getElementById('resetBtn'),autoButton=document.getElementById('autoDemoBtn'),freeButton=document.getElementById('freeBtn');
+      reset.textContent=auto?(state.paused?'继续演示':'暂停演示'):free?'重置操作':'重置关卡';autoButton.textContent=auto?'退出演示':'演示模式';autoButton.disabled=free;freeButton.disabled=auto;freeButton.textContent=free?'退出自由模式':'自由模式';freeButton.setAttribute('aria-pressed',String(free));
+    }
+    for(const type of ['pointerdown','click','keydown','input','change'])listen(control.body,type,event=>{const state=window.__codexPageControllerV1?.getState();if(event.isTrusted&&(destroyed||state?.destroyed||state?.paused||state?.mode==='auto')&&!event.target.closest('.sheet-close')){if(event.type==='input'&&event.target===document.getElementById('rateSlider')&&state?.paused&&!destroyed&&!state.destroyed&&state.mode!=='auto')return;event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
+    const lamp=document.createElement('button');lamp.id='hintLamp';lamp.type='button';lamp.className='hint-lamp';lamp.textContent='💡';lamp.dataset.stageHint='managed';lamp.setAttribute('aria-label','查看提示');
+    const pop=document.createElement('div');pop.id='hintPop';pop.className='hint-pop';stage.append(lamp,pop);
+    if(config.taskHint){lamp.dataset.stageHint='page';listen(lamp,'click',()=>{pop.textContent=document.querySelector(config.taskHint).textContent;pop.classList.toggle('open');});}
+    const toolbar=document.querySelector('.codex-global-toolbar')||document.querySelector('.toolbar:not(.codex-legacy-toolbar)');toolbar.classList.add('science-global-toolbar');
+    if(config.unbound){const explanation=app.querySelector('.explanation,.explain');if(explanation?.parentElement===app)app.insertBefore(toolbar,explanation);else app.append(toolbar);document.querySelectorAll('.legacy-toolbar,.codex-legacy-toolbar').forEach(node=>{node.hidden=true;node.inert=true;});}
+    const theme=document.getElementById('themeToggle');theme.classList.add('theme-toggle');theme.innerHTML=document.getElementById('codex-science-theme-icons').textContent;
+    const sizes=new ResizeObserver(()=>{const h=hud.getBoundingClientRect(),s=stage.getBoundingClientRect();stage.style.setProperty('--science-apparatus-top',Math.ceil(h.bottom-s.top+50)+'px');});sizes.observe(hud);
+    listen(window,'resize',sync);
+    function destroy(){if(destroyed)return;destroyed=true;events.abort();sizes.disconnect();panelsChanged.disconnect();recordsChanged?.disconnect();window.__codexSciencePanelClearance?.destroy();window.__codexDesktopPanels?.destroy?.();window.__codexStageToolsV1?.destroy();recordButton.disabled=true;control.panel.inert=true;data.panel.inert=true;tabs.inert=true;toolbar.inert=true;for(const id of ['hintLamp','audioToggle','themeToggle']){const button=document.getElementById(id);if(button)button.disabled=true;}window.labSoundBus?.hush();}
+    window.addEventListener('pagehide',destroy,{once:true});
+    window.__codexScienceShell={record,open,syncState,syncPresentation,destroy,getRecords:()=>recordBridge?recordBridge.getRecords():structuredClone(records),getRecordState:()=>recordBridge?recordBridge.getRecordState():({records:structuredClone(records),unseen}),restoreRecordState:value=>{if(destroyed)return;if(recordBridge){recordBridge.restoreRecordState(value);sync();return;}records=structuredClone(value.records);unseen=value.unseen;render();sync();},restoreRecords:value=>{if(destroyed)return;if(recordBridge){recordBridge.restoreRecordState({...recordBridge.getRecordState(),records:value,unseen:0});sync();return;}records=structuredClone(value);unseen=0;render();sync();},clearRecords:()=>{if(destroyed)return;if(recordBridge){recordBridge.clearRecords();sync();return;}records=[];unseen=0;render();sync();}};
+    if(config.presentation)syncPresentation(window.__codexPageControllerV1?.getState());
+    render();sync();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
+</script>
+
+<script id="codex-lab-sound-bus" data-native-audio="false">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+(() => {
+  'use strict';
+  if (window.labSoundBus) return;
+  const nativeAudio = document.currentScript.dataset.nativeAudio === 'true';
+  let ctx = null, master = null, muted = false, held = false, unlocked = false, outputTarget = null;
+  let button = null, warned = false;
+  const voices = new Map();
+  const lastSounds = new Map();
+  const patterns = {
+    tap: { peak:.018, duration:.055, notes:[[440,0,.045]] },
+    hint: { peak:.035, duration:.18, notes:[[783.99,0,.08],[987.77,.09,.07]] },
+    record: { peak:.04, duration:.13, notes:[[554.37,0,.09]] },
+    warn: { peak:.045, duration:.22, notes:[[220,0,.09],[164.81,.1,.09]] },
+    step: { peak:.055, duration:.24, notes:[[523.25,0,.11],[659.25,.085,.13]] },
+    finish: { peak:.07, duration:.65, notes:[[392,0,.12],[523.25,.14,.14],[659.25,.3,.24]] },
+  };
+  function report(error) {
+    if (!warned) { warned = true; console.warn('[lab-audio] 无法播放音效', error); }
+  }
+  function syncButton() {
+    if (!button || nativeAudio) return;
+    button.textContent = muted ? '🔇' : '🔊';
+    button.setAttribute('aria-pressed', String(!muted));
+    button.setAttribute('aria-label', muted ? '开启音效' : '关闭音效');
+    button.title = muted ? '开启音效' : '关闭音效';
+    button.classList.toggle('muted', muted);
+  }
+  function paused() {
+    const mode = document.querySelector('#modeTag,#modeChip')?.textContent || '';
+    return (mode.includes('演示模式') && mode.includes('已暂停')) || document.querySelector('#resetBtn')?.textContent.trim() === '继续演示';
+  }
+  function applyGate() {
+    if (!master) return;
+    const target = muted || held || document.hidden || paused() ? 0 : 1;
+    if (target === outputTarget) return;
+    outputTarget = target;
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setTargetAtTime(target, now, .008);
+  }
+  function stopVoices() {
+    for (const [voice, stop] of voices) {
+      try { stop(ctx.currentTime); } catch (error) { report(error); }
+      voices.delete(voice);
+    }
+  }
+  function hush() {
+    held = true; stopVoices(); applyGate();
+    window.dispatchEvent(new Event('lab-audio-silence'));
+  }
+  function unlock(event) {
+    if (!event?.isTrusted || document.hidden) return null;
+    if (event.type === 'keydown' && !['Enter',' ','Spacebar'].includes(event.key)) return ctx;
+    if (held) stopVoices();
+    held = false;
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) {
+      if (button) { button.disabled = true; button.title = '当前浏览器不支持声音'; }
+      return null;
+    }
+    try {
+      if (!ctx) {
+        ctx = new Audio();
+        master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+        // Track scheduled one-shot voices so mute cannot revive their old tails.
+        // Continuous apparatus oscillators stay alive behind the output gate.
+        const createOscillator = ctx.createOscillator.bind(ctx);
+        ctx.createOscillator = () => {
+          const voice = createOscillator(); const stop = voice.stop.bind(voice);
+          voice.stop = when => { voices.set(voice, stop); return stop(when); };
+          voice.addEventListener('ended', () => voices.delete(voice), { once:true });
+          return voice;
+        };
+      }
+      unlocked = ctx.state === 'running';
+      if (ctx.state === 'suspended') ctx.resume().then(() => {
+        unlocked = ctx.state === 'running';
+      }).catch(error => { unlocked = false; report(error); });
+      applyGate(); return ctx;
+    } catch (error) { report(error); return null; }
+  }
+  function setMuted(value) {
+    const next = Boolean(value);
+    if (next === muted) return;
+    muted = next;
+    if (muted) { stopVoices(); window.dispatchEvent(new Event('lab-audio-silence')); }
+    applyGate(); syncButton();
+  }
+  function play(kind) {
+    if (!unlocked || !ctx || muted || held || document.hidden || paused() || ctx.state !== 'running') return false;
+    const nowMs = performance.now();
+    if (nowMs - (lastSounds.get(kind) ?? -Infinity) < (kind === 'finish' ? 650 : 100)) return false;
+    const pattern = patterns[kind] || patterns.hint;
+    lastSounds.set(kind, nowMs);
+    const start = ctx.currentTime + .005;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.linearRampToValueAtTime(pattern.peak, start + .008);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + pattern.duration);
+    gain.connect(master);
+    let remaining = pattern.notes.length;
+    for (const [frequency, offset, duration] of pattern.notes) {
+      const voice = ctx.createOscillator(); voice.type = 'sine';
+      voice.frequency.value = frequency; voice.connect(gain);
+      voice.addEventListener('ended', () => { voice.disconnect(); if (--remaining === 0) gain.disconnect(); }, { once:true });
+      voice.start(start + offset); voice.stop(start + offset + duration);
+    }
+    window.dispatchEvent(new CustomEvent('lab-ui-sound', { detail:{kind} }));
+    return true;
+  }
+  window.labSoundBus = {
+    unlock, play, setMuted, hush,
+    getContext: () => unlocked && ctx?.state === 'running' ? ctx : null,
+    getInput: () => master,
+    get muted() { return muted; },
+    get unlocked() { return unlocked && ctx?.state === 'running'; },
+    get held() { return held; },
+  };
+  document.addEventListener('pointerdown', unlock, { capture:true, passive:true });
+  document.addEventListener('keydown', unlock, { capture:true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hush(); });
+  window.addEventListener('pagehide', hush);
+  function mount() {
+    const stage = document.querySelector('#stage'); if (!stage) return;
+    button = stage.querySelector('#audioToggle');
+    if (!button) {
+      button = document.createElement('button'); button.id = 'audioToggle';
+      button.type = 'button'; button.className = 'audio-toggle'; stage.appendChild(button);
+    }
+    if (nativeAudio) {
+      const syncNativeMute = () => setMuted(button.getAttribute('aria-pressed') === 'false' || button.classList.contains('muted'));
+      new MutationObserver(syncNativeMute).observe(button, { attributes:true, attributeFilter:['aria-pressed','class'] });
+      syncNativeMute();
+    } else {
+      window.labAudio = window.labSoundBus;
+      syncButton();
+      button.addEventListener('click', event => {
+        event.stopPropagation(); if (!event.isTrusted) return;
+        setMuted(!muted); if (!muted) { held = false; applyGate(); play('hint'); }
+      });
+    }
+    const lamp = stage.querySelector('#hintLamp,.hint-lamp');
+    const mode = stage.querySelector('#modeTag,#modeChip');
+    if (mode) new MutationObserver(applyGate).observe(mode, { childList:true, characterData:true, subtree:true });
+    let quietUntil = 0;
+    let beginRound = () => {};
+    let acceptRecordClear = () => {};
+    document.addEventListener('click', event => {
+      const clicked = event.target.closest?.('button');
+      if (!clicked || clicked.disabled || clicked === button) return;
+      if (event.isTrusted && ((clicked.id === 'resetBtn' && /重置/.test(clicked.textContent)) || clicked.id === 'autoDemoBtn')) beginRound();
+      if (event.isTrusted && clicked.id === 'clearBtn') setTimeout(acceptRecordClear, 0);
+      if (/reset|autoDemo|freeBtn/i.test(clicked.id) && /暂停|退出|重置|自由/.test(clicked.textContent)) {
+        hush(); quietUntil = performance.now() + 300; return;
+      }
+      if (!nativeAudio) play(clicked === lamp ? 'hint' : 'tap');
+    }, { capture:true });
+    if (nativeAudio) return;
+    // Observe accepted state, never infer success from a button's name.
+    const snapshot = () => {
+      const body = document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody');
+      const records = [...(body?.querySelectorAll('tr') || [])].filter(row =>
+        row.querySelectorAll('td').length > 1 && !row.querySelector('td[colspan]'))
+        .map(row => row.dataset.recordId || row.textContent.trim());
+      const dots = document.querySelector('#dots,#progress,.progress-dots');
+      const done = dots?.querySelectorAll('.done').length || 0;
+      const warning = Boolean(dots?.querySelector('.warning,.warn,.error') || lamp?.classList.contains('flash'));
+      const mode = stage.querySelector('#modeTag,#modeChip')?.textContent || '';
+      const modal = document.querySelector('#doneMask,#doneModal,.modal-mask');
+      const finished = Boolean(modal && getComputedStyle(modal).display !== 'none' && getComputedStyle(modal).visibility !== 'hidden');
+      return { records, done, warning, finished, free:mode.includes('自由'), mode };
+    };
+    let previous = snapshot();
+    const seenRecords = new Set(previous.records);
+    let maxDone = previous.done;
+    let finishAnnounced = previous.finished;
+    acceptRecordClear = () => {
+      // Clear only after the experiment accepted the action; completion stays announced.
+      if (snapshot().records.length === 0) seenRecords.clear();
+    };
+    beginRound = () => {
+      seenRecords.clear(); maxDone = 0; finishAnnounced = false;
+      quietUntil = performance.now() + 300;
+    };
+    const feedbackChanges = new MutationObserver(() => {
+      const current = snapshot();
+      if (performance.now() >= quietUntil && current.free === previous.free) {
+        if (!current.free && current.finished && !finishAnnounced) play('finish');
+        else if (!current.free && current.done > maxDone) play('step');
+        else if (!current.free && current.warning && !previous.warning) play('warn');
+        else if (current.records.some(record => !seenRecords.has(record))) play('record');
+      }
+      current.records.forEach(record => seenRecords.add(record));
+      maxDone = Math.max(maxDone, current.done);
+      finishAnnounced ||= current.finished;
+      previous = current;
+    });
+    // Observe only feedback surfaces; apparatus animation updates every frame.
+    for (const node of [document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody'), document.querySelector('#dots,#progress,.progress-dots'), lamp, stage.querySelector('#modeTag,#modeChip'), document.querySelector('#doneMask,#doneModal,.modal-mask')].filter(Boolean)) {
+      feedbackChanges.observe(node, { subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['class','style'] });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+})();
+
+}
+</script>
+  <script id="codex-theme-pilot-runtime">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+    document.addEventListener("DOMContentLoaded", () => {
+    (() => {
+      const themeKey = "xingnian.physics.theme";
+      const root = document.documentElement;
+      const button = document.getElementById("themeToggle");
+      if (!button) {
+        console.warn("[theme-pilot] theme toggle button was not found");
+        return;
+      }
+      const normalizeTheme = (value) => value === "light" ? "light" : "dark";
+      const stage = document.getElementById("stage");
+      if (stage) {
+        const activeTheme = normalizeTheme(root.dataset.theme);
+        try {
+          root.dataset.theme = "dark";
+          stage.style.setProperty("--theme-stage-ink", getComputedStyle(stage).color);
+        } finally {
+          root.dataset.theme = activeTheme;
+        }
+      }
+      const syncButton = (theme) => {
+        const lightEnabled = theme === "light";
+        const nextLabel = lightEnabled ? "切换到黑夜模式" : "切换到白天模式";
+        button.setAttribute("aria-pressed", String(lightEnabled));
+        button.setAttribute("aria-label", nextLabel);
+        button.title = nextLabel;
+      };
+      const applyTheme = (value, persist) => {
+        const theme = normalizeTheme(value);
+        root.dataset.theme = theme;
+        syncButton(theme);
+        if (persist) {
+          try {
+            localStorage.setItem(themeKey, theme);
+          } catch (error) {
+            console.warn("[theme-pilot] failed to save theme", error);
+          }
+        }
+      };
+      const panelStandardVersion = "physics-middle-panel-v1";
+      const desktopBreakpoint = 720;
+      const panelWidth = 164;
+      const panelHeaderHeight = 44;
+      const panelSafe = 6;
+      const bodySafe = 8;
+      const panelBodyMinWidth = 280;
+      const panelBodyMaxWidth = 520;
+      const panelBodyMinAvailableWidth = 120;
+      const panelBodyMinHeight = 80;
+      const panelBodyMaxHeight = 420;
+      const panelBodyMinAvailableHeight = 64;
+      const panelHeaderSelector = "[data-drag-handle],.dock-header,.dockHead,.dock-head,.drawer-header,.drawer-head,.panelHead,.resultsHead";
+      const panelBodySelector = ".dock-body,.dockBody,.drawer-body,.panelBody,.resultsBody";
+      const panelVariants = [
+        {
+          kind:"dock",
+          panels:[
+            { id:"controlDock", toggleSelector:"#controlToggleBtn" },
+            { id:"dataDock", toggleSelector:"#dataToggleBtn" },
+          ],
+        },
+        {
+          kind:"drawer63",
+          panels:[
+            { id:"controlDrawer", toggleSelector:"[data-drawer=\"controlDrawer\"]" },
+            { id:"dataDrawer", toggleSelector:"[data-drawer=\"dataDrawer\"]" },
+          ],
+        },
+      ];
+      let desktopPanels = [];
+      let desktopActive = false;
+      let desktopInitialized = false;
+      let panelCoordinatorInstalled = false;
+      let panelMutationFrame = 0;
+      let panelResizeTimer = 0;
+      let panelToggleGeneration = 0;
+      let panelToggleTransaction = null;
+      let panelToggleFrame = 0;
+      let panelToggleTimer = 0;
+      let panelLastTransaction = null;
+      const panelToggleSettleMs = 280;
+      let mutationObserver = null;
+      let positionedParentObserver = null;
+      let resizeObserver = null;
+      let lifecycleObserver = null;
+      const panelCleanupCallbacks = [];
+
+      const clampPanelValue = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
+      const getStageSize = () => {
+        if (!stage) return { width:0, height:0 };
+        const rect = stage.getBoundingClientRect();
+        return {
+          width:stage.clientWidth || rect.width,
+          height:stage.clientHeight || rect.height,
+        };
+      };
+      const desktopPanelMutationAllowed = () => {
+        if (!desktopActive) return false;
+        const { width } = getStageSize();
+        if (width && width <= desktopBreakpoint) {
+          syncDesktopPanelMode();
+          return false;
+        }
+        return true;
+      };
+      const resolveDesktopPanels = () => {
+        if (!stage) {
+          panelVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] stage was not found for panel", panel.id);
+          }));
+          return null;
+        }
+        const presentVariants = panelVariants.filter((variant) => variant.panels.some(({ id }) =>
+          document.querySelectorAll(`[id="${id}"]`).length > 0));
+        if (!presentVariants.length) {
+          panelVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] panel shell was not found", panel.id);
+          }));
+          return null;
+        }
+        if (presentVariants.length > 1) {
+          presentVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] ambiguous panel variant", panel.id);
+          }));
+          return null;
+        }
+        const variant = presentVariants[0];
+        let valid = true;
+        const panels = variant.panels.map((definition, index) => {
+          const panel = { id:definition.id };
+          const wrappers = Array.from(document.querySelectorAll(`[id="${definition.id}"]`));
+          const toggles = Array.from(document.querySelectorAll(definition.toggleSelector));
+          const wrapper = wrappers.length === 1 ? wrappers[0] : null;
+          const headerMatches = wrapper
+            ? Array.from(wrapper.children).filter((child) => child.matches(panelHeaderSelector))
+            : [];
+          const bodyMatches = wrapper
+            ? Array.from(wrapper.children).filter((child) => child.matches(panelBodySelector))
+            : [];
+          const toggle = toggles.length === 1 ? toggles[0] : null;
+          const issues = [];
+          if (!wrapper) issues.push(`wrapper count ${wrappers.length}`);
+          if (headerMatches.length !== 1) issues.push(`direct header count ${headerMatches.length}`);
+          if (bodyMatches.length !== 1) issues.push(`direct body count ${bodyMatches.length}`);
+          if (headerMatches[0] && headerMatches[0] === bodyMatches[0]) issues.push("header and body are the same element");
+          if (!toggle || !toggle.matches("button") || !wrapper?.contains(toggle)) {
+            issues.push(`contained toggle count ${toggles.length}`);
+          }
+          if (issues.length) {
+            valid = false;
+            console.warn("[desktop-panels] invalid panel", panel.id, issues.join(", "));
+            return null;
+          }
+          return {
+            id:definition.id,
+            kind:variant.kind,
+            index,
+            wrapper,
+            header:headerMatches[0],
+            body:bodyMatches[0],
+            toggle,
+            originalMoved:null,
+            anchor:null,
+            zIndex:index === 0 ? 36 : 30,
+            drag:null,
+            measureFrame:0,
+            measureRetried:false,
+            measureWarned:false,
+          };
+        });
+        return valid ? panels : null;
+      };
+      const panelIsOpen = (panel) => panel.kind === "dock"
+        ? !panel.wrapper.classList.contains("collapsed")
+        : panel.wrapper.classList.contains("open");
+      const setPanelOpen = (panel, open) => {
+        if (panel.kind === "dock") panel.wrapper.classList.toggle("collapsed", !open);
+        else panel.wrapper.classList.toggle("open", open);
+        panel.body.classList.toggle("collapsed", !open);
+      };
+      const setPanelDragging = (panel, dragging) => {
+        panel.wrapper.dataset.codexPanelDragging = dragging ? "1" : "0";
+      };
+      const getDefaultAnchors = () => {
+        const { width } = getStageSize();
+        const control = { x:Math.max(panelSafe, width - panelWidth - 12), y:58 };
+        return [control, { x:control.x, y:control.y + panelHeaderHeight + 10 }];
+      };
+      const applyAnchor = (panel, nextAnchor) => {
+        if (!desktopPanelMutationAllowed()) return false;
+        const { width, height } = getStageSize();
+        const maximumX = Math.max(panelSafe, width - panelWidth - panelSafe);
+        const maximumY = Math.max(panelSafe, height - panelHeaderHeight - panelSafe);
+        panel.anchor = {
+          x:clampPanelValue(nextAnchor.x, panelSafe, maximumX),
+          y:clampPanelValue(nextAnchor.y, panelSafe, maximumY),
+        };
+        const offsetParent = panel.wrapper.offsetParent;
+        const stageRect = stage.getBoundingClientRect();
+        const offsetParentRect = offsetParent?.getBoundingClientRect?.() || stageRect;
+        const containingBlockOffset = offsetParent && offsetParent !== stage ? {
+          x:offsetParentRect.left + offsetParent.clientLeft - stageRect.left - stage.clientLeft,
+          y:offsetParentRect.top + offsetParent.clientTop - stageRect.top - stage.clientTop,
+        } : { x:0, y:0 };
+        panel.wrapper.style.setProperty("--codex-panel-left", `${panel.anchor.x - containingBlockOffset.x}px`);
+        panel.wrapper.style.setProperty("--codex-panel-top", `${panel.anchor.y - containingBlockOffset.y}px`);
+        return true;
+      };
+      const fitAvailableDimension = (desired, available, minimum, maximum) => {
+        const safeAvailable = Math.max(0, available);
+        if (safeAvailable < minimum) return safeAvailable;
+        return clampPanelValue(Math.min(desired, safeAvailable), minimum, maximum);
+      };
+      const choosePanelPlacement = (panel) => {
+        const { width:stageWidth, height:stageHeight } = getStageSize();
+        const anchor = panel.anchor || { x:panelSafe, y:panelSafe };
+        const bodyRect = panel.body.getBoundingClientRect();
+        const measuredWidth = Math.max(panel.body.scrollWidth || 0, bodyRect.width || 0);
+        const measuredHeight = Math.max(panel.body.scrollHeight || 0, bodyRect.height || 0);
+        const open = panelIsOpen(panel);
+        if (open && (!measuredWidth || !measuredHeight)) return null;
+        const desiredWidth = clampPanelValue(
+          Math.max(measuredWidth, panelBodyMinWidth),
+          panelBodyMinWidth,
+          panelBodyMaxWidth,
+        );
+        const desiredHeight = clampPanelValue(
+          Math.max(measuredHeight, panelBodyMinHeight),
+          panelBodyMinHeight,
+          panelBodyMaxHeight,
+        );
+        const leftSpace = Math.max(0, anchor.x + panelWidth - bodySafe);
+        const rightSpace = Math.max(0, stageWidth - anchor.x - bodySafe);
+        const leftFits = leftSpace >= desiredWidth;
+        const rightFits = rightSpace >= desiredWidth;
+        let x;
+        if (leftFits && rightFits) x = "left";
+        else if (leftFits) x = "left";
+        else if (rightFits) x = "right";
+        else x = leftSpace >= rightSpace ? "left" : "right";
+        const availableWidth = x === "left" ? leftSpace : rightSpace;
+        const downSpace = Math.max(0, stageHeight - anchor.y - panelHeaderHeight - bodySafe);
+        const upSpace = Math.max(0, anchor.y - bodySafe);
+        const y = downSpace < desiredHeight && upSpace > downSpace ? "up" : "down";
+        const availableHeight = y === "up" ? upSpace : downSpace;
+        return {
+          x,
+          y,
+          width:fitAvailableDimension(desiredWidth, availableWidth, panelBodyMinAvailableWidth, panelBodyMaxWidth),
+          height:fitAvailableDimension(desiredHeight, availableHeight, panelBodyMinAvailableHeight, panelBodyMaxHeight),
+        };
+      };
+      const layoutPanel = (panel) => {
+        const placement = choosePanelPlacement(panel);
+        if (!placement) {
+          if (!panel.measureRetried) {
+            if (!panel.measureFrame) {
+              panel.measureFrame = requestAnimationFrame(() => {
+                panel.measureFrame = 0;
+                if (desktopActive && panel.wrapper.isConnected && panelIsOpen(panel)) {
+                  panel.measureRetried = true;
+                  layoutPanel(panel);
+                }
+              });
+            }
+            return;
+          }
+          if (!panel.measureWarned) {
+            panel.measureWarned = true;
+            console.warn("[desktop-panels] panel body measurement failed", panel.id);
+          }
+          return;
+        }
+        if (panel.measureFrame) cancelAnimationFrame(panel.measureFrame);
+        panel.measureFrame = 0;
+        panel.measureRetried = false;
+        panel.measureWarned = false;
+        panel.wrapper.dataset.codexPanelX = placement.x;
+        panel.wrapper.dataset.codexPanelY = placement.y;
+        panel.wrapper.style.setProperty("--codex-panel-body-width", `${Math.round(placement.width)}px`);
+        panel.wrapper.style.setProperty("--codex-panel-body-height", `${Math.round(placement.height)}px`);
+      };
+      const assertPanelManaged = (panel) => {
+        const { wrapper, header, body } = panel;
+        wrapper.dataset.codexDesktopPanel = "1";
+        header.dataset.codexPanelHeader = "1";
+        body.dataset.codexPanelBody = "1";
+        wrapper.dataset.codexPanelDragging = panel.drag?.active ? "1" : "0";
+        if (wrapper.dataset.moved !== "1") wrapper.dataset.moved = "1";
+      };
+      const syncPanel = (panel) => {
+        if (!desktopPanelMutationAllowed()) return;
+        assertPanelManaged(panel);
+        const defaults = getDefaultAnchors();
+        if (!applyAnchor(panel, panel.anchor || defaults[panel.index])) return;
+        applyPanelLayer(panel);
+        const open = panelIsOpen(panel);
+        panel.wrapper.dataset.codexPanelOpen = open ? "1" : "0";
+        panel.toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        panel.toggle.textContent = open ? "收起" : "展开";
+        layoutPanel(panel);
+      };
+      const applyPanelLayer = (panel) => {
+        panel.wrapper.style.setProperty("--codex-panel-z", String(panel.zIndex));
+      };
+      const promotePanel = (panel) => {
+        if (!desktopActive) return;
+        desktopPanels.forEach((candidate) => {
+          candidate.zIndex = candidate === panel ? 36 : 30;
+          applyPanelLayer(candidate);
+        });
+      };
+      const preservePanelAudioUnlock = (panel) => {
+        const panelId = panel.id;
+        try {
+          const labAudio = window.labAudio;
+          if (!labAudio || labAudio.unlocked === true) return;
+          let result;
+          if (typeof labAudio.unlock === "function") result = labAudio.unlock();
+          else if (typeof labAudio.resume === "function") result = labAudio.resume();
+          else if (typeof labAudio.play === "function") result = labAudio.play("tap");
+          if (result && typeof result.catch === "function") {
+            result.catch((error) => {
+              console.warn("[desktop-panels] audio unlock failed for panel", panelId, error);
+            });
+          }
+        } catch (error) {
+          console.warn("[desktop-panels] audio unlock failed for panel", panelId, error);
+        }
+      };
+      const releasePanelPointer = (panel, pointerId) => {
+        try {
+          if (!panel.header.hasPointerCapture || panel.header.hasPointerCapture(pointerId)) {
+            panel.header.releasePointerCapture(pointerId);
+          }
+        } catch (error) {
+          console.warn("[desktop-panels] pointer release failed for panel", panel.id, error);
+        }
+      };
+      const cancelPanelDrag = (panel) => {
+        const drag = panel.drag;
+        if (!drag) {
+          if (desktopActive) setPanelDragging(panel, false);
+          return;
+        }
+        try {
+          releasePanelPointer(panel, drag.pointerId);
+        } finally {
+          panel.drag = null;
+          if (desktopActive) setPanelDragging(panel, false);
+        }
+      };
+      const bindPanelListener = (target, type, listener, options) => {
+        target.addEventListener(type, listener, options);
+        panelCleanupCallbacks.push(() => target.removeEventListener(type, listener, options));
+      };
+      const snapshotPanelToggleTransaction = (transaction, status) => transaction ? {
+        generation:transaction.generation,
+        sourceId:transaction.sourceId,
+        panelWasOpen:transaction.panelWasOpen,
+        peerWasOpen:transaction.peerWasOpen,
+        targets:{ ...transaction.targets },
+        applications:transaction.applications,
+        lastReason:transaction.lastReason,
+        status,
+      } : null;
+      const clearPanelToggleHandles = () => {
+        if (panelToggleFrame) cancelAnimationFrame(panelToggleFrame);
+        if (panelToggleTimer) clearTimeout(panelToggleTimer);
+        panelToggleFrame = 0;
+        panelToggleTimer = 0;
+      };
+      const cancelPanelToggleTransaction = (reason = "cancelled") => {
+        panelToggleGeneration += 1;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, reason);
+        }
+        clearPanelToggleHandles();
+        panelToggleTransaction = null;
+        return panelToggleGeneration;
+      };
+      const applyPanelToggleTransaction = (generation, reason) => {
+        if (!desktopPanelMutationAllowed()) return false;
+        const transaction = panelToggleTransaction;
+        if (!transaction || transaction.generation !== generation || panelToggleGeneration !== generation) return false;
+        desktopPanels.forEach((candidate) => {
+          if (Object.prototype.hasOwnProperty.call(transaction.targets, candidate.id)) {
+            setPanelOpen(candidate, transaction.targets[candidate.id]);
+          }
+        });
+        desktopPanels.forEach(syncPanel);
+        transaction.applications += 1;
+        transaction.lastReason = reason;
+        return true;
+      };
+      const schedulePanelToggleTransaction = (generation, reason) => {
+        if (!desktopActive || !panelToggleTransaction || panelToggleTransaction.generation !== generation || panelToggleGeneration !== generation) return;
+        if (panelToggleFrame) return;
+        panelToggleFrame = requestAnimationFrame(() => {
+          panelToggleFrame = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          applyPanelToggleTransaction(generation, reason);
+        });
+      };
+      const armPanelToggleTransaction = (generation) => {
+        panelToggleTimer = setTimeout(() => {
+          panelToggleTimer = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          if (!applyPanelToggleTransaction(generation, "settle-expiry")) return;
+          panelLastTransaction = snapshotPanelToggleTransaction(
+            panelToggleTransaction,
+            panelToggleTransaction.commitStatus || "committed",
+          );
+          panelToggleTransaction = null;
+        }, panelToggleSettleMs);
+      };
+      const beginPanelToggleTransaction = (panel) => {
+        if (!desktopPanelMutationAllowed()) return null;
+        const previousTargets = panelToggleTransaction?.targets || null;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "superseded");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const peer = desktopPanels.find((candidate) => candidate !== panel) || null;
+        const panelWasOpen = previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, panel.id)
+          ? previousTargets[panel.id]
+          : panelIsOpen(panel);
+        const peerWasOpen = peer && previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, peer.id)
+          ? previousTargets[peer.id]
+          : peer ? panelIsOpen(peer) : false;
+        panelToggleTransaction = {
+          generation,
+          sourceId:panel.id,
+          panelWasOpen,
+          peerWasOpen,
+          targets:{
+            [panel.id]:!panelWasOpen,
+            ...(peer ? { [peer.id]:peerWasOpen } : {}),
+          },
+          applications:0,
+          lastReason:"captured",
+        };
+        armPanelToggleTransaction(generation);
+        return generation;
+      };
+      const beginPanelResetTransaction = () => {
+        if (!desktopPanelMutationAllowed()) return null;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "reset-requested");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const [panel, peer] = desktopPanels;
+        panelToggleTransaction = {
+          generation,
+          sourceId:"resetBtn",
+          panelWasOpen:panel ? panelIsOpen(panel) : false,
+          peerWasOpen:peer ? panelIsOpen(peer) : false,
+          targets:Object.fromEntries(desktopPanels.map((candidate) => [candidate.id, false])),
+          applications:0,
+          lastReason:"captured",
+          commitStatus:"reset-committed",
+        };
+        applyPanelToggleTransaction(generation, "reset-capture");
+        armPanelToggleTransaction(generation);
+        return generation;
+      };
+      const panelToggleDebugSnapshot = () => ({
+        generation:panelToggleGeneration,
+        settleMs:panelToggleSettleMs,
+        pending:Number(Boolean(panelToggleFrame)) + Number(Boolean(panelToggleTimer)),
+        active:desktopActive,
+        current:snapshotPanelToggleTransaction(panelToggleTransaction, "active"),
+        last:panelLastTransaction ? { ...panelLastTransaction, targets:{ ...panelLastTransaction.targets } } : null,
+      });
+      const bindPanelDrag = (panel) => {
+        const { wrapper, header, toggle } = panel;
+        const onWrapperPointerDown = (event) => {
+          if (!desktopActive) return;
+          if (toggle.contains(event.target)) wrapper.dataset.moved = "1";
+          promotePanel(panel);
+        };
+        const onWrapperClick = () => promotePanel(panel);
+        const onToggleClickCapture = () => {
+          if (!desktopActive) return;
+          beginPanelToggleTransaction(panel);
+        };
+        const onToggleClick = () => {
+          const generation = panelToggleTransaction?.generation;
+          if (!desktopActive || !generation || panelToggleTransaction.sourceId !== panel.id) return;
+          schedulePanelToggleTransaction(generation, "click-bubble");
+        };
+        const onHeaderPointerDown = (event) => {
+          if (!desktopActive || event.target.closest?.("button")) return;
+          if (event.button !== undefined && event.button !== 0) return;
+          preservePanelAudioUnlock(panel);
+          event.stopImmediatePropagation();
+          event.preventDefault();
+          const wrapperRect = wrapper.getBoundingClientRect();
+          panel.drag = {
+            pointerId:event.pointerId,
+            startX:event.clientX,
+            startY:event.clientY,
+            offsetX:event.clientX - wrapperRect.left,
+            offsetY:event.clientY - wrapperRect.top,
+            active:false,
+          };
+          promotePanel(panel);
+          try {
+            header.setPointerCapture(event.pointerId);
+          } catch (error) {
+            console.warn("[desktop-panels] pointer capture failed for panel", panel.id, error);
+            panel.drag = null;
+            setPanelDragging(panel, false);
+          }
+        };
+        const onHeaderPointerMove = (event) => {
+          const drag = panel.drag;
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          event.stopImmediatePropagation();
+          if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
+          drag.active = true;
+          setPanelDragging(panel, true);
+          const stageRect = stage.getBoundingClientRect();
+          if (!applyAnchor(panel, {
+            x:event.clientX - stageRect.left - drag.offsetX,
+            y:event.clientY - stageRect.top - drag.offsetY,
+          })) return;
+          layoutPanel(panel);
+          event.preventDefault();
+        };
+        const finishDrag = (event) => {
+          const drag = panel.drag;
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          event.stopImmediatePropagation();
+          try {
+            releasePanelPointer(panel, event.pointerId);
+          } finally {
+            panel.drag = null;
+            if (desktopActive) {
+              setPanelDragging(panel, false);
+              layoutPanel(panel);
+            }
+          }
+        };
+        const onLostPointerCapture = (event) => {
+          if (!panel.drag || event.pointerId !== panel.drag.pointerId) return;
+          panel.drag = null;
+          if (desktopActive) setPanelDragging(panel, false);
+        };
+        bindPanelListener(wrapper, "pointerdown", onWrapperPointerDown, true);
+        bindPanelListener(wrapper, "click", onWrapperClick, true);
+        bindPanelListener(toggle, "click", onToggleClickCapture, true);
+        bindPanelListener(toggle, "click", onToggleClick);
+        bindPanelListener(header, "pointerdown", onHeaderPointerDown, true);
+        bindPanelListener(header, "pointermove", onHeaderPointerMove, true);
+        bindPanelListener(header, "pointerup", finishDrag, true);
+        bindPanelListener(header, "pointercancel", finishDrag, true);
+        bindPanelListener(header, "lostpointercapture", onLostPointerCapture, true);
+      };
+      const cancelPanelFrames = (panel) => {
+        if (panel.measureFrame) cancelAnimationFrame(panel.measureFrame);
+        panel.measureFrame = 0;
+        panel.measureRetried = false;
+        panel.measureWarned = false;
+      };
+      const resetDesktopPanelLayout = () => {
+        if (!desktopPanelMutationAllowed()) return;
+        const anchors = getDefaultAnchors();
+        desktopPanels.forEach((panel, index) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+          panel.zIndex = index === 0 ? 36 : 30;
+          if (!applyAnchor(panel, anchors[index])) return;
+          applyPanelLayer(panel);
+        });
+      };
+      const resetDesktopPanels = (cancelTransaction = true) => {
+        if (!desktopActive) return;
+        if (cancelTransaction) cancelPanelToggleTransaction("reset");
+        resetDesktopPanelLayout();
+        desktopPanels.forEach((panel) => {
+          setPanelOpen(panel, false);
+          syncPanel(panel);
+        });
+      };
+      const rememberPanelMoved = (panel) => {
+        panel.originalMoved = {
+          present:panel.wrapper.hasAttribute("data-moved"),
+          value:panel.wrapper.getAttribute("data-moved"),
+        };
+      };
+      const activateDesktopPanels = () => {
+        desktopActive = true;
+        desktopPanels.forEach((panel) => {
+          rememberPanelMoved(panel);
+          const { wrapper, header, body } = panel;
+          wrapper.dataset.codexDesktopPanel = "1";
+          header.dataset.codexPanelHeader = "1";
+          body.dataset.codexPanelBody = "1";
+          wrapper.dataset.codexPanelOpen = panelIsOpen(panel) ? "1" : "0";
+          wrapper.dataset.codexPanelDragging = "0";
+          wrapper.dataset.moved = "1";
+        });
+        if (!desktopInitialized) {
+          desktopInitialized = true;
+          resetDesktopPanels();
+          return;
+        }
+        const defaults = getDefaultAnchors();
+        desktopPanels.forEach((panel, index) => {
+          if (!applyAnchor(panel, panel.anchor || defaults[index])) return;
+          applyPanelLayer(panel);
+          syncPanel(panel);
+        });
+      };
+      const deactivateDesktopPanels = () => {
+        if (!desktopActive) return;
+        cancelPanelToggleTransaction("deactivate");
+        desktopPanels.forEach((panel) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+          const { wrapper, header, body, originalMoved } = panel;
+          delete wrapper.dataset.codexDesktopPanel;
+          delete header.dataset.codexPanelHeader;
+          delete body.dataset.codexPanelBody;
+          delete wrapper.dataset.codexPanelOpen;
+          delete wrapper.dataset.codexPanelDragging;
+          delete wrapper.dataset.codexPanelX;
+          delete wrapper.dataset.codexPanelY;
+          wrapper.style.removeProperty("--codex-panel-body-width");
+          wrapper.style.removeProperty("--codex-panel-body-height");
+          wrapper.style.removeProperty("--codex-panel-left");
+          wrapper.style.removeProperty("--codex-panel-top");
+          wrapper.style.removeProperty("--codex-panel-z");
+          if (originalMoved.present) wrapper.setAttribute("data-moved", originalMoved.value ?? "");
+          else wrapper.removeAttribute("data-moved");
+        });
+        desktopActive = false;
+      };
+      const syncDesktopPanelMode = () => {
+        const { width } = getStageSize();
+        if (!width) return;
+        if (width <= desktopBreakpoint) {
+          deactivateDesktopPanels();
+          return;
+        }
+        if (!desktopActive) {
+          activateDesktopPanels();
+          return;
+        }
+        desktopPanels.forEach((panel) => {
+          if (!applyAnchor(panel, panel.anchor)) return;
+          applyPanelLayer(panel);
+          syncPanel(panel);
+        });
+      };
+      const queuePanelSync = (records = []) => {
+        if (!desktopPanelMutationAllowed()) return;
+        const transaction = panelToggleTransaction;
+        const panelClassChanged = records.some((record) => record.type === "attributes" && record.attributeName === "class");
+        if (transaction && panelClassChanged) {
+          schedulePanelToggleTransaction(transaction.generation, "class-mutation");
+          return;
+        }
+        if (panelMutationFrame) return;
+        const generation = panelToggleGeneration;
+        panelMutationFrame = requestAnimationFrame(() => {
+          panelMutationFrame = 0;
+          if (!desktopPanelMutationAllowed() || generation !== panelToggleGeneration) return;
+          desktopPanels.forEach(syncPanel);
+        });
+      };
+      const schedulePanelResize = () => {
+        clearTimeout(panelResizeTimer);
+        panelResizeTimer = setTimeout(syncDesktopPanelMode, 120);
+      };
+      const isResetIntent = (button) => button.textContent.includes("重置");
+      const managedPanelNodesConnected = () => stage?.isConnected && desktopPanels.every((panel) =>
+        [panel.wrapper, panel.header, panel.body, panel.toggle].every((node) => node.isConnected));
+      const teardownDesktopPanels = () => {
+        cancelPanelToggleTransaction("disconnect");
+        clearTimeout(panelResizeTimer);
+        panelResizeTimer = 0;
+        if (panelMutationFrame) cancelAnimationFrame(panelMutationFrame);
+        panelMutationFrame = 0;
+        if (desktopActive) deactivateDesktopPanels();
+        else desktopPanels.forEach((panel) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+        });
+        if (mutationObserver) mutationObserver.disconnect();
+        if (positionedParentObserver) positionedParentObserver.disconnect();
+        if (resizeObserver) resizeObserver.disconnect();
+        if (lifecycleObserver) lifecycleObserver.disconnect();
+        mutationObserver = null;
+        positionedParentObserver = null;
+        resizeObserver = null;
+        lifecycleObserver = null;
+        panelCleanupCallbacks.splice(0).reverse().forEach((cleanup) => cleanup());
+        desktopPanels = [];
+      };
+      const installDesktopPanels = () => {
+        if (panelCoordinatorInstalled) return;
+        panelCoordinatorInstalled = true;
+        const resolved = resolveDesktopPanels();
+        if (!resolved) return;
+        desktopPanels = resolved;
+        desktopPanels.forEach(bindPanelDrag);
+        mutationObserver = new MutationObserver(queuePanelSync);
+        desktopPanels.forEach((panel) => {
+          mutationObserver.observe(panel.wrapper, {
+            attributes:true,
+            attributeFilter:["class", "data-moved"],
+          });
+          mutationObserver.observe(panel.body, {
+            attributes:true,
+            attributeFilter:["class"],
+          });
+        });
+        const positionedParents = [...new Set(desktopPanels.map((panel) => panel.wrapper.offsetParent))]
+          .filter((parent) => parent && parent !== stage);
+        if (positionedParents.length) {
+          positionedParentObserver = new MutationObserver(schedulePanelResize);
+          positionedParents.forEach((parent) => positionedParentObserver.observe(parent, {
+            attributes:true,
+            attributeFilter:["class", "style"],
+          }));
+        }
+        bindPanelListener(window, "resize", schedulePanelResize);
+        if ("ResizeObserver" in window) {
+          resizeObserver = new ResizeObserver(schedulePanelResize);
+          resizeObserver.observe(stage);
+          positionedParents.forEach((parent) => resizeObserver.observe(parent));
+        }
+        lifecycleObserver = new MutationObserver(() => {
+          if (!managedPanelNodesConnected()) teardownDesktopPanels();
+        });
+        lifecycleObserver.observe(document.documentElement, { childList:true, subtree:true });
+        const resetButtons = document.querySelectorAll("#resetBtn");
+        if (resetButtons.length === 1) {
+          const resetButton = document.getElementById("resetBtn");
+          const onResetClick = () => {
+            if (!isResetIntent(resetButton)) return;
+            resetDesktopPanelLayout();
+            beginPanelResetTransaction();
+          };
+          bindPanelListener(resetButton, "click", onResetClick, true);
+        } else {
+          console.warn("[desktop-panels] expected one reset button", "resetBtn");
+        }
+        /** A programmatic request supersedes an older click's settle transaction.
+         * @param {string} panelId Actual managed wrapper id.
+         * @param {boolean} open Requested UI visibility; no model mutation.
+         * @param {boolean} exclusive Close the peer only when opening the target.
+         * @returns {boolean} Whether the desktop owner handled this request.
+         */
+        const requestPanelOpen = (panelId, open = true, exclusive = false) => {
+          if (typeof open !== "boolean" || typeof exclusive !== "boolean" ||
+              window.__codexPageControllerV1?.getState().destroyed || !desktopPanelMutationAllowed()) return false;
+          const panel = desktopPanels.find((candidate) => candidate.wrapper.id === panelId);
+          if (!panel || panel.wrapper.inert || !managedPanelNodesConnected()) return false;
+          const pendingTargets = panelToggleTransaction?.targets;
+          const peers = desktopPanels.filter((candidate) => candidate !== panel);
+          if (pendingTargets) peers.forEach((candidate) => {
+            if (Object.prototype.hasOwnProperty.call(pendingTargets, candidate.id))
+              setPanelOpen(candidate, pendingTargets[candidate.id]);
+          });
+          cancelPanelToggleTransaction("programmatic-request");
+          if (exclusive && open) peers.forEach((candidate) => setPanelOpen(candidate, false));
+          setPanelOpen(panel, open);
+          desktopPanels.forEach(syncPanel);
+          return true;
+        };
+        const panelCoordinatorApi = { version:panelStandardVersion, setOpen:requestPanelOpen,
+          /** Stop this page's UI handles when its science owner is destroyed. */
+          destroy:teardownDesktopPanels };
+        if (window.__CODEX_PHYSICS_PANEL_TEST__ === true) panelCoordinatorApi.getTransactionState = panelToggleDebugSnapshot;
+        window.__codexDesktopPanels = Object.freeze(panelCoordinatorApi);
+        syncDesktopPanelMode();
+      };
+      const isolateThemePointer = (event) => {
+        if (button.contains(event.target)) event.stopPropagation();
+      };
+      window.addEventListener("pointerdown", isolateThemePointer, true);
+      window.addEventListener("mousedown", isolateThemePointer, true);
+      window.addEventListener("touchstart", isolateThemePointer, { capture:true, passive:true });
+      window.addEventListener("click", (event) => {
+        if (!button.contains(event.target)) return;
+        event.stopPropagation();
+        applyTheme(root.dataset.theme === "light" ? "dark" : "light", true);
+      }, true);
+      window.addEventListener("storage", (event) => {
+        if (event.key === themeKey) applyTheme(event.newValue, false);
+      });
+      applyTheme(root.dataset.theme, false);
+      installDesktopPanels();
+    })();
+    }, {once:true});
+  
+}
+</script>
+<script id="codex-stage-tools-runtime">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+(() => {
+  'use strict';
+  function mount() {
+    const stage = document.querySelector('#stage');
+    const lamp = stage?.querySelector('#hintLamp, .hint-lamp');
+    const pop = stage?.querySelector('#hintPop');
+    const hud = stage?.querySelector('.hud');
+    if (!stage || !lamp || !pop || !hud || stage.dataset.stageToolsMounted || window.__codexPageControllerV1?.getState().destroyed) return;
+    stage.dataset.stageToolsMounted = 'true';
+    const wrap = lamp.closest('.hint-lamp-wrap');
+    const anchor = wrap || lamp;
+    let frame = 0;
+    let disposed = false;
+    const put = (node, key, value) => {
+      if (node.style.getPropertyValue(key) !== value || node.style.getPropertyPriority(key) !== 'important') {
+        node.style.setProperty(key, value, 'important');
+      }
+    };
+    const pixels = value => `${Math.round(value * 100) / 100}px`;
+    function expanded() {
+      return pop.classList.contains('open') || Boolean(wrap?.classList.contains('open'));
+    }
+    function syncExpanded() {
+      lamp.setAttribute('aria-controls', pop.id);
+      lamp.setAttribute('aria-expanded', String(expanded()));
+      lamp.setAttribute('aria-label', expanded() ? '收起提示' : '查看提示');
+    }
+    function closeHint() {
+      // Reuse the page's own close action so legacy state.hintOpen and its
+      // wrapper stay synchronized with the popover after Escape/outside clicks.
+      if (wrap ? wrap.classList.contains('open') : expanded()) lamp.click();
+      pop.classList.remove('open');
+      wrap?.classList.remove('open');
+      syncExpanded();
+    }
+    function managedHint() {
+      if (lamp.dataset.stageHint !== 'managed') return;
+      pop.textContent = document.querySelector('#taskHint')?.textContent || '按步骤操作器材，观察现象并记录数据。';
+      pop.classList.toggle('open');
+      syncExpanded();
+    }
+    lamp.addEventListener('click', managedHint);
+    function layout() {
+      frame = 0;
+      if (disposed) return;
+      const s = stage.getBoundingClientRect();
+      const h = hud.getBoundingClientRect();
+      const originX = s.left + stage.clientLeft;
+      const originY = s.top + stage.clientTop;
+      const left = Math.max(8, h.left - originX);
+      const top = Math.max(8, h.bottom - originY + 6);
+      put(anchor, 'position', 'absolute');
+      put(anchor, 'left', pixels(left));
+      put(anchor, 'right', 'auto');
+      put(anchor, 'top', pixels(top));
+      put(anchor, 'bottom', 'auto');
+      put(anchor, 'z-index', '72');
+      if (wrap) {
+        put(wrap, 'width', '36px'); put(wrap, 'height', '36px');
+        put(lamp, 'position', 'static'); put(lamp, 'transform', 'none');
+      }
+      for (const button of [lamp, stage.querySelector('#audioToggle')].filter(Boolean)) {
+        put(button, 'width', '36px'); put(button, 'height', '36px');
+        put(button, 'min-width', '36px'); put(button, 'min-height', '36px');
+        put(button, 'padding', '0'); put(button, 'margin', '0');
+        put(button, 'display', 'grid'); put(button, 'place-items', 'center');
+        put(button, 'font-size', '18px'); put(button, 'box-sizing', 'border-box');
+      }
+      const audio = stage.querySelector('#audioToggle');
+      if (audio) {
+        put(audio, 'position', 'absolute'); put(audio, 'left', pixels(left + 42));
+        put(audio, 'right', 'auto'); put(audio, 'top', pixels(top));
+        put(audio, 'bottom', 'auto'); put(audio, 'z-index', '72');
+        put(audio, 'border', '1px solid rgba(150,170,190,.38)');
+        put(audio, 'border-radius', '8px');
+        put(audio, 'background', 'rgba(100,120,140,.13)');
+        put(audio, 'cursor', 'pointer');
+      }
+      put(pop, 'position', 'absolute'); put(pop, 'box-sizing', 'border-box');
+      put(pop, 'left', wrap ? '0px' : pixels(left)); put(pop, 'right', 'auto');
+      put(pop, 'top', pixels(wrap ? 44 : top + 44)); put(pop, 'bottom', 'auto');
+      put(pop, 'transform', 'none'); put(pop, 'z-index', '71');
+      put(pop, 'width', pixels(Math.max(1, Math.min(340, stage.clientWidth - left - 10))));
+      put(pop, 'max-width', 'none');
+      put(pop, 'max-height', pixels(Math.max(48, stage.clientHeight - top - 60)));
+      put(pop, 'overflow-y', 'auto'); put(pop, 'overflow-wrap', 'anywhere');
+      syncExpanded();
+    }
+    const requestLayout = () => { if (!disposed && !frame) frame = requestAnimationFrame(layout); };
+    function onKey(event) {
+      if (event.key === 'Escape' && expanded()) {
+        closeHint(); lamp.focus({ preventScroll:true });
+      }
+    }
+    function onOutside(event) {
+      if (!lamp.contains(event.target) && !pop.contains(event.target)) closeHint();
+    }
+    const changes = new MutationObserver(syncExpanded);
+    changes.observe(pop, { attributes:true, attributeFilter:['class'] });
+    if (wrap) changes.observe(wrap, { attributes:true, attributeFilter:['class'] });
+    const sizes = new ResizeObserver(requestLayout);
+    sizes.observe(hud); sizes.observe(stage);
+    window.addEventListener('resize', requestLayout);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onOutside, { passive:true });
+    lamp.addEventListener('click', requestLayout);
+    function dispose() {
+      if (disposed) return;
+      disposed = true; cancelAnimationFrame(frame); frame = 0;
+      window.removeEventListener('pagehide', dispose);
+      sizes.disconnect(); changes.disconnect();
+      window.removeEventListener('resize', requestLayout);
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onOutside);
+      lamp.removeEventListener('click', requestLayout);
+      lamp.removeEventListener('click', managedHint);
+      delete stage.dataset.stageToolsMounted;
+    }
+    window.__codexStageToolsV1 = Object.freeze({
+      /** Stop only this UI owner's frame, observers and event handlers. */
+      destroy() { dispose(); window.removeEventListener('pageshow', onPageShow); },
+      getState: () => ({disposed, ownedFrames:frame ? 1 : 0})
+    });
+    window.addEventListener('pagehide', dispose, { once:true });
+    layout();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+  function onPageShow(event) { if (event.persisted && !window.__codexPageControllerV1?.getState().destroyed) mount(); }
+  window.addEventListener('pageshow', onPageShow);
+})();
+
+}
+</script>
+<style id="codex-science-consistency-style">
+/* Keep the existing 164px panel anchor; enlarge only the actual header ink box. */
+@media(min-width:721px){
+html body #app #stage:is(#stage):is(#stage) [data-codex-desktop-panel="1"]{width:164px!important;min-width:164px!important;max-width:164px!important;margin-left:0!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]{display:flex!important;align-items:center!important;gap:8px!important;width:var(--science-header-width,164px)!important;min-width:var(--science-header-width,164px)!important;max-width:var(--science-header-width,164px)!important;height:var(--science-header-height,44px)!important;min-height:44px!important;max-height:none!important;padding:2px 6px!important;overflow:visible!important;left:max(calc(12px - var(--codex-panel-left)),min(0px,calc(164px - var(--science-header-width,164px))))!important;right:auto!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>*{min-height:0!important;max-height:none!important;position:static!important;grid-column:auto!important;grid-row:auto!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>.dockTitle{display:flex!important;flex:1 1 auto!important;gap:6px!important;min-width:0!important;width:auto!important;max-width:none!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;line-height:1.3!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>.drawer-actions{display:flex!important;flex:0 0 auto!important;gap:6px!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>:is(.drawer-actions,.codex-drawer-actions):empty{display:none!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"] button{width:auto!important;min-width:44px!important;max-width:none!important;height:auto!important;min-height:44px!important;max-height:none!important;line-height:1.3!important;padding:4px!important}
+html body #app #stage:is(#stage):is(#stage) #dataNotice{position:static!important;min-height:18px!important;height:auto!important;max-height:none!important;width:auto!important;line-height:1.2!important;overflow:visible!important}
+}
+html body #app #stage #dataClearBtn{min-width:44px!important;min-height:44px!important;max-width:100%!important;height:auto!important;margin:8px 0!important;padding:8px!important;white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.4!important}
+@media(max-width:720px){
+html body #app #stage:is(#stage) .drawer.mobile-sheet .sheet-close{width:44px!important;min-width:44px!important;max-width:none!important;height:44px!important;min-height:44px!important;max-height:none!important;box-sizing:border-box!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard){grid-template-columns:minmax(0,1fr) auto!important;align-items:start!important;gap:8px!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard) .task-step{display:block!important;position:static!important;grid-column:1!important;grid-row:1!important;width:max-content!important;min-width:0!important;max-width:100%!important;height:auto!important;min-height:0!important;margin:0!important;padding:6px 10px!important;clip:auto!important;clip-path:none!important;white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;line-height:1.2!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard)>.task-text{grid-column:1 / -1!important;grid-row:2!important;min-width:0!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard)>.progress-dots{grid-column:2!important;grid-row:1!important;align-self:center!important;max-width:100%!important;flex-wrap:wrap!important}
+}
+</style>
+<script id="codex-science-consistency-runtime">
+(()=>{
+  function mount(){
+    const shell=window.__codexScienceShell,stage=document.getElementById('stage'),state=window.__codexPageControllerV1?.getState();
+    if(!shell||!stage||state?.destroyed)return;
+    const panels=['controlDock','dataDock'].map(id=>document.getElementById(id)),headers=panels.map(panel=>panel?.querySelector('[data-codex-panel-header],.drawer-header')),actions=headers.map((head,i)=>head?.querySelector('#'+['control','data'][i]+'ToggleBtn')?.closest('.drawer-actions'));
+    if(['clearRecords','syncState','syncPresentation','destroy'].some(method=>typeof shell[method]!=='function')||panels.some((panel,i)=>!panel?.querySelector('.drawer-body')||!headers[i]?.querySelector('.dockTitle')||!actions[i]||!headers[i].contains(actions[i]))){console.error('[science-consistency] 缺少完整实验或数据面板接口');return;}
+    const events=new AbortController();
+    const clear=document.createElement('button');clear.id='dataClearBtn';clear.type='button';clear.className='iconBtn';clear.textContent='清空记录';clear.setAttribute('aria-label','清空数据面板记录，不重置关卡');
+    panels[1].querySelector('.drawer-body').append(clear);
+    const syncClear=s=>{const disabled=!s||s.destroyed||s.paused||s.mode==='auto';if(clear.disabled!==disabled)clear.disabled=disabled;};
+    clear.addEventListener('click',()=>{const s=window.__codexPageControllerV1?.getState();if(!s||s.destroyed||s.paused||s.mode==='auto')return;shell.clearRecords();},{signal:events.signal});
+    let destroyed=false;
+    function measure(){
+      if(destroyed||matchMedia('(max-width:720px)').matches)return;
+      const available=Math.max(44,stage.getBoundingClientRect().width-24),updates=headers.map((head,i)=>{const title=head.querySelector('.dockTitle'),range=document.createRange();range.selectNodeContents(title);const text=range.getBoundingClientRect(),actionBox=actions[i].getBoundingClientRect(),buttons=[...head.querySelectorAll('button')].map(n=>n.getBoundingClientRect());return{panel:panels[i],width:Math.min(available,Math.max(164,Math.ceil(text.width+actionBox.width+22))),height:Math.max(44,Math.ceil(Math.max(text.height+4,...buttons.map(r=>r.height))))};});
+      for(const{panel,width,height}of updates)for(const[name,value]of[['--science-header-width',width+'px'],['--science-header-height',height+'px']])if(panel.style.getPropertyValue(name)!==value)panel.style.setProperty(name,value);
+    }
+    const sizes=new ResizeObserver(measure);sizes.observe(stage);headers.forEach((head,i)=>{sizes.observe(head.querySelector('.dockTitle'));sizes.observe(actions[i]);});
+    const changes=new MutationObserver(records=>{if(records.some(r=>r.type==='childList'||r.oldValue!==r.target.getAttribute(r.attributeName)))measure();});
+    for(const head of headers)changes.observe(head,{childList:true,attributes:true,attributeFilter:['style','class'],attributeOldValue:true,subtree:true});
+    for(const panel of panels)changes.observe(panel,{attributes:true,attributeFilter:['class'],attributeOldValue:true});
+    window.addEventListener('resize',measure,{signal:events.signal});
+    for(const method of['syncState','syncPresentation']){const original=shell[method].bind(shell);shell[method]=(...args)=>{const result=original(...args);if(!destroyed)syncClear(args[0]??window.__codexPageControllerV1?.getState());return result;};}
+    const originalDestroy=shell.destroy.bind(shell);shell.destroy=(...args)=>{if(!destroyed){destroyed=true;events.abort();sizes.disconnect();changes.disconnect();clear.disabled=true;}return originalDestroy(...args);};
+    window.addEventListener('pagehide',()=>shell.destroy(),{once:true,signal:events.signal});syncClear(state);measure();document.fonts.ready.then(()=>{if(!destroyed)measure();});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
+</script>
+
+<script id="codex-science-panel-clearance">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+(() => {
+  'use strict';
+  function mount() {
+    const stage=document.getElementById('stage');
+    const panels=['controlDock','dataDock'].map(id=>document.getElementById(id));
+    if(!stage||panels.some(panel=>!panel?.querySelector('.drawer-body')||!panel.querySelector('.drawer-header')))throw new Error('[science-panels] 缺少完整标准面板');if(window.__codexSciencePanelClearance&&!window.__codexSciencePanelClearance.getState().disposed)throw new Error('[science-panels] 重复面板布局实例');
+    const abort=new AbortController();let frame=0,disposed=false,minimum=null;
+    const offsets=new WeakMap(),variables=new Map(),transforms=new Map();
+    function setVariable(key,value){let saved=variables.get(key);if(!saved){saved={value:stage.style.getPropertyValue(key),priority:stage.style.getPropertyPriority(key),owned:value};variables.set(key,saved);}saved.owned=value;if(stage.style.getPropertyValue(key)!==value)stage.style.setProperty(key,value);}
+    function restoreVariables(){for(const [key,saved]of variables){if(stage.style.getPropertyValue(key)===saved.owned&&stage.style.getPropertyPriority(key)===''){if(saved.value)stage.style.setProperty(key,saved.value,saved.priority);else stage.style.removeProperty(key);}}variables.clear();}
+    const rect=node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+    const overlap=(a,b)=>Math.min(a.right,b.right)-Math.max(a.x,b.x)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1;
+    const body=panel=>panel.querySelector('.drawer-body');
+    const visible=panel=>!panel.classList.contains('collapsed')&&body(panel).getClientRects().length>0;
+    function restoreTransform(node){const saved=transforms.get(node);if(!saved)return;if(node.style.getPropertyValue('transform')===saved.owned&&node.style.getPropertyPriority('transform')==='important'){if(saved.value)node.style.setProperty('transform',saved.value,saved.priority);else node.style.removeProperty('transform');}transforms.delete(node);offsets.delete(node);}
+    function move(node,x,y){if(!x&&!y){restoreTransform(node);return;}let saved=transforms.get(node);const old=offsets.get(node);if(saved&&old?.x===x&&old?.y===y&&node.style.getPropertyValue('transform')===saved.owned&&node.style.getPropertyPriority('transform')==='important')return;if(!saved){saved={value:node.style.getPropertyValue('transform'),priority:node.style.getPropertyPriority('transform'),computed:getComputedStyle(node).transform,owned:''};transforms.set(node,saved);}const value=`translate(${x}px,${y}px)`+(saved.computed==='none'?'':' '+saved.computed);offsets.set(node,{x,y});node.style.setProperty('transform',value,'important');saved.owned=node.style.getPropertyValue('transform');}
+    function restoreMinimum(){if(!minimum)return;if(stage.style.getPropertyValue('min-height')===minimum.owned&&stage.style.getPropertyPriority('min-height')==='important'){if(minimum.value)stage.style.setProperty('min-height',minimum.value,minimum.priority);else stage.style.removeProperty('min-height');}minimum=null;}
+    function layout(){
+      frame=0;if(disposed)return;
+      const bounds=rect(stage),tools=['scienceHud','hintLamp','audioToggle'].map(id=>document.getElementById(id)).filter(node=>node?.getClientRects().length);
+      if(matchMedia('(max-width:720px)').matches){
+        for(const panel of panels)move(body(panel),0,0);
+        const tabs=document.getElementById('mobileTabs'),tabBounds=tabs?.getClientRects().length?rect(tabs):null;
+        const sheetBottom=tabBounds?Math.ceil(bounds.bottom-tabBounds.y):62;
+        setVariable('--science-mobile-sheet-bottom',sheetBottom+'px');setVariable('--science-apparatus-bottom',(sheetBottom+6)+'px');
+        const bottom=Math.max(bounds.y,...tools.map(node=>rect(node).bottom));
+        const available=Math.floor(bounds.bottom-sheetBottom-bottom-12-16);
+        if(available<48){
+          const owned=Math.ceil(bottom-bounds.y+sheetBottom+12+16+48)+'px';
+          if(!minimum||stage.style.getPropertyValue('min-height')!==minimum.owned||stage.style.getPropertyPriority('min-height')!=='important')minimum={value:stage.style.getPropertyValue('min-height'),priority:stage.style.getPropertyPriority('min-height'),owned};
+          minimum.owned=owned;stage.style.setProperty('min-height',owned,'important');
+        }
+        const value=Math.max(48,Math.min(188,available))+'px';
+        setVariable('--science-mobile-sheet-limit',value);
+        return;
+      }
+      restoreMinimum();
+      restoreVariables();
+      const headers=[...panels.map(panel=>rect(panel.querySelector('.drawer-header'))),...tools.map(rect)];
+      // Data has deterministic placement priority; control fits around it, not vice versa.
+      for(const panel of [...panels].reverse()){
+        const node=body(panel);if(!visible(panel)){move(node,0,0);continue;}
+        const measured=rect(node),old=offsets.get(node)||{x:0,y:0};
+        const base={...measured,x:measured.x-old.x,right:measured.right-old.x,y:measured.y-old.y,bottom:measured.bottom-old.y};
+        const obstacles=[...headers];
+        if(panel===panels[0]&&visible(panels[1]))obstacles.push(rect(body(panels[1])));
+        const xs=new Set([0]),ys=new Set([0]);
+        for(const obstacle of obstacles){xs.add(obstacle.x-base.right-8);xs.add(obstacle.right-base.x+8);ys.add(obstacle.y-base.bottom-8);ys.add(obstacle.bottom-base.y+8);}
+        const candidates=[];
+        for(const x of xs)for(const y of ys){
+          const next={...base,x:base.x+x,right:base.right+x,y:base.y+y,bottom:base.bottom+y};
+          if(next.x<bounds.x+4||next.right>bounds.right-4||next.y<bounds.y+4||next.bottom>bounds.bottom-4||obstacles.some(obstacle=>overlap(next,obstacle)))continue;
+          candidates.push({x,y,cost:Math.abs(x)+Math.abs(y)*4});
+        }
+        candidates.sort((a,b)=>a.cost-b.cost);const next=candidates[0];
+        // Canonical placement remains the fallback on genuinely space-constrained stages.
+        panel.dataset.scienceClearance=next?'fitted':'constrained';move(node,next?.x||0,next?.y||0);
+      }
+    }
+    function schedule(){if(!disposed&&!frame)frame=requestAnimationFrame(layout);}
+    const changes=new MutationObserver(schedule);
+    const sizes=new ResizeObserver(schedule);sizes.observe(stage);
+    for(const panel of panels){changes.observe(panel,{attributes:true,attributeFilter:['class','style','data-codex-panel-x','data-codex-panel-y']});sizes.observe(body(panel));}
+    for(const id of ['scienceHud','hintLamp','audioToggle','mobileTabs']){const node=document.getElementById(id);if(node){sizes.observe(node);changes.observe(node,{attributes:true,attributeFilter:['style','class']});}}
+    window.addEventListener('resize',schedule,{signal:abort.signal});
+    function destroy(){if(disposed)return;disposed=true;abort.abort();changes.disconnect();sizes.disconnect();if(frame)cancelAnimationFrame(frame);frame=0;restoreMinimum();restoreVariables();for(const node of [...transforms.keys()])restoreTransform(node);}
+    window.addEventListener('pagehide',destroy,{once:true,signal:abort.signal});
+    window.__codexSciencePanelClearance={destroy,getState:()=>({disposed,ownedFrames:frame?1:0,minimumProtected:Boolean(minimum)})};schedule();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
+
+}
+</script>
+<style id="codex-science-mobile-tab-height-v1">
+@media(max-width:720px){html body #app #stage:is(#stage) #mobileTabs{height:auto!important;min-height:44px!important;max-height:none!important;align-items:stretch!important}html body #app #stage:is(#stage) #mobileTabs button{height:auto!important;min-height:44px!important;max-height:none!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.35!important}}
+</style>
+<style id="codex-science-clearance-consumers-v1">
+@media(max-width:720px){html body #app #stage:is(#stage) .drawer.mobile-sheet{bottom:var(--science-mobile-sheet-bottom,62px)!important}html body #app #stage:is(#stage){padding-bottom:var(--science-apparatus-bottom,68px)!important}}
+@media(min-width:721px){html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"] button{position:static!important;inset:auto!important;transform:none!important;margin:0!important}}
+</style>
 </body>
 </html>

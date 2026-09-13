@@ -1,9 +1,26 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<script id="codex-science-ui-scheduler-v1">
+(() => {
+  'use strict';
+  if (window.__codexScienceUiSchedulerV1) throw new Error('[science UI] 重复界面调度实例');
+  // Capture browser scheduling before the experiment installs its pausable clock.
+  // Existing UI owners still allocate, cancel and dispose their own handles.
+  window.__codexScienceUiSchedulerV1 = Object.freeze({
+    requestAnimationFrame: window.requestAnimationFrame.bind(window),
+    cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
+    setTimeout: window.setTimeout.bind(window),
+    clearTimeout: window.clearTimeout.bind(window)
+  });
+})();
+</script>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum=1"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>充满电磁波的世界</title>
+<script id="codex-theme-bootstrap">
+(()=>{let theme='dark';try{const saved=localStorage.getItem('xingnian.physics.theme');if(saved==='dark'||saved==='light')theme=saved;}catch(error){console.warn('[physics theme] 无法读取主题，使用默认夜间模式',error);}document.documentElement.dataset.theme=theme;})();
+</script>
 <style>
   :root{
     /* —— 统一交互模板色板 —— */
@@ -934,52 +951,534 @@ body {
   }
 }
 
+/* B4：电磁波采用场景外五段切换栏，保留画布内科学配色。 */
+:root{
+  --b4-page-start:#11141a;--b4-page-end:#06080c;--b4-surface:rgba(255,255,255,.075);
+  --b4-surface-strong:rgba(255,255,255,.11);--b4-border:rgba(255,255,255,.15);
+  --b4-text:#f4f7fb;--b4-muted:#c8d3df
+}
+html[data-theme="light"]{
+  color-scheme:light;--b4-page-start:#f5f8fc;--b4-page-end:#e6edf5;--b4-surface:rgba(255,255,255,.91);
+  --b4-surface-strong:#fff;--b4-border:rgba(31,63,88,.22);--b4-text:#172433;--b4-muted:#42566b;
+  --demo-card-bg:rgba(255,255,255,.91);--demo-panel-line:rgba(31,63,88,.22);--demo-text:#172433;--demo-muted:#42566b
+}
+html{background:var(--b4-page-end)}
+body{background:linear-gradient(180deg,var(--b4-page-start),var(--b4-page-end))!important;color:var(--b4-text)!important}
+#topBar{width:100%;display:flex;align-items:center;gap:8px}
+#app #topBar #spectrum{width:auto!important;min-width:0!important;flex:1 1 auto!important;margin:0!important}
+#themeToggle{width:44px;min-width:44px;height:44px;min-height:44px;padding:0;display:inline-grid;place-items:center;border:1px solid var(--b4-border);border-radius:10px;background:var(--b4-surface-strong);color:var(--b4-text);font-size:18px;line-height:1;cursor:pointer}
+#app #taskText{font-size:15px!important;line-height:1.45!important;overflow-wrap:anywhere}
+#app #taskHint{font-size:13px!important;line-height:1.4!important;overflow-wrap:anywhere}
+.stageWrap{width:100%!important;max-width:none!important;height:auto!important;max-height:none!important;margin:0!important;display:flex;flex-direction:column;gap:10px}
+#app .codex-runtime-stage{height:clamp(390px,56vh,520px)!important;min-height:390px!important}
+.codex-hud{position:static!important;max-width:none!important;display:flex;flex-wrap:wrap;align-items:center;gap:7px;color:var(--b4-text);pointer-events:auto}
+.codex-hud .tag{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+html[data-theme="light"] .codex-hud .tag{background:#fff;color:#172433;border-color:var(--b4-border)}
+html[data-theme="light"] .codex-hud #modeTag{background:linear-gradient(#fff,#fff) padding-box,linear-gradient(90deg,#168a49,#1686b0,#5643c7,#b62d88,#a86500,#168a49) border-box!important;color:#172433!important}
+#bandSwitchBar,#emObservation{width:100%;min-width:0;margin:0;border:1px solid var(--b4-border);border-radius:12px;background:var(--b4-surface);color:var(--b4-text)}
+#bandSwitchBar{position:static;display:grid;grid-template-columns:auto repeat(5,minmax(96px,1fr));gap:8px;align-items:center;padding:8px}
+#bandSwitchBar #bandTag{min-height:44px;display:inline-flex;align-items:center;margin:0;padding:6px 10px;color:var(--b4-text);background:var(--b4-surface-strong);white-space:normal;overflow-wrap:anywhere}
+#bandSwitchBar button{width:100%;min-width:44px;min-height:44px;height:auto;padding:8px 10px;border:1px solid transparent;background:rgba(0,0,0,.38);color:#fff;border-radius:8px;font-size:14px;line-height:1.35;white-space:normal;overflow-wrap:anywhere;cursor:pointer}
+html[data-theme="light"] #bandSwitchBar button{background:#edf3f8;color:#172433;border-color:var(--b4-border)}
+#bandSwitchBar button.active{outline:2px solid rgba(88,172,235,.65);background:var(--b4-surface-strong)}
+#emObservation{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;padding:11px 14px}
+#emObservation h2{grid-column:1/-1;margin:0;color:var(--b4-text);font-size:16px}
+#emObservation p{min-width:0;margin:0;color:var(--b4-muted);font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+#emObservation output{color:var(--b4-text);font-weight:750;overflow-wrap:anywhere}
+#mobileTabs,#experimentTab,#dataTab,#codexControlDock,#codexDataDock,#app>.legacy-toolbar{display:none!important}
+.codex-global-toolbar.toolbar{width:100%!important;max-width:none!important;margin:0!important;padding:6px!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px!important;border:1px solid var(--b4-border)!important;border-radius:11px;background:var(--b4-surface)!important}
+.codex-global-toolbar button{min-width:44px!important;min-height:44px!important;height:auto!important;padding:8px!important;color:var(--b4-text)!important;white-space:normal;overflow-wrap:anywhere}
+#app .explanation{width:100%!important;max-width:none!important;margin:0!important;padding:12px 14px!important;background:var(--b4-surface)!important;border-color:var(--b4-border)!important;color:var(--b4-muted)!important}
+#app .explanation h2{color:var(--b4-text)!important}
+#app .explanation p,#app .explanation li{font-size:15px!important;overflow-wrap:anywhere}
+#doneMask .modal{background:#1a2028;color:#f4f7fb;border-color:var(--b4-border)}
+#doneMask .modal p{color:#d8e1ea}
+#doneMask .modal .ok{background:#94f7e7;color:#10231f}
+html[data-theme="light"] #doneMask .modal{background:#fff;color:#172433}
+html[data-theme="light"] #doneMask .modal p{color:#42566b}
+html[data-theme="light"] #doneMask .modal .ok{background:#0f6c58;color:#fff}
+@media(max-width:720px){
+  #bandSwitchBar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #bandSwitchBar #bandTag{grid-column:1/-1}
+  #emObservation{grid-template-columns:1fr;padding:10px 12px}
+  #emObservation h2{grid-column:1}
+  #app .codex-runtime-stage{height:390px!important;min-height:390px!important}
+  .codex-global-toolbar button{font-size:12px!important}
+}
+
 </style>
+<style id="codex-science-shell-style">
+/* Layout and visual tokens reuse the accepted experiment 35/41 shell. */
+body #app #taskCard{width:100%!important;max-width:980px!important;position:relative!important;background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:12px!important;padding:12px 14px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;opacity:1!important;filter:none!important}
+body #app #taskCard.free-mode{opacity:.42!important;filter:grayscale(.86) saturate(.42)!important}
+body #app #taskCard .task-step{display:block!important;position:static!important;grid-column:auto!important;grid-row:auto!important;background:rgba(255,255,255,.16)!important;border-radius:8px!important;padding:6px 10px!important;font-weight:700!important;font-size:15px!important;color:#fff!important}
+body #app #taskCard .task-text{grid-column:auto!important;grid-row:auto!important;min-width:0;line-height:1.55!important;font-size:15px!important}
+body #app #taskCard #taskText{font-size:15px!important;color:#fff!important}
+body #app #taskCard #taskHint{color:#ffd54f!important;font-size:12px!important;opacity:.95!important;margin-top:2px}
+body #app #taskCard .progress-dots{display:flex!important;grid-column:auto!important;grid-row:auto!important;gap:6px!important;align-items:center!important}
+body #app #scienceHud.hud{position:absolute!important;left:10px!important;top:10px!important;right:auto!important;bottom:auto!important;z-index:20!important;display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:8px!important;background:rgba(0,0,0,.48)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:10px!important;padding:6px 8px!important;width:auto!important;max-width:calc(100% - 20px)!important;font-size:12px!important}
+body #app #scienceHud .tag{color:#dce9ff!important;border:1px solid rgba(255,255,255,.26)!important;border-radius:999px!important;padding:2px 8px!important;font-weight:700!important;font-size:12px!important;background:rgba(255,255,255,.06)!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-width:100%!important}
+html body #app #scienceHud :is(#modeTag,#statusTag){white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere!important;min-width:0!important;max-width:100%!important}
+body #app #stage{overflow:visible!important;touch-action:pan-y pinch-zoom}
+body #app #stage > :is(#container,#galaxyCanvas){margin-top:var(--science-apparatus-top,100px)!important}
+body #app #stage > .science-apparatus{margin-top:var(--science-apparatus-top,100px)!important}
+body #app #stage #magnifier{position:relative!important;z-index:1!important}
+body #app #stage :is(#controlDock,#dataDock){position:absolute!important;display:block!important;width:164px;min-height:0!important;max-height:none!important;opacity:1!important;pointer-events:auto!important;transform:none!important;border-radius:12px;z-index:30;background:rgba(15,15,15,.58);backdrop-filter:blur(6px);overflow:visible!important}
+body #app #stage .drawer-body{padding:10px;overflow:auto;max-height:320px;touch-action:pan-y pinch-zoom}
+body #app #stage .drawer.collapsed .drawer-body{display:none}
+body #app #stage .drawer-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;cursor:grab;user-select:none;touch-action:none}
+body #app #stage .dockTitle{display:flex;gap:6px;align-items:center;font-size:13px;font-weight:700;color:#e7f0ff}
+body #app #stage .drawer-actions{display:flex;gap:6px}
+body #app #stage .iconBtn{border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#dce9ff;font-size:12px;padding:6px 8px;min-height:30px;cursor:pointer}
+body #app #stage .science-panel-controls{position:static!important;inset:auto!important;transform:none!important;width:100%!important;max-width:none!important;height:auto!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;box-shadow:none!important}
+body #app #stage .science-panel-controls button,body #app #scienceRecordBtn{min-width:44px!important;min-height:44px!important;height:auto!important;white-space:normal!important;overflow-wrap:anywhere;padding:8px;font-size:13px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.075);color:#d9e8f8;cursor:pointer}
+body #app #scienceRecordBtn{width:auto!important;max-width:100%!important;box-sizing:border-box!important;margin-top:8px;background:#2e7d32;color:white}
+body #app #stage .hint-lamp{display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#ffd54f;cursor:pointer}
+body #app #stage .hint-pop{display:none;padding:10px 12px;border:1px solid rgba(255,209,102,.36);border-radius:10px;background:rgba(16,18,20,.96);color:#f4efe2;font-size:13px;line-height:1.55}
+body #app #stage .hint-pop.open{display:block}
+body #app #stage .hint-lamp.flash{animation:scienceLampFlash .6s ease}
+@keyframes scienceLampFlash{50%{box-shadow:0 0 22px rgba(255,77,79,.86);border-color:#ff4d4f}}
+body #app #stage table.record{width:100%;border-collapse:collapse;font-size:13px;line-height:1.5;color:#e8f4ff}
+body #app #stage table.record th,body #app #stage table.record td{border:1px solid rgba(255,255,255,.12);padding:4px 5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+body #app #stage .empty{font-size:13px;line-height:1.5;color:#aebbc8;padding:4px 0}
+body #app #stage .empty[hidden]{display:none!important}
+body #app #stage .dataNotice{display:none;background:#ff3b30;color:#fff;min-width:18px;height:18px;padding:0 4px;border-radius:999px;font-size:11px;line-height:18px;text-align:center}
+body #app #stage .dataNotice.show{display:inline-block;animation:scienceBadgeFlash 1s infinite}
+@keyframes scienceBadgeFlash{50%{box-shadow:0 0 10px #ff3b30}}
+body #app .science-global-toolbar.toolbar{display:flex!important;flex-wrap:wrap!important;gap:9px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+body #app .science-global-toolbar button{width:auto!important;min-height:44px!important;font-size:13px!important;font-weight:800!important;padding:9px 12px!important;color:#d9e8f8!important;background:rgba(255,255,255,.075)!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:8px!important}
+body #app .science-global-toolbar button:disabled{opacity:.5!important;cursor:not-allowed!important}
+body #app :is(.explanation,.explain){font-size:15px!important;line-height:1.66!important;color:#e8f4ff}
+body #app :is(.explanation,.explain) h2{font-size:20px!important;line-height:1.35!important;color:#9bd3ff!important;margin-bottom:8px}
+body #app #stage :is(.mobile-tabs,.sheet-close){display:none!important}
+body #app #themeToggle{border:1px solid transparent!important;border-radius:999px!important;background:transparent!important;color:#cbd5e1!important}
+@media(min-width:721px){
+/* Keep both standard header anchors reachable when their bodies overlap. */
+html body #app #stage:is(#stage) :is(#controlDock,#dataDock)[data-codex-desktop-panel="1"]{z-index:auto!important;backdrop-filter:none!important;filter:none!important;isolation:auto!important}
+html body #app #stage:is(#stage) :is(#controlDock,#dataDock)[data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{z-index:calc(100 + var(--codex-panel-z))!important}
+html body #app #stage:is(#stage) :is(#controlDock,#dataDock)[data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{z-index:var(--codex-panel-z)!important}
+html body #app #stage:is(#stage) [data-codex-panel-header="1"] button{white-space:nowrap!important;padding:4px!important;line-height:1.3!important}
+}
+@media(max-width:720px){
+body #app #taskCard{grid-template-columns:minmax(0,1fr) auto!important;gap:4px 8px!important;padding:8px 10px!important;border-radius:10px!important}
+body #app #taskCard .task-step{position:absolute!important;width:1px!important;min-width:1px!important;max-width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+body #app #taskCard .task-text{grid-column:1!important;grid-row:1!important;font-size:15px!important;line-height:1.38!important}
+body #app #taskCard .progress-dots{grid-column:2!important;grid-row:1!important;justify-content:flex-end!important;justify-self:end;gap:5px!important}
+body #app #taskCard .dot{width:8px!important;height:8px!important;outline-width:1px}
+body #app #stage{padding-bottom:68px!important}
+body #app #stage .mobile-tabs{position:absolute!important;left:12px!important;right:12px!important;bottom:8px!important;top:auto!important;z-index:44!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;padding:5px!important;border:1px solid rgba(91,188,255,.24);border-radius:11px;background:rgba(9,12,16,.94);width:auto!important;max-width:none!important}
+body #app #stage .mobile-tabs.attached{border-top:0;border-radius:0 0 12px 12px}
+body #app #stage .mobile-tab{position:relative;border:0;border-radius:8px;padding:9px 10px;min-height:44px;background:rgba(255,255,255,.04);color:#cfe4ff;font-weight:900;font-size:13px;cursor:pointer}
+body #app #stage #mobileTabs :is(#experimentTab,#dataTab){display:block!important;height:auto!important;min-height:44px!important;padding:9px 10px!important}
+body #app #stage .mobile-tab.active{background:rgba(61,220,151,.16);color:#effff7;box-shadow:inset 0 0 0 1px rgba(61,220,151,.56)}
+body #app #stage .mobile-badge{position:absolute;top:0;right:10px;min-width:18px;height:18px;border-radius:999px;background:#ff3b30;color:white;font-size:11px;display:none}
+body #app #stage .mobile-badge.show{display:grid;place-items:center}
+body #app #stage .drawer.mobile-sheet{left:12px!important;right:12px!important;bottom:62px!important;top:auto!important;display:block!important;width:calc(100% - 24px)!important;max-width:none!important;border-radius:12px 12px 0 0!important;background:rgba(9,21,33,.96)!important;border:1px solid rgba(91,188,255,.32)!important;z-index:43!important}
+body #app #stage :is(#controlDock,#dataDock).mobile-sheet.collapsed{display:none!important}
+body #app #stage .drawer.mobile-sheet .drawer-header{display:none!important}
+body #app #stage .drawer.mobile-sheet .drawer-body{display:block!important;max-height:var(--science-mobile-sheet-limit,188px)!important;padding:8px 48px 8px 8px!important;overflow:auto!important}
+body #app #stage .sheet-close{position:absolute;right:8px;top:8px;display:grid!important;place-items:center;width:36px;min-width:36px;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:50%;background:rgba(255,255,255,.055);color:#e3f0ff}
+body #app #stage .sheet-close-icon{width:12px;height:8px;fill:none;stroke:currentColor;stroke-width:2}
+body #app #stage table.record,body #app #stage table.record tbody{display:block}
+body #app #stage table.record thead{display:none}
+body #app #stage table.record tr{display:grid;gap:6px;padding:8px;margin-bottom:8px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.045)}
+body #app #stage table.record td{border:0;display:grid;padding:0;font-size:13px;line-height:1.5}
+body #app #stage table.record td::before{content:attr(data-label);font-size:11px;font-weight:800;color:#8fb4d8}
+body #app .science-global-toolbar.toolbar{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;padding:6px!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:11px!important;background:rgba(255,255,255,.035)!important}
+body #app .science-global-toolbar button{width:100%!important;min-width:0!important;padding:8px 6px!important}
+}
+html[data-theme="light"] body #app #taskCard{background:rgba(255,255,255,.94)!important;border-color:#d7dce5!important;color:#20242c!important}
+html[data-theme="light"] body #app #taskCard .task-step{background:#eef1f6!important;color:#20242c!important}
+html[data-theme="light"] body #app #taskCard #taskText{color:#20242c!important}
+html[data-theme="light"] body #app #taskCard #taskHint{color:#7a4d00!important}
+html[data-theme="light"] body #app #stage table.record td::before{color:#3f5368!important}
+html[data-theme="light"] body #app :is(.explanation,.explain){color:#273448!important}
+html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!important}
+</style>
+  <style id="codex-theme-pilot-style">
+    :root[data-theme="dark"]{color-scheme:dark}
+    .theme-app-contents{display:contents}
+    @property --codex-mode-ring-angle{syntax:"<angle>";inherits:false;initial-value:0deg}
+    body #app #stage :is(#modeTag,#modeChip){
+      position:relative!important;isolation:isolate!important;min-width:158px!important;width:auto!important;max-width:none!important;
+      box-sizing:border-box!important;border:2px solid transparent!important;border-radius:999px!important;padding:4px 12px!important;
+      font-weight:900!important;color:#fff!important;white-space:nowrap!important;text-align:center!important;overflow:hidden!important;text-overflow:clip!important;
+      background:linear-gradient(rgba(6,10,14,.94),rgba(6,10,14,.94)) padding-box,
+        conic-gradient(from var(--codex-mode-ring-angle),#ff4c4c 0deg 45deg,#ff9a3d 45deg 90deg,#f7e94c 90deg 135deg,#54e86d 135deg 180deg,#40e0d0 180deg 225deg,#4aa3ff 225deg 270deg,#8757ff 270deg 315deg,#ec5cff 315deg 360deg) border-box!important;
+      box-shadow:0 0 13px rgba(75,216,255,.20)!important;
+      animation:codexModeRingTurn 8s linear infinite!important;
+    }
+    body #app #stage :is(#modeTag,#modeChip)::before,
+    body #app #stage :is(#modeTag,#modeChip)::after{content:none!important;display:none!important}
+    @keyframes codexModeRingTurn{to{--codex-mode-ring-angle:1turn}}
+    :root[data-theme="light"]{
+      color-scheme:light;
+      --theme-page:#f6f7fb;
+      --theme-surface:#fff;
+      --theme-surface-soft:#eef1f6;
+      --theme-text:#20242c;
+      --theme-muted:#667085;
+      --theme-border:#d7dce5;
+      --theme-accent:#155e75;
+    }
+    .theme-spectrum-row{
+      width:100%;max-width:980px;display:grid;grid-template-columns:minmax(0,1fr) 44px;
+      align-items:center;gap:8px;margin:0 0 12px;
+    }
+    .theme-spectrum-row #spectrum{grid-column:1;grid-row:1;width:100%!important;max-width:none!important;margin:0!important}
+    .theme-toolbar{
+      grid-column:2;grid-row:1;width:44px;max-width:none;min-height:44px;margin:0;
+      display:flex;align-items:center;justify-content:flex-end;
+    }
+    .theme-toggle{
+      width:44px;height:44px;padding:0;display:grid;place-items:center;
+      border:1px solid transparent;border-radius:999px;background:transparent;
+      color:#cbd5e1;cursor:pointer;touch-action:manipulation;
+      transition:color .18s ease,background .18s ease,border-color .18s ease,transform .08s ease;
+    }
+    .theme-toggle:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12)}
+    .theme-toggle:active{transform:scale(.96)}
+    .theme-toggle:focus-visible{outline:3px solid #5bbcff;outline-offset:3px}
+    .theme-icon{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+    :root[data-theme="dark"] .theme-icon-moon,
+    :root[data-theme="light"] .theme-icon-sun{display:none}
+    :root[data-theme="light"] .theme-toggle{color:#5f6170}
+    :root[data-theme="light"] .theme-toggle:hover{background:#eef1f6;border-color:#d7dce5}
+    :root[data-theme="light"] body{background:var(--theme-page)!important;color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .task-card{
+      background:rgba(255,255,255,.94)!important;border-color:var(--theme-border)!important;
+      color:var(--theme-text)!important;box-shadow:0 10px 28px rgba(31,41,55,.08)!important;
+    }
+    :root[data-theme="light"] body #app .task-card .task-step{
+      background:var(--theme-surface-soft)!important;border-color:#cbd3de!important;color:var(--theme-text)!important;
+    }
+    :root[data-theme="light"] body #app .task-card .task-text{color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .task-card .task-hint,
+    :root[data-theme="light"] body #app .task-card #taskHint{color:#7a4d00!important}
+    :root[data-theme="light"] body #app .task-card .dot:not(.active):not(.done):not(.warn){
+      background:#98a2b3!important;outline-color:#667085!important;
+    }
+    :root[data-theme="light"] body #app .task-card .dot{position:relative}
+    :root[data-theme="light"] body #app .task-card .dot::after{
+      content:"";position:absolute;inset:-4px;border:1px solid #475467;border-radius:inherit;pointer-events:none;
+    }
+    :root[data-theme="light"] body #app #stage{color:var(--theme-stage-ink,var(--ink,var(--fg,#eaf2ff)))!important}
+    :root[data-theme="light"] body #app .toolbar{
+      background:rgba(255,255,255,.78)!important;border-color:var(--theme-border)!important;
+      box-shadow:0 8px 24px rgba(31,41,55,.06)!important;
+    }
+    :root[data-theme="light"] body #app .toolbar button{
+      background:#e5eaf1!important;color:#253041!important;border:1px solid #cbd3de!important;
+    }
+    :root[data-theme="light"] body #app .toolbar button:hover{background:#d9e1eb!important}
+    :root[data-theme="light"] body #app .explanation{
+      background:var(--theme-surface)!important;border-color:var(--theme-border)!important;
+      color:var(--theme-text)!important;box-shadow:0 10px 28px rgba(31,41,55,.07)!important;
+    }
+    :root[data-theme="light"] body #app .explanation :where(p,ul,ol,li,dl,dt,dd){color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .explanation .formula,
+    :root[data-theme="light"] body #app .explanation .formula *{color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .explanation h2{color:var(--theme-accent)!important}
+    :root[data-theme="light"] body #app #stage #controlDock,
+    :root[data-theme="light"] body #app #stage #dataDock{
+      background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+      color:var(--theme-text)!important;box-shadow:0 16px 38px rgba(31,41,55,.18)!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockHead,
+    :root[data-theme="light"] body #app #stage #dataDock .dockHead,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-header,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-header,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-header,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-header,
+    :root[data-theme="light"] body #app #stage #controlDock .panelHead,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsHead{
+      background:rgba(238,241,246,.96)!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .dockTitle,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-title,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-title,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-title,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-title,
+    :root[data-theme="light"] body #app #stage #controlDock .panelHead .title,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsHead .title{
+      color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockBody,
+    :root[data-theme="light"] body #app #stage #dataDock .dockBody,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-body,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-body,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-body,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-body,
+    :root[data-theme="light"] body #app #stage #controlDock .panelBody,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsBody{
+      background:rgba(255,255,255,.92)!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock label,
+    :root[data-theme="light"] body #app #stage #dataDock label,
+    :root[data-theme="light"] body #app #stage #controlDock h3,
+    :root[data-theme="light"] body #app #stage #dataDock h3,
+    :root[data-theme="light"] body #app #stage #controlDock h4,
+    :root[data-theme="light"] body #app #stage #dataDock h4,
+    :root[data-theme="light"] body #app #stage #controlDock .source-line,
+    :root[data-theme="light"] body #app #stage #dataDock .source-line,
+    :root[data-theme="light"] body #app #stage #controlDock .mini,
+    :root[data-theme="light"] body #app #stage #dataDock .mini{color:#475467!important}
+    :root[data-theme="light"] body #app #stage #controlDock .secTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .secTitle{color:#475467!important}
+    :root[data-theme="light"] body #app #stage #controlDock .status-grid .pill,
+    :root[data-theme="light"] body #app #stage #dataDock .status-grid .pill{background:#e5eaf1!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock .pill,
+    :root[data-theme="light"] body #app #stage #dataDock .pill,
+    :root[data-theme="light"] body #app #stage #controlDock .pill-box,
+    :root[data-theme="light"] body #app #stage #dataDock .pill-box{background:#e5eaf1!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock .pill *,
+    :root[data-theme="light"] body #app #stage #dataDock .pill *,
+    :root[data-theme="light"] body #app #stage #controlDock .pill-box *,
+    :root[data-theme="light"] body #app #stage #dataDock .pill-box *{color:inherit!important}
+    :root[data-theme="light"] body #app #stage #controlDock span:not([class]),
+    :root[data-theme="light"] body #app #stage #dataDock span:not([class]),
+    :root[data-theme="light"] body #app #stage #controlDock .lab-hint,
+    :root[data-theme="light"] body #app #stage #dataDock .lab-hint,
+    :root[data-theme="light"] body #app #stage #controlDock .cardTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .cardTitle,
+    :root[data-theme="light"] body #app #stage #controlDock small,
+    :root[data-theme="light"] body #app #stage #dataDock small,
+    :root[data-theme="light"] body #app #stage #controlDock .val,
+    :root[data-theme="light"] body #app #stage #dataDock .val{color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock b,
+    :root[data-theme="light"] body #app #stage #dataDock b{color:inherit!important}
+    :root[data-theme="light"] body #app #stage #controlDock .codex-panel-note,
+    :root[data-theme="light"] body #app #stage #dataDock .codex-panel-note{background:#eef1f6!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock button:not(.main):not(.sub):not(.danger):not(.warn):not(.good),
+    :root[data-theme="light"] body #app #stage #dataDock button:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+      background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good),
+    :root[data-theme="light"] body #app #stage #dataDock button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+      background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock button.main,
+    :root[data-theme="light"] body #app #stage #dataDock button.main{background:#2e7d32!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock button.sub,
+    :root[data-theme="light"] body #app #stage #dataDock button.sub{background:#475467!important;border-color:#475467!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock .analysisBox,
+    :root[data-theme="light"] body #app #stage #dataDock .analysisBox{background:#f5f7fa!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .analysis.ok{background:#f5f7fa!important;border-color:#6fcf9f!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .record-cue.ready,
+    :root[data-theme="light"] body #app #stage .record-cue.done{background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important}
+    :root[data-theme="light"] body #app #stage .record-cue.warn{background:#fff4d6!important;border-color:#e0a44c!important;color:#7a4d00!important}
+    :root[data-theme="light"] body #app #stage #dataNotice,
+    :root[data-theme="light"] body #app #stage .dataNotice,
+    :root[data-theme="light"] body #app #stage .dockNotice,
+    :root[data-theme="light"] body #app #stage .notice-badge,
+    :root[data-theme="light"] body #app #stage .dock-badge,
+    :root[data-theme="light"] body #app #stage #dataDock .badge,
+    :root[data-theme="light"] body #app #stage .mobile-badge{background:#b42318!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock input,
+    :root[data-theme="light"] body #app #stage #controlDock select,
+    :root[data-theme="light"] body #app #stage #dataDock input,
+    :root[data-theme="light"] body #app #stage #dataDock select{
+      background:#fff!important;border-color:#cbd3de!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .record-cue:not(.ready):not(.warn):not(.done),
+    :root[data-theme="light"] body #app #stage .empty,
+    :root[data-theme="light"] body #app #stage .analysis:not(.ok){
+      background:#f5f7fa!important;border-color:#d7dce5!important;color:#344054!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .iconBtn,
+    :root[data-theme="light"] body #app #stage #dataDock .iconBtn,
+    :root[data-theme="light"] body #app #stage #controlDock .mini:not(div),
+    :root[data-theme="light"] body #app #stage #dataDock .mini:not(div),
+    :root[data-theme="light"] body #app #stage #controlDock .sheet-close,
+    :root[data-theme="light"] body #app #stage #dataDock .sheet-close{
+      background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+    }
+    :root[data-theme="light"] body #app #stage #dataDock table,
+    :root[data-theme="light"] body #app #stage #dataDock table th,
+    :root[data-theme="light"] body #app #stage #dataDock table td,
+    :root[data-theme="light"] body #app #stage #dataDock table.record,
+    :root[data-theme="light"] body #app #stage #dataDock table.record th,
+    :root[data-theme="light"] body #app #stage #dataDock table.record td,
+    :root[data-theme="light"] body #app #stage #dataDock table.table,
+    :root[data-theme="light"] body #app #stage #dataDock table.table th,
+    :root[data-theme="light"] body #app #stage #dataDock table.table td{
+      border-color:#d7dce5!important;color:#344054!important;
+    }
+    :root[data-theme="light"] body #app #stage #dataDock table th,
+    :root[data-theme="light"] body #app #stage #dataDock table.record th,
+    :root[data-theme="light"] body #app #stage #dataDock table.table th{
+      background:#eef1f6!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .chartWrap{
+      background:#101722!important;border-color:#334155!important;color:#eaf2ff!important;
+    }
+    :root[data-theme="light"] body #app #stage .mobile-tabs{
+      background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+    }
+    :root[data-theme="light"] body #app #stage .mobile-tab{background:#eef1f6!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .mobile-tab.active{
+      background:#d9f5e8!important;color:#14532d!important;box-shadow:inset 0 0 0 1px #6fcf9f!important;
+    }
+    :root[data-theme="light"] body #app .modal{
+      background:#fff!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app .modal h3{color:#155e75!important}
+    :root[data-theme="light"] body #app .modal p{color:#475467!important}
+    :root[data-theme="light"] body #app .toast{
+      background:#fff!important;border-color:#cbd3de!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .hint-pop,
+    :root[data-theme="light"] body #app #stage .helpCard{
+      background:#fff!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .hint-pop b,
+    :root[data-theme="light"] body #app #stage .helpCard b{color:#155e75!important}
+    @media(min-width:721px){
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"]{
+        width:164px!important;min-width:164px!important;max-width:164px!important;
+        left:var(--codex-panel-left)!important;top:var(--codex-panel-top)!important;
+        right:auto!important;bottom:auto!important;z-index:var(--codex-panel-z)!important;
+        overflow:visible!important;background:transparent!important;box-shadow:none!important;transition:none!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{
+        width:164px!important;min-width:164px!important;max-width:164px!important;
+        height:44px!important;min-height:44px!important;max-height:44px!important;box-sizing:border-box!important;
+        display:flex!important;align-items:center!important;flex-flow:row nowrap!important;gap:8px!important;
+        padding-top:0!important;padding-bottom:0!important;padding-left:10px!important;padding-right:10px!important;overflow:hidden!important;
+        position:relative!important;z-index:2!important;
+        touch-action:none!important;border:1px solid rgba(148,163,184,.32)!important;border-radius:12px!important;
+        background:rgba(15,23,42,.90)!important;box-shadow:0 8px 22px rgba(0,0,0,.28)!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*{min-height:0!important;max-height:40px!important;box-sizing:border-box!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:first-child{flex:1 1 auto!important;min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:last-child{flex:0 0 auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"] button{max-height:40px!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)){
+        gap:4px!important;
+        padding-left:6px!important;padding-right:6px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :first-child{
+        gap:2px!important;overflow:visible!important;text-overflow:clip!important;font-size:12px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) #dataNotice{
+        position:relative!important;z-index:3!important;flex:0 0 auto!important;
+        min-width:14px!important;height:16px!important;padding:0 2px!important;
+        font-size:10px!important;line-height:16px!important;box-sizing:border-box!important;pointer-events:auto!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child{
+        gap:3px!important;min-width:0!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child > button{
+        min-width:0!important;padding-left:4px!important;padding-right:4px!important;font-size:10px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{
+        position:absolute!important;z-index:1!important;display:none!important;box-sizing:border-box!important;
+        width:var(--codex-panel-body-width)!important;max-width:var(--codex-panel-body-width)!important;
+        max-height:var(--codex-panel-body-height)!important;overflow:auto!important;
+        border:1px solid rgba(148,163,184,.32)!important;border-radius:12px!important;
+        background:rgba(15,23,42,.88)!important;box-shadow:0 16px 38px rgba(0,0,0,.34)!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-open="1"] [data-codex-panel-body="1"]{display:block!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-x="right"] [data-codex-panel-body="1"]{left:0!important;right:auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-x="left"] [data-codex-panel-body="1"]{left:auto!important;right:0!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-y="down"] [data-codex-panel-body="1"]{top:100%!important;bottom:auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-y="up"] [data-codex-panel-body="1"]{top:auto!important;bottom:100%!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-dragging="1"] [data-codex-panel-body="1"]{pointer-events:none!important}
+      body #app #stage:is(#stage) #controlDock[data-codex-desktop-panel="1"]~#dataDock[data-codex-desktop-panel="1"]{opacity:1!important;pointer-events:auto!important;transform:none!important}
+      body #app #stage:is(#stage) #controlDrawer.open~#dataDrawer{opacity:1!important;pointer-events:auto!important;transform:none!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"]{background:transparent!important;box-shadow:none!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{background:rgba(255,255,255,.92)!important;color:#20242c!important;border-color:#cbd3de!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{background:rgba(255,255,255,.90)!important;color:#20242c!important;border-color:#cbd3de!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+        background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+        background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.main{
+        background:#2e7d32!important;color:#fff!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.sub{
+        background:#475467!important;border-color:#475467!important;color:#fff!important;
+      }
+    }
+    @media(max-width:720px){
+      .theme-spectrum-row{gap:6px;margin-bottom:10px}
+      .theme-toolbar{min-height:44px;margin:0}
+      .theme-toggle{width:44px;height:44px}
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet{
+        background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+      }
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .dock-body,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .dock-body,
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .drawer-body,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .drawer-body,
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .panelBody,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .resultsBody{
+        background:rgba(255,255,255,.92)!important;color:#20242c!important;
+      }
+    }
+    @media(prefers-reduced-motion:reduce){
+      .theme-toggle,
+      body,.task-card,.toolbar,.explanation,#controlDock,#dataDock{transition:none!important}
+      body #app #stage :is(#modeTag,#modeChip){animation:none!important;--codex-mode-ring-angle:0deg}
+    }
+  </style>
 </head>
 <body>
 <main id="app">
   <!-- 顶部彩条 -->
-  <div id="spectrum"></div>
+  <div id="topBar">
+    <div id="spectrum"></div>
+    <button id="themeToggle" type="button" aria-pressed="true" aria-label="切换到白天模式" title="切换到白天模式">☀︎</button>
+  </div>
 
   <!-- 步骤卡 -->
   <div class="task-card" id="taskCard">
     <div class="task-step" id="taskStep">步骤 1 / 5</div>
     <div class="task-text">
       <div id="taskText">点击<strong>可见光</strong>，看看人眼能看到的彩虹波段。</div>
-      <div class="task-hint" id="taskHint">提示：点右上角“可见光”。</div>
+      <div class="task-hint" id="taskHint">提示：在波段栏点击“可见光”。</div>
     </div>
     <div class="progress-dots">
       <span class="dot active" id="dot1"></span><span class="dot" id="dot2"></span><span class="dot" id="dot3"></span><span class="dot" id="dot4"></span><span class="dot" id="dot5"></span>
     </div>
   </div>
 
+  <section class="bandbar" id="bandSwitchBar" aria-label="波段切换">
+    <button id="btnVIS" type="button" aria-pressed="true">🌈 可见光</button>
+    <button id="btnIR" type="button" aria-pressed="false">🔥 红外线</button>
+    <button id="btnRF" type="button" aria-pressed="false">📶 无线电波</button>
+    <button id="btnUV" type="button" aria-pressed="false">💜 紫外线</button>
+    <button id="btnCR" type="button" aria-pressed="false">✨ 宇宙射线</button>
+  </section>
+
   <!-- 舞台 -->
   <div class="stageWrap">
     <div id="stage" class="lab-area">
       <canvas id="scene"></canvas>
-
-      <!-- 左上 HUD -->
-      <div class="hud"><span class="tag band" id="bandTag">当前：—</span></div>
-
-      <!-- 右上：波段按钮 -->
-      <div class="bandbar" aria-label="波段切换">
-        <button id="btnVIS">🌈 可见光</button>
-        <button id="btnIR">🔥 红外线</button>
-        <button id="btnRF">📶 无线电波</button>
-        <button id="btnUV">💜 紫外线</button>
-        <button id="btnCR">✨ 宇宙射线</button>
-      </div>
 
       <!-- 对勾 -->
       <div class="checkmark" id="checkmark"><div></div></div>
     </div>
   </div>
 
+  <section id="emObservation" aria-label="波段观察">
+    <span class="tag band" id="bandTag">当前：可见光</span>
+    <h2>波段观察</h2>
+    <p>当前波段：<output id="emBandName">可见光</output></p>
+    <p>相对波长：<output id="emWavelength">中等</output></p>
+    <p>相对频率：<output id="emFrequency">中等</output></p>
+    <p>典型现象或用途：<output id="emPhenomenon">形成彩虹色带，可被人眼直接看见</output></p>
+  </section>
+
   <!-- 三按钮 -->
-  <div class="toolbar">
-    <button id="resetBtn">步骤重置</button>
-    <button id="autoDemoBtn">自动演示</button>
-    <button id="freeBtn">自由模式</button>
+  <div class="toolbar legacy-toolbar">
+    <button id="legacyResetBtn">步骤重置</button>
+    <button id="legacyAutoDemoBtn">自动演示</button>
+    <button id="legacyFreeBtn">自由模式</button>
   </div>
 
   <div class="toast" id="toast">再试一试：请按当前步骤提示进行</div>
@@ -989,7 +1488,7 @@ body {
     <div class="modal">
       <h3 id="doneTitle">完成，你真棒！🎉</h3>
       <p>你按顺序探索了：可见光 → 红外线 → 无线电波 → 紫外线 → 宇宙射线。</p>
-      <button class="ok" id="okBtn">好的</button>
+      <button class="ok" id="okBtn" type="button" data-dialog-close>好的</button>
     </div>
   </div>
 
@@ -1009,20 +1508,41 @@ body {
 /* ============ 画布与尺寸 ============ */
 const canvas = document.getElementById('scene'), ctx = canvas.getContext('2d');
 const stage = document.getElementById('stage');
+
+// Native EM lifecycle only; all science values remain in their original scope.
+const emEvents=new AbortController(),emWaits=new Set(),emInertState=new Map();
+const AUTO_DEMO_TIMING=Object.freeze({cursorLead:180,action:820,observe:780,recordLead:180,recordAction:360,recordObserve:420,transition:460,conclusion:620,settle:120});
+let emDestroyed=false,emPaused=false,emPauseAt=0,emPausedDuration=0;
+let emVisualElapsed=0,emLastFrame=null,emDrawRaf=0,emAdvancing=false,emModelVersion=0;
+let emShowerInterval=0,emLineInterval=0,emShowerStart=0,emLineStart=0;
+let emSpawnDue=[0,0],emFreeEntry=null,emPending=null,emCursorTarget=null,emReturnFocus=null,emFailure='',emConclusionShown=false;
+
 let W,H,DPR=Math.min(2, window.devicePixelRatio||1);
 function resize(){
-  W = Math.floor(stage.clientWidth*DPR);
-  H = Math.floor(stage.clientHeight*DPR);
-  canvas.width=W; canvas.height=H;
-  canvas.style.width=stage.clientWidth+'px';
-  canvas.style.height=stage.clientHeight+'px';
+  const cssWidth = stage.clientWidth;
+  const cssHeight = stage.clientHeight;
+  const nextW = Math.max(1, Math.floor(cssWidth*DPR));
+  const nextH = Math.max(1, Math.floor(cssHeight*DPR));
+  if (canvas.width !== nextW) canvas.width=nextW;
+  if (canvas.height !== nextH) canvas.height=nextH;
+  if (canvas.style.width !== cssWidth+'px') canvas.style.width=cssWidth+'px';
+  if (canvas.style.height !== cssHeight+'px') canvas.style.height=cssHeight+'px';
+  W=nextW; H=nextH;
 }
-addEventListener('resize', resize, {passive:true}); resize();
+let resizeTimer=0;
+function scheduleResize(){
+  if(emDestroyed)return;clearTimeout(resizeTimer);
+  resizeTimer=setTimeout(()=>{resizeTimer=0;if(emDestroyed)return;const oldW=W,oldH=H;resize();if(W!==oldW||H!==oldH){for(const point of [...crParts,...crLines,...(uvTextObj?[uvTextObj]:[])]){point.x*=W/oldW;point.y*=H/oldH;}}emRender(0,false);emPlaceCursor();},80);
+}
+addEventListener('resize', scheduleResize, {passive:true,signal:emEvents.signal});
+addEventListener('orientationchange', scheduleResize, {passive:true,signal:emEvents.signal});
+const emResizeObserver=new ResizeObserver(scheduleResize);emResizeObserver.observe(stage);
+resize();
 
 /* ============ 状态 ============ */
 const bandNames = { VIS:'可见光', IR:'红外线', RF:'无线电波', UV:'紫外线', CR:'宇宙射线' };
-let band = null;             // —— 初始为空白
-let bandTarget = null;
+let band = 'VIS';
+let bandTarget = 'VIS';
 let t0 = performance.now();
 let flashAlpha = 0;
 
@@ -1044,7 +1564,7 @@ function drawVisible(dt){
     const yBase = y0 + bandH*(i+0.5)/7;
     ctx.beginPath();
     for(let x=0;x<=W;x+=2){
-      const y = yBase + Math.sin((x*2*Math.PI/wl)+performance.now()*0.0016*speed+i*0.5)*amp;
+      const y = yBase + Math.sin((x*2*Math.PI/wl)+emVisualElapsed*0.0016*speed+i*0.5)*amp;
       if(x===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
     }
     ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.stroke();
@@ -1074,7 +1594,7 @@ function drawInfra(dt){
   // 左侧“手掌热像”合成（5 指 + 掌心）
   const hand = {
     x: W*0.22, y: H*0.55, // 掌心
-    pulse: 0.5 + 0.5*Math.sin(performance.now()*0.003)
+    pulse: 0.5 + 0.5*Math.sin(emVisualElapsed*0.003)
   };
   const palmR = Math.min(W,H)*0.13*(0.95+0.05*hand.pulse);
   const hg = ctx.createRadialGradient(hand.x, hand.y, 0, hand.x, hand.y, palmR);
@@ -1111,7 +1631,7 @@ function drawRadio(dt){
   for(let i=0;i<lanes;i++){
     const yBase = base + i*gap; ctx.beginPath();
     for(let x=0;x<=W;x+=3){
-      const y = yBase + Math.sin((x*2*Math.PI/wl)+performance.now()*0.0012*speed + i)*amp;
+      const y = yBase + Math.sin((x*2*Math.PI/wl)+emVisualElapsed*0.0012*speed + i)*amp;
       (x===0?ctx.moveTo(x,y):ctx.lineTo(x,y));
     }
     ctx.globalAlpha=0.9; ctx.stroke(); ctx.globalAlpha=1;
@@ -1120,12 +1640,12 @@ function drawRadio(dt){
   rfDots.forEach(d=>{
     d.u = (d.u + dt*0.08) % 1; const x = d.u*W;
     const yBase = base + d.lane*gap;
-    const y = yBase + Math.sin((x*2*Math.PI/wl)+performance.now()*0.0012*speed + d.lane)*amp;
+    const y = yBase + Math.sin((x*2*Math.PI/wl)+emVisualElapsed*0.0012*speed + d.lane)*amp;
     ctx.fillStyle='rgba(94,200,255,0.9)'; ctx.beginPath(); ctx.arc(x,y,3.5*DPR,0,Math.PI*2); ctx.fill();
   });
 
   // 右上角 Wi-Fi 同心弧（中心在右上角内缩处）
-  const cx = W*0.82, cy = H*0.18, baseR = Math.min(W,H)*0.06, t = performance.now()*0.002;
+  const cx = W*0.82, cy = H*0.18, baseR = Math.min(W,H)*0.06, t = emVisualElapsed*0.002;
   ctx.lineWidth=Math.max(1.5,3*DPR); ctx.strokeStyle='rgba(94,200,255,0.65)';
   for(let i=0;i<3;i++){
     const r = baseR + i*baseR*0.38;
@@ -1152,7 +1672,7 @@ function drawUV(dt){
     const yBase = H*(0.18 + 0.08*i);
     ctx.beginPath();
     for(let x=0;x<=W;x+=2){
-      const y = yBase + Math.sin((x*2*Math.PI/wl)+performance.now()*0.0019*speed + i)*amp;
+      const y = yBase + Math.sin((x*2*Math.PI/wl)+emVisualElapsed*0.0019*speed + i)*amp;
       (x===0?ctx.moveTo(x,y):ctx.lineTo(x,y));
     }
     ctx.strokeStyle='rgba(179,136,255,0.85)'; ctx.stroke();
@@ -1161,14 +1681,14 @@ function drawUV(dt){
   // 荧光微点
   uvStars.forEach(s=>{
     const x = s.x*W, y=s.y*H;
-    const a = 0.35 + 0.65*Math.abs(Math.sin(performance.now()*0.002 + s.w*6));
+    const a = 0.35 + 0.65*Math.abs(Math.sin(emVisualElapsed*0.002 + s.w*6));
     ctx.fillStyle=`rgba(190,160,255,${a})`;
     ctx.fillRect(x,y,1.5*DPR,1.5*DPR);
   });
 
   // 随机荧光字母闪亮（1.2秒后换一个）
   uvTextTimer -= dt;
-  if (uvTextTimer<=0){
+  if (emAdvancing && uvTextTimer<=0){
     const text = uvWords[(Math.random()*uvWords.length)|0];
     const x = W*(0.35 + Math.random()*0.3), y = H*(0.35 + Math.random()*0.3);
     uvTextObj = { text, x, y, life:1.2 };
@@ -1207,8 +1727,7 @@ function spawnBrightLine(){
   const vx = Math.cos(ang)*3.2*DPR, vy = Math.sin(ang)*3.2*DPR;
   crLines.push({ x:x0, y:y0, vx, vy, life:80, w:2.2*DPR });
 }
-setInterval(()=>{ if (bandTarget==='CR' && crParts.length<260) spawnShower(); }, 420);
-setInterval(()=>{ if (bandTarget==='CR' && crLines.length<4 && Math.random()<0.6) spawnBrightLine(); }, 650);
+// CR spawn scheduling is owned by emStartSpawns; original periods/caps preserved.
 
 function drawCR(dt){
   ctx.fillStyle='#080b10'; ctx.fillRect(0,0,W,H);
@@ -1226,26 +1745,31 @@ function drawCR(dt){
     ctx.moveTo(L.x, L.y);
     ctx.lineTo(L.x - L.vx*6, L.y - L.vy*6); // 留出短尾
     ctx.stroke();
+    if(emAdvancing){
     L.x += L.vx; L.y += L.vy; L.life -= 1; L.w = Math.max(0.5*DPR, L.w*0.98);
     if (L.life<=0 || L.y>H+20) crLines.splice(i,1);
+    } // EM pure draw guard
   }
 
   // 粒子簇射
   for(let i=crParts.length-1;i>=0;i--){
     const a=crParts[i];
+    if(emAdvancing){
     a.x+=a.vx; a.y+=a.vy; a.life-=1; a.alpha=Math.max(0, a.life/160);
+    } // EM pure draw guard
     ctx.fillStyle=`rgba(155,211,255,${0.25+0.75*a.alpha})`;
     ctx.beginPath(); ctx.arc(a.x,a.y,1.6*DPR,0,Math.PI*2); ctx.fill();
+    if(emAdvancing){
     if (a.life<=0 || a.y>H+10) crParts.splice(i,1);
+    } // EM pure draw guard
   }
 }
 
 /* ============ 主循环（含空白初始态 & 切换闪光） ============ */
-function draw(){
-  const now=performance.now(); const dt=Math.min(32, now - t0)/1000; t0=now;
-
+function emRender(dt,advance){
+  emAdvancing=advance;
   // 切换处理（此处直接赋值，差异已经足够明显）
-  if (band !== bandTarget) band = bandTarget;
+  if (advance && band !== bandTarget) band = bandTarget;
 
   if (band===null){
     // 初始空白：柔和深色背景
@@ -1263,9 +1787,11 @@ function draw(){
     flashAlpha=Math.max(0, flashAlpha - dt*1.5);
   }
 
-  requestAnimationFrame(draw);
+  emAdvancing=false;
 }
-draw();
+function draw(timestamp){
+  emDrawRaf=0;if(emDestroyed)return;const dt=emLastFrame===null?0:Math.max(0,Math.min(32,timestamp-emLastFrame))/1000;emLastFrame=timestamp;emVisualElapsed+=dt*1000;t0=timestamp;emRender(dt,true);emPlaceCursor();emDrawRaf=requestAnimationFrame(draw);
+}
 
 /* ============ 交互框架（模板同款） ============ */
 const taskStepEl=document.getElementById('taskStep');
@@ -1275,21 +1801,63 @@ const dots=[...document.querySelectorAll('.progress-dots .dot')];
 const checkmark=document.getElementById('checkmark');
 const toast=document.getElementById('toast');
 const doneMask=document.getElementById('doneMask'); const okBtn=document.getElementById('okBtn');
-const btnFree=document.getElementById('freeBtn'); const btnAuto=document.getElementById('autoDemoBtn'); const btnReset=document.getElementById('resetBtn');
+const btnFree=document.getElementById('legacyFreeBtn'); const btnAuto=document.getElementById('legacyAutoDemoBtn'); const btnReset=document.getElementById('legacyResetBtn');
 okBtn.onclick=()=> doneMask.style.display='none';
 
 const bandTag=document.getElementById('bandTag');
 const btnMap={ VIS:document.getElementById('btnVIS'), IR:document.getElementById('btnIR'),
                RF:document.getElementById('btnRF'), UV:document.getElementById('btnUV'), CR:document.getElementById('btnCR') };
+const emBandName=document.getElementById('emBandName');
+const emWavelength=document.getElementById('emWavelength');
+const emFrequency=document.getElementById('emFrequency');
+const emPhenomenon=document.getElementById('emPhenomenon');
+const bandObservations={
+  VIS:{wavelength:'中等',frequency:'中等',phenomenon:'形成彩虹色带，可被人眼直接看见'},
+  IR:{wavelength:'较长',frequency:'较低',phenomenon:'热像与遥控等用途'},
+  RF:{wavelength:'最长',frequency:'最低',phenomenon:'广播、无线通信与 Wi-Fi 等用途'},
+  UV:{wavelength:'较短',frequency:'较高',phenomenon:'可激发荧光，也会造成晒黑'},
+  CR:{wavelength:'极短',frequency:'极高',phenomenon:'高能粒子进入大气形成簇射现象'}
+};
 
 function syncBandUI(){
-  bandTag.textContent='当前：' + (bandTarget ? (bandNames[bandTarget]||'—') : '—');
-  Object.entries(btnMap).forEach(([k,el])=> el.classList.toggle('active', k===bandTarget));
+  const selected = bandTarget || 'VIS';
+  const facts = bandObservations[selected];
+  bandTag.textContent='当前：' + bandNames[selected];
+  Object.entries(btnMap).forEach(([k,el])=>{
+    el.classList.toggle('active', k===selected);
+    el.setAttribute('aria-pressed', String(k===selected));
+  });
+  emBandName.textContent=bandNames[selected];
+  emWavelength.textContent=facts.wavelength;
+  emFrequency.textContent=facts.frequency;
+  emPhenomenon.textContent=facts.phenomenon;
 }
 
-let freeMode=false, autoPlaying=false, completed=false, current=0;
+let freeMode=false, autoPlaying=false, completed=false, current=0, autoRunVersion=0;
+let transitionVersion=0;
+const transitionTimers=new Set();
+function clearOwnedTimer(id){
+  if(!id) return;
+  clearTimeout(id);
+  transitionTimers.delete(id);
+}
+function scheduleTransition(callback,delay){
+  const token=transitionVersion;
+  const id=setTimeout(()=>{
+    transitionTimers.delete(id);
+    if(token===transitionVersion) callback();
+  },delay);
+  transitionTimers.add(id);
+  return id;
+}
+function cancelTransitions(){
+  transitionVersion+=1;
+  transitionTimers.forEach(clearTimeout);
+  transitionTimers.clear();
+  showToast.t=0; showCheck.t=0;
+}
 const tasks = [
-  { key:'VIS', text:'点击<strong>可见光</strong>，看看人眼能看到的彩虹波段。', hint:'点右上角“可见光”。' },
+  { key:'VIS', text:'点击<strong>可见光</strong>，看看人眼能看到的彩虹波段。', hint:'在波段栏点击“可见光”。' },
   { key:'IR' , text:'切换到<strong>红外线</strong>，观察“热像手掌”和热斑鼓动。',   hint:'点“红外线”。' },
   { key:'RF' , text:'切换到<strong>无线电波</strong>，留意粗长波、信号点和 Wi-Fi 同心弧。', hint:'点“无线电波”。' },
   { key:'UV' , text:'切换到<strong>紫外线</strong>，高频细波 + 荧光点 + 荧光字母闪亮。',    hint:'点“紫外线”。' },
@@ -1301,48 +1869,14 @@ function setStepUI(i){
   taskTextEl.innerHTML=tasks[i].text;
   taskHintEl.textContent=tasks[i].hint;
 }
-function showToast(msg){ toast.textContent=msg||'再试一试'; toast.classList.add('show'); clearTimeout(showToast.t); showToast.t=setTimeout(()=>toast.classList.remove('show'),1200); }
-function showCheck(){ checkmark.classList.add('active'); clearTimeout(showCheck.t); showCheck.t=setTimeout(()=>checkmark.classList.remove('active'),520); }
+function showToast(msg){ toast.textContent=msg||'再试一试'; toast.classList.add('show'); clearOwnedTimer(showToast.t); showToast.t=scheduleTransition(()=>toast.classList.remove('show'),1200); }
+function showCheck(){ checkmark.classList.add('active'); clearOwnedTimer(showCheck.t); showCheck.t=scheduleTransition(()=>checkmark.classList.remove('active'),520); }
 
-function setFree(on){
-  freeMode=on;
-  const card=document.getElementById('taskCard');
-  card.style.opacity = on? .25:1; card.style.filter = on? 'grayscale(.6)':'none';
-  btnFree.textContent = on? '退出自由模式' : '自由模式';
-  btnAuto.disabled = on;
-}
-
-/* —— 严格步骤守卫：初始 bandTarget 为 null（空白），只有点对才切换 —— */
-function switchBand(key){
-  if (!freeMode && !autoPlaying){
-    const need = tasks[current].key;
-    if (key!==need){ showToast('请按步骤来：' + bandNames[need]); return; }
-  }
-  bandTarget=key; flashAlpha=0.35; syncBandUI();
-  showCheck();
-  dots[current].classList.remove('active'); dots[current].classList.add('done');
-  current++;
-  if (current>=tasks.length){ completed=true; setTimeout(()=> doneMask.style.display='flex', 350); }
-  else{ dots[current].classList.add('active'); setStepUI(current); }
-}
-
-/* —— 自动演示：严格复用相同步骤推进 —— */
-function wait(ms){ return new Promise(r=>setTimeout(r,ms)); }
-async function autoDemo(){
-  if (freeMode || autoPlaying) return; autoPlaying=true;
-  resetFlow(); await wait(200);
-  for (let i=0;i<tasks.length;i++){
-    setStepUI(i);
-    bandTarget=tasks[i].key; flashAlpha=0.35; syncBandUI();
-    showCheck(); dots[i].classList.remove('active'); dots[i].classList.add('done');
-    await wait(750);
-  }
-  completed=true; doneMask.style.display='flex'; autoPlaying=false;
-}
-
-/* —— 重置：回到空白 —— */
-function resetFlow(){
-  completed=false; autoPlaying=false; current=0; flashAlpha=0;
+function resetFlow(cancelAuto=true){
+  if(cancelAuto){ autoRunVersion+=1; autoPlaying=false; }
+  cancelTransitions();
+  completed=false; current=0; flashAlpha=0;
+  toast.classList.remove('show'); checkmark.classList.remove('active'); doneMask.style.display='none';
   // 清空各自特效缓存
   crParts.length=0; crLines.length=0;
   rfDots.forEach(d=> d.u=Math.random());
@@ -1352,22 +1886,77 @@ function resetFlow(){
   // UI & 步骤
   setStepUI(0);
   dots.forEach((d,i)=> d.className='dot' + (i===0?' active':''));
-  bandTarget=null; band=null; // —— 初始空白
+  bandTarget='VIS'; band='VIS';
   syncBandUI();
 }
-btnReset.onclick=()=>{ if(!autoPlaying) resetFlow(); };
-btnAuto.onclick = autoDemo;
-btnFree.onclick = ()=> setFree(!freeMode);
 
-/* —— 波段按钮绑定（自由/自动允许直接切换；步骤模式需匹配当前任务） —— */
-btnMap.VIS.onclick=()=> freeMode||autoPlaying ? (bandTarget='VIS', flashAlpha=0.35, syncBandUI()) : switchBand('VIS');
-btnMap.IR.onclick =()=> freeMode||autoPlaying ? (bandTarget='IR',  flashAlpha=0.35, syncBandUI()) : switchBand('IR');
-btnMap.RF.onclick =()=> freeMode||autoPlaying ? (bandTarget='RF',  flashAlpha=0.35, syncBandUI()) : switchBand('RF');
-btnMap.UV.onclick =()=> freeMode||autoPlaying ? (bandTarget='UV',  flashAlpha=0.35, syncBandUI()) : switchBand('UV');
-btnMap.CR.onclick =()=> freeMode||autoPlaying ? (bandTarget='CR',  flashAlpha=0.35, syncBandUI()) : switchBand('CR');
-
-/* —— 初始化：空白开场 —— */
-setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
+function emNow(){return (emPaused?emPauseAt:performance.now())-emPausedDuration;}
+function emState(){return {mode:autoPlaying?'auto':freeMode?'free':'guided',taskIndex:current,currentTask:current,completed,conclusionShown:emConclusionShown,running:!emDestroyed&&!emPaused,paused:emPaused,destroyed:emDestroyed,band,bandTarget,visualElapsed:emVisualElapsed,failureCode:emFailure,pendingTask:emPending?{index:emPending.index,key:emPending.key}:null,ownedFrames:emDrawRaf?1:0,ownedSpawnTimers:[emShowerInterval,emLineInterval,emShowerStart,emLineStart].filter(Boolean).length,ownedTimers:transitionTimers.size+emWaits.size+(resizeTimer?1:0)};}
+function emSync(){const state=emState();window.__codexScienceShell?.syncPresentation(state);const tag=document.getElementById('statusTag');if(tag)tag.textContent='状态：'+(emDestroyed?'已停止':emPaused?'演示已暂停':emFailure?'观察未保存，请重置后重试（'+emFailure+'）':autoPlaying?'演示中':freeMode?'自由探索':completed?'实验完成':emPending?'正在观察'+bandNames[emPending.key]:'待操作');}
+function emDelay(ms,token=autoRunVersion,phase=null){return new Promise(resolve=>{const wait={id:0,resolve,started:emNow(),duration:Math.max(0,ms),phase};wait.id=setTimeout(()=>{emWaits.delete(wait);resolve(!emDestroyed&&token===autoRunVersion);},wait.duration);emWaits.add(wait);});}
+async function emUntil(predicate,token,limit=5000){for(let elapsed=0;elapsed<limit;elapsed+=60){if(emDestroyed||token!==autoRunVersion)return false;if(predicate())return true;if(!await emDelay(60,token))return false;}return false;}
+function emCloseDone(restoreFocus=true){doneMask.style.display='none';emInertState.forEach((value,node)=>{node.inert=value;});emInertState.clear();if(restoreFocus&&emReturnFocus?.isConnected&&!emReturnFocus.matches(':disabled'))emReturnFocus.focus({preventScroll:true});emReturnFocus=null;}
+function emShowDone(){if(emDestroyed||freeMode||!completed)return;emConclusionShown=true;emReturnFocus=document.activeElement;doneMask.style.display='flex';let branch=doneMask;while(branch.parentElement){for(const node of branch.parentElement.children){if(node===branch||!(node instanceof HTMLElement)||node.matches('script,style')||emInertState.has(node))continue;emInertState.set(node,node.inert);node.inert=true;}branch=branch.parentElement;if(branch===document.body)break;}okBtn.focus({preventScroll:true});}
+function emStopModel(){emModelVersion++;cancelAnimationFrame(emDrawRaf);emDrawRaf=0;emLastFrame=null;clearInterval(emShowerInterval);clearInterval(emLineInterval);clearTimeout(emShowerStart);clearTimeout(emLineStart);emShowerInterval=emLineInterval=emShowerStart=emLineStart=0;}
+function emSpawnRemaining(){const now=emNow();return emSpawnDue.map((due,index)=>Math.max(0,Math.min([420,650][index],due-now)));}
+function emStartSpawns(remaining=[420,650]){
+  const token=emModelVersion,periods=[420,650];
+  const tick=index=>{if(emDestroyed||token!==emModelVersion)return;emSpawnDue[index]=emNow()+periods[index];if(emPaused)return;if(index===0){if(bandTarget==='CR'&&crParts.length<260)spawnShower();}else if(bandTarget==='CR'&&crLines.length<4&&Math.random()<0.6)spawnBrightLine();};
+  emSpawnDue=remaining.map(value=>emNow()+value);
+  const start=index=>{if(emDestroyed||token!==emModelVersion)return;tick(index);if(index===0){emShowerStart=0;emShowerInterval=setInterval(()=>tick(0),420);}else{emLineStart=0;emLineInterval=setInterval(()=>tick(1),650);}};
+  emShowerStart=setTimeout(()=>start(0),remaining[0]);emLineStart=setTimeout(()=>start(1),remaining[1]);
+}
+function emStartModel(remaining=[420,650]){if(emDestroyed)return;emLastFrame=null;emDrawRaf=requestAnimationFrame(draw);emStartSpawns(remaining);}
+function emClear(){
+  autoRunVersion++;autoPlaying=false;emConclusionShown=false;cancelTransitions();for(const wait of emWaits){clearTimeout(wait.id);wait.resolve(false);}emWaits.clear();emPending=null;
+  emStopModel();clearTimeout(resizeTimer);resizeTimer=0;if(emPaused){emPausedDuration+=performance.now()-emPauseAt;emPaused=false;}window.__codexDemoClock?.resume();
+  checkmark.classList.remove('active');toast.classList.remove('show');emCloseDone(false);emCursorTarget=null;emCursor.classList.remove('show','tap');window.labSoundBus?.hush();
+}
+function emCapture(){const activeWait=[...emWaits].find(wait=>wait.phase==='observe');return {paused:emPaused,current,completed,conclusionShown:emConclusionShown,band,bandTarget,flashAlpha,visualElapsed:emVisualElapsed,width:W,height:H,dpr:DPR,pixels:ctx.getImageData(0,0,W,H),hotSpots:structuredClone(hotSpots),rfDots:structuredClone(rfDots),uvStars:structuredClone(uvStars),uvTextTimer,uvTextObj:structuredClone(uvTextObj),crParts:structuredClone(crParts),crLines:structuredClone(crLines),spawnRemaining:emSpawnRemaining(),pending:emPending?{index:emPending.index,key:emPending.key,remaining:activeWait?Math.max(0,activeWait.duration-(emNow()-activeWait.started)):0}:null,view:{text:taskTextEl.innerHTML,hint:taskHintEl.textContent,dots:dots.map(node=>node.className)},history:window.__codexScienceShell?.getRecordState()||{records:[],unseen:0}};}
+function emProjectTask(view=null){if(view){taskTextEl.innerHTML=view.text;taskHintEl.textContent=view.hint;dots.forEach((node,index)=>node.className=view.dots[index]);}else{setStepUI(Math.min(current,tasks.length-1));if(completed)dots.forEach(node=>node.className='dot done');}taskStepEl.textContent='关卡 '+Math.min(current+1,tasks.length)+' / '+tasks.length+(completed?' · 已完成':'');}
+function emRestore(saved){
+  resize();current=saved.current;completed=saved.completed;emConclusionShown=saved.conclusionShown;band=saved.band;bandTarget=saved.bandTarget;flashAlpha=saved.flashAlpha;emVisualElapsed=saved.visualElapsed;
+  hotSpots.forEach((value,index)=>Object.assign(value,saved.hotSpots[index]));rfDots.forEach((value,index)=>Object.assign(value,saved.rfDots[index]));uvStars.forEach((value,index)=>Object.assign(value,saved.uvStars[index]));uvTextTimer=saved.uvTextTimer;
+  const mapPoint=value=>({...value,x:W===saved.width?value.x:value.x*W/saved.width,y:H===saved.height?value.y:value.y*H/saved.height});
+  uvTextObj=saved.uvTextObj?mapPoint(saved.uvTextObj):null;
+  const mapCR=value=>({...mapPoint(value),vx:value.vx*DPR/saved.dpr,vy:value.vy*DPR/saved.dpr,...('w' in value?{w:value.w*DPR/saved.dpr}:{})});
+  crParts=saved.crParts.map(mapCR);crLines=saved.crLines.map(mapCR);syncBandUI();emProjectTask(saved.view);emRender(0,false);if(W===saved.width&&H===saved.height)ctx.putImageData(saved.pixels,0,0);emStartModel(saved.spawnRemaining);emSync();
+}
+function setFree(on){if(emDestroyed||autoPlaying)return false;on=Boolean(on);if(on===freeMode)return true;if(on){emFreeEntry=emCapture();emClear();freeMode=true;emRestore(emFreeEntry);}else{const saved=emFreeEntry;emClear();freeMode=false;emRestore(saved);emFreeEntry=null;if(saved.pending&&!completed&&saved.pending.index===current&&saved.pending.key===bandTarget)switchBand(saved.pending.key,{remaining:saved.pending.remaining});if(saved.paused)window.__codexPageControllerV1.pause();}btnFree.textContent=on?'退出自由模式':'自由模式';btnAuto.disabled=on;emSync();return true;}
+function emReset(){if(emDestroyed)return false;emFailure='';if(freeMode&&emFreeEntry){emClear();freeMode=true;emRestore(emFreeEntry);window.__codexScienceShell?.restoreRecordState(emFreeEntry.history);}else{emClear();freeMode=false;emFreeEntry=null;resetFlow(false);emVisualElapsed=0;emRender(0,false);emStartModel();window.__codexScienceShell?.clearRecords();}emSync();return true;}
+function emPersist(index){const shell=window.__codexScienceShell;if(!shell){emFailure='AUTO_RECORD_NOT_PERSISTED';return false;}const before=shell.getRecords().length,mode=autoPlaying?'auto':'guided',accepted=shell.record('关卡 '+(index+1)+' 观察',{validated:true,task:index+1}),after=shell.getRecords(),last=after.at(-1),valid=Boolean(accepted&&after.length===before+1&&last.task===index+1&&last.mode===mode&&last.values);emFailure=valid?'':'AUTO_RECORD_NOT_PERSISTED';return valid;}
+async function switchBand(key,options={}){
+  if(emDestroyed||emPaused||!Object.hasOwn(btnMap,key)||(autoPlaying&&!options.auto))return false;
+  if(freeMode||completed||current>=tasks.length){bandTarget=key;flashAlpha=0.35;syncBandUI();emSync();return true;}
+  if(emPending)return false;const index=current;if(key!==tasks[index].key){showToast('请按关卡来：'+bandNames[tasks[index].key]);dots[index].classList.add('warning');document.getElementById('hintLamp')?.classList.add('flash');return false;}
+  const token=autoRunVersion,pending={index,key};emPending=pending;bandTarget=key;flashAlpha=0.35;syncBandUI();emSync();
+  try{
+    if(!await emDelay(options.remaining??(AUTO_DEMO_TIMING.action+AUTO_DEMO_TIMING.observe),token,'observe'))return false;
+    if(emPending!==pending||freeMode||current!==index||bandTarget!==key||band!==key)return false;
+    if(options.auto){if(!await emPoint('#scienceRecordBtn',token,'control',AUTO_DEMO_TIMING.recordLead))return false;if(!await emDelay(AUTO_DEMO_TIMING.recordAction,token))return false;}
+    if(token!==autoRunVersion||emDestroyed||freeMode||!emPersist(index)){if(token===autoRunVersion&&!emDestroyed)showToast('当前观察未保存，请再试一次。');return false;}
+    showCheck();document.getElementById('hintLamp')?.classList.remove('flash');dots[index].className='dot done';current=index+1;
+    if(current>=tasks.length){completed=true;scheduleTransition(emShowDone,AUTO_DEMO_TIMING.conclusion+(autoPlaying?AUTO_DEMO_TIMING.recordObserve:0));}else setStepUI(current);
+    emSync();return true;
+  }finally{if(emPending===pending){emPending=null;emSync();}}
+}
+const emCursor=document.createElement('div');emCursor.className='codex-auto-cursor';emCursor.setAttribute('aria-hidden','true');stage.append(emCursor);
+function emPlaceCursor(){if(!emCursorTarget||emDestroyed)return;const target=document.querySelector(emCursorTarget);if(!target||!target.getClientRects().length)return;const body=target.closest('.drawer-body');if(body&&target.matches('tr'))body.scrollTop=body.scrollHeight;const rect=target.getBoundingClientRect(),base=stage.getBoundingClientRect(),clip=body?.getBoundingClientRect(),top=clip?Math.max(rect.top,clip.top):rect.top,bottom=clip?Math.min(rect.bottom,clip.bottom):rect.bottom;emCursor.style.left=(rect.left-base.left+rect.width/2)+'px';emCursor.style.top=((top+bottom)/2-base.top)+'px';emCursor.classList.add('show');}
+async function emPoint(selector,token,panel='control',lead=AUTO_DEMO_TIMING.cursorLead){window.__codexScienceShell?.open(panel,true,true);emCursorTarget=selector;if(!await emDelay(lead,token))return false;emPlaceCursor();return true;}
+async function autoDemo(event){
+  if(emDestroyed||freeMode||autoPlaying)return false;emReset();const token=++autoRunVersion;let succeeded=false;autoPlaying=true;window.labSoundBus?.unlock(event);emSync();
+  try{for(const task of tasks){if(token!==autoRunVersion||emDestroyed)return false;if(!await emPoint('#'+btnMap[task.key].id,token))return false;emCursor.classList.add('tap');if(!await switchBand(task.key,{auto:true}))return false;emCursor.classList.remove('tap');window.__codexScienceShell?.open('data',true,true);emCursorTarget='#recordBody tr:last-child';emPlaceCursor();if(!await emDelay(AUTO_DEMO_TIMING.recordObserve+AUTO_DEMO_TIMING.transition,token))return false;}if(!await emUntil(()=>completed&&current===tasks.length&&emConclusionShown,token))return false;if(!await emDelay(AUTO_DEMO_TIMING.settle,token))return false;succeeded=token===autoRunVersion&&completed&&current===tasks.length&&emConclusionShown;return succeeded;}
+  finally{if(token===autoRunVersion&&!emDestroyed){if(!succeeded){const failure=emFailure||'AUTO_PREDICATE_FAILED';freeMode=false;emReset();emFailure=failure;}else{autoPlaying=false;emCursorTarget=null;emCursor.classList.remove('show','tap');}emSync();}}
+}
+window.__codexPageControllerV1={startAutoDemo:autoDemo,pause(){if(emDestroyed||emPaused)return false;emPauseAt=performance.now();emPaused=true;window.__codexDemoClock.pause();window.labSoundBus?.hush();emSync();return true;},resume(event){if(emDestroyed||!emPaused)return false;emPausedDuration+=performance.now()-emPauseAt;emPaused=false;window.__codexDemoClock.resume();window.labSoundBus?.unlock(event);emSync();return true;},cancel(){if(emDestroyed)return false;freeMode=false;return emReset();},reset:emReset,setFreeMode:setFree,getState:emState,destroy(){if(emDestroyed)return;emClear();emDestroyed=true;emFreeEntry=null;emEvents.abort();emResizeObserver.disconnect();window.__codexScienceShell?.destroy();emSync();}};
+btnReset.onclick=()=>autoPlaying?window.__codexPageControllerV1.cancel():emReset();btnAuto.onclick=autoDemo;btnFree.onclick=()=>setFree(!freeMode);
+Object.entries(btnMap).forEach(([key,button])=>button.onclick=()=>switchBand(key));
+okBtn.onclick=()=>emCloseDone();
+document.addEventListener('keydown',event=>{if(doneMask.style.display!=='flex')return;if(event.key==='Escape'){event.preventDefault();emCloseDone();}else if(event.key==='Tab'){event.preventDefault();okBtn.focus({preventScroll:true});}},{signal:emEvents.signal});
+document.addEventListener('DOMContentLoaded',()=>{const bind=(id,handler)=>document.getElementById(id).addEventListener('click',handler,{signal:emEvents.signal});bind('resetBtn',event=>autoPlaying?(emPaused?window.__codexPageControllerV1.resume(event):window.__codexPageControllerV1.pause()):emReset());bind('autoDemoBtn',event=>autoPlaying?window.__codexPageControllerV1.cancel():autoDemo(event));bind('freeBtn',()=>setFree(!freeMode));emSync();},{once:true,signal:emEvents.signal});
+window.addEventListener('pagehide',()=>window.__codexPageControllerV1.destroy(),{once:true,signal:emEvents.signal});
+resetFlow(false);emRender(0,false);emStartModel();
+/* —— 初始化由唯一 EM owner 完成，见 emStartModel。 */
 </script>
 
 <script>
@@ -1375,6 +1964,28 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
 (() => {
   if (window.__codexStandardOptimization20260622) return;
   window.__codexStandardOptimization20260622 = true;
+  const themeToggle = document.getElementById('themeToggle');
+  const syncThemeToggle = () => {
+    const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    const nextThemeName = theme === 'dark' ? '白天模式' : '夜间模式';
+    themeToggle.setAttribute('aria-pressed', String(theme === 'dark'));
+    themeToggle.setAttribute('aria-label', `切换到${nextThemeName}`);
+    themeToggle.setAttribute('title', `切换到${nextThemeName}`);
+    themeToggle.textContent = theme === 'dark' ? '☀︎' : '☾';
+  };
+  themeToggle.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try{ localStorage.setItem('xingnian.physics.theme', next); }
+    catch(error){ console.warn('[physics theme] 无法保存主题，本次切换仍然有效', error); }
+    syncThemeToggle();
+  });
+  window.addEventListener('storage', (event) => {
+    if(event.key !== 'xingnian.physics.theme' || !['dark','light'].includes(event.newValue)) return;
+    document.documentElement.dataset.theme = event.newValue;
+    syncThemeToggle();
+  });
+  syncThemeToggle();
   const helpButtons = document.querySelectorAll('.helpBtn,.help-btn,.hint-lamp,#helpBtn,[data-help-button]');
   helpButtons.forEach((btn) => {
     const text = (btn.textContent || '').trim();
@@ -1432,6 +2043,7 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
   </section>
 </div>
 <script id="codexDemoShellRuntimeV2">(() => {
+  return; // Retired before binding: native EM controller is the sole mode owner.
   if (window.__codexDemoShellV2) return;
   window.__codexDemoShellV2 = true;
 
@@ -1452,6 +2064,7 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     records: [],
     drawerZ: 60
   };
+  const docksEnabled = false;
 
   const taskCard = $(".task-card,.taskCard,.xn-stepcard", app);
   const taskStep = $("#taskStep,#xn-step,#xnStepBadge", app);
@@ -1479,6 +2092,13 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
   const resetButton = $("#resetBtn", standardToolbar);
   const autoButton = $("#autoDemoBtn", standardToolbar);
   const freeButton = $("#freeBtn", standardToolbar);
+
+  if (!docksEnabled) {
+    [mobileTabs, controlDock, dataDock].forEach((node) => {
+      node.hidden = true;
+      node.setAttribute("aria-hidden", "true");
+    });
+  }
 
   const visualRoots = [...document.body.children].filter((node) => node !== app && node !== bridge && !["SCRIPT", "STYLE"].includes(node.tagName));
   visualRoots.forEach((node) => app.insertBefore(node, bridge));
@@ -1573,8 +2193,9 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     }
   }
 
-  stage.append(hud, controlDock, dataDock, mobileTabs);
-  stage.insertAdjacentElement("afterend", standardToolbar);
+  bridge.prepend(hud);
+  stage.append(controlDock, dataDock, mobileTabs);
+  bridge.append(standardToolbar);
   const generatedExplanation = $(".codex-generated-explanation", bridge);
   const existingExplanation = $(".explanation:not(.codex-generated-explanation),.explain", app);
   if (existingExplanation) {
@@ -1609,7 +2230,7 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
   }
 
   const managedControls = controlCandidates.filter((node) => !controlCandidates.some((other) => other !== node && other.contains(node)));
-  managedControls.slice(0, 5).forEach((node) => {
+  if (docksEnabled) managedControls.slice(0, 5).forEach((node) => {
     const companion = node.nextElementSibling?.matches('.tip,.choice-tip') ? node.nextElementSibling : null;
     node.classList.add("codex-managed-control");
     controlBody.append(node);
@@ -1674,6 +2295,7 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
   };
 
   const updateBadges = () => {
+    if (!docksEnabled) return;
     const show = shellState.unseen > 0 && dataDock.classList.contains("collapsed");
     [dataNotice, dataTabBadge].forEach((badge) => {
       badge.textContent = shellState.unseen > 99 ? "99+" : String(shellState.unseen);
@@ -1683,6 +2305,7 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
   };
 
   const setDrawerCollapsed = (drawer, collapsed) => {
+    if (!docksEnabled) return;
     const other = drawer === controlDock ? dataDock : controlDock;
     if (matchMedia("(max-width: 720px)").matches && !collapsed) other.classList.add("collapsed");
     drawer.classList.toggle("collapsed", collapsed);
@@ -1699,19 +2322,19 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     updateBadges();
   };
 
-  $$(".codex-panel-toggle", bridge).forEach((button) => button.addEventListener("click", () => {
+  if (docksEnabled) $$(".codex-panel-toggle", bridge).forEach((button) => button.addEventListener("click", () => {
     const drawer = button.closest(".codex-drawer");
     setDrawerCollapsed(drawer, !drawer.classList.contains("collapsed"));
   }));
-  experimentTab.addEventListener("click", () => setDrawerCollapsed(controlDock, !controlDock.classList.contains("collapsed")));
-  dataTab.addEventListener("click", () => setDrawerCollapsed(dataDock, !dataDock.classList.contains("collapsed")));
+  if (docksEnabled) experimentTab.addEventListener("click", () => setDrawerCollapsed(controlDock, !controlDock.classList.contains("collapsed")));
+  if (docksEnabled) dataTab.addEventListener("click", () => setDrawerCollapsed(dataDock, !dataDock.classList.contains("collapsed")));
 
   const bringToFront = (drawer) => {
     shellState.drawerZ += 1;
     [controlDock, dataDock].forEach((item) => item.classList.toggle("is-front", item === drawer));
     drawer.style.zIndex = String(shellState.drawerZ);
   };
-  [controlDock, dataDock].forEach((drawer) => {
+  if (docksEnabled) [controlDock, dataDock].forEach((drawer) => {
     const header = $(".codex-drawer-header", drawer);
     drawer.addEventListener("pointerdown", () => bringToFront(drawer));
     header.addEventListener("pointerdown", (event) => {
@@ -1784,6 +2407,7 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
   };
 
   const renderLiveData = () => {
+    if (!docksEnabled) return;
     const observations = collectObservations();
     liveGrid.replaceChildren();
     observations.forEach(({ label, value }) => {
@@ -1800,6 +2424,7 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
   };
 
   const renderRecords = () => {
+    if (!docksEnabled) return;
     recordList.replaceChildren();
     shellState.records.slice(-12).reverse().forEach((record) => {
       const item = document.createElement("div");
@@ -1813,13 +2438,14 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     });
   };
 
-  const completionIsVisible = () => $$('.modal-mask,#doneMask,.done-mask,.completion-modal', app).some((node) => {
+  const completionIsVisible = () => $$('.modal-mask,.xn-modal-mask,#doneMask,#xn-done,.done-mask,.completion-modal', app).some((node) => {
     const style = getComputedStyle(node);
     return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity || 1) > 0 && node.getBoundingClientRect().width > 0;
   });
 
   let lastRecord = "";
   const recordObservation = (action) => {
+    if (!docksEnabled) return;
     renderLiveData();
     const values = collectObservations().slice(0, 3).map((entry) => `${entry.label} ${entry.value}`).join("；");
     const text = values || action || "完成一次场景操作";
@@ -1831,31 +2457,10 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     updateBadges();
   };
 
-  let liveRenderScheduled = false;
-  const observer = new MutationObserver((mutations) => {
-    const taskStepChanged = taskStep && mutations.some((mutation) => mutation.target === taskStep || taskStep.contains(mutation.target));
-    if (taskStepChanged) syncChallengeProgress();
-    if (mutations.every((mutation) => isBridgeNode(mutation.target)) || liveRenderScheduled) return;
-    liveRenderScheduled = true;
-    clock.nativeSetTimeout(() => {
-      liveRenderScheduled = false;
-      renderLiveData();
-      if (completionIsVisible()) {
-        if (shellState.autoPlaying) finishDemo("演示完成");
-        else if (!shellState.freeMode) setStatus("已完成");
-      }
-    }, 80);
-  });
-  observer.observe(app, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["value", "aria-valuenow"] });
-  app.addEventListener("change", (event) => {
-    if (!isBridgeNode(event.target)) clock.nativeSetTimeout(() => recordObservation("调整参数"), 120);
-  }, true);
-  app.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (!button || isBridgeNode(button) || button.closest('.modal,.modal-mask')) return;
-    const text = (button.textContent || "完成操作").replace(/\s+/g, " ").trim();
-    clock.nativeSetTimeout(() => recordObservation(text), 220);
-  }, true);
+  if (taskStep) {
+    const progressObserver = new MutationObserver(syncChallengeProgress);
+    progressObserver.observe(taskStep, { subtree: true, childList: true, characterData: true });
+  }
 
   const cursor = document.createElement("div");
   cursor.className = "codex-auto-cursor";
@@ -1901,10 +2506,28 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     shellState.autoPlaying = false;
     shellState.autoPaused = false;
     cursor.classList.remove("show", "tap");
-    if (clock.paused) clock.resume();
     syncMode();
     setStatus(message);
     recordObservation(message);
+  };
+
+  const waitForLegacyCompletion = async (token, timeout = 90000) => {
+    let activeElapsed = 0;
+    let last = performance.now();
+    while (token === shellState.autoToken && shellState.autoPlaying) {
+      if (clock.paused) {
+        last = performance.now();
+        await nativeDelay(40);
+        continue;
+      }
+      if (completionIsVisible()) return "completed";
+      const now = performance.now();
+      activeElapsed += now - last;
+      last = now;
+      if (activeElapsed >= timeout) return "timeout";
+      await nativeDelay(80);
+    }
+    return "cancelled";
   };
 
   const startDemo = async () => {
@@ -1918,9 +2541,17 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     syncMode();
     try {
       if (legacy.auto) {
+        safeClick(legacy.reset);
         await moveCursorTo(legacy.auto, token);
+        while (clock.paused && token === shellState.autoToken && shellState.autoPlaying) await nativeDelay(40);
+        if (token !== shellState.autoToken || !shellState.autoPlaying) return;
         safeClick(legacy.auto);
-        await nativeDelay(12000);
+        const outcome = await waitForLegacyCompletion(token);
+        if (outcome === "timeout" && token === shellState.autoToken) {
+          exitDemo("演示超时，已停止");
+          return;
+        }
+        if (outcome !== "completed") return;
       } else {
         await genericDemo(token);
       }
@@ -1931,7 +2562,7 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     }
   };
 
-  const exitDemo = () => {
+  const exitDemo = (message = "已退出演示") => {
     shellState.autoToken += 1;
     if (clock.paused) clock.resume();
     shellState.autoPlaying = false;
@@ -1939,7 +2570,7 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     cursor.classList.remove("show", "tap");
     safeClick(legacy.reset);
     syncMode();
-    setStatus("已退出演示");
+    setStatus(message);
   };
 
   resetButton.addEventListener("click", () => {
@@ -1974,12 +2605,13 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
     $$(".task-step,.stepBadge,.xn-step", app).forEach((node) => { node.textContent = node.textContent.replace(/步骤/g, "关卡"); });
   };
   normalizeTaskLanguage();
-  setDrawerCollapsed(controlDock, true);
-  setDrawerCollapsed(dataDock, true);
-  renderLiveData();
-  renderRecords();
+  if (docksEnabled) {
+    setDrawerCollapsed(controlDock, true);
+    setDrawerCollapsed(dataDock, true);
+    renderLiveData();
+    renderRecords();
+  }
   syncMode();
-  clock.nativeSetTimeout(() => window.dispatchEvent(new Event("resize")), 80);
   window.addEventListener("resize", () => {
     if (matchMedia("(max-width: 720px)").matches) {
       [controlDock, dataDock].forEach((drawer) => {
@@ -1993,5 +2625,1440 @@ setStepUI(0); syncBandUI(); // band/bandTarget 为 null，画面保持空白
 </script>
 <!-- CODEX_DEMO_SHELL_V2_END -->
 </main>
+<script type="application/json" id="codex-science-shell-config">{"controls":["#bandSwitchBar"],"observation":"#emObservation","taskCount":5,"presentation":true,"unbound":true}</script>
+<script type="text/plain" id="codex-science-theme-icons">
+      <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+      </svg>
+      <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"></path>
+      </svg>
+    </script>
+<script id="codex-science-shell-adapter">
+(() => {
+  'use strict';
+  function mount() {
+    const stage=document.getElementById('stage'),app=document.getElementById('app');
+    const events=new AbortController();let destroyed=false;
+    const listen=(node,type,handler,options={})=>node.addEventListener(type,handler,{...options,signal:events.signal});
+    const config=JSON.parse(document.getElementById('codex-science-shell-config').textContent);
+    if(!stage||!app)throw new Error('[science-shell] 缺少实验舞台或页面容器');
+    const task=document.querySelector(config.task||'.task-card,.taskCard,.xn-stepcard');
+    if(!task)throw new Error('[science-shell] 缺少原关卡卡片');
+    if(!config.task)task.id='taskCard';task.classList.add('task-card');
+    if(config.taskStep)document.querySelector(config.taskStep).classList.add('task-step');
+    if(config.taskText)document.querySelector(config.taskText).parentElement.classList.add('task-text');
+    if(config.taskDots)task.querySelector(config.taskDots).classList.add('progress-dots');
+    if(config.stageClass)stage.classList.add(config.stageClass);
+    if(config.explanation){const node=document.querySelector(config.explanation);if(!node)throw new Error('[science-shell] 缺少冻结说明');app.append(node);node.classList.add('explanation');}
+    const hud=document.getElementById('modeTag')?.parentElement;
+    if(!hud)throw new Error('[science-shell] 缺少原模式状态');
+    hud.id='scienceHud';hud.classList.add('hud');stage.prepend(hud);
+    if(config.apparatus){const apparatus=document.querySelector(config.apparatus);if(!apparatus)throw new Error('[science-shell] 缺少冻结场景 '+config.apparatus);apparatus.classList.add('science-apparatus');}
+    document.getElementById('modeTag').classList.add('mode-strip');
+    const makePanel=(kind,title)=>{
+      const old=document.getElementById(kind==='control'?'codexControlDock':'codexDataDock');
+      const panel=old||document.createElement('section');panel.id=kind+'Dock';
+      panel.classList.add('dock','drawer',kind,'collapsed');panel.dataset.scienceStandardPanel='true';
+      panel.setAttribute('aria-label',title);panel.hidden=false;
+      panel.removeAttribute('aria-hidden');
+      if(!old)panel.innerHTML='<div class="dockHead drawer-header" data-drag-handle><span class="dockTitle drawer-title"></span><div class="dockBtns drawer-actions"><button class="iconBtn mini codex-panel-toggle" type="button">展开</button></div></div><div class="dockBody drawer-body"></div>';
+      const header=panel.querySelector('.drawer-header,.codex-drawer-header');header.classList.add('dockHead','drawer-header');header.dataset.dragHandle='';
+      const body=panel.querySelector('.drawer-body,.codex-drawer-body');body.classList.add('dockBody','drawer-body');
+      const titleNode=header.querySelector('.drawer-title,.codex-drawer-title');titleNode.classList.add('dockTitle');
+      if(!old)titleNode.textContent=title;
+      const toggle=header.querySelector('button');toggle.id=kind+'ToggleBtn';toggle.classList.add('iconBtn','mini');toggle.textContent='展开';toggle.setAttribute('aria-controls',panel.id);
+      if(!toggle.parentElement.classList.contains('drawer-actions')){const actions=document.createElement('div');actions.className='dockBtns drawer-actions';header.append(actions);actions.append(toggle);}
+      if(config.unbound&&kind==='data')body.replaceChildren();
+      const close=body.querySelector('.sheet-close,.codex-sheet-close')||document.createElement('button');
+      close.id=kind+'SheetCloseBtn';close.type='button';close.classList.add('sheet-close');close.setAttribute('aria-label','收起'+title);close.title='收起';
+      close.innerHTML='<svg class="sheet-close-icon" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg>';body.append(close);
+      stage.append(panel);return {panel,body,toggle,close,old:Boolean(old)&&!config.unbound};
+    };
+    const control=makePanel('control','实验面板'),data=makePanel('data','数据面板');
+    for(const selector of config.controls){
+      const node=document.querySelector(selector);if(!node)throw new Error('[science-shell] 缺少冻结的控件 '+selector);
+      control.body.append(node);node.classList.add('science-panel-controls');
+    }
+    const tabs=document.getElementById('mobileTabs')||document.createElement('div');tabs.id='mobileTabs';tabs.classList.add('mobile-tabs');
+    if(!tabs.querySelector('#experimentTab')||!tabs.querySelector('#dataTab'))tabs.innerHTML='<button class="mobile-tab" id="experimentTab" type="button">实验面板</button><button class="mobile-tab" id="dataTab" type="button">数据面板</button>';
+    const experimentTab=tabs.querySelector('#experimentTab'),dataTab=tabs.querySelector('#dataTab');
+    tabs.hidden=false;tabs.removeAttribute('aria-hidden');
+    experimentTab.setAttribute('aria-controls','controlDock');dataTab.setAttribute('aria-controls','dataDock');stage.append(tabs);
+    const badge=document.getElementById('codexDataNotice')||document.createElement('span');badge.id='dataNotice';badge.classList.add('badge','dataNotice');
+    if(!badge.isConnected)data.panel.querySelector('.dockTitle').append(badge);
+    let tabBadge=document.getElementById('codexDataTabBadge');
+    if(!tabBadge){tabBadge=document.createElement('span');dataTab.append(tabBadge);}tabBadge.id='dataTabBadge';tabBadge.classList.add('mobile-badge');
+    const recordButton=document.createElement('button');recordButton.type='button';recordButton.id='scienceRecordBtn';recordButton.className='main';recordButton.textContent='记录观察';control.body.append(recordButton);
+    let records=[],unseen=0;
+    const table=document.createElement('table');table.className='record';table.id='scienceRecordTable';table.innerHTML='<thead><tr><th>次数</th><th>模式与关卡</th><th>操作</th><th>观察快照</th></tr></thead><tbody id="recordBody"></tbody>';
+    const empty=document.createElement('div');empty.className='empty';empty.textContent='暂无观察记录。';
+    data.body.prepend(empty,table);
+    const sync=()=>{
+      if(destroyed)return;
+      const mobile=matchMedia('(max-width:720px)').matches;
+      if(mobile&&!control.panel.classList.contains('collapsed')&&!data.panel.classList.contains('collapsed'))control.panel.classList.add('collapsed');
+      for(const item of [control,data]){item.panel.classList.toggle('mobile-sheet',mobile);const open=!item.panel.classList.contains('collapsed');item.toggle.textContent=open?'收起':'展开';item.toggle.setAttribute('aria-expanded',String(open));}
+      const openControl=!control.panel.classList.contains('collapsed'),openData=!data.panel.classList.contains('collapsed');
+      experimentTab.classList.toggle('active',openControl);experimentTab.setAttribute('aria-expanded',String(openControl));dataTab.classList.toggle('active',openData);dataTab.setAttribute('aria-expanded',String(openData));tabs.classList.toggle('attached',openControl||openData);
+      if(openData)unseen=0;
+      for(const b of [badge,tabBadge]){b.textContent=unseen>99?'99+':String(unseen);b.classList.toggle('show',unseen>0&&!openData);b.setAttribute('aria-hidden',String(!unseen||openData));}
+    };
+    function open(kind,on=true,exclusive=false){if(destroyed)return;const target=kind==='control'?control:data,other=kind==='control'?data:control;const mobile=matchMedia('(max-width:720px)').matches;if(!mobile&&window.__codexDesktopPanels?.setOpen?.(target.panel.id,on,exclusive)){sync();return;}if((exclusive||mobile)&&on){other.panel.classList.add('collapsed');other.body.classList.add('collapsed');}target.panel.classList.toggle('collapsed',!on);target.body.classList.toggle('collapsed',!on);sync();}
+    for(const item of [control,data]){
+      if(!item.old)listen(item.toggle,'click',()=>{if(item.panel.dataset.codexDesktopPanel==='1'&&!matchMedia('(max-width:720px)').matches)return;open(item===control?'control':'data',item.panel.classList.contains('collapsed'));});
+      listen(item.close,'click',()=>open(item===control?'control':'data',false));
+    }
+    if(!control.old){listen(experimentTab,'click',()=>open('control',control.panel.classList.contains('collapsed')));listen(dataTab,'click',()=>open('data',data.panel.classList.contains('collapsed')));}
+    const panelsChanged=new MutationObserver(sync);for(const item of [control,data])panelsChanged.observe(item.panel,{attributes:true,attributeFilter:['class']});
+    function render(){const body=table.tBodies[0];body.replaceChildren();records.forEach((record,index)=>{const row=body.insertRow();row.dataset.recordId=record.id;[String(index+1),`${{guided:'闯关',free:'自由',auto:'演示'}[record.mode]} · 关卡 ${record.task}`,record.action,record.values].forEach((value,i)=>{const cell=row.insertCell();cell.dataset.label=['次数','模式与关卡','操作','观察快照'][i];cell.textContent=value;});});empty.hidden=records.length>0;}
+    function record(action='手动记录',options={}){
+      const state=window.__codexPageControllerV1?.getState();
+      if(destroyed||!state||state.destroyed||state.paused||(state.mode==='auto'&&!options.validated))return false;
+      const index=state.currentTask??state.taskIndex;
+      if(!Number.isInteger(index))return false;
+      const task=options.validated?options.task:Math.min(index+1,config.taskCount||3);
+      if(options.validated&&(state.mode==='free'||task!==index+1))return false;
+      const observation=document.querySelector(config.observation);if(!observation)return false;
+      const values=[...observation.querySelectorAll('output')].map(node=>node.closest('p')?.textContent.trim()||node.value||node.textContent).filter(Boolean).join('；');
+      if(!values)return false;
+      records.push({id:String(records.length+1)+':'+performance.now(),task,mode:state.mode,action,values});render();if(data.panel.classList.contains('collapsed'))unseen++;sync();return true;
+    }
+    listen(recordButton,'click',()=>record());
+    const syncState=state=>{recordButton.disabled=destroyed||state.destroyed||state.paused||state.mode==='auto';};
+    function syncPresentation(state){
+      if(destroyed||!state)return;syncState(state);
+      const index=state.currentTask??state.taskIndex,count=config.taskCount||3;
+      const free=state.mode==='free',auto=state.mode==='auto';
+      task.classList.toggle('free-mode',free);task.dataset.mode=free?'free':'challenge';
+      document.getElementById('modeTag').textContent=`模式：${auto?'演示模式 · '+(state.paused?'已暂停':'自动运行'):free?'自由模式 · 自主探索':`闯关模式 · 关卡 ${Math.min(index+1,count)}/${count}`}`;
+      document.querySelector(config.taskStep||'#taskStep').textContent=`关卡 ${Math.min(index+1,count)} / ${count}${state.completed?' · 已完成':''}`;
+      const reset=document.getElementById('resetBtn'),autoButton=document.getElementById('autoDemoBtn'),freeButton=document.getElementById('freeBtn');
+      reset.textContent=auto?(state.paused?'继续演示':'暂停演示'):free?'重置操作':'重置关卡';autoButton.textContent=auto?'退出演示':'演示模式';autoButton.disabled=free;freeButton.disabled=auto;freeButton.textContent=free?'退出自由模式':'自由模式';freeButton.setAttribute('aria-pressed',String(free));
+    }
+    for(const type of ['pointerdown','click','keydown','input','change'])listen(control.body,type,event=>{const state=window.__codexPageControllerV1?.getState();if(event.isTrusted&&(destroyed||state?.destroyed||state?.paused||state?.mode==='auto')&&!event.target.closest('.sheet-close')){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
+    const lamp=document.createElement('button');lamp.id='hintLamp';lamp.type='button';lamp.className='hint-lamp';lamp.textContent='💡';lamp.dataset.stageHint='managed';lamp.setAttribute('aria-label','查看提示');
+    const pop=document.createElement('div');pop.id='hintPop';pop.className='hint-pop';stage.append(lamp,pop);
+    if(config.taskHint){lamp.dataset.stageHint='page';listen(lamp,'click',()=>{pop.textContent=document.querySelector(config.taskHint).textContent;pop.classList.toggle('open');});}
+    const toolbar=document.querySelector('.codex-global-toolbar')||document.querySelector('.toolbar:not(.codex-legacy-toolbar)');toolbar.classList.add('science-global-toolbar');
+    if(config.unbound){const explanation=app.querySelector('.explanation,.explain');if(explanation?.parentElement===app)app.insertBefore(toolbar,explanation);else app.append(toolbar);document.querySelectorAll('.legacy-toolbar,.codex-legacy-toolbar').forEach(node=>{node.hidden=true;node.inert=true;});}
+    const theme=document.getElementById('themeToggle');theme.classList.add('theme-toggle');theme.innerHTML=document.getElementById('codex-science-theme-icons').textContent;
+    const sizes=new ResizeObserver(()=>{const h=hud.getBoundingClientRect(),s=stage.getBoundingClientRect();stage.style.setProperty('--science-apparatus-top',Math.ceil(h.bottom-s.top+50)+'px');});sizes.observe(hud);
+    listen(window,'resize',sync);
+    function destroy(){if(destroyed)return;destroyed=true;events.abort();sizes.disconnect();panelsChanged.disconnect();window.__codexSciencePanelClearance?.destroy();window.__codexDesktopPanels?.destroy?.();window.__codexStageToolsV1?.destroy();recordButton.disabled=true;control.panel.inert=true;data.panel.inert=true;tabs.inert=true;toolbar.inert=true;for(const id of ['hintLamp','audioToggle','themeToggle']){const button=document.getElementById(id);if(button)button.disabled=true;}window.labSoundBus?.hush();}
+    window.addEventListener('pagehide',destroy,{once:true});
+    window.__codexScienceShell={record,open,syncState,syncPresentation,destroy,getRecords:()=>structuredClone(records),getRecordState:()=>({records:structuredClone(records),unseen}),restoreRecordState:value=>{if(destroyed)return;records=structuredClone(value.records);unseen=value.unseen;render();sync();},restoreRecords:value=>{if(destroyed)return;records=structuredClone(value);unseen=0;render();sync();},clearRecords:()=>{if(destroyed)return;records=[];unseen=0;render();sync();}};
+    if(config.presentation)syncPresentation(window.__codexPageControllerV1?.getState());
+    render();sync();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
+</script>
+
+<script id="codex-lab-sound-bus" data-native-audio="false">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+(() => {
+  'use strict';
+  if (window.labSoundBus) return;
+  const nativeAudio = document.currentScript.dataset.nativeAudio === 'true';
+  let ctx = null, master = null, muted = false, held = false, unlocked = false, outputTarget = null;
+  let button = null, warned = false;
+  const voices = new Map();
+  const lastSounds = new Map();
+  const patterns = {
+    tap: { peak:.018, duration:.055, notes:[[440,0,.045]] },
+    hint: { peak:.035, duration:.18, notes:[[783.99,0,.08],[987.77,.09,.07]] },
+    record: { peak:.04, duration:.13, notes:[[554.37,0,.09]] },
+    warn: { peak:.045, duration:.22, notes:[[220,0,.09],[164.81,.1,.09]] },
+    step: { peak:.055, duration:.24, notes:[[523.25,0,.11],[659.25,.085,.13]] },
+    finish: { peak:.07, duration:.65, notes:[[392,0,.12],[523.25,.14,.14],[659.25,.3,.24]] },
+  };
+  function report(error) {
+    if (!warned) { warned = true; console.warn('[lab-audio] 无法播放音效', error); }
+  }
+  function syncButton() {
+    if (!button || nativeAudio) return;
+    button.textContent = muted ? '🔇' : '🔊';
+    button.setAttribute('aria-pressed', String(!muted));
+    button.setAttribute('aria-label', muted ? '开启音效' : '关闭音效');
+    button.title = muted ? '开启音效' : '关闭音效';
+    button.classList.toggle('muted', muted);
+  }
+  function paused() {
+    const mode = document.querySelector('#modeTag,#modeChip')?.textContent || '';
+    return (mode.includes('演示模式') && mode.includes('已暂停')) || document.querySelector('#resetBtn')?.textContent.trim() === '继续演示';
+  }
+  function applyGate() {
+    if (!master) return;
+    const target = muted || held || document.hidden || paused() ? 0 : 1;
+    if (target === outputTarget) return;
+    outputTarget = target;
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setTargetAtTime(target, now, .008);
+  }
+  function stopVoices() {
+    for (const [voice, stop] of voices) {
+      try { stop(ctx.currentTime); } catch (error) { report(error); }
+      voices.delete(voice);
+    }
+  }
+  function hush() {
+    held = true; stopVoices(); applyGate();
+    window.dispatchEvent(new Event('lab-audio-silence'));
+  }
+  function unlock(event) {
+    if (!event?.isTrusted || document.hidden) return null;
+    if (event.type === 'keydown' && !['Enter',' ','Spacebar'].includes(event.key)) return ctx;
+    if (held) stopVoices();
+    held = false;
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) {
+      if (button) { button.disabled = true; button.title = '当前浏览器不支持声音'; }
+      return null;
+    }
+    try {
+      if (!ctx) {
+        ctx = new Audio();
+        master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+        // Track scheduled one-shot voices so mute cannot revive their old tails.
+        // Continuous apparatus oscillators stay alive behind the output gate.
+        const createOscillator = ctx.createOscillator.bind(ctx);
+        ctx.createOscillator = () => {
+          const voice = createOscillator(); const stop = voice.stop.bind(voice);
+          voice.stop = when => { voices.set(voice, stop); return stop(when); };
+          voice.addEventListener('ended', () => voices.delete(voice), { once:true });
+          return voice;
+        };
+      }
+      unlocked = ctx.state === 'running';
+      if (ctx.state === 'suspended') ctx.resume().then(() => {
+        unlocked = ctx.state === 'running';
+      }).catch(error => { unlocked = false; report(error); });
+      applyGate(); return ctx;
+    } catch (error) { report(error); return null; }
+  }
+  function setMuted(value) {
+    const next = Boolean(value);
+    if (next === muted) return;
+    muted = next;
+    if (muted) { stopVoices(); window.dispatchEvent(new Event('lab-audio-silence')); }
+    applyGate(); syncButton();
+  }
+  function play(kind) {
+    if (!unlocked || !ctx || muted || held || document.hidden || paused() || ctx.state !== 'running') return false;
+    const nowMs = performance.now();
+    if (nowMs - (lastSounds.get(kind) ?? -Infinity) < (kind === 'finish' ? 650 : 100)) return false;
+    const pattern = patterns[kind] || patterns.hint;
+    lastSounds.set(kind, nowMs);
+    const start = ctx.currentTime + .005;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.linearRampToValueAtTime(pattern.peak, start + .008);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + pattern.duration);
+    gain.connect(master);
+    let remaining = pattern.notes.length;
+    for (const [frequency, offset, duration] of pattern.notes) {
+      const voice = ctx.createOscillator(); voice.type = 'sine';
+      voice.frequency.value = frequency; voice.connect(gain);
+      voice.addEventListener('ended', () => { voice.disconnect(); if (--remaining === 0) gain.disconnect(); }, { once:true });
+      voice.start(start + offset); voice.stop(start + offset + duration);
+    }
+    window.dispatchEvent(new CustomEvent('lab-ui-sound', { detail:{kind} }));
+    return true;
+  }
+  window.labSoundBus = {
+    unlock, play, setMuted, hush,
+    getContext: () => unlocked && ctx?.state === 'running' ? ctx : null,
+    getInput: () => master,
+    get muted() { return muted; },
+    get unlocked() { return unlocked && ctx?.state === 'running'; },
+    get held() { return held; },
+  };
+  document.addEventListener('pointerdown', unlock, { capture:true, passive:true });
+  document.addEventListener('keydown', unlock, { capture:true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hush(); });
+  window.addEventListener('pagehide', hush);
+  function mount() {
+    const stage = document.querySelector('#stage'); if (!stage) return;
+    button = stage.querySelector('#audioToggle');
+    if (!button) {
+      button = document.createElement('button'); button.id = 'audioToggle';
+      button.type = 'button'; button.className = 'audio-toggle'; stage.appendChild(button);
+    }
+    if (nativeAudio) {
+      const syncNativeMute = () => setMuted(button.getAttribute('aria-pressed') === 'false' || button.classList.contains('muted'));
+      new MutationObserver(syncNativeMute).observe(button, { attributes:true, attributeFilter:['aria-pressed','class'] });
+      syncNativeMute();
+    } else {
+      window.labAudio = window.labSoundBus;
+      syncButton();
+      button.addEventListener('click', event => {
+        event.stopPropagation(); if (!event.isTrusted) return;
+        setMuted(!muted); if (!muted) { held = false; applyGate(); play('hint'); }
+      });
+    }
+    const lamp = stage.querySelector('#hintLamp,.hint-lamp');
+    const mode = stage.querySelector('#modeTag,#modeChip');
+    if (mode) new MutationObserver(applyGate).observe(mode, { childList:true, characterData:true, subtree:true });
+    let quietUntil = 0;
+    let beginRound = () => {};
+    let acceptRecordClear = () => {};
+    document.addEventListener('click', event => {
+      const clicked = event.target.closest?.('button');
+      if (!clicked || clicked.disabled || clicked === button) return;
+      if (event.isTrusted && ((clicked.id === 'resetBtn' && /重置/.test(clicked.textContent)) || clicked.id === 'autoDemoBtn')) beginRound();
+      if (event.isTrusted && clicked.id === 'clearBtn') setTimeout(acceptRecordClear, 0);
+      if (/reset|autoDemo|freeBtn/i.test(clicked.id) && /暂停|退出|重置|自由/.test(clicked.textContent)) {
+        hush(); quietUntil = performance.now() + 300; return;
+      }
+      if (!nativeAudio) play(clicked === lamp ? 'hint' : 'tap');
+    }, { capture:true });
+    if (nativeAudio) return;
+    // Observe accepted state, never infer success from a button's name.
+    const snapshot = () => {
+      const body = document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody');
+      const records = [...(body?.querySelectorAll('tr') || [])].filter(row =>
+        row.querySelectorAll('td').length > 1 && !row.querySelector('td[colspan]'))
+        .map(row => row.dataset.recordId || row.textContent.trim());
+      const dots = document.querySelector('#dots,#progress,.progress-dots');
+      const done = dots?.querySelectorAll('.done').length || 0;
+      const warning = Boolean(dots?.querySelector('.warning,.warn,.error') || lamp?.classList.contains('flash'));
+      const mode = stage.querySelector('#modeTag,#modeChip')?.textContent || '';
+      const modal = document.querySelector('#doneMask,#doneModal,.modal-mask');
+      const finished = Boolean(modal && getComputedStyle(modal).display !== 'none' && getComputedStyle(modal).visibility !== 'hidden');
+      return { records, done, warning, finished, free:mode.includes('自由'), mode };
+    };
+    let previous = snapshot();
+    const seenRecords = new Set(previous.records);
+    let maxDone = previous.done;
+    let finishAnnounced = previous.finished;
+    acceptRecordClear = () => {
+      // Clear only after the experiment accepted the action; completion stays announced.
+      if (snapshot().records.length === 0) seenRecords.clear();
+    };
+    beginRound = () => {
+      seenRecords.clear(); maxDone = 0; finishAnnounced = false;
+      quietUntil = performance.now() + 300;
+    };
+    const feedbackChanges = new MutationObserver(() => {
+      const current = snapshot();
+      if (performance.now() >= quietUntil && current.free === previous.free) {
+        if (!current.free && current.finished && !finishAnnounced) play('finish');
+        else if (!current.free && current.done > maxDone) play('step');
+        else if (!current.free && current.warning && !previous.warning) play('warn');
+        else if (current.records.some(record => !seenRecords.has(record))) play('record');
+      }
+      current.records.forEach(record => seenRecords.add(record));
+      maxDone = Math.max(maxDone, current.done);
+      finishAnnounced ||= current.finished;
+      previous = current;
+    });
+    // Observe only feedback surfaces; apparatus animation updates every frame.
+    for (const node of [document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody'), document.querySelector('#dots,#progress,.progress-dots'), lamp, stage.querySelector('#modeTag,#modeChip'), document.querySelector('#doneMask,#doneModal,.modal-mask')].filter(Boolean)) {
+      feedbackChanges.observe(node, { subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['class','style'] });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+})();
+
+}
+</script>
+  <script id="codex-theme-pilot-runtime">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+    document.addEventListener("DOMContentLoaded", () => {
+    (() => {
+      const themeKey = "xingnian.physics.theme";
+      const root = document.documentElement;
+      const button = document.getElementById("themeToggle");
+      if (!button) {
+        console.warn("[theme-pilot] theme toggle button was not found");
+        return;
+      }
+      const normalizeTheme = (value) => value === "light" ? "light" : "dark";
+      const stage = document.getElementById("stage");
+      if (stage) {
+        const activeTheme = normalizeTheme(root.dataset.theme);
+        try {
+          root.dataset.theme = "dark";
+          stage.style.setProperty("--theme-stage-ink", getComputedStyle(stage).color);
+        } finally {
+          root.dataset.theme = activeTheme;
+        }
+      }
+      const syncButton = (theme) => {
+        const lightEnabled = theme === "light";
+        const nextLabel = lightEnabled ? "切换到黑夜模式" : "切换到白天模式";
+        button.setAttribute("aria-pressed", String(lightEnabled));
+        button.setAttribute("aria-label", nextLabel);
+        button.title = nextLabel;
+      };
+      const applyTheme = (value, persist) => {
+        const theme = normalizeTheme(value);
+        root.dataset.theme = theme;
+        syncButton(theme);
+        if (persist) {
+          try {
+            localStorage.setItem(themeKey, theme);
+          } catch (error) {
+            console.warn("[theme-pilot] failed to save theme", error);
+          }
+        }
+      };
+      const panelStandardVersion = "physics-middle-panel-v1";
+      const desktopBreakpoint = 720;
+      const panelWidth = 164;
+      const panelHeaderHeight = 44;
+      const panelSafe = 6;
+      const bodySafe = 8;
+      const panelBodyMinWidth = 280;
+      const panelBodyMaxWidth = 520;
+      const panelBodyMinAvailableWidth = 120;
+      const panelBodyMinHeight = 80;
+      const panelBodyMaxHeight = 420;
+      const panelBodyMinAvailableHeight = 64;
+      const panelHeaderSelector = "[data-drag-handle],.dock-header,.dockHead,.dock-head,.drawer-header,.drawer-head,.panelHead,.resultsHead";
+      const panelBodySelector = ".dock-body,.dockBody,.drawer-body,.panelBody,.resultsBody";
+      const panelVariants = [
+        {
+          kind:"dock",
+          panels:[
+            { id:"controlDock", toggleSelector:"#controlToggleBtn" },
+            { id:"dataDock", toggleSelector:"#dataToggleBtn" },
+          ],
+        },
+        {
+          kind:"drawer63",
+          panels:[
+            { id:"controlDrawer", toggleSelector:"[data-drawer=\"controlDrawer\"]" },
+            { id:"dataDrawer", toggleSelector:"[data-drawer=\"dataDrawer\"]" },
+          ],
+        },
+      ];
+      let desktopPanels = [];
+      let desktopActive = false;
+      let desktopInitialized = false;
+      let panelCoordinatorInstalled = false;
+      let panelMutationFrame = 0;
+      let panelResizeTimer = 0;
+      let panelToggleGeneration = 0;
+      let panelToggleTransaction = null;
+      let panelToggleFrame = 0;
+      let panelToggleTimer = 0;
+      let panelLastTransaction = null;
+      const panelToggleSettleMs = 280;
+      let mutationObserver = null;
+      let positionedParentObserver = null;
+      let resizeObserver = null;
+      let lifecycleObserver = null;
+      const panelCleanupCallbacks = [];
+
+      const clampPanelValue = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
+      const getStageSize = () => {
+        if (!stage) return { width:0, height:0 };
+        const rect = stage.getBoundingClientRect();
+        return {
+          width:stage.clientWidth || rect.width,
+          height:stage.clientHeight || rect.height,
+        };
+      };
+      const desktopPanelMutationAllowed = () => {
+        if (!desktopActive) return false;
+        const { width } = getStageSize();
+        if (width && width <= desktopBreakpoint) {
+          syncDesktopPanelMode();
+          return false;
+        }
+        return true;
+      };
+      const resolveDesktopPanels = () => {
+        if (!stage) {
+          panelVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] stage was not found for panel", panel.id);
+          }));
+          return null;
+        }
+        const presentVariants = panelVariants.filter((variant) => variant.panels.some(({ id }) =>
+          document.querySelectorAll(`[id="${id}"]`).length > 0));
+        if (!presentVariants.length) {
+          panelVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] panel shell was not found", panel.id);
+          }));
+          return null;
+        }
+        if (presentVariants.length > 1) {
+          presentVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] ambiguous panel variant", panel.id);
+          }));
+          return null;
+        }
+        const variant = presentVariants[0];
+        let valid = true;
+        const panels = variant.panels.map((definition, index) => {
+          const panel = { id:definition.id };
+          const wrappers = Array.from(document.querySelectorAll(`[id="${definition.id}"]`));
+          const toggles = Array.from(document.querySelectorAll(definition.toggleSelector));
+          const wrapper = wrappers.length === 1 ? wrappers[0] : null;
+          const headerMatches = wrapper
+            ? Array.from(wrapper.children).filter((child) => child.matches(panelHeaderSelector))
+            : [];
+          const bodyMatches = wrapper
+            ? Array.from(wrapper.children).filter((child) => child.matches(panelBodySelector))
+            : [];
+          const toggle = toggles.length === 1 ? toggles[0] : null;
+          const issues = [];
+          if (!wrapper) issues.push(`wrapper count ${wrappers.length}`);
+          if (headerMatches.length !== 1) issues.push(`direct header count ${headerMatches.length}`);
+          if (bodyMatches.length !== 1) issues.push(`direct body count ${bodyMatches.length}`);
+          if (headerMatches[0] && headerMatches[0] === bodyMatches[0]) issues.push("header and body are the same element");
+          if (!toggle || !toggle.matches("button") || !wrapper?.contains(toggle)) {
+            issues.push(`contained toggle count ${toggles.length}`);
+          }
+          if (issues.length) {
+            valid = false;
+            console.warn("[desktop-panels] invalid panel", panel.id, issues.join(", "));
+            return null;
+          }
+          return {
+            id:definition.id,
+            kind:variant.kind,
+            index,
+            wrapper,
+            header:headerMatches[0],
+            body:bodyMatches[0],
+            toggle,
+            originalMoved:null,
+            anchor:null,
+            zIndex:index === 0 ? 36 : 30,
+            drag:null,
+            measureFrame:0,
+            measureRetried:false,
+            measureWarned:false,
+          };
+        });
+        return valid ? panels : null;
+      };
+      const panelIsOpen = (panel) => panel.kind === "dock"
+        ? !panel.wrapper.classList.contains("collapsed")
+        : panel.wrapper.classList.contains("open");
+      const setPanelOpen = (panel, open) => {
+        if (panel.kind === "dock") panel.wrapper.classList.toggle("collapsed", !open);
+        else panel.wrapper.classList.toggle("open", open);
+        panel.body.classList.toggle("collapsed", !open);
+      };
+      const setPanelDragging = (panel, dragging) => {
+        panel.wrapper.dataset.codexPanelDragging = dragging ? "1" : "0";
+      };
+      const getDefaultAnchors = () => {
+        const { width } = getStageSize();
+        const control = { x:Math.max(panelSafe, width - panelWidth - 12), y:58 };
+        return [control, { x:control.x, y:control.y + panelHeaderHeight + 10 }];
+      };
+      const applyAnchor = (panel, nextAnchor) => {
+        if (!desktopPanelMutationAllowed()) return false;
+        const { width, height } = getStageSize();
+        const maximumX = Math.max(panelSafe, width - panelWidth - panelSafe);
+        const maximumY = Math.max(panelSafe, height - panelHeaderHeight - panelSafe);
+        panel.anchor = {
+          x:clampPanelValue(nextAnchor.x, panelSafe, maximumX),
+          y:clampPanelValue(nextAnchor.y, panelSafe, maximumY),
+        };
+        const offsetParent = panel.wrapper.offsetParent;
+        const stageRect = stage.getBoundingClientRect();
+        const offsetParentRect = offsetParent?.getBoundingClientRect?.() || stageRect;
+        const containingBlockOffset = offsetParent && offsetParent !== stage ? {
+          x:offsetParentRect.left + offsetParent.clientLeft - stageRect.left - stage.clientLeft,
+          y:offsetParentRect.top + offsetParent.clientTop - stageRect.top - stage.clientTop,
+        } : { x:0, y:0 };
+        panel.wrapper.style.setProperty("--codex-panel-left", `${panel.anchor.x - containingBlockOffset.x}px`);
+        panel.wrapper.style.setProperty("--codex-panel-top", `${panel.anchor.y - containingBlockOffset.y}px`);
+        return true;
+      };
+      const fitAvailableDimension = (desired, available, minimum, maximum) => {
+        const safeAvailable = Math.max(0, available);
+        if (safeAvailable < minimum) return safeAvailable;
+        return clampPanelValue(Math.min(desired, safeAvailable), minimum, maximum);
+      };
+      const choosePanelPlacement = (panel) => {
+        const { width:stageWidth, height:stageHeight } = getStageSize();
+        const anchor = panel.anchor || { x:panelSafe, y:panelSafe };
+        const bodyRect = panel.body.getBoundingClientRect();
+        const measuredWidth = Math.max(panel.body.scrollWidth || 0, bodyRect.width || 0);
+        const measuredHeight = Math.max(panel.body.scrollHeight || 0, bodyRect.height || 0);
+        const open = panelIsOpen(panel);
+        if (open && (!measuredWidth || !measuredHeight)) return null;
+        const desiredWidth = clampPanelValue(
+          Math.max(measuredWidth, panelBodyMinWidth),
+          panelBodyMinWidth,
+          panelBodyMaxWidth,
+        );
+        const desiredHeight = clampPanelValue(
+          Math.max(measuredHeight, panelBodyMinHeight),
+          panelBodyMinHeight,
+          panelBodyMaxHeight,
+        );
+        const leftSpace = Math.max(0, anchor.x + panelWidth - bodySafe);
+        const rightSpace = Math.max(0, stageWidth - anchor.x - bodySafe);
+        const leftFits = leftSpace >= desiredWidth;
+        const rightFits = rightSpace >= desiredWidth;
+        let x;
+        if (leftFits && rightFits) x = "left";
+        else if (leftFits) x = "left";
+        else if (rightFits) x = "right";
+        else x = leftSpace >= rightSpace ? "left" : "right";
+        const availableWidth = x === "left" ? leftSpace : rightSpace;
+        const downSpace = Math.max(0, stageHeight - anchor.y - panelHeaderHeight - bodySafe);
+        const upSpace = Math.max(0, anchor.y - bodySafe);
+        const y = downSpace < desiredHeight && upSpace > downSpace ? "up" : "down";
+        const availableHeight = y === "up" ? upSpace : downSpace;
+        return {
+          x,
+          y,
+          width:fitAvailableDimension(desiredWidth, availableWidth, panelBodyMinAvailableWidth, panelBodyMaxWidth),
+          height:fitAvailableDimension(desiredHeight, availableHeight, panelBodyMinAvailableHeight, panelBodyMaxHeight),
+        };
+      };
+      const layoutPanel = (panel) => {
+        const placement = choosePanelPlacement(panel);
+        if (!placement) {
+          if (!panel.measureRetried) {
+            if (!panel.measureFrame) {
+              panel.measureFrame = requestAnimationFrame(() => {
+                panel.measureFrame = 0;
+                if (desktopActive && panel.wrapper.isConnected && panelIsOpen(panel)) {
+                  panel.measureRetried = true;
+                  layoutPanel(panel);
+                }
+              });
+            }
+            return;
+          }
+          if (!panel.measureWarned) {
+            panel.measureWarned = true;
+            console.warn("[desktop-panels] panel body measurement failed", panel.id);
+          }
+          return;
+        }
+        if (panel.measureFrame) cancelAnimationFrame(panel.measureFrame);
+        panel.measureFrame = 0;
+        panel.measureRetried = false;
+        panel.measureWarned = false;
+        panel.wrapper.dataset.codexPanelX = placement.x;
+        panel.wrapper.dataset.codexPanelY = placement.y;
+        panel.wrapper.style.setProperty("--codex-panel-body-width", `${Math.round(placement.width)}px`);
+        panel.wrapper.style.setProperty("--codex-panel-body-height", `${Math.round(placement.height)}px`);
+      };
+      const assertPanelManaged = (panel) => {
+        const { wrapper, header, body } = panel;
+        wrapper.dataset.codexDesktopPanel = "1";
+        header.dataset.codexPanelHeader = "1";
+        body.dataset.codexPanelBody = "1";
+        wrapper.dataset.codexPanelDragging = panel.drag?.active ? "1" : "0";
+        if (wrapper.dataset.moved !== "1") wrapper.dataset.moved = "1";
+      };
+      const syncPanel = (panel) => {
+        if (!desktopPanelMutationAllowed()) return;
+        assertPanelManaged(panel);
+        const defaults = getDefaultAnchors();
+        if (!applyAnchor(panel, panel.anchor || defaults[panel.index])) return;
+        applyPanelLayer(panel);
+        const open = panelIsOpen(panel);
+        panel.wrapper.dataset.codexPanelOpen = open ? "1" : "0";
+        panel.toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        panel.toggle.textContent = open ? "收起" : "展开";
+        layoutPanel(panel);
+      };
+      const applyPanelLayer = (panel) => {
+        panel.wrapper.style.setProperty("--codex-panel-z", String(panel.zIndex));
+      };
+      const promotePanel = (panel) => {
+        if (!desktopActive) return;
+        desktopPanels.forEach((candidate) => {
+          candidate.zIndex = candidate === panel ? 36 : 30;
+          applyPanelLayer(candidate);
+        });
+      };
+      const preservePanelAudioUnlock = (panel) => {
+        const panelId = panel.id;
+        try {
+          const labAudio = window.labAudio;
+          if (!labAudio || labAudio.unlocked === true) return;
+          let result;
+          if (typeof labAudio.unlock === "function") result = labAudio.unlock();
+          else if (typeof labAudio.resume === "function") result = labAudio.resume();
+          else if (typeof labAudio.play === "function") result = labAudio.play("tap");
+          if (result && typeof result.catch === "function") {
+            result.catch((error) => {
+              console.warn("[desktop-panels] audio unlock failed for panel", panelId, error);
+            });
+          }
+        } catch (error) {
+          console.warn("[desktop-panels] audio unlock failed for panel", panelId, error);
+        }
+      };
+      const releasePanelPointer = (panel, pointerId) => {
+        try {
+          if (!panel.header.hasPointerCapture || panel.header.hasPointerCapture(pointerId)) {
+            panel.header.releasePointerCapture(pointerId);
+          }
+        } catch (error) {
+          console.warn("[desktop-panels] pointer release failed for panel", panel.id, error);
+        }
+      };
+      const cancelPanelDrag = (panel) => {
+        const drag = panel.drag;
+        if (!drag) {
+          if (desktopActive) setPanelDragging(panel, false);
+          return;
+        }
+        try {
+          releasePanelPointer(panel, drag.pointerId);
+        } finally {
+          panel.drag = null;
+          if (desktopActive) setPanelDragging(panel, false);
+        }
+      };
+      const bindPanelListener = (target, type, listener, options) => {
+        target.addEventListener(type, listener, options);
+        panelCleanupCallbacks.push(() => target.removeEventListener(type, listener, options));
+      };
+      const snapshotPanelToggleTransaction = (transaction, status) => transaction ? {
+        generation:transaction.generation,
+        sourceId:transaction.sourceId,
+        panelWasOpen:transaction.panelWasOpen,
+        peerWasOpen:transaction.peerWasOpen,
+        targets:{ ...transaction.targets },
+        applications:transaction.applications,
+        lastReason:transaction.lastReason,
+        status,
+      } : null;
+      const clearPanelToggleHandles = () => {
+        if (panelToggleFrame) cancelAnimationFrame(panelToggleFrame);
+        if (panelToggleTimer) clearTimeout(panelToggleTimer);
+        panelToggleFrame = 0;
+        panelToggleTimer = 0;
+      };
+      const cancelPanelToggleTransaction = (reason = "cancelled") => {
+        panelToggleGeneration += 1;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, reason);
+        }
+        clearPanelToggleHandles();
+        panelToggleTransaction = null;
+        return panelToggleGeneration;
+      };
+      const applyPanelToggleTransaction = (generation, reason) => {
+        if (!desktopPanelMutationAllowed()) return false;
+        const transaction = panelToggleTransaction;
+        if (!transaction || transaction.generation !== generation || panelToggleGeneration !== generation) return false;
+        desktopPanels.forEach((candidate) => {
+          if (Object.prototype.hasOwnProperty.call(transaction.targets, candidate.id)) {
+            setPanelOpen(candidate, transaction.targets[candidate.id]);
+          }
+        });
+        desktopPanels.forEach(syncPanel);
+        transaction.applications += 1;
+        transaction.lastReason = reason;
+        return true;
+      };
+      const schedulePanelToggleTransaction = (generation, reason) => {
+        if (!desktopActive || !panelToggleTransaction || panelToggleTransaction.generation !== generation || panelToggleGeneration !== generation) return;
+        if (panelToggleFrame) return;
+        panelToggleFrame = requestAnimationFrame(() => {
+          panelToggleFrame = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          applyPanelToggleTransaction(generation, reason);
+        });
+      };
+      const armPanelToggleTransaction = (generation) => {
+        panelToggleTimer = setTimeout(() => {
+          panelToggleTimer = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          if (!applyPanelToggleTransaction(generation, "settle-expiry")) return;
+          panelLastTransaction = snapshotPanelToggleTransaction(
+            panelToggleTransaction,
+            panelToggleTransaction.commitStatus || "committed",
+          );
+          panelToggleTransaction = null;
+        }, panelToggleSettleMs);
+      };
+      const beginPanelToggleTransaction = (panel) => {
+        if (!desktopPanelMutationAllowed()) return null;
+        const previousTargets = panelToggleTransaction?.targets || null;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "superseded");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const peer = desktopPanels.find((candidate) => candidate !== panel) || null;
+        const panelWasOpen = previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, panel.id)
+          ? previousTargets[panel.id]
+          : panelIsOpen(panel);
+        const peerWasOpen = peer && previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, peer.id)
+          ? previousTargets[peer.id]
+          : peer ? panelIsOpen(peer) : false;
+        panelToggleTransaction = {
+          generation,
+          sourceId:panel.id,
+          panelWasOpen,
+          peerWasOpen,
+          targets:{
+            [panel.id]:!panelWasOpen,
+            ...(peer ? { [peer.id]:peerWasOpen } : {}),
+          },
+          applications:0,
+          lastReason:"captured",
+        };
+        armPanelToggleTransaction(generation);
+        return generation;
+      };
+      const beginPanelResetTransaction = () => {
+        if (!desktopPanelMutationAllowed()) return null;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "reset-requested");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const [panel, peer] = desktopPanels;
+        panelToggleTransaction = {
+          generation,
+          sourceId:"resetBtn",
+          panelWasOpen:panel ? panelIsOpen(panel) : false,
+          peerWasOpen:peer ? panelIsOpen(peer) : false,
+          targets:Object.fromEntries(desktopPanels.map((candidate) => [candidate.id, false])),
+          applications:0,
+          lastReason:"captured",
+          commitStatus:"reset-committed",
+        };
+        applyPanelToggleTransaction(generation, "reset-capture");
+        armPanelToggleTransaction(generation);
+        return generation;
+      };
+      const panelToggleDebugSnapshot = () => ({
+        generation:panelToggleGeneration,
+        settleMs:panelToggleSettleMs,
+        pending:Number(Boolean(panelToggleFrame)) + Number(Boolean(panelToggleTimer)),
+        active:desktopActive,
+        current:snapshotPanelToggleTransaction(panelToggleTransaction, "active"),
+        last:panelLastTransaction ? { ...panelLastTransaction, targets:{ ...panelLastTransaction.targets } } : null,
+      });
+      const bindPanelDrag = (panel) => {
+        const { wrapper, header, toggle } = panel;
+        const onWrapperPointerDown = (event) => {
+          if (!desktopActive) return;
+          if (toggle.contains(event.target)) wrapper.dataset.moved = "1";
+          promotePanel(panel);
+        };
+        const onWrapperClick = () => promotePanel(panel);
+        const onToggleClickCapture = () => {
+          if (!desktopActive) return;
+          beginPanelToggleTransaction(panel);
+        };
+        const onToggleClick = () => {
+          const generation = panelToggleTransaction?.generation;
+          if (!desktopActive || !generation || panelToggleTransaction.sourceId !== panel.id) return;
+          schedulePanelToggleTransaction(generation, "click-bubble");
+        };
+        const onHeaderPointerDown = (event) => {
+          if (!desktopActive || event.target.closest?.("button")) return;
+          if (event.button !== undefined && event.button !== 0) return;
+          preservePanelAudioUnlock(panel);
+          event.stopImmediatePropagation();
+          event.preventDefault();
+          const wrapperRect = wrapper.getBoundingClientRect();
+          panel.drag = {
+            pointerId:event.pointerId,
+            startX:event.clientX,
+            startY:event.clientY,
+            offsetX:event.clientX - wrapperRect.left,
+            offsetY:event.clientY - wrapperRect.top,
+            active:false,
+          };
+          promotePanel(panel);
+          try {
+            header.setPointerCapture(event.pointerId);
+          } catch (error) {
+            console.warn("[desktop-panels] pointer capture failed for panel", panel.id, error);
+            panel.drag = null;
+            setPanelDragging(panel, false);
+          }
+        };
+        const onHeaderPointerMove = (event) => {
+          const drag = panel.drag;
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          event.stopImmediatePropagation();
+          if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
+          drag.active = true;
+          setPanelDragging(panel, true);
+          const stageRect = stage.getBoundingClientRect();
+          if (!applyAnchor(panel, {
+            x:event.clientX - stageRect.left - drag.offsetX,
+            y:event.clientY - stageRect.top - drag.offsetY,
+          })) return;
+          layoutPanel(panel);
+          event.preventDefault();
+        };
+        const finishDrag = (event) => {
+          const drag = panel.drag;
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          event.stopImmediatePropagation();
+          try {
+            releasePanelPointer(panel, event.pointerId);
+          } finally {
+            panel.drag = null;
+            if (desktopActive) {
+              setPanelDragging(panel, false);
+              layoutPanel(panel);
+            }
+          }
+        };
+        const onLostPointerCapture = (event) => {
+          if (!panel.drag || event.pointerId !== panel.drag.pointerId) return;
+          panel.drag = null;
+          if (desktopActive) setPanelDragging(panel, false);
+        };
+        bindPanelListener(wrapper, "pointerdown", onWrapperPointerDown, true);
+        bindPanelListener(wrapper, "click", onWrapperClick, true);
+        bindPanelListener(toggle, "click", onToggleClickCapture, true);
+        bindPanelListener(toggle, "click", onToggleClick);
+        bindPanelListener(header, "pointerdown", onHeaderPointerDown, true);
+        bindPanelListener(header, "pointermove", onHeaderPointerMove, true);
+        bindPanelListener(header, "pointerup", finishDrag, true);
+        bindPanelListener(header, "pointercancel", finishDrag, true);
+        bindPanelListener(header, "lostpointercapture", onLostPointerCapture, true);
+      };
+      const cancelPanelFrames = (panel) => {
+        if (panel.measureFrame) cancelAnimationFrame(panel.measureFrame);
+        panel.measureFrame = 0;
+        panel.measureRetried = false;
+        panel.measureWarned = false;
+      };
+      const resetDesktopPanelLayout = () => {
+        if (!desktopPanelMutationAllowed()) return;
+        const anchors = getDefaultAnchors();
+        desktopPanels.forEach((panel, index) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+          panel.zIndex = index === 0 ? 36 : 30;
+          if (!applyAnchor(panel, anchors[index])) return;
+          applyPanelLayer(panel);
+        });
+      };
+      const resetDesktopPanels = (cancelTransaction = true) => {
+        if (!desktopActive) return;
+        if (cancelTransaction) cancelPanelToggleTransaction("reset");
+        resetDesktopPanelLayout();
+        desktopPanels.forEach((panel) => {
+          setPanelOpen(panel, false);
+          syncPanel(panel);
+        });
+      };
+      const rememberPanelMoved = (panel) => {
+        panel.originalMoved = {
+          present:panel.wrapper.hasAttribute("data-moved"),
+          value:panel.wrapper.getAttribute("data-moved"),
+        };
+      };
+      const activateDesktopPanels = () => {
+        desktopActive = true;
+        desktopPanels.forEach((panel) => {
+          rememberPanelMoved(panel);
+          const { wrapper, header, body } = panel;
+          wrapper.dataset.codexDesktopPanel = "1";
+          header.dataset.codexPanelHeader = "1";
+          body.dataset.codexPanelBody = "1";
+          wrapper.dataset.codexPanelOpen = panelIsOpen(panel) ? "1" : "0";
+          wrapper.dataset.codexPanelDragging = "0";
+          wrapper.dataset.moved = "1";
+        });
+        if (!desktopInitialized) {
+          desktopInitialized = true;
+          resetDesktopPanels();
+          return;
+        }
+        const defaults = getDefaultAnchors();
+        desktopPanels.forEach((panel, index) => {
+          if (!applyAnchor(panel, panel.anchor || defaults[index])) return;
+          applyPanelLayer(panel);
+          syncPanel(panel);
+        });
+      };
+      const deactivateDesktopPanels = () => {
+        if (!desktopActive) return;
+        cancelPanelToggleTransaction("deactivate");
+        desktopPanels.forEach((panel) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+          const { wrapper, header, body, originalMoved } = panel;
+          delete wrapper.dataset.codexDesktopPanel;
+          delete header.dataset.codexPanelHeader;
+          delete body.dataset.codexPanelBody;
+          delete wrapper.dataset.codexPanelOpen;
+          delete wrapper.dataset.codexPanelDragging;
+          delete wrapper.dataset.codexPanelX;
+          delete wrapper.dataset.codexPanelY;
+          wrapper.style.removeProperty("--codex-panel-body-width");
+          wrapper.style.removeProperty("--codex-panel-body-height");
+          wrapper.style.removeProperty("--codex-panel-left");
+          wrapper.style.removeProperty("--codex-panel-top");
+          wrapper.style.removeProperty("--codex-panel-z");
+          if (originalMoved.present) wrapper.setAttribute("data-moved", originalMoved.value ?? "");
+          else wrapper.removeAttribute("data-moved");
+        });
+        desktopActive = false;
+      };
+      const syncDesktopPanelMode = () => {
+        const { width } = getStageSize();
+        if (!width) return;
+        if (width <= desktopBreakpoint) {
+          deactivateDesktopPanels();
+          return;
+        }
+        if (!desktopActive) {
+          activateDesktopPanels();
+          return;
+        }
+        desktopPanels.forEach((panel) => {
+          if (!applyAnchor(panel, panel.anchor)) return;
+          applyPanelLayer(panel);
+          syncPanel(panel);
+        });
+      };
+      const queuePanelSync = (records = []) => {
+        if (!desktopPanelMutationAllowed()) return;
+        const transaction = panelToggleTransaction;
+        const panelClassChanged = records.some((record) => record.type === "attributes" && record.attributeName === "class");
+        if (transaction && panelClassChanged) {
+          schedulePanelToggleTransaction(transaction.generation, "class-mutation");
+          return;
+        }
+        if (panelMutationFrame) return;
+        const generation = panelToggleGeneration;
+        panelMutationFrame = requestAnimationFrame(() => {
+          panelMutationFrame = 0;
+          if (!desktopPanelMutationAllowed() || generation !== panelToggleGeneration) return;
+          desktopPanels.forEach(syncPanel);
+        });
+      };
+      const schedulePanelResize = () => {
+        clearTimeout(panelResizeTimer);
+        panelResizeTimer = setTimeout(syncDesktopPanelMode, 120);
+      };
+      const isResetIntent = (button) => button.textContent.includes("重置");
+      const managedPanelNodesConnected = () => stage?.isConnected && desktopPanels.every((panel) =>
+        [panel.wrapper, panel.header, panel.body, panel.toggle].every((node) => node.isConnected));
+      const teardownDesktopPanels = () => {
+        cancelPanelToggleTransaction("disconnect");
+        clearTimeout(panelResizeTimer);
+        panelResizeTimer = 0;
+        if (panelMutationFrame) cancelAnimationFrame(panelMutationFrame);
+        panelMutationFrame = 0;
+        if (desktopActive) deactivateDesktopPanels();
+        else desktopPanels.forEach((panel) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+        });
+        if (mutationObserver) mutationObserver.disconnect();
+        if (positionedParentObserver) positionedParentObserver.disconnect();
+        if (resizeObserver) resizeObserver.disconnect();
+        if (lifecycleObserver) lifecycleObserver.disconnect();
+        mutationObserver = null;
+        positionedParentObserver = null;
+        resizeObserver = null;
+        lifecycleObserver = null;
+        panelCleanupCallbacks.splice(0).reverse().forEach((cleanup) => cleanup());
+        desktopPanels = [];
+      };
+      const installDesktopPanels = () => {
+        if (panelCoordinatorInstalled) return;
+        panelCoordinatorInstalled = true;
+        const resolved = resolveDesktopPanels();
+        if (!resolved) return;
+        desktopPanels = resolved;
+        desktopPanels.forEach(bindPanelDrag);
+        mutationObserver = new MutationObserver(queuePanelSync);
+        desktopPanels.forEach((panel) => {
+          mutationObserver.observe(panel.wrapper, {
+            attributes:true,
+            attributeFilter:["class", "data-moved"],
+          });
+          mutationObserver.observe(panel.body, {
+            attributes:true,
+            attributeFilter:["class"],
+          });
+        });
+        const positionedParents = [...new Set(desktopPanels.map((panel) => panel.wrapper.offsetParent))]
+          .filter((parent) => parent && parent !== stage);
+        if (positionedParents.length) {
+          positionedParentObserver = new MutationObserver(schedulePanelResize);
+          positionedParents.forEach((parent) => positionedParentObserver.observe(parent, {
+            attributes:true,
+            attributeFilter:["class", "style"],
+          }));
+        }
+        bindPanelListener(window, "resize", schedulePanelResize);
+        if ("ResizeObserver" in window) {
+          resizeObserver = new ResizeObserver(schedulePanelResize);
+          resizeObserver.observe(stage);
+          positionedParents.forEach((parent) => resizeObserver.observe(parent));
+        }
+        lifecycleObserver = new MutationObserver(() => {
+          if (!managedPanelNodesConnected()) teardownDesktopPanels();
+        });
+        lifecycleObserver.observe(document.documentElement, { childList:true, subtree:true });
+        const resetButtons = document.querySelectorAll("#resetBtn");
+        if (resetButtons.length === 1) {
+          const resetButton = document.getElementById("resetBtn");
+          const onResetClick = () => {
+            if (!isResetIntent(resetButton)) return;
+            resetDesktopPanelLayout();
+            beginPanelResetTransaction();
+          };
+          bindPanelListener(resetButton, "click", onResetClick, true);
+        } else {
+          console.warn("[desktop-panels] expected one reset button", "resetBtn");
+        }
+        /** A programmatic request supersedes an older click's settle transaction.
+         * @param {string} panelId Actual managed wrapper id.
+         * @param {boolean} open Requested UI visibility; no model mutation.
+         * @param {boolean} exclusive Close the peer only when opening the target.
+         * @returns {boolean} Whether the desktop owner handled this request.
+         */
+        const requestPanelOpen = (panelId, open = true, exclusive = false) => {
+          if (typeof open !== "boolean" || typeof exclusive !== "boolean" ||
+              window.__codexPageControllerV1?.getState().destroyed || !desktopPanelMutationAllowed()) return false;
+          const panel = desktopPanels.find((candidate) => candidate.wrapper.id === panelId);
+          if (!panel || panel.wrapper.inert || !managedPanelNodesConnected()) return false;
+          const pendingTargets = panelToggleTransaction?.targets;
+          const peers = desktopPanels.filter((candidate) => candidate !== panel);
+          if (pendingTargets) peers.forEach((candidate) => {
+            if (Object.prototype.hasOwnProperty.call(pendingTargets, candidate.id))
+              setPanelOpen(candidate, pendingTargets[candidate.id]);
+          });
+          cancelPanelToggleTransaction("programmatic-request");
+          if (exclusive && open) peers.forEach((candidate) => setPanelOpen(candidate, false));
+          setPanelOpen(panel, open);
+          desktopPanels.forEach(syncPanel);
+          return true;
+        };
+        const panelCoordinatorApi = { version:panelStandardVersion, setOpen:requestPanelOpen,
+          /** Stop this page's UI handles when its science owner is destroyed. */
+          destroy:teardownDesktopPanels };
+        if (window.__CODEX_PHYSICS_PANEL_TEST__ === true) panelCoordinatorApi.getTransactionState = panelToggleDebugSnapshot;
+        window.__codexDesktopPanels = Object.freeze(panelCoordinatorApi);
+        syncDesktopPanelMode();
+      };
+      const isolateThemePointer = (event) => {
+        if (button.contains(event.target)) event.stopPropagation();
+      };
+      window.addEventListener("pointerdown", isolateThemePointer, true);
+      window.addEventListener("mousedown", isolateThemePointer, true);
+      window.addEventListener("touchstart", isolateThemePointer, { capture:true, passive:true });
+      window.addEventListener("click", (event) => {
+        if (!button.contains(event.target)) return;
+        event.stopPropagation();
+        applyTheme(root.dataset.theme === "light" ? "dark" : "light", true);
+      }, true);
+      window.addEventListener("storage", (event) => {
+        if (event.key === themeKey) applyTheme(event.newValue, false);
+      });
+      applyTheme(root.dataset.theme, false);
+      installDesktopPanels();
+    })();
+    }, {once:true});
+  
+}
+</script>
+<script id="codex-stage-tools-runtime">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+(() => {
+  'use strict';
+  function mount() {
+    const stage = document.querySelector('#stage');
+    const lamp = stage?.querySelector('#hintLamp, .hint-lamp');
+    const pop = stage?.querySelector('#hintPop');
+    const hud = stage?.querySelector('.hud');
+    if (!stage || !lamp || !pop || !hud || stage.dataset.stageToolsMounted || window.__codexPageControllerV1?.getState().destroyed) return;
+    stage.dataset.stageToolsMounted = 'true';
+    const wrap = lamp.closest('.hint-lamp-wrap');
+    const anchor = wrap || lamp;
+    let frame = 0;
+    let disposed = false;
+    const put = (node, key, value) => {
+      if (node.style.getPropertyValue(key) !== value || node.style.getPropertyPriority(key) !== 'important') {
+        node.style.setProperty(key, value, 'important');
+      }
+    };
+    const pixels = value => `${Math.round(value * 100) / 100}px`;
+    function expanded() {
+      return pop.classList.contains('open') || Boolean(wrap?.classList.contains('open'));
+    }
+    function syncExpanded() {
+      lamp.setAttribute('aria-controls', pop.id);
+      lamp.setAttribute('aria-expanded', String(expanded()));
+      lamp.setAttribute('aria-label', expanded() ? '收起提示' : '查看提示');
+    }
+    function closeHint() {
+      // Reuse the page's own close action so legacy state.hintOpen and its
+      // wrapper stay synchronized with the popover after Escape/outside clicks.
+      if (wrap ? wrap.classList.contains('open') : expanded()) lamp.click();
+      pop.classList.remove('open');
+      wrap?.classList.remove('open');
+      syncExpanded();
+    }
+    function managedHint() {
+      if (lamp.dataset.stageHint !== 'managed') return;
+      pop.textContent = document.querySelector('#taskHint')?.textContent || '按步骤操作器材，观察现象并记录数据。';
+      pop.classList.toggle('open');
+      syncExpanded();
+    }
+    lamp.addEventListener('click', managedHint);
+    function layout() {
+      frame = 0;
+      if (disposed) return;
+      const s = stage.getBoundingClientRect();
+      const h = hud.getBoundingClientRect();
+      const originX = s.left + stage.clientLeft;
+      const originY = s.top + stage.clientTop;
+      const left = Math.max(8, h.left - originX);
+      const top = Math.max(8, h.bottom - originY + 6);
+      put(anchor, 'position', 'absolute');
+      put(anchor, 'left', pixels(left));
+      put(anchor, 'right', 'auto');
+      put(anchor, 'top', pixels(top));
+      put(anchor, 'bottom', 'auto');
+      put(anchor, 'z-index', '72');
+      if (wrap) {
+        put(wrap, 'width', '36px'); put(wrap, 'height', '36px');
+        put(lamp, 'position', 'static'); put(lamp, 'transform', 'none');
+      }
+      for (const button of [lamp, stage.querySelector('#audioToggle')].filter(Boolean)) {
+        put(button, 'width', '36px'); put(button, 'height', '36px');
+        put(button, 'min-width', '36px'); put(button, 'min-height', '36px');
+        put(button, 'padding', '0'); put(button, 'margin', '0');
+        put(button, 'display', 'grid'); put(button, 'place-items', 'center');
+        put(button, 'font-size', '18px'); put(button, 'box-sizing', 'border-box');
+      }
+      const audio = stage.querySelector('#audioToggle');
+      if (audio) {
+        put(audio, 'position', 'absolute'); put(audio, 'left', pixels(left + 42));
+        put(audio, 'right', 'auto'); put(audio, 'top', pixels(top));
+        put(audio, 'bottom', 'auto'); put(audio, 'z-index', '72');
+        put(audio, 'border', '1px solid rgba(150,170,190,.38)');
+        put(audio, 'border-radius', '8px');
+        put(audio, 'background', 'rgba(100,120,140,.13)');
+        put(audio, 'cursor', 'pointer');
+      }
+      put(pop, 'position', 'absolute'); put(pop, 'box-sizing', 'border-box');
+      put(pop, 'left', wrap ? '0px' : pixels(left)); put(pop, 'right', 'auto');
+      put(pop, 'top', pixels(wrap ? 44 : top + 44)); put(pop, 'bottom', 'auto');
+      put(pop, 'transform', 'none'); put(pop, 'z-index', '71');
+      put(pop, 'width', pixels(Math.max(1, Math.min(340, stage.clientWidth - left - 10))));
+      put(pop, 'max-width', 'none');
+      put(pop, 'max-height', pixels(Math.max(48, stage.clientHeight - top - 60)));
+      put(pop, 'overflow-y', 'auto'); put(pop, 'overflow-wrap', 'anywhere');
+      syncExpanded();
+    }
+    const requestLayout = () => { if (!disposed && !frame) frame = requestAnimationFrame(layout); };
+    function onKey(event) {
+      if (event.key === 'Escape' && expanded()) {
+        closeHint(); lamp.focus({ preventScroll:true });
+      }
+    }
+    function onOutside(event) {
+      if (!lamp.contains(event.target) && !pop.contains(event.target)) closeHint();
+    }
+    const changes = new MutationObserver(syncExpanded);
+    changes.observe(pop, { attributes:true, attributeFilter:['class'] });
+    if (wrap) changes.observe(wrap, { attributes:true, attributeFilter:['class'] });
+    const sizes = new ResizeObserver(requestLayout);
+    sizes.observe(hud); sizes.observe(stage);
+    window.addEventListener('resize', requestLayout);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onOutside, { passive:true });
+    lamp.addEventListener('click', requestLayout);
+    function dispose() {
+      if (disposed) return;
+      disposed = true; cancelAnimationFrame(frame); frame = 0;
+      window.removeEventListener('pagehide', dispose);
+      sizes.disconnect(); changes.disconnect();
+      window.removeEventListener('resize', requestLayout);
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onOutside);
+      lamp.removeEventListener('click', requestLayout);
+      lamp.removeEventListener('click', managedHint);
+      delete stage.dataset.stageToolsMounted;
+    }
+    window.__codexStageToolsV1 = Object.freeze({
+      /** Stop only this UI owner's frame, observers and event handlers. */
+      destroy() { dispose(); window.removeEventListener('pageshow', onPageShow); },
+      getState: () => ({disposed, ownedFrames:frame ? 1 : 0})
+    });
+    window.addEventListener('pagehide', dispose, { once:true });
+    layout();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+  function onPageShow(event) { if (event.persisted && !window.__codexPageControllerV1?.getState().destroyed) mount(); }
+  window.addEventListener('pageshow', onPageShow);
+})();
+
+}
+</script>
+<script id="codex-science-panel-clearance">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+(() => {
+  'use strict';
+  function mount() {
+    const stage=document.getElementById('stage');
+    const panels=['controlDock','dataDock'].map(id=>document.getElementById(id));
+    if(!stage||panels.some(panel=>!panel?.querySelector('.drawer-body')||!panel.querySelector('.drawer-header')))throw new Error('[science-panels] 缺少完整标准面板');if(window.__codexSciencePanelClearance&&!window.__codexSciencePanelClearance.getState().disposed)throw new Error('[science-panels] 重复面板布局实例');
+    const abort=new AbortController();let frame=0,disposed=false,minimum=null;
+    const offsets=new WeakMap(),variables=new Map(),transforms=new Map();
+    function setVariable(key,value){let saved=variables.get(key);if(!saved){saved={value:stage.style.getPropertyValue(key),priority:stage.style.getPropertyPriority(key),owned:value};variables.set(key,saved);}saved.owned=value;if(stage.style.getPropertyValue(key)!==value)stage.style.setProperty(key,value);}
+    function restoreVariables(){for(const [key,saved]of variables){if(stage.style.getPropertyValue(key)===saved.owned&&stage.style.getPropertyPriority(key)===''){if(saved.value)stage.style.setProperty(key,saved.value,saved.priority);else stage.style.removeProperty(key);}}variables.clear();}
+    const rect=node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+    const overlap=(a,b)=>Math.min(a.right,b.right)-Math.max(a.x,b.x)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1;
+    const body=panel=>panel.querySelector('.drawer-body');
+    const visible=panel=>!panel.classList.contains('collapsed')&&body(panel).getClientRects().length>0;
+    function restoreTransform(node){const saved=transforms.get(node);if(!saved)return;if(node.style.getPropertyValue('transform')===saved.owned&&node.style.getPropertyPriority('transform')==='important'){if(saved.value)node.style.setProperty('transform',saved.value,saved.priority);else node.style.removeProperty('transform');}transforms.delete(node);offsets.delete(node);}
+    function move(node,x,y){if(!x&&!y){restoreTransform(node);return;}let saved=transforms.get(node);const old=offsets.get(node);if(saved&&old?.x===x&&old?.y===y&&node.style.getPropertyValue('transform')===saved.owned&&node.style.getPropertyPriority('transform')==='important')return;if(!saved){saved={value:node.style.getPropertyValue('transform'),priority:node.style.getPropertyPriority('transform'),computed:getComputedStyle(node).transform,owned:''};transforms.set(node,saved);}const value=`translate(${x}px,${y}px)`+(saved.computed==='none'?'':' '+saved.computed);offsets.set(node,{x,y});node.style.setProperty('transform',value,'important');saved.owned=node.style.getPropertyValue('transform');}
+    function restoreMinimum(){if(!minimum)return;if(stage.style.getPropertyValue('min-height')===minimum.owned&&stage.style.getPropertyPriority('min-height')==='important'){if(minimum.value)stage.style.setProperty('min-height',minimum.value,minimum.priority);else stage.style.removeProperty('min-height');}minimum=null;}
+    function layout(){
+      frame=0;if(disposed)return;
+      const bounds=rect(stage),tools=['scienceHud','hintLamp','audioToggle'].map(id=>document.getElementById(id)).filter(node=>node?.getClientRects().length);
+      if(matchMedia('(max-width:720px)').matches){
+        for(const panel of panels)move(body(panel),0,0);
+        const tabs=document.getElementById('mobileTabs'),tabBounds=tabs?.getClientRects().length?rect(tabs):null;
+        const sheetBottom=tabBounds?Math.ceil(bounds.bottom-tabBounds.y):62;
+        setVariable('--science-mobile-sheet-bottom',sheetBottom+'px');setVariable('--science-apparatus-bottom',(sheetBottom+6)+'px');
+        const bottom=Math.max(bounds.y,...tools.map(node=>rect(node).bottom));
+        const available=Math.floor(bounds.bottom-sheetBottom-bottom-12-16);
+        if(available<48){
+          const owned=Math.ceil(bottom-bounds.y+sheetBottom+12+16+48)+'px';
+          if(!minimum||stage.style.getPropertyValue('min-height')!==minimum.owned||stage.style.getPropertyPriority('min-height')!=='important')minimum={value:stage.style.getPropertyValue('min-height'),priority:stage.style.getPropertyPriority('min-height'),owned};
+          minimum.owned=owned;stage.style.setProperty('min-height',owned,'important');
+        }
+        const value=Math.max(48,Math.min(188,available))+'px';
+        setVariable('--science-mobile-sheet-limit',value);
+        return;
+      }
+      restoreMinimum();
+      restoreVariables();
+      const headers=[...panels.map(panel=>rect(panel.querySelector('.drawer-header'))),...tools.map(rect)];
+      // Data has deterministic placement priority; control fits around it, not vice versa.
+      for(const panel of [...panels].reverse()){
+        const node=body(panel);if(!visible(panel)){move(node,0,0);continue;}
+        const measured=rect(node),old=offsets.get(node)||{x:0,y:0};
+        const base={...measured,x:measured.x-old.x,right:measured.right-old.x,y:measured.y-old.y,bottom:measured.bottom-old.y};
+        const obstacles=[...headers];
+        if(panel===panels[0]&&visible(panels[1]))obstacles.push(rect(body(panels[1])));
+        const xs=new Set([0]),ys=new Set([0]);
+        for(const obstacle of obstacles){xs.add(obstacle.x-base.right-8);xs.add(obstacle.right-base.x+8);ys.add(obstacle.y-base.bottom-8);ys.add(obstacle.bottom-base.y+8);}
+        const candidates=[];
+        for(const x of xs)for(const y of ys){
+          const next={...base,x:base.x+x,right:base.right+x,y:base.y+y,bottom:base.bottom+y};
+          if(next.x<bounds.x+4||next.right>bounds.right-4||next.y<bounds.y+4||next.bottom>bounds.bottom-4||obstacles.some(obstacle=>overlap(next,obstacle)))continue;
+          candidates.push({x,y,cost:Math.abs(x)+Math.abs(y)*4});
+        }
+        candidates.sort((a,b)=>a.cost-b.cost);const next=candidates[0];
+        // Canonical placement remains the fallback on genuinely space-constrained stages.
+        panel.dataset.scienceClearance=next?'fitted':'constrained';move(node,next?.x||0,next?.y||0);
+      }
+    }
+    function schedule(){if(!disposed&&!frame)frame=requestAnimationFrame(layout);}
+    const changes=new MutationObserver(schedule);
+    const sizes=new ResizeObserver(schedule);sizes.observe(stage);
+    for(const panel of panels){changes.observe(panel,{attributes:true,attributeFilter:['class','style','data-codex-panel-x','data-codex-panel-y']});sizes.observe(body(panel));}
+    for(const id of ['scienceHud','hintLamp','audioToggle','mobileTabs']){const node=document.getElementById(id);if(node){sizes.observe(node);changes.observe(node,{attributes:true,attributeFilter:['style','class']});}}
+    window.addEventListener('resize',schedule,{signal:abort.signal});
+    function destroy(){if(disposed)return;disposed=true;abort.abort();changes.disconnect();sizes.disconnect();if(frame)cancelAnimationFrame(frame);frame=0;restoreMinimum();restoreVariables();for(const node of [...transforms.keys()])restoreTransform(node);}
+    window.addEventListener('pagehide',destroy,{once:true,signal:abort.signal});
+    window.__codexSciencePanelClearance={destroy,getState:()=>({disposed,ownedFrames:frame?1:0,minimumProtected:Boolean(minimum)})};schedule();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
+
+}
+</script>
+<style id="codex-science-consistency-style">
+/* Keep the existing 164px panel anchor; enlarge only the actual header ink box. */
+@media(min-width:721px){
+html body #app #stage:is(#stage):is(#stage) [data-codex-desktop-panel="1"]{width:164px!important;min-width:164px!important;max-width:164px!important;margin-left:0!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]{display:flex!important;align-items:center!important;gap:8px!important;width:var(--science-header-width,164px)!important;min-width:var(--science-header-width,164px)!important;max-width:var(--science-header-width,164px)!important;height:var(--science-header-height,44px)!important;min-height:44px!important;max-height:none!important;padding:2px 6px!important;overflow:visible!important;left:max(calc(12px - var(--codex-panel-left)),min(0px,calc(164px - var(--science-header-width,164px))))!important;right:auto!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>*{min-height:0!important;max-height:none!important;position:static!important;grid-column:auto!important;grid-row:auto!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>.dockTitle{display:flex!important;flex:1 1 auto!important;gap:6px!important;min-width:0!important;width:auto!important;max-width:none!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;line-height:1.3!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>.drawer-actions{display:flex!important;flex:0 0 auto!important;gap:6px!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>:is(.drawer-actions,.codex-drawer-actions):empty{display:none!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"] button{width:auto!important;min-width:44px!important;max-width:none!important;height:auto!important;min-height:44px!important;max-height:none!important;line-height:1.3!important;padding:4px!important}
+html body #app #stage:is(#stage):is(#stage) #dataNotice{position:static!important;min-height:18px!important;height:auto!important;max-height:none!important;width:auto!important;line-height:1.2!important;overflow:visible!important}
+}
+html body #app #stage #dataClearBtn{min-width:44px!important;min-height:44px!important;max-width:100%!important;height:auto!important;margin:8px 0!important;padding:8px!important;white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.4!important}
+@media(max-width:720px){
+html body #app #stage:is(#stage) .drawer.mobile-sheet .sheet-close{width:44px!important;min-width:44px!important;max-width:none!important;height:44px!important;min-height:44px!important;max-height:none!important;box-sizing:border-box!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard){grid-template-columns:minmax(0,1fr) auto!important;align-items:start!important;gap:8px!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard) .task-step{display:block!important;position:static!important;grid-column:1!important;grid-row:1!important;width:max-content!important;min-width:0!important;max-width:100%!important;height:auto!important;min-height:0!important;margin:0!important;padding:6px 10px!important;clip:auto!important;clip-path:none!important;white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;line-height:1.2!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard)>.task-text{grid-column:1 / -1!important;grid-row:2!important;min-width:0!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard)>.progress-dots{grid-column:2!important;grid-row:1!important;align-self:center!important;max-width:100%!important;flex-wrap:wrap!important}
+}
+</style>
+<script id="codex-science-consistency-runtime">
+(()=>{
+  function mount(){
+    const shell=window.__codexScienceShell,stage=document.getElementById('stage'),state=window.__codexPageControllerV1?.getState();
+    if(!shell||!stage||state?.destroyed)return;
+    const panels=['controlDock','dataDock'].map(id=>document.getElementById(id)),headers=panels.map(panel=>panel?.querySelector('[data-codex-panel-header],.drawer-header')),actions=headers.map((head,i)=>head?.querySelector('#'+['control','data'][i]+'ToggleBtn')?.closest('.drawer-actions'));
+    if(['clearRecords','syncState','syncPresentation','destroy'].some(method=>typeof shell[method]!=='function')||panels.some((panel,i)=>!panel?.querySelector('.drawer-body')||!headers[i]?.querySelector('.dockTitle')||!actions[i]||!headers[i].contains(actions[i]))){console.error('[science-consistency] 缺少完整实验或数据面板接口');return;}
+    const events=new AbortController();
+    const clear=document.createElement('button');clear.id='dataClearBtn';clear.type='button';clear.className='iconBtn';clear.textContent='清空记录';clear.setAttribute('aria-label','清空数据面板记录，不重置关卡');
+    panels[1].querySelector('.drawer-body').append(clear);
+    const syncClear=s=>{const disabled=!s||s.destroyed||s.paused||s.mode==='auto';if(clear.disabled!==disabled)clear.disabled=disabled;};
+    clear.addEventListener('click',()=>{const s=window.__codexPageControllerV1?.getState();if(!s||s.destroyed||s.paused||s.mode==='auto')return;shell.clearRecords();},{signal:events.signal});
+    let destroyed=false;
+    function measure(){
+      if(destroyed||matchMedia('(max-width:720px)').matches)return;
+      const available=Math.max(44,stage.getBoundingClientRect().width-24),updates=headers.map((head,i)=>{const title=head.querySelector('.dockTitle'),range=document.createRange();range.selectNodeContents(title);const text=range.getBoundingClientRect(),actionBox=actions[i].getBoundingClientRect(),buttons=[...head.querySelectorAll('button')].map(n=>n.getBoundingClientRect());return{panel:panels[i],width:Math.min(available,Math.max(164,Math.ceil(text.width+actionBox.width+22))),height:Math.max(44,Math.ceil(Math.max(text.height+4,...buttons.map(r=>r.height))))};});
+      for(const{panel,width,height}of updates)for(const[name,value]of[['--science-header-width',width+'px'],['--science-header-height',height+'px']])if(panel.style.getPropertyValue(name)!==value)panel.style.setProperty(name,value);
+    }
+    const sizes=new ResizeObserver(measure);sizes.observe(stage);headers.forEach((head,i)=>{sizes.observe(head.querySelector('.dockTitle'));sizes.observe(actions[i]);});
+    const changes=new MutationObserver(records=>{if(records.some(r=>r.type==='childList'||r.oldValue!==r.target.getAttribute(r.attributeName)))measure();});
+    for(const head of headers)changes.observe(head,{childList:true,attributes:true,attributeFilter:['style','class'],attributeOldValue:true,subtree:true});
+    for(const panel of panels)changes.observe(panel,{attributes:true,attributeFilter:['class'],attributeOldValue:true});
+    window.addEventListener('resize',measure,{signal:events.signal});
+    for(const method of['syncState','syncPresentation']){const original=shell[method].bind(shell);shell[method]=(...args)=>{const result=original(...args);if(!destroyed)syncClear(args[0]??window.__codexPageControllerV1?.getState());return result;};}
+    const originalDestroy=shell.destroy.bind(shell);shell.destroy=(...args)=>{if(!destroyed){destroyed=true;events.abort();sizes.disconnect();changes.disconnect();clear.disabled=true;}return originalDestroy(...args);};
+    window.addEventListener('pagehide',()=>shell.destroy(),{once:true,signal:events.signal});syncClear(state);measure();document.fonts.ready.then(()=>{if(!destroyed)measure();});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
+</script>
+
+<style id="codex-science-mobile-tab-height-v1">
+@media(max-width:720px){html body #app #stage:is(#stage) #mobileTabs{height:auto!important;min-height:44px!important;max-height:none!important;align-items:stretch!important}html body #app #stage:is(#stage) #mobileTabs button{height:auto!important;min-height:44px!important;max-height:none!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.35!important}}
+</style>
+<style id="codex-science-clearance-consumers-v1">
+@media(max-width:720px){html body #app #stage:is(#stage) .drawer.mobile-sheet{bottom:var(--science-mobile-sheet-bottom,62px)!important}html body #app #stage:is(#stage){padding-bottom:var(--science-apparatus-bottom,68px)!important}}
+@media(min-width:721px){html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"] button{position:static!important;inset:auto!important;transform:none!important;margin:0!important}}
+</style>
+<style id="codex-em-definite-scene-slot-v1">
+/* Keep the original renderer; reserve independent UI space without canvas intrinsic-height feedback. */
+html body #app #stage:is(#stage){box-sizing:border-box!important;height:calc(clamp(300px,42vh,420px) + var(--science-apparatus-top,100px) + var(--science-apparatus-bottom,0px))!important;min-height:390px!important}
+html body #app #stage:is(#stage)>canvas#scene{position:absolute!important;left:0!important;top:var(--science-apparatus-top,100px)!important;bottom:auto!important;width:100%!important;height:calc(100% - var(--science-apparatus-top,100px) - var(--science-apparatus-bottom,0px))!important;margin:0!important;display:block!important;object-fit:contain!important;object-position:center!important}
+@media(max-width:720px){html body #app #stage:is(#stage) #mobileTabs.attached{border-top:1px solid transparent!important}html body #app #stage:is(#stage){height:calc(clamp(300px,42vh,420px) + var(--science-apparatus-top,100px) + var(--science-apparatus-bottom,68px))!important}html body #app #stage:is(#stage)>canvas#scene{height:calc(100% - var(--science-apparatus-top,100px) - var(--science-apparatus-bottom,68px))!important}}
+</style>
 </body>
 </html>

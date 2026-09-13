@@ -1,9 +1,26 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+<script id="codex-science-ui-scheduler-v1">
+(() => {
+  'use strict';
+  if (window.__codexScienceUiSchedulerV1) throw new Error('[science UI] 重复界面调度实例');
+  // Capture browser scheduling before the experiment installs its pausable clock.
+  // Existing UI owners still allocate, cancel and dispose their own handles.
+  window.__codexScienceUiSchedulerV1 = Object.freeze({
+    requestAnimationFrame: window.requestAnimationFrame.bind(window),
+    cancelAnimationFrame: window.cancelAnimationFrame.bind(window),
+    setTimeout: window.setTimeout.bind(window),
+    clearTimeout: window.clearTimeout.bind(window)
+  });
+})();
+</script>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>冰刀为何在冰上那么滑 · 互动演示（放大镜与命中修复）</title>
+<script id="codex-theme-bootstrap">
+(()=>{let theme="dark";try{const stored=localStorage.getItem("xingnian.physics.theme");if(stored==="light"||stored==="dark")theme=stored;}catch(error){console.warn("[physics theme] 无法读取主题",error);}document.documentElement.dataset.theme=theme;})();
+</script>
 <style>
   :root{ --card-bg: rgba(255,255,255,0.08); --accent:#3ddc97; --warn:#ffb74d; --ink:#e9f2ff; }
   body{ background:#0f1b28; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,Helvetica,sans-serif;
@@ -161,6 +178,7 @@ canvas,svg,img{max-width:100%}
 
 </style>
 <script id="codexDemoRuntimePreludeV2">(() => {
+  return;
   if (window.__codexDemoClock) return;
 
   const native = {
@@ -901,10 +919,469 @@ body {
 }
 
 </style>
+<style id="codexB7Styles">
+:root{color-scheme:dark;--b7-bg:#090d14;--b7-surface:#151c27;--b7-strong:#202a39;--b7-text:#f5f7fb;--b7-muted:#d4dbe5;--b7-line:#46556b}
+html[data-theme="light"]{color-scheme:light;--b7-bg:#edf3f9;--b7-surface:#fff;--b7-strong:#e5edf6;--b7-text:#172033;--b7-muted:#3d4a5e;--b7-line:#8798ae}
+html,body{min-width:0;background:var(--b7-bg)!important;color:var(--b7-text)!important}body{height:auto!important;min-height:100svh!important;overflow-x:hidden!important;padding:10px!important}
+#app{box-sizing:border-box;display:flex!important;flex-direction:column;gap:10px;width:100%;max-width:980px;margin:0 auto;min-width:0}#codexLegacyBridge{display:none!important}
+#topBar{box-sizing:border-box;display:flex;width:100%;align-items:center;gap:8px;min-width:0}#topBar #spectrum{width:auto!important;max-width:none!important;min-width:0;flex:1 1 0!important;margin:0}
+#themeToggle{flex:0 0 44px;width:44px;min-width:44px;min-height:44px;height:44px;padding:0;border:1px solid var(--b7-line);border-radius:10px;background:var(--b7-strong);color:var(--b7-text);font-size:18px;cursor:pointer}
+.task-card,.explanation,#modeStatusBar,[id$="ControlBar"],[id$="Observation"].b7-observation,.codex-global-toolbar{box-sizing:border-box;width:100%;max-width:none;margin:0;background:var(--b7-surface)!important;color:var(--b7-text)!important;border-color:var(--b7-line)!important}
+#taskCard{position:static!important;font-size:15px;grid-template-columns:130px minmax(0,1fr) auto;min-width:0}#taskCard #taskStep,#taskCard #taskText,#taskCard #taskHint{color:var(--b7-text)!important;opacity:1!important}#taskText{font-size:15px}#taskHint{font-size:13px!important;color:var(--b7-muted)!important;white-space:normal!important}#taskCard .task-text{min-width:0;overflow-wrap:anywhere}
+#modeStatusBar{position:static!important;display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px;border:1px solid var(--b7-line);border-radius:10px;font-size:14px}#modeStatusBar .tag{position:static!important;color:var(--b7-text)!important;max-width:100%;white-space:normal!important;height:auto!important;min-width:0;font-size:14px;overflow-wrap:anywhere;border-color:var(--b7-line)!important}
+#stage{box-sizing:border-box;position:relative;width:100%;max-width:none;min-height:0!important;height:auto!important;border:1px solid #46556b;border-radius:12px;overflow:hidden;background:#070b12!important;display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px}
+#container{width:100%!important;max-width:none!important;transform:none!important;height:auto!important;margin:0!important;display:block!important}#canvas{display:block;width:100%!important;max-width:none!important;height:auto!important;aspect-ratio:4/1;border:0!important}
+#magnifier{display:block!important;position:static!important;width:130px!important;height:130px!important;max-width:100%;border:0!important;border-radius:10px;pointer-events:none;transform:none!important;margin:0!important}
+[id$="ControlBar"]{position:static!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px;border:1px solid var(--b7-line);border-radius:12px;height:auto!important;transform:none!important}
+#iceControlBar .pill{grid-column:1/-1;white-space:normal;color:var(--b7-text);background:var(--b7-strong);border-color:var(--b7-line)}
+.b7-observation{position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:8px;border:1px solid var(--b7-line);border-radius:12px;font-size:14px;line-height:1.5}.b7-observation p{min-width:0;margin:0;overflow-wrap:anywhere}.b7-observation output{display:block;color:var(--b7-text)!important;font-weight:700}
+[id$="ControlBar"] button,.codex-global-toolbar button{box-sizing:border-box;min-width:44px;min-height:44px;height:auto!important;padding:8px;border:1px solid var(--b7-line)!important;border-radius:9px;background:var(--b7-strong)!important;color:var(--b7-text)!important;font-size:14px!important;white-space:normal!important;overflow-wrap:anywhere;cursor:pointer;transition:none!important}
+.codex-global-toolbar{position:static!important;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px!important;border:1px solid var(--b7-line);border-radius:12px}
+.explanation{position:static!important;padding:12px!important;font-size:14px;line-height:1.7}.explanation h2,.explanation h3,.explanation p{color:var(--b7-text)!important;opacity:1!important}.explanation h2{font-size:17px;margin:0 0 8px}.explanation p{margin:6px 0}
+.modal-mask{z-index:2000!important}.modal{box-sizing:border-box;background:#111827!important;color:#fff!important;max-width:calc(100vw - 24px);max-height:calc(100svh - 24px);overflow:auto}.modal h3,.modal p{color:#fff!important;opacity:1!important}.modal .ok{background:#42e39f!important;color:#07150f!important;min-width:88px;min-height:44px}html[data-theme="light"] .modal{background:#fff!important;color:#172033!important}html[data-theme="light"] .modal h3,html[data-theme="light"] .modal p{color:#172033!important}html[data-theme="light"] .modal .ok{background:#0b6b48!important;color:#fff!important}
+#b7Cursor{display:none;position:fixed;z-index:1000;pointer-events:none;color:#42e39f;font-size:26px;line-height:1;transform:translate(-50%,-50%);text-shadow:0 0 10px #42e39f;transition:left .25s,top .25s}#canvas{touch-action:none}.checkmark{pointer-events:none}
+@media(max-width:560px){#app{gap:8px}#taskCard{grid-template-columns:1fr;gap:7px}#taskCard .progress-dots{justify-content:flex-start}.b7-observation{grid-template-columns:1fr}.codex-global-toolbar button,[id$="ControlBar"] button{font-size:13px!important}#stage{padding:8px}}
+#app #taskCard #taskText{font-size:15px!important}#app .codex-global-toolbar button{min-height:44px!important;width:100%;margin:0}
+#stage{max-height:none!important}#stage #container{position:static!important;left:auto!important;top:auto!important;flex:0 0 auto!important;padding:0!important}
+#app #taskCard{background:var(--b7-surface)!important;border-color:var(--b7-line)!important;opacity:1!important;filter:none!important;grid-template-columns:130px minmax(0,1fr) auto!important}
+#app #taskCard #taskStep{display:inline-flex!important;grid-column:1;grid-row:auto;font-size:13px!important;color:var(--b7-text)!important;background:var(--b7-strong)!important;white-space:normal!important}
+#app #taskCard .task-text{grid-column:2;grid-row:auto}#app #taskCard .progress-dots{grid-column:3;grid-row:auto}
+#app .explanation{background:var(--b7-surface)!important;border-color:var(--b7-line)!important;color:var(--b7-text)!important;font-size:14px!important}
+#app .explanation h2,#app .explanation h3,#app .explanation p{color:var(--b7-text)!important}#app .explanation h2{font-size:17px!important}
+#app .codex-global-toolbar.toolbar{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;background:var(--b7-surface)!important;border-color:var(--b7-line)!important}
+#app .codex-global-toolbar button{width:100%!important;background:var(--b7-strong)!important;color:var(--b7-text)!important}
+#app #taskCard .dot{background:#7f91a9!important}#app #taskCard .dot.active{background:#ffd54f!important}#app #taskCard .dot.done{background:#42e39f!important}
+html[data-theme="light"] #app #taskCard .dot{background:#607287!important}html[data-theme="light"] #app #taskCard .dot.active{background:#9c6700!important}html[data-theme="light"] #app #taskCard .dot.done{background:#0b6b48!important}
+#app #taskCard .dot.warning,html[data-theme="light"] #app #taskCard .dot.warning{background:#ef5350!important;box-shadow:0 0 0 2px #ef5350!important}
+#app #toast{box-sizing:border-box;max-width:calc(100vw - 24px);white-space:normal;overflow-wrap:anywhere;pointer-events:none;z-index:1500;background:var(--b7-text)!important;color:var(--b7-bg)!important;font-size:14px!important}
+@media(max-width:720px){#app #taskCard{grid-template-columns:minmax(0,1fr) auto!important}#app #taskCard #taskStep{grid-column:1;grid-row:1}#app #taskCard .task-text{grid-column:1/-1;grid-row:2}#app #taskCard .progress-dots{grid-column:2;grid-row:1}}
+</style>
+<style id="codex-science-shell-style">
+/* Layout and visual tokens reuse the accepted experiment 35/41 shell. */
+body #app #taskCard{width:100%!important;max-width:980px!important;position:relative!important;background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:12px!important;padding:12px 14px!important;display:grid!important;grid-template-columns:auto minmax(0,1fr) auto!important;align-items:center!important;gap:10px!important;opacity:1!important;filter:none!important}
+body #app #taskCard.free-mode{opacity:.42!important;filter:grayscale(.86) saturate(.42)!important}
+body #app #taskCard .task-step{display:block!important;position:static!important;grid-column:auto!important;grid-row:auto!important;background:rgba(255,255,255,.16)!important;border-radius:8px!important;padding:6px 10px!important;font-weight:700!important;font-size:15px!important;color:#fff!important}
+body #app #taskCard .task-text{grid-column:auto!important;grid-row:auto!important;min-width:0;line-height:1.55!important;font-size:15px!important}
+body #app #taskCard #taskText{font-size:15px!important;color:#fff!important}
+body #app #taskCard #taskHint{color:#ffd54f!important;font-size:12px!important;opacity:.95!important;margin-top:2px}
+body #app #taskCard .progress-dots{display:flex!important;grid-column:auto!important;grid-row:auto!important;gap:6px!important;align-items:center!important}
+body #app #scienceHud.hud{position:absolute!important;left:10px!important;top:10px!important;right:auto!important;bottom:auto!important;z-index:20!important;display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:8px!important;background:rgba(0,0,0,.48)!important;border:1px solid rgba(255,255,255,.12)!important;border-radius:10px!important;padding:6px 8px!important;width:auto!important;max-width:calc(100% - 20px)!important;font-size:12px!important}
+body #app #scienceHud .tag{color:#dce9ff!important;border:1px solid rgba(255,255,255,.26)!important;border-radius:999px!important;padding:2px 8px!important;font-weight:700!important;font-size:12px!important;background:rgba(255,255,255,.06)!important;white-space:normal!important;overflow:visible!important;text-overflow:clip!important;max-width:100%!important}
+html body #app #scienceHud :is(#modeTag,#statusTag){white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:anywhere!important;min-width:0!important;max-width:100%!important}
+body #app #stage{overflow:visible!important;touch-action:pan-y pinch-zoom}
+body #app #stage > :is(#container,#galaxyCanvas){margin-top:var(--science-apparatus-top,100px)!important}
+body #app #stage > .science-apparatus{margin-top:var(--science-apparatus-top,100px)!important}
+body #app #stage #magnifier{position:relative!important;z-index:1!important}
+body #app #stage :is(#controlDock,#dataDock){position:absolute!important;display:block!important;width:164px;min-height:0!important;max-height:none!important;opacity:1!important;pointer-events:auto!important;transform:none!important;border-radius:12px;z-index:30;background:rgba(15,15,15,.58);backdrop-filter:blur(6px);overflow:visible!important}
+body #app #stage .drawer-body{padding:10px;overflow:auto;max-height:320px;touch-action:pan-y pinch-zoom}
+body #app #stage .drawer.collapsed .drawer-body{display:none}
+body #app #stage .drawer-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;cursor:grab;user-select:none;touch-action:none}
+body #app #stage .dockTitle{display:flex;gap:6px;align-items:center;font-size:13px;font-weight:700;color:#e7f0ff}
+body #app #stage .drawer-actions{display:flex;gap:6px}
+body #app #stage .iconBtn{border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#dce9ff;font-size:12px;padding:6px 8px;min-height:30px;cursor:pointer}
+body #app #stage .science-panel-controls{position:static!important;inset:auto!important;transform:none!important;width:100%!important;max-width:none!important;height:auto!important;margin:0!important;padding:0!important;background:transparent!important;border:0!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;box-shadow:none!important}
+body #app #stage .science-panel-controls button,body #app #scienceRecordBtn{min-width:44px!important;min-height:44px!important;height:auto!important;white-space:normal!important;overflow-wrap:anywhere;padding:8px;font-size:13px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.075);color:#d9e8f8;cursor:pointer}
+body #app #scienceRecordBtn{width:auto!important;max-width:100%!important;box-sizing:border-box!important;margin-top:8px;background:#2e7d32;color:white}
+body #app #stage .hint-lamp{display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(255,255,255,.08);color:#ffd54f;cursor:pointer}
+body #app #stage .hint-pop{display:none;padding:10px 12px;border:1px solid rgba(255,209,102,.36);border-radius:10px;background:rgba(16,18,20,.96);color:#f4efe2;font-size:13px;line-height:1.55}
+body #app #stage .hint-pop.open{display:block}
+body #app #stage .hint-lamp.flash{animation:scienceLampFlash .6s ease}
+@keyframes scienceLampFlash{50%{box-shadow:0 0 22px rgba(255,77,79,.86);border-color:#ff4d4f}}
+body #app #stage table.record{width:100%;border-collapse:collapse;font-size:13px;line-height:1.5;color:#e8f4ff}
+body #app #stage table.record th,body #app #stage table.record td{border:1px solid rgba(255,255,255,.12);padding:4px 5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+body #app #stage .empty{font-size:13px;line-height:1.5;color:#aebbc8;padding:4px 0}
+body #app #stage .empty[hidden]{display:none!important}
+body #app #stage .dataNotice{display:none;background:#ff3b30;color:#fff;min-width:18px;height:18px;padding:0 4px;border-radius:999px;font-size:11px;line-height:18px;text-align:center}
+body #app #stage .dataNotice.show{display:inline-block;animation:scienceBadgeFlash 1s infinite}
+@keyframes scienceBadgeFlash{50%{box-shadow:0 0 10px #ff3b30}}
+body #app .science-global-toolbar.toolbar{display:flex!important;flex-wrap:wrap!important;gap:9px!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important}
+body #app .science-global-toolbar button{width:auto!important;min-height:44px!important;font-size:13px!important;font-weight:800!important;padding:9px 12px!important;color:#d9e8f8!important;background:rgba(255,255,255,.075)!important;border:1px solid rgba(255,255,255,.09)!important;border-radius:8px!important}
+body #app .science-global-toolbar button:disabled{opacity:.5!important;cursor:not-allowed!important}
+body #app :is(.explanation,.explain){font-size:15px!important;line-height:1.66!important;color:#e8f4ff}
+body #app :is(.explanation,.explain) h2{font-size:20px!important;line-height:1.35!important;color:#9bd3ff!important;margin-bottom:8px}
+body #app #stage :is(.mobile-tabs,.sheet-close){display:none!important}
+body #app #themeToggle{border:1px solid transparent!important;border-radius:999px!important;background:transparent!important;color:#cbd5e1!important}
+@media(min-width:721px){
+/* Keep both standard header anchors reachable when their bodies overlap. */
+html body #app #stage:is(#stage) :is(#controlDock,#dataDock)[data-codex-desktop-panel="1"]{z-index:auto!important;backdrop-filter:none!important;filter:none!important;isolation:auto!important}
+html body #app #stage:is(#stage) :is(#controlDock,#dataDock)[data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{z-index:calc(100 + var(--codex-panel-z))!important}
+html body #app #stage:is(#stage) :is(#controlDock,#dataDock)[data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{z-index:var(--codex-panel-z)!important}
+html body #app #stage:is(#stage) [data-codex-panel-header="1"] button{white-space:nowrap!important;padding:4px!important;line-height:1.3!important}
+}
+@media(max-width:720px){
+body #app #taskCard{grid-template-columns:minmax(0,1fr) auto!important;gap:4px 8px!important;padding:8px 10px!important;border-radius:10px!important}
+body #app #taskCard .task-step{position:absolute!important;width:1px!important;min-width:1px!important;max-width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+body #app #taskCard .task-text{grid-column:1!important;grid-row:1!important;font-size:15px!important;line-height:1.38!important}
+body #app #taskCard .progress-dots{grid-column:2!important;grid-row:1!important;justify-content:flex-end!important;justify-self:end;gap:5px!important}
+body #app #taskCard .dot{width:8px!important;height:8px!important;outline-width:1px}
+body #app #stage{padding-bottom:68px!important}
+body #app #stage .mobile-tabs{position:absolute!important;left:12px!important;right:12px!important;bottom:8px!important;top:auto!important;z-index:44!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important;padding:5px!important;border:1px solid rgba(91,188,255,.24);border-radius:11px;background:rgba(9,12,16,.94);width:auto!important;max-width:none!important}
+body #app #stage .mobile-tabs.attached{border-top:0;border-radius:0 0 12px 12px}
+body #app #stage .mobile-tab{position:relative;border:0;border-radius:8px;padding:9px 10px;min-height:44px;background:rgba(255,255,255,.04);color:#cfe4ff;font-weight:900;font-size:13px;cursor:pointer}
+body #app #stage #mobileTabs :is(#experimentTab,#dataTab){display:block!important;height:auto!important;min-height:44px!important;padding:9px 10px!important}
+body #app #stage .mobile-tab.active{background:rgba(61,220,151,.16);color:#effff7;box-shadow:inset 0 0 0 1px rgba(61,220,151,.56)}
+body #app #stage .mobile-badge{position:absolute;top:0;right:10px;min-width:18px;height:18px;border-radius:999px;background:#ff3b30;color:white;font-size:11px;display:none}
+body #app #stage .mobile-badge.show{display:grid;place-items:center}
+body #app #stage .drawer.mobile-sheet{left:12px!important;right:12px!important;bottom:62px!important;top:auto!important;display:block!important;width:calc(100% - 24px)!important;max-width:none!important;border-radius:12px 12px 0 0!important;background:rgba(9,21,33,.96)!important;border:1px solid rgba(91,188,255,.32)!important;z-index:43!important}
+body #app #stage :is(#controlDock,#dataDock).mobile-sheet.collapsed{display:none!important}
+body #app #stage .drawer.mobile-sheet .drawer-header{display:none!important}
+body #app #stage .drawer.mobile-sheet .drawer-body{display:block!important;max-height:var(--science-mobile-sheet-limit,188px)!important;padding:8px 48px 8px 8px!important;overflow:auto!important}
+body #app #stage .sheet-close{position:absolute;right:8px;top:8px;display:grid!important;place-items:center;width:36px;min-width:36px;height:36px;border:1px solid rgba(255,255,255,.14);border-radius:50%;background:rgba(255,255,255,.055);color:#e3f0ff}
+body #app #stage .sheet-close-icon{width:12px;height:8px;fill:none;stroke:currentColor;stroke-width:2}
+body #app #stage table.record,body #app #stage table.record tbody{display:block}
+body #app #stage table.record thead{display:none}
+body #app #stage table.record tr{display:grid;gap:6px;padding:8px;margin-bottom:8px;border:1px solid rgba(255,255,255,.1);border-radius:9px;background:rgba(255,255,255,.045)}
+body #app #stage table.record td{border:0;display:grid;padding:0;font-size:13px;line-height:1.5}
+body #app #stage table.record td::before{content:attr(data-label);font-size:11px;font-weight:800;color:#8fb4d8}
+body #app .science-global-toolbar.toolbar{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;padding:6px!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:11px!important;background:rgba(255,255,255,.035)!important}
+body #app .science-global-toolbar button{width:100%!important;min-width:0!important;padding:8px 6px!important}
+}
+html[data-theme="light"] body #app #taskCard{background:rgba(255,255,255,.94)!important;border-color:#d7dce5!important;color:#20242c!important}
+html[data-theme="light"] body #app #taskCard .task-step{background:#eef1f6!important;color:#20242c!important}
+html[data-theme="light"] body #app #taskCard #taskText{color:#20242c!important}
+html[data-theme="light"] body #app #taskCard #taskHint{color:#7a4d00!important}
+html[data-theme="light"] body #app #stage table.record td::before{color:#3f5368!important}
+html[data-theme="light"] body #app :is(.explanation,.explain){color:#273448!important}
+html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!important}
+</style>
+  <style id="codex-theme-pilot-style">
+    :root[data-theme="dark"]{color-scheme:dark}
+    .theme-app-contents{display:contents}
+    @property --codex-mode-ring-angle{syntax:"<angle>";inherits:false;initial-value:0deg}
+    body #app #stage :is(#modeTag,#modeChip){
+      position:relative!important;isolation:isolate!important;min-width:158px!important;width:auto!important;max-width:none!important;
+      box-sizing:border-box!important;border:2px solid transparent!important;border-radius:999px!important;padding:4px 12px!important;
+      font-weight:900!important;color:#fff!important;white-space:nowrap!important;text-align:center!important;overflow:hidden!important;text-overflow:clip!important;
+      background:linear-gradient(rgba(6,10,14,.94),rgba(6,10,14,.94)) padding-box,
+        conic-gradient(from var(--codex-mode-ring-angle),#ff4c4c 0deg 45deg,#ff9a3d 45deg 90deg,#f7e94c 90deg 135deg,#54e86d 135deg 180deg,#40e0d0 180deg 225deg,#4aa3ff 225deg 270deg,#8757ff 270deg 315deg,#ec5cff 315deg 360deg) border-box!important;
+      box-shadow:0 0 13px rgba(75,216,255,.20)!important;
+      animation:codexModeRingTurn 8s linear infinite!important;
+    }
+    body #app #stage :is(#modeTag,#modeChip)::before,
+    body #app #stage :is(#modeTag,#modeChip)::after{content:none!important;display:none!important}
+    @keyframes codexModeRingTurn{to{--codex-mode-ring-angle:1turn}}
+    :root[data-theme="light"]{
+      color-scheme:light;
+      --theme-page:#f6f7fb;
+      --theme-surface:#fff;
+      --theme-surface-soft:#eef1f6;
+      --theme-text:#20242c;
+      --theme-muted:#667085;
+      --theme-border:#d7dce5;
+      --theme-accent:#155e75;
+    }
+    .theme-spectrum-row{
+      width:100%;max-width:980px;display:grid;grid-template-columns:minmax(0,1fr) 44px;
+      align-items:center;gap:8px;margin:0 0 12px;
+    }
+    .theme-spectrum-row #spectrum{grid-column:1;grid-row:1;width:100%!important;max-width:none!important;margin:0!important}
+    .theme-toolbar{
+      grid-column:2;grid-row:1;width:44px;max-width:none;min-height:44px;margin:0;
+      display:flex;align-items:center;justify-content:flex-end;
+    }
+    .theme-toggle{
+      width:44px;height:44px;padding:0;display:grid;place-items:center;
+      border:1px solid transparent;border-radius:999px;background:transparent;
+      color:#cbd5e1;cursor:pointer;touch-action:manipulation;
+      transition:color .18s ease,background .18s ease,border-color .18s ease,transform .08s ease;
+    }
+    .theme-toggle:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12)}
+    .theme-toggle:active{transform:scale(.96)}
+    .theme-toggle:focus-visible{outline:3px solid #5bbcff;outline-offset:3px}
+    .theme-icon{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+    :root[data-theme="dark"] .theme-icon-moon,
+    :root[data-theme="light"] .theme-icon-sun{display:none}
+    :root[data-theme="light"] .theme-toggle{color:#5f6170}
+    :root[data-theme="light"] .theme-toggle:hover{background:#eef1f6;border-color:#d7dce5}
+    :root[data-theme="light"] body{background:var(--theme-page)!important;color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .task-card{
+      background:rgba(255,255,255,.94)!important;border-color:var(--theme-border)!important;
+      color:var(--theme-text)!important;box-shadow:0 10px 28px rgba(31,41,55,.08)!important;
+    }
+    :root[data-theme="light"] body #app .task-card .task-step{
+      background:var(--theme-surface-soft)!important;border-color:#cbd3de!important;color:var(--theme-text)!important;
+    }
+    :root[data-theme="light"] body #app .task-card .task-text{color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .task-card .task-hint,
+    :root[data-theme="light"] body #app .task-card #taskHint{color:#7a4d00!important}
+    :root[data-theme="light"] body #app .task-card .dot:not(.active):not(.done):not(.warn){
+      background:#98a2b3!important;outline-color:#667085!important;
+    }
+    :root[data-theme="light"] body #app .task-card .dot{position:relative}
+    :root[data-theme="light"] body #app .task-card .dot::after{
+      content:"";position:absolute;inset:-4px;border:1px solid #475467;border-radius:inherit;pointer-events:none;
+    }
+    :root[data-theme="light"] body #app #stage{color:var(--theme-stage-ink,var(--ink,var(--fg,#eaf2ff)))!important}
+    :root[data-theme="light"] body #app .toolbar{
+      background:rgba(255,255,255,.78)!important;border-color:var(--theme-border)!important;
+      box-shadow:0 8px 24px rgba(31,41,55,.06)!important;
+    }
+    :root[data-theme="light"] body #app .toolbar button{
+      background:#e5eaf1!important;color:#253041!important;border:1px solid #cbd3de!important;
+    }
+    :root[data-theme="light"] body #app .toolbar button:hover{background:#d9e1eb!important}
+    :root[data-theme="light"] body #app .explanation{
+      background:var(--theme-surface)!important;border-color:var(--theme-border)!important;
+      color:var(--theme-text)!important;box-shadow:0 10px 28px rgba(31,41,55,.07)!important;
+    }
+    :root[data-theme="light"] body #app .explanation :where(p,ul,ol,li,dl,dt,dd){color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .explanation .formula,
+    :root[data-theme="light"] body #app .explanation .formula *{color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .explanation h2{color:var(--theme-accent)!important}
+    :root[data-theme="light"] body #app #stage #controlDock,
+    :root[data-theme="light"] body #app #stage #dataDock{
+      background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+      color:var(--theme-text)!important;box-shadow:0 16px 38px rgba(31,41,55,.18)!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockHead,
+    :root[data-theme="light"] body #app #stage #dataDock .dockHead,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-header,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-header,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-header,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-header,
+    :root[data-theme="light"] body #app #stage #controlDock .panelHead,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsHead{
+      background:rgba(238,241,246,.96)!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .dockTitle,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-title,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-title,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-title,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-title,
+    :root[data-theme="light"] body #app #stage #controlDock .panelHead .title,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsHead .title{
+      color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockBody,
+    :root[data-theme="light"] body #app #stage #dataDock .dockBody,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-body,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-body,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-body,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-body,
+    :root[data-theme="light"] body #app #stage #controlDock .panelBody,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsBody{
+      background:rgba(255,255,255,.92)!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock label,
+    :root[data-theme="light"] body #app #stage #dataDock label,
+    :root[data-theme="light"] body #app #stage #controlDock h3,
+    :root[data-theme="light"] body #app #stage #dataDock h3,
+    :root[data-theme="light"] body #app #stage #controlDock h4,
+    :root[data-theme="light"] body #app #stage #dataDock h4,
+    :root[data-theme="light"] body #app #stage #controlDock .source-line,
+    :root[data-theme="light"] body #app #stage #dataDock .source-line,
+    :root[data-theme="light"] body #app #stage #controlDock .mini,
+    :root[data-theme="light"] body #app #stage #dataDock .mini{color:#475467!important}
+    :root[data-theme="light"] body #app #stage #controlDock .secTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .secTitle{color:#475467!important}
+    :root[data-theme="light"] body #app #stage #controlDock .status-grid .pill,
+    :root[data-theme="light"] body #app #stage #dataDock .status-grid .pill{background:#e5eaf1!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock .pill,
+    :root[data-theme="light"] body #app #stage #dataDock .pill,
+    :root[data-theme="light"] body #app #stage #controlDock .pill-box,
+    :root[data-theme="light"] body #app #stage #dataDock .pill-box{background:#e5eaf1!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock .pill *,
+    :root[data-theme="light"] body #app #stage #dataDock .pill *,
+    :root[data-theme="light"] body #app #stage #controlDock .pill-box *,
+    :root[data-theme="light"] body #app #stage #dataDock .pill-box *{color:inherit!important}
+    :root[data-theme="light"] body #app #stage #controlDock span:not([class]),
+    :root[data-theme="light"] body #app #stage #dataDock span:not([class]),
+    :root[data-theme="light"] body #app #stage #controlDock .lab-hint,
+    :root[data-theme="light"] body #app #stage #dataDock .lab-hint,
+    :root[data-theme="light"] body #app #stage #controlDock .cardTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .cardTitle,
+    :root[data-theme="light"] body #app #stage #controlDock small,
+    :root[data-theme="light"] body #app #stage #dataDock small,
+    :root[data-theme="light"] body #app #stage #controlDock .val,
+    :root[data-theme="light"] body #app #stage #dataDock .val{color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock b,
+    :root[data-theme="light"] body #app #stage #dataDock b{color:inherit!important}
+    :root[data-theme="light"] body #app #stage #controlDock .codex-panel-note,
+    :root[data-theme="light"] body #app #stage #dataDock .codex-panel-note{background:#eef1f6!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock button:not(.main):not(.sub):not(.danger):not(.warn):not(.good),
+    :root[data-theme="light"] body #app #stage #dataDock button:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+      background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good),
+    :root[data-theme="light"] body #app #stage #dataDock button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+      background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock button.main,
+    :root[data-theme="light"] body #app #stage #dataDock button.main{background:#2e7d32!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock button.sub,
+    :root[data-theme="light"] body #app #stage #dataDock button.sub{background:#475467!important;border-color:#475467!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock .analysisBox,
+    :root[data-theme="light"] body #app #stage #dataDock .analysisBox{background:#f5f7fa!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .analysis.ok{background:#f5f7fa!important;border-color:#6fcf9f!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .record-cue.ready,
+    :root[data-theme="light"] body #app #stage .record-cue.done{background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important}
+    :root[data-theme="light"] body #app #stage .record-cue.warn{background:#fff4d6!important;border-color:#e0a44c!important;color:#7a4d00!important}
+    :root[data-theme="light"] body #app #stage #dataNotice,
+    :root[data-theme="light"] body #app #stage .dataNotice,
+    :root[data-theme="light"] body #app #stage .dockNotice,
+    :root[data-theme="light"] body #app #stage .notice-badge,
+    :root[data-theme="light"] body #app #stage .dock-badge,
+    :root[data-theme="light"] body #app #stage #dataDock .badge,
+    :root[data-theme="light"] body #app #stage .mobile-badge{background:#b42318!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock input,
+    :root[data-theme="light"] body #app #stage #controlDock select,
+    :root[data-theme="light"] body #app #stage #dataDock input,
+    :root[data-theme="light"] body #app #stage #dataDock select{
+      background:#fff!important;border-color:#cbd3de!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .record-cue:not(.ready):not(.warn):not(.done),
+    :root[data-theme="light"] body #app #stage .empty,
+    :root[data-theme="light"] body #app #stage .analysis:not(.ok){
+      background:#f5f7fa!important;border-color:#d7dce5!important;color:#344054!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .iconBtn,
+    :root[data-theme="light"] body #app #stage #dataDock .iconBtn,
+    :root[data-theme="light"] body #app #stage #controlDock .mini:not(div),
+    :root[data-theme="light"] body #app #stage #dataDock .mini:not(div),
+    :root[data-theme="light"] body #app #stage #controlDock .sheet-close,
+    :root[data-theme="light"] body #app #stage #dataDock .sheet-close{
+      background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+    }
+    :root[data-theme="light"] body #app #stage #dataDock table,
+    :root[data-theme="light"] body #app #stage #dataDock table th,
+    :root[data-theme="light"] body #app #stage #dataDock table td,
+    :root[data-theme="light"] body #app #stage #dataDock table.record,
+    :root[data-theme="light"] body #app #stage #dataDock table.record th,
+    :root[data-theme="light"] body #app #stage #dataDock table.record td,
+    :root[data-theme="light"] body #app #stage #dataDock table.table,
+    :root[data-theme="light"] body #app #stage #dataDock table.table th,
+    :root[data-theme="light"] body #app #stage #dataDock table.table td{
+      border-color:#d7dce5!important;color:#344054!important;
+    }
+    :root[data-theme="light"] body #app #stage #dataDock table th,
+    :root[data-theme="light"] body #app #stage #dataDock table.record th,
+    :root[data-theme="light"] body #app #stage #dataDock table.table th{
+      background:#eef1f6!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .chartWrap{
+      background:#101722!important;border-color:#334155!important;color:#eaf2ff!important;
+    }
+    :root[data-theme="light"] body #app #stage .mobile-tabs{
+      background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+    }
+    :root[data-theme="light"] body #app #stage .mobile-tab{background:#eef1f6!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .mobile-tab.active{
+      background:#d9f5e8!important;color:#14532d!important;box-shadow:inset 0 0 0 1px #6fcf9f!important;
+    }
+    :root[data-theme="light"] body #app .modal{
+      background:#fff!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app .modal h3{color:#155e75!important}
+    :root[data-theme="light"] body #app .modal p{color:#475467!important}
+    :root[data-theme="light"] body #app .toast{
+      background:#fff!important;border-color:#cbd3de!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .hint-pop,
+    :root[data-theme="light"] body #app #stage .helpCard{
+      background:#fff!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .hint-pop b,
+    :root[data-theme="light"] body #app #stage .helpCard b{color:#155e75!important}
+    @media(min-width:721px){
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"]{
+        width:164px!important;min-width:164px!important;max-width:164px!important;
+        left:var(--codex-panel-left)!important;top:var(--codex-panel-top)!important;
+        right:auto!important;bottom:auto!important;z-index:var(--codex-panel-z)!important;
+        overflow:visible!important;background:transparent!important;box-shadow:none!important;transition:none!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{
+        width:164px!important;min-width:164px!important;max-width:164px!important;
+        height:44px!important;min-height:44px!important;max-height:44px!important;box-sizing:border-box!important;
+        display:flex!important;align-items:center!important;flex-flow:row nowrap!important;gap:8px!important;
+        padding-top:0!important;padding-bottom:0!important;padding-left:10px!important;padding-right:10px!important;overflow:hidden!important;
+        position:relative!important;z-index:2!important;
+        touch-action:none!important;border:1px solid rgba(148,163,184,.32)!important;border-radius:12px!important;
+        background:rgba(15,23,42,.90)!important;box-shadow:0 8px 22px rgba(0,0,0,.28)!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*{min-height:0!important;max-height:40px!important;box-sizing:border-box!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:first-child{flex:1 1 auto!important;min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:last-child{flex:0 0 auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"] button{max-height:40px!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)){
+        gap:4px!important;
+        padding-left:6px!important;padding-right:6px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :first-child{
+        gap:2px!important;overflow:visible!important;text-overflow:clip!important;font-size:12px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) #dataNotice{
+        position:relative!important;z-index:3!important;flex:0 0 auto!important;
+        min-width:14px!important;height:16px!important;padding:0 2px!important;
+        font-size:10px!important;line-height:16px!important;box-sizing:border-box!important;pointer-events:auto!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child{
+        gap:3px!important;min-width:0!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child > button{
+        min-width:0!important;padding-left:4px!important;padding-right:4px!important;font-size:10px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{
+        position:absolute!important;z-index:1!important;display:none!important;box-sizing:border-box!important;
+        width:var(--codex-panel-body-width)!important;max-width:var(--codex-panel-body-width)!important;
+        max-height:var(--codex-panel-body-height)!important;overflow:auto!important;
+        border:1px solid rgba(148,163,184,.32)!important;border-radius:12px!important;
+        background:rgba(15,23,42,.88)!important;box-shadow:0 16px 38px rgba(0,0,0,.34)!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-open="1"] [data-codex-panel-body="1"]{display:block!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-x="right"] [data-codex-panel-body="1"]{left:0!important;right:auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-x="left"] [data-codex-panel-body="1"]{left:auto!important;right:0!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-y="down"] [data-codex-panel-body="1"]{top:100%!important;bottom:auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-y="up"] [data-codex-panel-body="1"]{top:auto!important;bottom:100%!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-dragging="1"] [data-codex-panel-body="1"]{pointer-events:none!important}
+      body #app #stage:is(#stage) #controlDock[data-codex-desktop-panel="1"]~#dataDock[data-codex-desktop-panel="1"]{opacity:1!important;pointer-events:auto!important;transform:none!important}
+      body #app #stage:is(#stage) #controlDrawer.open~#dataDrawer{opacity:1!important;pointer-events:auto!important;transform:none!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"]{background:transparent!important;box-shadow:none!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{background:rgba(255,255,255,.92)!important;color:#20242c!important;border-color:#cbd3de!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{background:rgba(255,255,255,.90)!important;color:#20242c!important;border-color:#cbd3de!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+        background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+        background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.main{
+        background:#2e7d32!important;color:#fff!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.sub{
+        background:#475467!important;border-color:#475467!important;color:#fff!important;
+      }
+    }
+    @media(max-width:720px){
+      .theme-spectrum-row{gap:6px;margin-bottom:10px}
+      .theme-toolbar{min-height:44px;margin:0}
+      .theme-toggle{width:44px;height:44px}
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet{
+        background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+      }
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .dock-body,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .dock-body,
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .drawer-body,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .drawer-body,
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .panelBody,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .resultsBody{
+        background:rgba(255,255,255,.92)!important;color:#20242c!important;
+      }
+    }
+    @media(prefers-reduced-motion:reduce){
+      .theme-toggle,
+      body,.task-card,.toolbar,.explanation,#controlDock,#dataDock{transition:none!important}
+      body #app #stage :is(#modeTag,#modeChip){animation:none!important;--codex-mode-ring-angle:0deg}
+    }
+  </style>
+<style id="codex-b7-entry-record-style">
+html body #b7Cursor{width:26px;height:32px;z-index:2147483646;transform:none!important;transition:opacity .18s ease!important;text-shadow:none!important;background:none!important;border:0!important;filter:drop-shadow(0 2px 3px #0008)}html body #b7Cursor.tap svg{animation:b7CursorPress 220ms ease-in-out both}@keyframes b7CursorPress{0%,100%{opacity:1}50%{opacity:.7}}
+</style>
 </head>
 <body>
 <main id="app">
-  <div id="spectrum"></div>
+  <div id="topBar"><div id="spectrum"></div><button id="themeToggle" type="button" aria-pressed="true" aria-label="切换到白天模式">☀︎</button></div>
 
   <div class="task-card" id="taskCard">
     <div class="task-step" id="taskStep">步骤 1 / 3</div>
@@ -937,8 +1414,8 @@ body {
 
   <div class="toolbar">
     <button id="stepResetBtn">步骤重置</button>
-    <button id="autoDemoBtn">自动演示</button>
-    <button id="freeBtn">自由模式</button>
+    <button id="legacyAutoBtn">自动演示</button>
+    <button id="legacyFreeBtn">自由模式</button>
   </div>
 
   <div class="toast" id="toast">再试一试：请按步骤完成当前指令</div>
@@ -952,301 +1429,272 @@ body {
   </div>
 
   <div class="explanation">
-    <h2>为什么冰刀在冰上那么滑？</h2>
+    <h2>实验名：为什么冰刀在冰上那么滑</h2>
     <p>当冰刀滑过，刀刃对冰面局部施加<strong>高压</strong>，使该处的冰<strong>熔点降低</strong>，瞬间产生一层极薄的<strong>水膜</strong>，像润滑油一样减小摩擦（压力熔化）。</p>
     <p>在本演示中，你可以用“放大镜”观察到刀刃与冰面接触处的白亮细带；点击“加压”会让这层水膜更厚，帮助理解“压力→局部熔化→润滑”的因果链。</p>
   </div>
 
-<script>
-/* ========= 原动画（保留） ========= */
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const magnifier = document.getElementById('magnifier');
-const magCtx = magnifier.getContext('2d');
+<script id="codexB7Experiment">
+/* B7 lightweight pages: one owner for model frames, guided predicates and auto waiters. */
+let currentTask=0, completed=false, freeMode=false, autoPlaying=false;
+let controllerPaused=false, controllerDestroyed=false, controllerRunId=0;
+let b7Frame=0, b7Last=null, b7ResizePending=true, b7Feedback=0, b7ModalDelay=0, b7Toast=0, b7Warning=-1;
+let b7AutoPromise=null, b7AutoResolve=null, b7LastFocus=null, b7FreeEntry=null, b7Elapsed=0, b7TaskStarted=0;
+// Standard serial action/observation/record pacing. A longer per-task minimum
+// keeps these compact science diagrams readable without changing their model.
+const AUTO_DEMO_TIMING=Object.freeze({cursorLeadMs:180,cursorPressMs:220,actionMs:820,observeMs:780,recordLeadMs:180,recordActionMs:360,recordObserveMs:420,taskTransitionMs:460,conclusionLeadMs:620,taskMinimumMs:5000});
+let b7AutoReady=false,b7CursorTarget='',b7Teaching='',b7Accepted=null,b7RecordFailure=false;
+const b7Inert=new Map();
+const b7Waiters=new Set(), b7Events=new AbortController();
+const getEl=id=>document.getElementById(id);
+function b7Text(id,value){const node=getEl(id);if(node&&node.textContent!==String(value))node.textContent=String(value);}
+function b7Listen(node,type,handler){node?.addEventListener(type,handler,{signal:b7Events.signal});}
+function b7Schedule(){if(!controllerDestroyed&&!b7Frame&&(!controllerPaused||b7ResizePending))b7Frame=requestAnimationFrame(b7Tick);}
+function b7Wait(predicate,token){if(controllerDestroyed||token!==controllerRunId)return Promise.resolve(false);return new Promise(resolve=>{b7Waiters.add({predicate,token,resolve});b7Schedule();});}
+function b7WaitTime(duration,token){const start=b7Elapsed;return b7Wait(()=>b7Elapsed-start>=duration,token);}
+function b7PlaceCursor(reveal=false){
+  const node=b7CursorTarget&&document.querySelector(b7CursorTarget),cursor=getEl('b7Cursor');if(!node||!cursor||!node.isConnected||!node.getClientRects().length||getComputedStyle(node).visibility==='hidden'||node.closest('[inert]'))return false;
+  const body=node.closest('.drawer-body'),dock=node.closest('.drawer');if(dock?.classList.contains('collapsed'))return false;
+  if(reveal){getEl('stage').scrollIntoView({block:'center'});if(body){const r=node.getBoundingClientRect(),clip=body.getBoundingClientRect();if(r.top<clip.top||r.bottom>clip.bottom)body.scrollTop+=r.top-clip.top-Math.max(0,(clip.height-Math.min(r.height,clip.height))/2);}}
+  const r=node.getBoundingClientRect(),clip=body?.getBoundingClientRect(),left=Math.max(0,r.left,clip?.left??r.left),right=Math.min(innerWidth,r.right,clip?.right??r.right),top=Math.max(0,r.top,clip?.top??r.top),bottom=Math.min(innerHeight,r.bottom,clip?.bottom??r.bottom);if(right<=left||bottom<=top)return false;
+  for(const[key,value]of Object.entries({left:((left+right)/2-2)+'px',top:((top+bottom)/2-2)+'px',display:'block'}))if(cursor.style[key]!==value)cursor.style[key]=value;return true;
+}
+function b7Point(selector){const node=document.querySelector(selector);if(!node)return false;if(node.closest('#controlDock'))window.__codexScienceShell?.open('control',true,autoPlaying);b7CursorTarget=selector;return b7PlaceCursor(true);}
+function b7Click(selector){b7Point(selector);document.querySelector(selector)?.click();}
+function b7Notify(message){b7Text('toast',message);b7Toast=2200;getEl('toast').classList.add('show');b7Schedule();}
+function b7Warn(message){if(freeMode){b7Notify(message);return;}b7Warning=currentTask;getEl('hintLamp')?.classList.add('flash');setStepUI(currentTask);b7Notify(message);}
+function b7Sync(){
+  b7Text('modeTag',`模式：${autoPlaying?'演示模式 · '+(controllerPaused?'已暂停':'自动运行'):freeMode?'自由模式 · 自主探索':`闯关模式 · 关卡 ${Math.min(currentTask+1,3)}/3`}`);
+  b7Text('statusTag',`状态：${controllerPaused?'已暂停':completed?'已完成':autoPlaying&&b7Teaching?b7Teaching:b7Experiment.status()}`);
+  b7Text('autoDemoBtn',autoPlaying?'退出演示':'演示模式');
+  b7Text('resetBtn',autoPlaying?(controllerPaused?'继续演示':'暂停演示'):freeMode?'重置操作':'重置关卡');
+  b7Text('freeBtn',freeMode?'退出自由模式':'自由模式');
+  getEl('freeBtn')?.setAttribute('aria-pressed',String(freeMode));
+  getEl('autoDemoBtn').disabled=freeMode&&!autoPlaying;getEl('freeBtn').disabled=autoPlaying;
+  getEl('taskCard')?.classList.toggle('free-mode',freeMode);if(getEl('taskCard'))getEl('taskCard').dataset.mode=freeMode?'free':'challenge';
+  window.__codexScienceShell?.syncState(window.__codexPageControllerV1?.getState()||{mode:autoPlaying?'auto':freeMode?'free':'guided',paused:controllerPaused,destroyed:controllerDestroyed});
+  b7Experiment.observe();
+}
+function setStepUI(index){
+  b7Text('taskStep',completed?'关卡 3 / 3 · 已完成':`关卡 ${Math.min(index+1,3)} / 3`);
+  const task=tasks[Math.min(index,tasks.length-1)],node=getEl('taskText');
+  if(node&&node.innerHTML!==task.text)node.innerHTML=task.text;
+  b7Text('taskHint',freeMode?'自由观察：不推进关卡；重置操作恢复进入时的状态。':task.hint);
+  document.querySelectorAll('#taskCard .dot').forEach((dot,i)=>{dot.className=`dot${i<currentTask||completed?' done':i===currentTask?' active'+(!freeMode&&b7Warning===i?' warning':''):''}`;});
+}
+function b7RecordFailed(){
+  b7RecordFailure=true;b7Warn('未能保存当前观察，请重置后重试。');
+  const resolve=b7AutoResolve;b7AutoResolve=null;b7AutoPromise=null;autoPlaying=false;b7CursorTarget='';getEl('b7Cursor').style.display='none';for(const waiter of b7Waiters)waiter.resolve(false);b7Waiters.clear();resolve?.({status:'error',runId:controllerRunId});b7Sync();
+}
+function b7AdvanceAccepted(token=controllerRunId){
+  if(controllerDestroyed||controllerPaused||freeMode||token!==controllerRunId||!b7Accepted||b7Accepted.index!==currentTask)return false;
+  const task=tasks[currentTask],predicate=task?.check||task?.extraCheck,row=window.__codexScienceShell?.getRecords().find(r=>r.id===b7Accepted.recordId);
+  if(!predicate?.()||!row||row.task!==currentTask+1||row.mode!==(autoPlaying?'auto':'guided')||!row.values){b7RecordFailed();return false;}
+  b7Accepted=null;currentTask++;b7AutoReady=false;b7TaskStarted=b7Elapsed;b7Feedback=AUTO_DEMO_TIMING.taskTransitionMs;
+  if(currentTask===tasks.length){completed=true;b7ModalDelay=AUTO_DEMO_TIMING.conclusionLeadMs+(autoPlaying?AUTO_DEMO_TIMING.recordObserveMs:0);}
+  setStepUI(currentTask);b7Sync();b7Schedule();return true;
+}
+function b7Evaluate(){
+  if(controllerDestroyed||controllerPaused||freeMode||completed||b7Accepted||b7RecordFailure)return;
+  const task=tasks[currentTask],predicate=task?.check||task?.extraCheck;
+  if(!predicate||!predicate()||(autoPlaying&&(!b7AutoReady||b7Elapsed-b7TaskStarted<AUTO_DEMO_TIMING.taskMinimumMs)))return;
+  b7Warning=-1;getEl('hintLamp')?.classList.remove('flash');b7Experiment.observe();const shell=window.__codexScienceShell,before=shell?.getRecords().length,accepted=shell?.record('关卡 '+(currentTask+1)+' 观察',{validated:true,task:currentTask+1}),after=shell?.getRecords(),last=after?.at(-1);
+  if(!accepted||!after||after.length!==before+1||last.task!==currentTask+1||last.mode!==(autoPlaying?'auto':'guided')||!last.values){b7RecordFailed();return;}
+  b7Accepted={index:currentTask,recordId:last.id};if(!autoPlaying)b7AdvanceAccepted();else{b7Sync();b7Schedule();}
+}
+function tryPass(action){if(tasks[currentTask]?.expected===action)b7Evaluate();}
+function b7Background(on){if(on){for(const node of [...getEl('app').children].filter(n=>n.id!=='doneMask'&&n.id!=='toast')){if(!b7Inert.has(node))b7Inert.set(node,node.inert);node.inert=true;}}else{for(const[node,value]of b7Inert)node.inert=value;b7Inert.clear();}}
+function b7FocusVisible(n){return n instanceof HTMLElement&&n.isConnected&&!n.disabled&&!n.closest('[inert]')&&n.getClientRects().length&&getComputedStyle(n).visibility!=='hidden';}
+function closeDone(restore=true){const open=getEl('doneMask').style.display==='flex';getEl('doneMask').style.display='none';getEl('doneMask').setAttribute('aria-hidden','true');b7Background(false);if(restore&&(open||document.activeElement===getEl('okBtn')))[b7LastFocus,getEl('resetBtn')].find(n=>b7FocusVisible(n)&&!getEl('doneMask').contains(n))?.focus({preventScroll:true});}
+function b7OpenDone(origin){b7LastFocus=origin;getEl('doneMask').style.display='flex';getEl('doneMask').setAttribute('aria-hidden','false');b7Background(true);getEl('okBtn').focus({preventScroll:true});}
+function showDone(){
+  if(controllerDestroyed||!completed||controllerPaused||freeMode)return;
+  b7Toast=0;getEl('toast').classList.remove('show');
+  b7OpenDone(document.activeElement);
+  const resolve=b7AutoResolve;b7AutoResolve=null;b7AutoPromise=null;autoPlaying=false;getEl('b7Cursor').style.display='none';b7Sync();
+  resolve?.({status:'completed',runId:controllerRunId});
+}
+function b7Tick(now){
+  b7Frame=0;if(controllerDestroyed)return;
+  if(b7ResizePending){b7ResizePending=false;b7Experiment.resize();}
+  const dt=b7Last===null?0:Math.max(0,Math.min(80,now-b7Last));b7Last=now;
+  if(!controllerPaused){
+    b7Elapsed+=dt;
+    b7Experiment.advance(dt);b7Evaluate();
+    if(!freeMode){b7Toast=Math.max(0,b7Toast-dt);b7Feedback=Math.max(0,b7Feedback-dt);if(b7ModalDelay>0){b7ModalDelay=Math.max(0,b7ModalDelay-dt);if(b7ModalDelay===0)showDone();}}
+    getEl('toast').classList.toggle('show',!freeMode&&b7Toast>0);getEl('checkmark').classList.toggle('show',!freeMode&&b7Feedback>0);
+    for(const waiter of [...b7Waiters])if(waiter.token!==controllerRunId||waiter.predicate()){b7Waiters.delete(waiter);waiter.resolve(waiter.token===controllerRunId);}
+    b7Sync();
+  }
+  b7Experiment.draw();if(autoPlaying&&!controllerPaused)b7PlaceCursor();
+  if(!controllerPaused&&(autoPlaying||b7Experiment.active()||b7Waiters.size||(!freeMode&&(b7Feedback>0||b7ModalDelay>0||b7Toast>0))))b7Schedule();
+}
+function b7Clear(status='cancelled',resetModel=true){
+  controllerRunId++;cancelAnimationFrame(b7Frame);b7Frame=0;b7Last=null;b7Elapsed=0;b7TaskStarted=0;b7AutoReady=false;b7CursorTarget='';b7Teaching='';b7Accepted=null;b7RecordFailure=false;window.labSoundBus?.hush();getEl('hintLamp')?.classList.remove('flash');getEl('hintPop')?.classList.remove('open');
+  [...b7Waiters].forEach(waiter=>waiter.resolve(false));b7Waiters.clear();
+  const resolve=b7AutoResolve;b7AutoResolve=null;b7AutoPromise=null;autoPlaying=false;controllerPaused=false;b7Feedback=0;b7ModalDelay=0;b7Toast=0;b7Warning=-1;getEl('toast').classList.remove('show');
+  b7Experiment.cancel();closeDone(true);getEl('checkmark').classList.remove('show');getEl('b7Cursor').style.display='none';
+  resolve?.({status,runId:controllerRunId});
+  if(resetModel){currentTask=0;completed=false;b7Experiment.reset();window.__codexScienceShell?.clearRecords();setStepUI(0);}
+  b7Sync();b7Experiment.draw();
+}
+function b7CaptureEntry(){return{currentTask,completed,model:b7Experiment.capture(),records:window.__codexScienceShell?.getRecords()||[],paused:controllerPaused,elapsed:b7Elapsed,taskStarted:b7TaskStarted,feedback:b7Feedback,modalDelay:b7ModalDelay,toast:b7Toast,warning:b7Warning,teaching:b7Teaching,accepted:b7Accepted&&{...b7Accepted},recordFailure:b7RecordFailure,modalOpen:getEl('doneMask').style.display==='flex',lastFocus:b7LastFocus,ui:['checkmark','toast','hintLamp','hintPop'].map(id=>{const node=getEl(id);return{id,className:node?.className,text:node?.textContent};})};}
+function b7RestoreFree(restoreRecords){
+  const s=b7FreeEntry;b7Clear('free',false);currentTask=s.currentTask;completed=s.completed;b7Experiment.restore(s.model);b7Elapsed=s.elapsed;b7TaskStarted=s.taskStarted;b7Feedback=s.feedback;b7ModalDelay=s.modalDelay;b7Toast=s.toast;b7Warning=s.warning;b7Teaching=s.teaching;b7Accepted=s.accepted&&{...s.accepted};b7RecordFailure=s.recordFailure;b7LastFocus=s.lastFocus;
+  // Exploration temporarily runs; exit restores the saved guided pause state.
+  controllerPaused=freeMode?false:s.paused;b7Last=null;if(restoreRecords)window.__codexScienceShell?.restoreRecords(s.records);setStepUI(currentTask);
+  for(const d of s.ui){const node=getEl(d.id);if(!node)continue;node.className=d.className;if(d.id==='toast'||d.id==='hintPop')node.textContent=d.text;if(freeMode){node.classList.remove('show','flash','open');}}
+  b7Sync();b7Experiment.draw();if(!freeMode&&s.modalOpen)b7OpenDone(s.lastFocus);b7Schedule();
+}
+function b7SetFree(on){if(controllerDestroyed||autoPlaying||Boolean(on)===freeMode)return;if(on){b7FreeEntry=b7CaptureEntry();freeMode=true;b7RestoreFree(false);}else{freeMode=false;b7RestoreFree(false);b7FreeEntry=null;}}
+function stepReset(){if(controllerDestroyed)return;if(freeMode&&b7FreeEntry)b7RestoreFree(true);else b7Clear('reset');b7Schedule();}
+function autoDemo(event){
+  if(controllerDestroyed)return Promise.resolve({status:'destroyed',runId:controllerRunId});
+  if(freeMode)return Promise.resolve({status:'free-mode',runId:controllerRunId});
+  b7Clear('replaced');window.labSoundBus?.unlock(event);freeMode=false;autoPlaying=true;controllerPaused=false;const token=controllerRunId;
+  b7AutoPromise=new Promise(resolve=>b7AutoResolve=resolve);const promise=b7AutoPromise;setStepUI(0);b7Sync();
+  b7Experiment.auto(token).catch(error=>{if(token!==controllerRunId||controllerDestroyed)return;console.error('[B7 auto] 流程失败',error);b7Clear('error');});
+  b7Schedule();return promise;
+}
+async function b7AutoCommit(index,token){
+  const predicate=tasks[index].check||tasks[index].extraCheck;
+  if(!await b7Wait(predicate,token))return false;
+  if(!await b7WaitTime(AUTO_DEMO_TIMING.observeMs,token))return false;
+  if(!await b7WaitTime(AUTO_DEMO_TIMING.recordLeadMs+AUTO_DEMO_TIMING.recordActionMs,token))return false;
+  b7AutoReady=true;b7Schedule();if(!await b7Wait(()=>b7Accepted?.index===index||b7RecordFailure,token)||b7RecordFailure)return false;
+  window.__codexScienceShell.open('data',true,true);b7Teaching='查看真实记录';b7Point('#recordBody tr:last-child');b7Sync();
+  if(!await b7WaitTime(AUTO_DEMO_TIMING.recordLeadMs,token)||!await b7Wait(()=>b7PlaceCursor(true),token)||!await b7WaitTime(AUTO_DEMO_TIMING.recordActionMs,token))return false;
+  getEl('b7Cursor').classList.add('tap');if(!await b7WaitTime(AUTO_DEMO_TIMING.cursorPressMs,token))return false;getEl('b7Cursor').classList.remove('tap');b7Teaching='记录确认';b7Sync();if(!await b7WaitTime(AUTO_DEMO_TIMING.recordObserveMs,token))return false;
+  if(!b7AdvanceAccepted(token))return false;b7CursorTarget='';getEl('b7Cursor').style.display='none';return b7WaitTime(AUTO_DEMO_TIMING.taskTransitionMs,token);
+}
+function b7Pause(){if(controllerDestroyed||controllerPaused)return;controllerPaused=true;window.labSoundBus?.hush();b7Experiment.pause();cancelAnimationFrame(b7Frame);b7Frame=0;b7Last=null;b7Sync();}
+function b7Resume(){if(controllerDestroyed||!controllerPaused)return;controllerPaused=false;b7Experiment.resume();b7Last=null;b7Sync();b7Schedule();}
+function b7Theme(){const dark=document.documentElement.dataset.theme!=='light',button=getEl('themeToggle');button.setAttribute('aria-pressed',String(dark));button.setAttribute('aria-label',`切换到${dark?'白天':'夜间'}模式`);button.title=button.getAttribute('aria-label');button.textContent=dark?'☀︎':'☾';}
+function b7Init(){
+  const app=getEl('app'),bridge=getEl('codexDemoBridge'),task=document.querySelector('.task-card'),stage=getEl('stage'),toolbar=document.querySelector('.codex-global-toolbar'),hud=document.querySelector('.codex-hud');
+  task.id='taskCard';task.querySelector('.task-step').id='taskStep';
+  const taskText=task.querySelector('.task-text');if(!getEl('taskText')){taskText.innerHTML='<div id="taskText"></div><div id="taskHint" class="task-hint"></div>';}
+  const dots=task.querySelector('.progress-dots');while(dots.children.length<3)dots.append(document.createElement('span'));[...dots.children].forEach(dot=>dot.className='dot');
+  hud.id='modeStatusBar';hud.classList.remove('codex-hud');
+  app.append(task,hud,stage,b7Experiment.controls(),b7Experiment.observation(),toolbar,document.querySelector('.explanation:not(.codex-generated-explanation)'));
+  getEl('legacyAutoBtn')?.closest('.toolbar')?.remove();
+  if(bridge){bridge.id='codexLegacyBridge';bridge.replaceChildren();bridge.hidden=true;}
+  const cursor=document.createElement('div');cursor.id='b7Cursor';cursor.innerHTML='<svg width="26" height="32" viewBox="0 0 26 32" aria-hidden="true"><path d="M2 2 L2 25 L8 20 L13 30 L18 27 L13 18 L23 18 Z" fill="white" stroke="#17202a" stroke-width="1.6" stroke-linejoin="round"/></svg>';cursor.setAttribute('aria-hidden','true');document.body.append(cursor);
+  document.querySelectorAll('button').forEach(button=>button.type='button');
+  getEl('toast').setAttribute('role','status');getEl('toast').setAttribute('aria-live','polite');
+  b7Listen(getEl('themeToggle'),'click',()=>{if(controllerDestroyed)return;const theme=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=theme;try{localStorage.setItem('xingnian.physics.theme',theme);}catch(error){console.warn('[physics theme] 无法保存主题',error);}b7Theme();});
+  b7Listen(getEl('resetBtn'),'click',()=>{if(autoPlaying)controllerPaused?b7Resume():b7Pause();else stepReset();});
+  b7Listen(getEl('autoDemoBtn'),'click',event=>{if(autoPlaying){b7Clear('cancelled');b7Schedule();}else autoDemo(event);});
+  b7Listen(getEl('freeBtn'),'click',()=>b7SetFree(!freeMode));
+  b7Listen(getEl('okBtn'),'click',()=>closeDone());
+  b7Listen(getEl('doneMask'),'keydown',event=>{if(event.key==='Escape'){event.preventDefault();closeDone();}else if(event.key==='Tab'){event.preventDefault();getEl('okBtn').focus();}});
+  b7Listen(document,'scroll',()=>{if(autoPlaying&&!controllerPaused)b7PlaceCursor();});
+  b7Listen(window,'resize',()=>{b7ResizePending=true;b7Experiment.invalidatePointer();b7Schedule();});
+  b7Listen(window,'orientationchange',()=>{b7ResizePending=true;b7Experiment.invalidatePointer();b7Schedule();});
+  b7Experiment.bind();b7Experiment.reset();setStepUI(0);b7Theme();b7Sync();b7Schedule();
+  window.__codexPageControllerV1={
+    startAuto:()=>autoDemo(),
+    cancel:()=>{if(!controllerDestroyed){b7Clear('cancelled');b7Schedule();}},
+    reset:()=>stepReset(),
+    setFreeMode:b7SetFree,
+    pause:()=>b7Pause(),
+    resume:()=>b7Resume(),
+    getState:()=>({elapsed:b7Elapsed,taskStarted:b7TaskStarted,feedbackRemaining:b7Feedback,modalRemaining:b7ModalDelay,toastRemaining:b7Toast,warningTask:b7Warning,teachingPhase:b7Teaching,taskAccepted:!!b7Accepted,failureCode:b7RecordFailure?'RECORD_NOT_PERSISTED':null,mode:autoPlaying?'auto':freeMode?'free':'guided',running:!controllerDestroyed&&(autoPlaying||b7Experiment.active()),paused:controllerPaused,currentTask,taskIndex:currentTask,completed,runId:controllerRunId,destroyed:controllerDestroyed,ownedFrames:b7Frame?1:0,ownedTimers:0,...b7Experiment.state()}),
+    destroy:()=>{if(controllerDestroyed)return;b7Clear('destroyed',false);controllerDestroyed=true;freeMode=false;autoPlaying=false;b7FreeEntry=null;b7Text('modeTag','模式：已关闭');b7Text('statusTag','状态：实验已关闭');cancelAnimationFrame(b7Frame);b7Frame=0;b7Events.abort();b7Experiment.destroy();window.__codexScienceShell?.destroy();}
+  };
+}
+document.addEventListener('DOMContentLoaded',b7Init,{once:true});
 
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+const magnifier=document.getElementById('magnifier'),magCtx=magnifier.getContext('2d');
 const bladeWidth = 100;
 const bladeHeight = 10;
 let waterThickness = 2;
 const zoom = 3;
-let started = false;
-let x = -bladeWidth;
-const iceY = canvas.height / 2;
-const bladeY = iceY - bladeHeight;
-const targetX = (canvas.width - bladeWidth) / 2;
-
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  // 背景
-  ctx.fillStyle = '#e0f8ff'; ctx.fillRect(0,0,canvas.width,iceY);
-  ctx.fillStyle = '#fff';     ctx.fillRect(0,iceY,canvas.width,canvas.height-iceY);
-  // 刀刃
-  const bladeX = x;
-  const grad = ctx.createLinearGradient(bladeX, bladeY, bladeX + bladeWidth, bladeY);
-  grad.addColorStop(0, '#bbb'); grad.addColorStop(0.5, '#eee'); grad.addColorStop(1, '#aaa');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.moveTo(bladeX, bladeY);
-  ctx.lineTo(bladeX + bladeWidth, bladeY);
-  ctx.lineTo(bladeX + bladeWidth - 5, bladeY + bladeHeight);
-  ctx.lineTo(bladeX + 5, bladeY + bladeHeight);
-  ctx.closePath(); ctx.fill();
-  // 高光
-  ctx.strokeStyle = 'rgba(255,255,255,0.6)'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(bladeX + 5, bladeY + 2); ctx.lineTo(bladeX + bladeWidth - 5, bladeY + 2); ctx.stroke();
-  // 水膜
-  const waterX = x;
-  const waterY = iceY - waterThickness;
-  ctx.fillStyle = 'rgba(255,255,255,0.4)';
-  ctx.fillRect(waterX, waterY, bladeWidth, waterThickness);
-  // 前进
-  if (started && x < targetX){ x += 2; if (x > targetX) x = targetX; }
-  requestAnimationFrame(draw);
-}
-draw();
-
-/* ========= 放大镜（固定定位，不受 scale 影响） ========= */
-let waterHoverNow = false; // 是否处在水膜区
-function updateMagnifier(clientX, clientY){
-  const rect = canvas.getBoundingClientRect();
-  const mx = clientX - rect.left;   // 画布坐标系
-  const my = clientY - rect.top;
-
-  // 放大镜显示在指尖附近（不越出边界）
-  magnifier.style.display = 'block';
-  const magW = magnifier.width, magH = magnifier.height;
-  let left = clientX - magW/2, top = clientY - magH/2;
-  const vw = window.innerWidth, vh = window.innerHeight;
-  left = Math.max(6, Math.min(vw - magW - 6, left));
-  top  = Math.max(6, Math.min(vh - magH - 6, top));
-  magnifier.style.left = left + 'px';
-  magnifier.style.top  = top  + 'px';
-
-  // 以画布为源做截图
-  const sw = magW/zoom, sh = magH/zoom;
-  let sx = mx - sw/2, sy = my - sh/2;
-  sx = Math.max(0, Math.min(canvas.width - sw, sx));
-  sy = Math.max(0, Math.min(canvas.height - sh, sy));
-  magCtx.clearRect(0,0,magW,magH);
-  magCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, magW, magH);
-
-  // 在函数内重算水膜位置，避免作用域问题
-  const waterX = x;
-  const waterY = iceY - waterThickness;
-
-  // ✅ 命中判定更“宽容”：垂直 ±12px，水平 ±8px
-  const inWater = (mx >= waterX - 8 && mx <= waterX + bladeWidth + 8 &&
-                   my >= waterY - 12 && my <= waterY + waterThickness + 12);
-  waterHoverNow = inWater;
-  if (inWater){
-    const fx = waterX + bladeWidth/2, fy = waterY + waterThickness/2;
-    const magX = (fx - sx) * zoom, magY = (fy - sy) * zoom;
-    magCtx.strokeStyle = '#f00'; magCtx.fillStyle = '#f00'; magCtx.lineWidth = 2;
-    magCtx.beginPath(); magCtx.moveTo(magX, magY - 24); magCtx.lineTo(magX, magY + 6); magCtx.stroke();
-    magCtx.beginPath(); magCtx.moveTo(magX - 5, magY + 6); magCtx.lineTo(magX, magY + 12); magCtx.lineTo(magX + 5, magY + 6); magCtx.fill();
-    magCtx.font = '16px sans-serif'; magCtx.fillText('水膜', magX + 8, magY - 10);
-  }
-}
-function hideMagnifier(){ magnifier.style.display = 'none'; waterHoverNow = false; }
-
-/* ========= 模板骨架 ========= */
-const taskCard = document.getElementById('taskCard');
-const taskStepEl = document.getElementById('taskStep');
-const taskTextEl = document.getElementById('taskText');
-const taskHintEl = document.getElementById('taskHint');
-const dots = [document.getElementById('dot1'), document.getElementById('dot2'), document.getElementById('dot3')];
-
-const stepResetBtn = document.getElementById('stepResetBtn');
-const autoDemoBtn = document.getElementById('autoDemoBtn');
-const freeBtn = document.getElementById('freeBtn');
-const checkmark = document.getElementById('checkmark');
-const toast = document.getElementById('toast');
-const doneMask = document.getElementById('doneMask');
-const okBtn = document.getElementById('okBtn');
-
-const startBtn = document.getElementById('startBtn');
-const addPBtn  = document.getElementById('addPBtn');
-const relaxBtn = document.getElementById('relaxBtn');
-const thkLabel = document.getElementById('thkLabel');
-
-let freeMode=false, autoPlaying=false, completed=false, currentTask=0;
-let holdTimer=null;
-
+const iceY=100,bladeY=iceY-bladeHeight,targetX=350;
+let x=40,started=false,waterHoverNow=false,iceDwell=0,iceObserved=false,icePointer=null,iceKeyboard=false,iceAutoObserve=false,icePressure='初始',iceObserverPointerId=null;
 const tasks = [
   { text:'点击<strong>开始演示</strong>，让冰刀滑到中央；注意观察刀刃下的浅白色“水膜”。',
-    hint:'点左下角“开始演示”。',
+    hint:'展开实验面板，点击“开始演示”，观察刀刃下方接触区。',
     expected:'start',
-    extraCheck:()=> x >= targetX },
+    extraCheck:()=>x>=targetX },
   { text:'把指针/手指放到<strong>水膜区域</strong>（停留约 1 秒），用放大镜观察“水膜”标注。',
-    hint:'把指针停在刀刃和冰面交界的白亮细带上（放大镜会显示“水膜”字样）。',
+    hint:'在白亮细带连续停留约 1 秒；键盘可按住“观察接触区”。',
     expected:'hover_water',
-    extraCheck:()=> true },
+    extraCheck:()=>iceObserved&&iceDwell>=1000 },
   { text:'点击<strong>加压</strong>，让水膜明显变厚（≥ 5 px），完成！',
-    hint:'点击“加压（更厚）”，水膜厚度数值会增加。',
+    hint:'用“加压（更厚）”观察水膜厚度示意值的变化。',
     expected:'press_more',
     extraCheck:()=> waterThickness >= 5 }
 ];
-
-function setStepUI(i){
-  i = Math.max(0, Math.min(i, tasks.length-1));
-  dots.forEach((d,k)=> d.className = 'dot' + (k<i ? ' done' : (k===i ? ' active' : '')));
-  taskStepEl.textContent = `步骤 ${i+1} / ${tasks.length}`;
-  taskTextEl.innerHTML   = tasks[i].text;
-  taskHintEl.textContent = tasks[i].hint;
+function iceHit(mx,my){const waterX=x,waterY=iceY-waterThickness;
+  const inWater = (mx >= waterX - 8 && mx <= waterX + bladeWidth + 8 &&
+                   my >= waterY - 12 && my <= waterY + waterThickness + 12);
+  return inWater;
 }
-function showCheck(){ checkmark.classList.add('active'); setTimeout(()=>checkmark.classList.remove('active'), 500); }
-function showToast(msg){ toast.textContent = msg || '再试一试'; toast.classList.add('show'); setTimeout(()=> toast.classList.remove('show'), 1200); }
-function showDone(){ doneMask.style.display='flex'; }
-okBtn.onclick = ()=> doneMask.style.display='none';
-
-function setFreeMode(on){
-  freeMode = on;
-  taskCard.style.opacity = on ? 0.25 : 1;
-  taskCard.style.filter  = on ? 'grayscale(.6)' : 'none';
-  freeBtn.textContent    = on ? '退出自由模式' : '自由模式';
-  autoDemoBtn.disabled   = on;
-}
-
-function stepReset(){
-  autoPlaying=false; completed=false; currentTask=0;
-  dots.forEach(d=> d.className='dot'); dots[0].classList.add('active');
-  setStepUI(0); hideMagnifier();
-  started = false;
-  x = -bladeWidth; waterThickness = 2; thkLabel.textContent = waterThickness.toFixed(0) + 'px';
-}
-stepReset();
-
-function inStepMode(){ return !freeMode && !completed && !autoPlaying; }
-
-startBtn.addEventListener('click', ()=>{
-  if (inStepMode()){
-    if (tasks[currentTask].expected === 'start'){
-      started = false; x = -bladeWidth; started = true;
-      const chk = setInterval(()=>{ if (x >= targetX){ clearInterval(chk); tryPass('start'); } }, 120);
-    }else{ showToast(tasks[currentTask].hint); }
-  }else{ started = false; x = -bladeWidth; started = true; }
-});
-
-addPBtn.addEventListener('click', ()=>{
+function iceLogical(clientX,clientY){const rect=canvas.getBoundingClientRect();return {x:(clientX-rect.left)*800/rect.width,y:(clientY-rect.top)*200/rect.height};}
+function updateMagnifier(clientX,clientY){if(controllerDestroyed||controllerPaused)return;icePointer=iceLogical(clientX,clientY);waterHoverNow=iceHit(icePointer.x,icePointer.y);if(!waterHoverNow&&!iceObserved)iceDwell=0;b7Schedule();}
+function hideMagnifier(){icePointer=null;waterHoverNow=false;if(!iceObserved)iceDwell=0;}
+function iceReleaseObserver(){const node=getEl('iceObserveContact');if(iceObserverPointerId!==null&&node.hasPointerCapture(iceObserverPointerId))node.releasePointerCapture(iceObserverPointerId);iceObserverPointerId=null;iceKeyboard=false;hideMagnifier();}
+function start(){if(controllerDestroyed||controllerPaused||started)return;started=x<targetX;b7Schedule();b7Sync();}
+function icePress(){if(controllerDestroyed||controllerPaused)return;
+  if(!freeMode&&currentTask<2){b7Warn('请先让冰刀到中央，并连续观察接触区 1 秒。');return;}
   waterThickness = Math.min(14, waterThickness + 1);
-  thkLabel.textContent = waterThickness.toFixed(0) + 'px';
-  if (inStepMode()){
-    if (tasks[currentTask].expected === 'press_more'){ tryPass('press_more'); }
-    else showToast(tasks[currentTask].hint);
-  }
-});
-relaxBtn.addEventListener('click', ()=>{
+  icePressure='加压：增厚';b7Evaluate();b7Sync();b7Schedule();
+}
+function iceRelax(){if(controllerDestroyed||controllerPaused)return;
+  if(!freeMode&&currentTask<2){b7Warn('请先让冰刀到中央，并连续观察接触区 1 秒。');return;}
   waterThickness = Math.max(1, waterThickness - 1);
-  thkLabel.textContent = waterThickness.toFixed(0) + 'px';
-});
-
-/* ====== 第二步判定：停留 1 秒（hover 或 点击按住） ====== */
-function startWaterHoldCheck(){
-  if (holdTimer) return;
-  holdTimer = setTimeout(()=>{
-    if (inStepMode() && tasks[currentTask].expected === 'hover_water' && waterHoverNow){
-      tryPass('hover_water');
-    }
-    clearTimeout(holdTimer); holdTimer=null;
-  }, 1000);
+  icePressure='减压：减薄';b7Sync();b7Schedule();
 }
-function pointerXY(e){
-  return {
-    x: (e.clientX !== undefined ? e.clientX : e.touches[0].clientX),
-    y: (e.clientY !== undefined ? e.clientY : e.touches[0].clientY)
-  };
+function iceDraw(){
+  ctx.clearRect(0,0,800,200);ctx.fillStyle='#e0f8ff';ctx.fillRect(0,0,800,iceY);ctx.fillStyle='#fff';ctx.fillRect(0,iceY,800,200-iceY);
+  const grad=ctx.createLinearGradient(x,bladeY,x+bladeWidth,bladeY);grad.addColorStop(0,'#bbb');grad.addColorStop(.5,'#eee');grad.addColorStop(1,'#aaa');ctx.fillStyle=grad;
+  ctx.beginPath();ctx.moveTo(x,bladeY);ctx.lineTo(x+bladeWidth,bladeY);ctx.lineTo(x+bladeWidth-5,bladeY+bladeHeight);ctx.lineTo(x+5,bladeY+bladeHeight);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.6)';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x+5,bladeY+2);ctx.lineTo(x+bladeWidth-5,bladeY+2);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.4)';ctx.fillRect(x,iceY-waterThickness,bladeWidth,waterThickness);
+  const dpr=Math.min(2,devicePixelRatio||1),sourceWidth=150/zoom,centerX=x+bladeWidth/2,centerY=iceY;
+  magCtx.clearRect(0,0,150,150);magCtx.drawImage(canvas,(centerX-sourceWidth/2)*dpr,(centerY-sourceWidth/2)*dpr,sourceWidth*dpr,sourceWidth*dpr,0,0,150,150);
+  magCtx.fillStyle='#122235';magCtx.font='bold 16px sans-serif';magCtx.fillText('水膜接触区 · 3×',7,22);magCtx.strokeStyle='#0b6b48';magCtx.lineWidth=2;magCtx.strokeRect(2,2,146,146);
 }
-
-/* —— 悬停/拖动 —— */
-['mousemove','touchmove'].forEach(evt=>{
-  canvas.addEventListener(evt, function(e){
-    if (autoPlaying) return;
-    if (e.cancelable) e.preventDefault();
-    const {x:px, y:py} = pointerXY(e);
-    updateMagnifier(px, py);
-    if (waterHoverNow) startWaterHoldCheck();
-  }, {passive:false});
-});
-
-/* —— 点击/按住：强制显示放大镜在指尖 —— */
-['mousedown','touchstart'].forEach(evt=>{
-  canvas.addEventListener(evt, function(e){
-    if (autoPlaying) return;
-    if (e.cancelable) e.preventDefault();
-    const {x:px, y:py} = pointerXY(e);
-    updateMagnifier(px, py);                 // 强制显示放大镜
-    if (waterHoverNow) startWaterHoldCheck();
-    // 若当前是步骤2，但不在水膜，给提示（严格守卫）
-    if (inStepMode() && tasks[currentTask].expected === 'hover_water' && !waterHoverNow){
-      showToast(tasks[currentTask].hint);
-    }
-  }, {passive:false});
-});
-
-canvas.addEventListener('mouseout', hideMagnifier);
-canvas.addEventListener('touchend', hideMagnifier);
-canvas.addEventListener('touchcancel', hideMagnifier);
-
-/* 统一推进 */
-function tryPass(action){
-  const t = tasks[currentTask]; if (!t) return;
-  const correct = (action === t.expected);
-  const ok = t.extraCheck ? t.extraCheck() : true;
-  if (correct && ok){
-    showCheck();
-    setTimeout(()=>{
-      dots[currentTask].classList.remove('active'); dots[currentTask].classList.add('done');
-      currentTask++;
-      if (currentTask >= tasks.length){ completed=true; showDone(); }
-      else{ dots[currentTask].classList.add('active'); setStepUI(currentTask); }
-    }, 520);
-  }else{
-    if (!autoPlaying) showToast(t.hint);
+const b7Experiment={
+  capture:()=>({x,started,waterThickness,iceDwell,iceObserved,icePressure}),
+  restore(value){iceReleaseObserver();({x,started,waterThickness,iceDwell,iceObserved,icePressure}=value);},
+  controls(){const bar=getEl('startBtn').closest('.ctrlbar');bar.id='iceControlBar';const observe=document.createElement('button');observe.id='iceObserveContact';observe.textContent='按住观察接触区';bar.append(observe);return bar;},
+  observation(){const node=document.createElement('section');node.id='iceObservation';node.className='b7-observation';node.setAttribute('aria-label','实时观察');node.innerHTML='<p>刀刃位置<output id="icePositionObservation"></output></p><p>水膜厚度示意<output id="iceWaterObservation"></output></p><p>压力趋势<output id="icePressureObservation"></output></p><p>连续观察<output id="iceDwellObservation"></output></p>';return node;},
+  bind(){
+    const stage=getEl('stage');stage.append(magnifier);magnifier.setAttribute('aria-label','刀刃与冰面接触区三倍近景');canvas.setAttribute('aria-label','冰刀移动与水膜接触区示意图');
+    b7Listen(getEl('startBtn'),'click',start);b7Listen(getEl('addPBtn'),'click',icePress);b7Listen(getEl('relaxBtn'),'click',iceRelax);
+    b7Listen(canvas,'pointermove',event=>updateMagnifier(event.clientX,event.clientY));b7Listen(canvas,'pointerdown',event=>{event.preventDefault();updateMagnifier(event.clientX,event.clientY);});
+    ['pointerleave','pointercancel','lostpointercapture'].forEach(type=>b7Listen(canvas,type,hideMagnifier));b7Listen(canvas,'pointerup',event=>{if(event.pointerType==='touch')hideMagnifier();});
+    const observer=getEl('iceObserveContact');b7Listen(observer,'pointerdown',event=>{event.preventDefault();if(controllerDestroyed||controllerPaused||iceObserverPointerId!==null)return;observer.focus();iceObserverPointerId=event.pointerId;observer.setPointerCapture(event.pointerId);iceKeyboard=true;b7Schedule();});b7Listen(window,'pointerup',iceReleaseObserver);b7Listen(window,'pointercancel',iceReleaseObserver);b7Listen(observer,'lostpointercapture',event=>{if(event.pointerId===iceObserverPointerId)iceReleaseObserver();});
+    b7Listen(observer,'keydown',event=>{if(event.key===' '||event.key==='Enter'){event.preventDefault();if(controllerDestroyed||controllerPaused)return;iceKeyboard=true;b7Schedule();}});b7Listen(observer,'keyup',event=>{if(event.key===' '||event.key==='Enter'){event.preventDefault();iceKeyboard=false;hideMagnifier();}});b7Listen(observer,'blur',iceReleaseObserver);
+  },
+  reset(){x=40;started=false;waterThickness=2;iceDwell=0;iceObserved=false;icePressure='初始';iceAutoObserve=false;iceReleaseObserver();},
+  cancel(){started=false;iceAutoObserve=false;iceReleaseObserver();},
+  invalidatePointer:iceReleaseObserver,
+  pause(){iceReleaseObserver();if(!iceObserved)iceDwell=0;},resume(){},destroy:iceReleaseObserver,
+  resize(){const dpr=Math.min(2,devicePixelRatio||1);canvas.width=Math.round(800*dpr);canvas.height=Math.round(200*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);magnifier.width=Math.round(150*dpr);magnifier.height=Math.round(150*dpr);magCtx.setTransform(dpr,0,0,dpr,0,0);},
+  advance(dt){
+    if(started){x=Math.min(targetX,x+120*dt/1000);if(x===targetX)started=false;}
+    if(iceAutoObserve||iceKeyboard){const point={x:x+bladeWidth/2,y:iceY-waterThickness/2};waterHoverNow=iceHit(point.x,point.y);}
+    else if(icePointer)waterHoverNow=iceHit(icePointer.x,icePointer.y);
+    if(waterHoverNow&&currentTask===1&&!iceObserved){iceDwell=Math.min(1000,iceDwell+dt);if(iceDwell>=1000)iceObserved=true;}
+    else if(!waterHoverNow&&!iceObserved)iceDwell=0;
+  },draw:iceDraw,active:()=>started||((waterHoverNow||iceAutoObserve||iceKeyboard)&&!iceObserved),
+  status:()=>started?'刀刃滑动中':iceObserved?'水膜已观察':waterHoverNow?'正在观察接触区':'待操作',
+  observe(){b7Text('thkLabel',`${waterThickness}px`);b7Text('icePositionObservation',`${Math.round(x)} / 350 · ${started?'滑动中':x===targetX?'已到中央':'待移动'}`);b7Text('iceWaterObservation',`${waterThickness} px（非真实比例）`);b7Text('icePressureObservation',icePressure);b7Text('iceDwellObservation',`${(iceDwell/1000).toFixed(1)} / 1.0 秒${iceObserved?' · 已完成':''}`);},
+  state:()=>({x,waterThickness,dwell:iceDwell,observedWater:iceObserved}),
+  async auto(token){
+    b7Point('#startBtn');if(!await b7WaitTime(AUTO_DEMO_TIMING.cursorLeadMs,token))return;b7Click('#startBtn');
+    if(!await b7AutoCommit(0,token))return;
+    b7Point('#iceObserveContact');if(!await b7WaitTime(AUTO_DEMO_TIMING.cursorLeadMs,token))return;iceAutoObserve=true;
+    if(!await b7AutoCommit(1,token))return;iceAutoObserve=false;hideMagnifier();
+    b7Point('#addPBtn');if(!await b7WaitTime(AUTO_DEMO_TIMING.cursorLeadMs,token))return;
+    for(let i=0;i<3;i++){b7Click('#addPBtn');if(!await b7WaitTime(AUTO_DEMO_TIMING.actionMs+AUTO_DEMO_TIMING.observeMs,token))return;}
+    await b7AutoCommit(2,token);
   }
-}
-
-/* 自动演示（严格按同一判定逻辑推进） */
-function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
-async function autoDemo(){
-  if (freeMode || autoPlaying) return;
-  autoPlaying = true; stepReset();
-
-  // Step1
-  startBtn.click();
-  while (x < targetX) await sleep(80);
-  tryPass('start');
-
-  // Step2：把放大镜对准水膜中心
-  await sleep(300);
-  const rect = canvas.getBoundingClientRect();
-  const fx = (x + bladeWidth/2) + rect.left;
-  const fy = (iceY - waterThickness/2) + rect.top;
-  updateMagnifier(fx, fy);
-  await sleep(1000);
-  tryPass('hover_water');
-  hideMagnifier();
-
-  // Step3：加压 ≥ 5px
-  await sleep(300);
-  while (waterThickness < 5){ addPBtn.click(); await sleep(160); }
-  tryPass('press_more');
-
-  autoPlaying = false;
-}
-
-autoDemoBtn.addEventListener('click', autoDemo);
-stepResetBtn.addEventListener('click', stepReset);
-freeBtn.addEventListener('click', ()=> setFreeMode(!freeMode));
-
-/* 舞台自适应：保持 800×200 等比居中 */
-function fitStage(){
-  const stage = document.getElementById('stage');
-  const cont  = document.getElementById('container');
-  const sw = stage.clientWidth, sh = stage.clientHeight;
-  const scale = Math.min(sw/800, sh/220);
-  cont.style.transform = `translate(-50%,-50%) scale(${scale})`;
-}
-addEventListener('resize', fitStage); addEventListener('orientationchange', fitStage);
-setTimeout(fitStage, 50);
+};
 </script>
 
 <script>
@@ -1311,6 +1759,7 @@ setTimeout(fitStage, 50);
   </section>
 </div>
 <script id="codexDemoShellRuntimeV2">(() => {
+  return;
   if (window.__codexDemoShellV2) return;
   window.__codexDemoShellV2 = true;
 
@@ -1872,5 +2321,1423 @@ setTimeout(fitStage, 50);
 </script>
 <!-- CODEX_DEMO_SHELL_V2_END -->
 </main>
+<script type="application/json" id="codex-science-shell-config">{"controls":["#iceControlBar"],"observation":"#iceObservation"}</script>
+<script type="text/plain" id="codex-science-theme-icons">
+      <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+      </svg>
+      <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"></path>
+      </svg>
+    </script>
+<script id="codex-science-shell-adapter">
+(() => {
+  'use strict';
+  function mount() {
+    const stage=document.getElementById('stage'),app=document.getElementById('app');
+    const events=new AbortController();let destroyed=false;
+    const listen=(node,type,handler,options={})=>node.addEventListener(type,handler,{...options,signal:events.signal});
+    const config=JSON.parse(document.getElementById('codex-science-shell-config').textContent);
+    if(!stage||!app)throw new Error('[science-shell] 缺少实验舞台或页面容器');
+    const task=document.querySelector('.task-card,.taskCard,.xn-stepcard');
+    if(!task)throw new Error('[science-shell] 缺少原关卡卡片');
+    task.id='taskCard';task.classList.add('task-card');
+    const hud=document.getElementById('modeTag')?.parentElement;
+    if(!hud)throw new Error('[science-shell] 缺少原模式状态');
+    hud.id='scienceHud';hud.classList.add('hud');stage.prepend(hud);
+    if(config.apparatus){const apparatus=document.querySelector(config.apparatus);if(!apparatus)throw new Error('[science-shell] 缺少冻结场景 '+config.apparatus);apparatus.classList.add('science-apparatus');}
+    document.getElementById('modeTag').classList.add('mode-strip');
+    const makePanel=(kind,title)=>{
+      const old=document.getElementById(kind==='control'?'codexControlDock':'codexDataDock');
+      const panel=old||document.createElement('section');panel.id=kind+'Dock';
+      panel.classList.add('dock','drawer',kind,'collapsed');panel.dataset.scienceStandardPanel='true';
+      panel.setAttribute('aria-label',title);panel.hidden=false;
+      if(!old)panel.innerHTML='<div class="dockHead drawer-header" data-drag-handle><span class="dockTitle drawer-title"></span><div class="dockBtns drawer-actions"><button class="iconBtn mini codex-panel-toggle" type="button">展开</button></div></div><div class="dockBody drawer-body"></div>';
+      const header=panel.querySelector('.drawer-header,.codex-drawer-header');header.classList.add('dockHead','drawer-header');header.dataset.dragHandle='';
+      const body=panel.querySelector('.drawer-body,.codex-drawer-body');body.classList.add('dockBody','drawer-body');
+      const titleNode=header.querySelector('.drawer-title,.codex-drawer-title');titleNode.classList.add('dockTitle');
+      if(!old)titleNode.textContent=title;
+      const toggle=header.querySelector('button');toggle.id=kind+'ToggleBtn';toggle.classList.add('iconBtn','mini');toggle.textContent='展开';toggle.setAttribute('aria-controls',panel.id);
+      const close=body.querySelector('.sheet-close,.codex-sheet-close')||document.createElement('button');
+      close.id=kind+'SheetCloseBtn';close.type='button';close.classList.add('sheet-close');close.setAttribute('aria-label','收起'+title);close.title='收起';
+      close.innerHTML='<svg class="sheet-close-icon" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg>';body.append(close);
+      stage.append(panel);return {panel,body,toggle,close,old:Boolean(old)};
+    };
+    const control=makePanel('control','实验面板'),data=makePanel('data','数据面板');
+    for(const selector of config.controls){
+      const node=document.querySelector(selector);if(!node)throw new Error('[science-shell] 缺少冻结的控件 '+selector);
+      control.body.append(node);node.classList.add('science-panel-controls');
+    }
+    const tabs=document.getElementById('mobileTabs')||document.createElement('div');tabs.id='mobileTabs';tabs.classList.add('mobile-tabs');
+    if(!tabs.querySelector('#experimentTab')||!tabs.querySelector('#dataTab'))tabs.innerHTML='<button class="mobile-tab" id="experimentTab" type="button">实验面板</button><button class="mobile-tab" id="dataTab" type="button">数据面板</button>';
+    const experimentTab=tabs.querySelector('#experimentTab'),dataTab=tabs.querySelector('#dataTab');
+    experimentTab.setAttribute('aria-controls','controlDock');dataTab.setAttribute('aria-controls','dataDock');stage.append(tabs);
+    const badge=document.getElementById('codexDataNotice')||document.createElement('span');badge.id='dataNotice';badge.classList.add('badge','dataNotice');
+    if(!badge.isConnected)data.panel.querySelector('.dockTitle').append(badge);
+    let tabBadge=document.getElementById('codexDataTabBadge');
+    if(!tabBadge){tabBadge=document.createElement('span');dataTab.append(tabBadge);}tabBadge.id='dataTabBadge';tabBadge.classList.add('mobile-badge');
+    const recordButton=document.createElement('button');recordButton.type='button';recordButton.id='scienceRecordBtn';recordButton.className='main';recordButton.textContent='记录观察';control.body.append(recordButton);
+    let records=[],unseen=0;
+    const table=document.createElement('table');table.className='record';table.id='scienceRecordTable';table.innerHTML='<thead><tr><th>次数</th><th>模式与关卡</th><th>操作</th><th>观察快照</th></tr></thead><tbody id="recordBody"></tbody>';
+    const empty=document.createElement('div');empty.className='empty';empty.textContent='暂无观察记录。';
+    data.body.prepend(empty,table);
+    const sync=()=>{
+      if(destroyed)return;
+      const mobile=matchMedia('(max-width:720px)').matches;
+      if(mobile&&!control.panel.classList.contains('collapsed')&&!data.panel.classList.contains('collapsed'))control.panel.classList.add('collapsed');
+      for(const item of [control,data]){item.panel.classList.toggle('mobile-sheet',mobile);const open=!item.panel.classList.contains('collapsed');item.toggle.textContent=open?'收起':'展开';item.toggle.setAttribute('aria-expanded',String(open));}
+      const openControl=!control.panel.classList.contains('collapsed'),openData=!data.panel.classList.contains('collapsed');
+      experimentTab.classList.toggle('active',openControl);experimentTab.setAttribute('aria-expanded',String(openControl));dataTab.classList.toggle('active',openData);dataTab.setAttribute('aria-expanded',String(openData));tabs.classList.toggle('attached',openControl||openData);
+      if(openData)unseen=0;
+      for(const b of [badge,tabBadge]){b.textContent=unseen>99?'99+':String(unseen);b.classList.toggle('show',unseen>0&&!openData);b.setAttribute('aria-hidden',String(!unseen||openData));}
+    };
+    function open(kind,on=true,exclusive=false){if(destroyed)return;const target=kind==='control'?control:data,other=kind==='control'?data:control;const mobile=matchMedia('(max-width:720px)').matches;if(!mobile&&window.__codexDesktopPanels?.setOpen?.(target.panel.id,on,exclusive)){sync();return;}if((exclusive||mobile)&&on){other.panel.classList.add('collapsed');other.body.classList.add('collapsed');}target.panel.classList.toggle('collapsed',!on);target.body.classList.toggle('collapsed',!on);sync();}
+    for(const item of [control,data]){
+      if(!item.old)listen(item.toggle,'click',()=>{if(item.panel.dataset.codexDesktopPanel==='1'&&!matchMedia('(max-width:720px)').matches)return;open(item===control?'control':'data',item.panel.classList.contains('collapsed'));});
+      listen(item.close,'click',()=>open(item===control?'control':'data',false));
+    }
+    if(!control.old){listen(experimentTab,'click',()=>open('control',control.panel.classList.contains('collapsed')));listen(dataTab,'click',()=>open('data',data.panel.classList.contains('collapsed')));}
+    const panelsChanged=new MutationObserver(sync);for(const item of [control,data])panelsChanged.observe(item.panel,{attributes:true,attributeFilter:['class']});
+    function render(){const body=table.tBodies[0];body.replaceChildren();records.forEach((record,index)=>{const row=body.insertRow();row.dataset.recordId=record.id;[String(index+1),`${{guided:'闯关',free:'自由',auto:'演示'}[record.mode]} · 关卡 ${record.task}`,record.action,record.values].forEach((value,i)=>{const cell=row.insertCell();cell.dataset.label=['次数','模式与关卡','操作','观察快照'][i];cell.textContent=value;});});empty.hidden=records.length>0;}
+    function record(action='手动记录',options={}){
+      const state=window.__codexPageControllerV1?.getState();
+      if(destroyed||!state||state.destroyed||state.paused||(state.mode==='auto'&&!options.validated))return false;
+      const index=state.currentTask??state.taskIndex;
+      if(!Number.isInteger(index))return false;
+      const task=options.validated?options.task:Math.min(index+1,config.taskCount||3);
+      if(options.validated&&(state.mode==='free'||task!==index+1))return false;
+      const observation=document.querySelector(config.observation);if(!observation)return false;
+      const values=[...observation.querySelectorAll('output')].map(node=>node.closest('p')?.textContent.trim()||node.value||node.textContent).filter(Boolean).join('；');
+      if(!values)return false;
+      records.push({id:String(records.length+1)+':'+performance.now(),task,mode:state.mode,action,values});render();if(data.panel.classList.contains('collapsed'))unseen++;sync();return true;
+    }
+    listen(recordButton,'click',()=>record());
+    const syncState=state=>{recordButton.disabled=destroyed||state.destroyed||state.paused||state.mode==='auto';};
+    function syncPresentation(state){
+      if(destroyed||!state)return;syncState(state);
+      const index=state.currentTask??state.taskIndex,count=config.taskCount||3;
+      const free=state.mode==='free',auto=state.mode==='auto';
+      task.classList.toggle('free-mode',free);task.dataset.mode=free?'free':'challenge';
+      document.getElementById('modeTag').textContent=`模式：${auto?'演示模式 · '+(state.paused?'已暂停':'自动运行'):free?'自由模式 · 自主探索':`闯关模式 · 关卡 ${Math.min(index+1,count)}/${count}`}`;
+      document.getElementById('taskStep').textContent=`关卡 ${Math.min(index+1,count)} / ${count}${state.completed?' · 已完成':''}`;
+      const reset=document.getElementById('resetBtn'),autoButton=document.getElementById('autoDemoBtn'),freeButton=document.getElementById('freeBtn');
+      reset.textContent=auto?(state.paused?'继续演示':'暂停演示'):free?'重置操作':'重置关卡';autoButton.textContent=auto?'退出演示':'演示模式';autoButton.disabled=free;freeButton.disabled=auto;
+    }
+    for(const type of ['pointerdown','click','keydown','input','change'])listen(control.body,type,event=>{const state=window.__codexPageControllerV1?.getState();if(event.isTrusted&&(destroyed||state?.destroyed||state?.paused||state?.mode==='auto')&&!event.target.closest('.sheet-close')){event.preventDefault();event.stopImmediatePropagation();}},{capture:true});
+    const lamp=document.createElement('button');lamp.id='hintLamp';lamp.type='button';lamp.className='hint-lamp';lamp.textContent='💡';lamp.dataset.stageHint='managed';lamp.setAttribute('aria-label','查看提示');
+    const pop=document.createElement('div');pop.id='hintPop';pop.className='hint-pop';stage.append(lamp,pop);
+    const toolbar=document.querySelector('.codex-global-toolbar')||document.querySelector('.toolbar:not(.codex-legacy-toolbar)');toolbar.classList.add('science-global-toolbar');
+    const theme=document.getElementById('themeToggle');theme.classList.add('theme-toggle');theme.innerHTML=document.getElementById('codex-science-theme-icons').textContent;
+    const sizes=new ResizeObserver(()=>{const h=hud.getBoundingClientRect(),s=stage.getBoundingClientRect();stage.style.setProperty('--science-apparatus-top',Math.ceil(h.bottom-s.top+50)+'px');});sizes.observe(hud);
+    listen(window,'resize',sync);
+    function destroy(){if(destroyed)return;destroyed=true;events.abort();sizes.disconnect();panelsChanged.disconnect();window.__codexSciencePanelClearance?.destroy();window.__codexDesktopPanels?.destroy?.();window.__codexStageToolsV1?.destroy();recordButton.disabled=true;control.panel.inert=true;data.panel.inert=true;tabs.inert=true;toolbar.inert=true;for(const id of ['hintLamp','audioToggle','themeToggle']){const button=document.getElementById(id);if(button)button.disabled=true;}window.labSoundBus?.hush();}
+    window.addEventListener('pagehide',destroy,{once:true});
+    window.__codexScienceShell={record,open,syncState,syncPresentation,destroy,getRecords:()=>structuredClone(records),restoreRecords:value=>{if(destroyed)return;records=structuredClone(value);unseen=0;render();sync();},clearRecords:()=>{if(destroyed)return;records=[];unseen=0;render();sync();}};
+    if(config.presentation)syncPresentation(window.__codexPageControllerV1?.getState());
+    render();sync();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
+</script>
+
+<script id="codex-lab-sound-bus" data-native-audio="false">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+(() => {
+  'use strict';
+  if (window.labSoundBus) return;
+  const nativeAudio = document.currentScript.dataset.nativeAudio === 'true';
+  let ctx = null, master = null, muted = false, held = false, unlocked = false, outputTarget = null;
+  let button = null, warned = false;
+  const voices = new Map();
+  const lastSounds = new Map();
+  const patterns = {
+    tap: { peak:.018, duration:.055, notes:[[440,0,.045]] },
+    hint: { peak:.035, duration:.18, notes:[[783.99,0,.08],[987.77,.09,.07]] },
+    record: { peak:.04, duration:.13, notes:[[554.37,0,.09]] },
+    warn: { peak:.045, duration:.22, notes:[[220,0,.09],[164.81,.1,.09]] },
+    step: { peak:.055, duration:.24, notes:[[523.25,0,.11],[659.25,.085,.13]] },
+    finish: { peak:.07, duration:.65, notes:[[392,0,.12],[523.25,.14,.14],[659.25,.3,.24]] },
+  };
+  function report(error) {
+    if (!warned) { warned = true; console.warn('[lab-audio] 无法播放音效', error); }
+  }
+  function syncButton() {
+    if (!button || nativeAudio) return;
+    button.textContent = muted ? '🔇' : '🔊';
+    button.setAttribute('aria-pressed', String(!muted));
+    button.setAttribute('aria-label', muted ? '开启音效' : '关闭音效');
+    button.title = muted ? '开启音效' : '关闭音效';
+    button.classList.toggle('muted', muted);
+  }
+  function paused() {
+    const mode = document.querySelector('#modeTag,#modeChip')?.textContent || '';
+    return (mode.includes('演示模式') && mode.includes('已暂停')) || document.querySelector('#resetBtn')?.textContent.trim() === '继续演示';
+  }
+  function applyGate() {
+    if (!master) return;
+    const target = muted || held || document.hidden || paused() ? 0 : 1;
+    if (target === outputTarget) return;
+    outputTarget = target;
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setTargetAtTime(target, now, .008);
+  }
+  function stopVoices() {
+    for (const [voice, stop] of voices) {
+      try { stop(ctx.currentTime); } catch (error) { report(error); }
+      voices.delete(voice);
+    }
+  }
+  function hush() {
+    held = true; stopVoices(); applyGate();
+    window.dispatchEvent(new Event('lab-audio-silence'));
+  }
+  function unlock(event) {
+    if (!event?.isTrusted || document.hidden) return null;
+    if (event.type === 'keydown' && !['Enter',' ','Spacebar'].includes(event.key)) return ctx;
+    if (held) stopVoices();
+    held = false;
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) {
+      if (button) { button.disabled = true; button.title = '当前浏览器不支持声音'; }
+      return null;
+    }
+    try {
+      if (!ctx) {
+        ctx = new Audio();
+        master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+        // Track scheduled one-shot voices so mute cannot revive their old tails.
+        // Continuous apparatus oscillators stay alive behind the output gate.
+        const createOscillator = ctx.createOscillator.bind(ctx);
+        ctx.createOscillator = () => {
+          const voice = createOscillator(); const stop = voice.stop.bind(voice);
+          voice.stop = when => { voices.set(voice, stop); return stop(when); };
+          voice.addEventListener('ended', () => voices.delete(voice), { once:true });
+          return voice;
+        };
+      }
+      unlocked = ctx.state === 'running';
+      if (ctx.state === 'suspended') ctx.resume().then(() => {
+        unlocked = ctx.state === 'running';
+      }).catch(error => { unlocked = false; report(error); });
+      applyGate(); return ctx;
+    } catch (error) { report(error); return null; }
+  }
+  function setMuted(value) {
+    const next = Boolean(value);
+    if (next === muted) return;
+    muted = next;
+    if (muted) { stopVoices(); window.dispatchEvent(new Event('lab-audio-silence')); }
+    applyGate(); syncButton();
+  }
+  function play(kind) {
+    if (!unlocked || !ctx || muted || held || document.hidden || paused() || ctx.state !== 'running') return false;
+    const nowMs = performance.now();
+    if (nowMs - (lastSounds.get(kind) ?? -Infinity) < (kind === 'finish' ? 650 : 100)) return false;
+    const pattern = patterns[kind] || patterns.hint;
+    lastSounds.set(kind, nowMs);
+    const start = ctx.currentTime + .005;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.linearRampToValueAtTime(pattern.peak, start + .008);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + pattern.duration);
+    gain.connect(master);
+    let remaining = pattern.notes.length;
+    for (const [frequency, offset, duration] of pattern.notes) {
+      const voice = ctx.createOscillator(); voice.type = 'sine';
+      voice.frequency.value = frequency; voice.connect(gain);
+      voice.addEventListener('ended', () => { voice.disconnect(); if (--remaining === 0) gain.disconnect(); }, { once:true });
+      voice.start(start + offset); voice.stop(start + offset + duration);
+    }
+    window.dispatchEvent(new CustomEvent('lab-ui-sound', { detail:{kind} }));
+    return true;
+  }
+  window.labSoundBus = {
+    unlock, play, setMuted, hush,
+    getContext: () => unlocked && ctx?.state === 'running' ? ctx : null,
+    getInput: () => master,
+    get muted() { return muted; },
+    get unlocked() { return unlocked && ctx?.state === 'running'; },
+    get held() { return held; },
+  };
+  document.addEventListener('pointerdown', unlock, { capture:true, passive:true });
+  document.addEventListener('keydown', unlock, { capture:true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hush(); });
+  window.addEventListener('pagehide', hush);
+  function mount() {
+    const stage = document.querySelector('#stage'); if (!stage) return;
+    button = stage.querySelector('#audioToggle');
+    if (!button) {
+      button = document.createElement('button'); button.id = 'audioToggle';
+      button.type = 'button'; button.className = 'audio-toggle'; stage.appendChild(button);
+    }
+    if (nativeAudio) {
+      const syncNativeMute = () => setMuted(button.getAttribute('aria-pressed') === 'false' || button.classList.contains('muted'));
+      new MutationObserver(syncNativeMute).observe(button, { attributes:true, attributeFilter:['aria-pressed','class'] });
+      syncNativeMute();
+    } else {
+      window.labAudio = window.labSoundBus;
+      syncButton();
+      button.addEventListener('click', event => {
+        event.stopPropagation(); if (!event.isTrusted) return;
+        setMuted(!muted); if (!muted) { held = false; applyGate(); play('hint'); }
+      });
+    }
+    const lamp = stage.querySelector('#hintLamp,.hint-lamp');
+    const mode = stage.querySelector('#modeTag,#modeChip');
+    if (mode) new MutationObserver(applyGate).observe(mode, { childList:true, characterData:true, subtree:true });
+    let quietUntil = 0;
+    let beginRound = () => {};
+    let acceptRecordClear = () => {};
+    document.addEventListener('click', event => {
+      const clicked = event.target.closest?.('button');
+      if (!clicked || clicked.disabled || clicked === button) return;
+      if (event.isTrusted && ((clicked.id === 'resetBtn' && /重置/.test(clicked.textContent)) || clicked.id === 'autoDemoBtn')) beginRound();
+      if (event.isTrusted && clicked.id === 'clearBtn') setTimeout(acceptRecordClear, 0);
+      if (/reset|autoDemo|freeBtn/i.test(clicked.id) && /暂停|退出|重置|自由/.test(clicked.textContent)) {
+        hush(); quietUntil = performance.now() + 300; return;
+      }
+      if (!nativeAudio) play(clicked === lamp ? 'hint' : 'tap');
+    }, { capture:true });
+    if (nativeAudio) return;
+    // Observe accepted state, never infer success from a button's name.
+    const snapshot = () => {
+      const body = document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody');
+      const records = [...(body?.querySelectorAll('tr') || [])].filter(row =>
+        row.querySelectorAll('td').length > 1 && !row.querySelector('td[colspan]'))
+        .map(row => row.dataset.recordId || row.textContent.trim());
+      const dots = document.querySelector('#dots,#progress,.progress-dots');
+      const done = dots?.querySelectorAll('.done').length || 0;
+      const warning = Boolean(dots?.querySelector('.warning,.warn,.error') || lamp?.classList.contains('flash'));
+      const mode = stage.querySelector('#modeTag,#modeChip')?.textContent || '';
+      const modal = document.querySelector('#doneMask,#doneModal,.modal-mask');
+      const finished = Boolean(modal && getComputedStyle(modal).display !== 'none' && getComputedStyle(modal).visibility !== 'hidden');
+      return { records, done, warning, finished, free:mode.includes('自由'), mode };
+    };
+    let previous = snapshot();
+    const seenRecords = new Set(previous.records);
+    let maxDone = previous.done;
+    let finishAnnounced = previous.finished;
+    acceptRecordClear = () => {
+      // Clear only after the experiment accepted the action; completion stays announced.
+      if (snapshot().records.length === 0) seenRecords.clear();
+    };
+    beginRound = () => {
+      seenRecords.clear(); maxDone = 0; finishAnnounced = false;
+      quietUntil = performance.now() + 300;
+    };
+    const feedbackChanges = new MutationObserver(() => {
+      const current = snapshot();
+      if (performance.now() >= quietUntil && current.free === previous.free) {
+        if (!current.free && current.finished && !finishAnnounced) play('finish');
+        else if (!current.free && current.done > maxDone) play('step');
+        else if (!current.free && current.warning && !previous.warning) play('warn');
+        else if (current.records.some(record => !seenRecords.has(record))) play('record');
+      }
+      current.records.forEach(record => seenRecords.add(record));
+      maxDone = Math.max(maxDone, current.done);
+      finishAnnounced ||= current.finished;
+      previous = current;
+    });
+    // Observe only feedback surfaces; apparatus animation updates every frame.
+    for (const node of [document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody'), document.querySelector('#dots,#progress,.progress-dots'), lamp, stage.querySelector('#modeTag,#modeChip'), document.querySelector('#doneMask,#doneModal,.modal-mask')].filter(Boolean)) {
+      feedbackChanges.observe(node, { subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['class','style'] });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+})();
+
+}
+</script>
+  <script id="codex-theme-pilot-runtime">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+    document.addEventListener("DOMContentLoaded", () => {
+    (() => {
+      const themeKey = "xingnian.physics.theme";
+      const root = document.documentElement;
+      const button = document.getElementById("themeToggle");
+      if (!button) {
+        console.warn("[theme-pilot] theme toggle button was not found");
+        return;
+      }
+      const normalizeTheme = (value) => value === "light" ? "light" : "dark";
+      const stage = document.getElementById("stage");
+      if (stage) {
+        const activeTheme = normalizeTheme(root.dataset.theme);
+        try {
+          root.dataset.theme = "dark";
+          stage.style.setProperty("--theme-stage-ink", getComputedStyle(stage).color);
+        } finally {
+          root.dataset.theme = activeTheme;
+        }
+      }
+      const syncButton = (theme) => {
+        const lightEnabled = theme === "light";
+        const nextLabel = lightEnabled ? "切换到黑夜模式" : "切换到白天模式";
+        button.setAttribute("aria-pressed", String(lightEnabled));
+        button.setAttribute("aria-label", nextLabel);
+        button.title = nextLabel;
+      };
+      const applyTheme = (value, persist) => {
+        const theme = normalizeTheme(value);
+        root.dataset.theme = theme;
+        syncButton(theme);
+        if (persist) {
+          try {
+            localStorage.setItem(themeKey, theme);
+          } catch (error) {
+            console.warn("[theme-pilot] failed to save theme", error);
+          }
+        }
+      };
+      const panelStandardVersion = "physics-middle-panel-v1";
+      const desktopBreakpoint = 720;
+      const panelWidth = 164;
+      const panelHeaderHeight = 44;
+      const panelSafe = 6;
+      const bodySafe = 8;
+      const panelBodyMinWidth = 280;
+      const panelBodyMaxWidth = 520;
+      const panelBodyMinAvailableWidth = 120;
+      const panelBodyMinHeight = 80;
+      const panelBodyMaxHeight = 420;
+      const panelBodyMinAvailableHeight = 64;
+      const panelHeaderSelector = "[data-drag-handle],.dock-header,.dockHead,.dock-head,.drawer-header,.drawer-head,.panelHead,.resultsHead";
+      const panelBodySelector = ".dock-body,.dockBody,.drawer-body,.panelBody,.resultsBody";
+      const panelVariants = [
+        {
+          kind:"dock",
+          panels:[
+            { id:"controlDock", toggleSelector:"#controlToggleBtn" },
+            { id:"dataDock", toggleSelector:"#dataToggleBtn" },
+          ],
+        },
+        {
+          kind:"drawer63",
+          panels:[
+            { id:"controlDrawer", toggleSelector:"[data-drawer=\"controlDrawer\"]" },
+            { id:"dataDrawer", toggleSelector:"[data-drawer=\"dataDrawer\"]" },
+          ],
+        },
+      ];
+      let desktopPanels = [];
+      let desktopActive = false;
+      let desktopInitialized = false;
+      let panelCoordinatorInstalled = false;
+      let panelMutationFrame = 0;
+      let panelResizeTimer = 0;
+      let panelToggleGeneration = 0;
+      let panelToggleTransaction = null;
+      let panelToggleFrame = 0;
+      let panelToggleTimer = 0;
+      let panelLastTransaction = null;
+      const panelToggleSettleMs = 280;
+      let mutationObserver = null;
+      let positionedParentObserver = null;
+      let resizeObserver = null;
+      let lifecycleObserver = null;
+      const panelCleanupCallbacks = [];
+
+      const clampPanelValue = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
+      const getStageSize = () => {
+        if (!stage) return { width:0, height:0 };
+        const rect = stage.getBoundingClientRect();
+        return {
+          width:stage.clientWidth || rect.width,
+          height:stage.clientHeight || rect.height,
+        };
+      };
+      const desktopPanelMutationAllowed = () => {
+        if (!desktopActive) return false;
+        const { width } = getStageSize();
+        if (width && width <= desktopBreakpoint) {
+          syncDesktopPanelMode();
+          return false;
+        }
+        return true;
+      };
+      const resolveDesktopPanels = () => {
+        if (!stage) {
+          panelVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] stage was not found for panel", panel.id);
+          }));
+          return null;
+        }
+        const presentVariants = panelVariants.filter((variant) => variant.panels.some(({ id }) =>
+          document.querySelectorAll(`[id="${id}"]`).length > 0));
+        if (!presentVariants.length) {
+          panelVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] panel shell was not found", panel.id);
+          }));
+          return null;
+        }
+        if (presentVariants.length > 1) {
+          presentVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] ambiguous panel variant", panel.id);
+          }));
+          return null;
+        }
+        const variant = presentVariants[0];
+        let valid = true;
+        const panels = variant.panels.map((definition, index) => {
+          const panel = { id:definition.id };
+          const wrappers = Array.from(document.querySelectorAll(`[id="${definition.id}"]`));
+          const toggles = Array.from(document.querySelectorAll(definition.toggleSelector));
+          const wrapper = wrappers.length === 1 ? wrappers[0] : null;
+          const headerMatches = wrapper
+            ? Array.from(wrapper.children).filter((child) => child.matches(panelHeaderSelector))
+            : [];
+          const bodyMatches = wrapper
+            ? Array.from(wrapper.children).filter((child) => child.matches(panelBodySelector))
+            : [];
+          const toggle = toggles.length === 1 ? toggles[0] : null;
+          const issues = [];
+          if (!wrapper) issues.push(`wrapper count ${wrappers.length}`);
+          if (headerMatches.length !== 1) issues.push(`direct header count ${headerMatches.length}`);
+          if (bodyMatches.length !== 1) issues.push(`direct body count ${bodyMatches.length}`);
+          if (headerMatches[0] && headerMatches[0] === bodyMatches[0]) issues.push("header and body are the same element");
+          if (!toggle || !toggle.matches("button") || !wrapper?.contains(toggle)) {
+            issues.push(`contained toggle count ${toggles.length}`);
+          }
+          if (issues.length) {
+            valid = false;
+            console.warn("[desktop-panels] invalid panel", panel.id, issues.join(", "));
+            return null;
+          }
+          return {
+            id:definition.id,
+            kind:variant.kind,
+            index,
+            wrapper,
+            header:headerMatches[0],
+            body:bodyMatches[0],
+            toggle,
+            originalMoved:null,
+            anchor:null,
+            zIndex:index === 0 ? 36 : 30,
+            drag:null,
+            measureFrame:0,
+            measureRetried:false,
+            measureWarned:false,
+          };
+        });
+        return valid ? panels : null;
+      };
+      const panelIsOpen = (panel) => panel.kind === "dock"
+        ? !panel.wrapper.classList.contains("collapsed")
+        : panel.wrapper.classList.contains("open");
+      const setPanelOpen = (panel, open) => {
+        if (panel.kind === "dock") panel.wrapper.classList.toggle("collapsed", !open);
+        else panel.wrapper.classList.toggle("open", open);
+        panel.body.classList.toggle("collapsed", !open);
+      };
+      const setPanelDragging = (panel, dragging) => {
+        panel.wrapper.dataset.codexPanelDragging = dragging ? "1" : "0";
+      };
+      const getDefaultAnchors = () => {
+        const { width } = getStageSize();
+        const control = { x:Math.max(panelSafe, width - panelWidth - 12), y:58 };
+        return [control, { x:control.x, y:control.y + panelHeaderHeight + 10 }];
+      };
+      const applyAnchor = (panel, nextAnchor) => {
+        if (!desktopPanelMutationAllowed()) return false;
+        const { width, height } = getStageSize();
+        const maximumX = Math.max(panelSafe, width - panelWidth - panelSafe);
+        const maximumY = Math.max(panelSafe, height - panelHeaderHeight - panelSafe);
+        panel.anchor = {
+          x:clampPanelValue(nextAnchor.x, panelSafe, maximumX),
+          y:clampPanelValue(nextAnchor.y, panelSafe, maximumY),
+        };
+        const offsetParent = panel.wrapper.offsetParent;
+        const stageRect = stage.getBoundingClientRect();
+        const offsetParentRect = offsetParent?.getBoundingClientRect?.() || stageRect;
+        const containingBlockOffset = offsetParent && offsetParent !== stage ? {
+          x:offsetParentRect.left + offsetParent.clientLeft - stageRect.left - stage.clientLeft,
+          y:offsetParentRect.top + offsetParent.clientTop - stageRect.top - stage.clientTop,
+        } : { x:0, y:0 };
+        panel.wrapper.style.setProperty("--codex-panel-left", `${panel.anchor.x - containingBlockOffset.x}px`);
+        panel.wrapper.style.setProperty("--codex-panel-top", `${panel.anchor.y - containingBlockOffset.y}px`);
+        return true;
+      };
+      const fitAvailableDimension = (desired, available, minimum, maximum) => {
+        const safeAvailable = Math.max(0, available);
+        if (safeAvailable < minimum) return safeAvailable;
+        return clampPanelValue(Math.min(desired, safeAvailable), minimum, maximum);
+      };
+      const choosePanelPlacement = (panel) => {
+        const { width:stageWidth, height:stageHeight } = getStageSize();
+        const anchor = panel.anchor || { x:panelSafe, y:panelSafe };
+        const bodyRect = panel.body.getBoundingClientRect();
+        const measuredWidth = Math.max(panel.body.scrollWidth || 0, bodyRect.width || 0);
+        const measuredHeight = Math.max(panel.body.scrollHeight || 0, bodyRect.height || 0);
+        const open = panelIsOpen(panel);
+        if (open && (!measuredWidth || !measuredHeight)) return null;
+        const desiredWidth = clampPanelValue(
+          Math.max(measuredWidth, panelBodyMinWidth),
+          panelBodyMinWidth,
+          panelBodyMaxWidth,
+        );
+        const desiredHeight = clampPanelValue(
+          Math.max(measuredHeight, panelBodyMinHeight),
+          panelBodyMinHeight,
+          panelBodyMaxHeight,
+        );
+        const leftSpace = Math.max(0, anchor.x + panelWidth - bodySafe);
+        const rightSpace = Math.max(0, stageWidth - anchor.x - bodySafe);
+        const leftFits = leftSpace >= desiredWidth;
+        const rightFits = rightSpace >= desiredWidth;
+        let x;
+        if (leftFits && rightFits) x = "left";
+        else if (leftFits) x = "left";
+        else if (rightFits) x = "right";
+        else x = leftSpace >= rightSpace ? "left" : "right";
+        const availableWidth = x === "left" ? leftSpace : rightSpace;
+        const downSpace = Math.max(0, stageHeight - anchor.y - panelHeaderHeight - bodySafe);
+        const upSpace = Math.max(0, anchor.y - bodySafe);
+        const y = downSpace < desiredHeight && upSpace > downSpace ? "up" : "down";
+        const availableHeight = y === "up" ? upSpace : downSpace;
+        return {
+          x,
+          y,
+          width:fitAvailableDimension(desiredWidth, availableWidth, panelBodyMinAvailableWidth, panelBodyMaxWidth),
+          height:fitAvailableDimension(desiredHeight, availableHeight, panelBodyMinAvailableHeight, panelBodyMaxHeight),
+        };
+      };
+      const layoutPanel = (panel) => {
+        const placement = choosePanelPlacement(panel);
+        if (!placement) {
+          if (!panel.measureRetried) {
+            if (!panel.measureFrame) {
+              panel.measureFrame = requestAnimationFrame(() => {
+                panel.measureFrame = 0;
+                if (desktopActive && panel.wrapper.isConnected && panelIsOpen(panel)) {
+                  panel.measureRetried = true;
+                  layoutPanel(panel);
+                }
+              });
+            }
+            return;
+          }
+          if (!panel.measureWarned) {
+            panel.measureWarned = true;
+            console.warn("[desktop-panels] panel body measurement failed", panel.id);
+          }
+          return;
+        }
+        if (panel.measureFrame) cancelAnimationFrame(panel.measureFrame);
+        panel.measureFrame = 0;
+        panel.measureRetried = false;
+        panel.measureWarned = false;
+        panel.wrapper.dataset.codexPanelX = placement.x;
+        panel.wrapper.dataset.codexPanelY = placement.y;
+        panel.wrapper.style.setProperty("--codex-panel-body-width", `${Math.round(placement.width)}px`);
+        panel.wrapper.style.setProperty("--codex-panel-body-height", `${Math.round(placement.height)}px`);
+      };
+      const assertPanelManaged = (panel) => {
+        const { wrapper, header, body } = panel;
+        wrapper.dataset.codexDesktopPanel = "1";
+        header.dataset.codexPanelHeader = "1";
+        body.dataset.codexPanelBody = "1";
+        wrapper.dataset.codexPanelDragging = panel.drag?.active ? "1" : "0";
+        if (wrapper.dataset.moved !== "1") wrapper.dataset.moved = "1";
+      };
+      const syncPanel = (panel) => {
+        if (!desktopPanelMutationAllowed()) return;
+        assertPanelManaged(panel);
+        const defaults = getDefaultAnchors();
+        if (!applyAnchor(panel, panel.anchor || defaults[panel.index])) return;
+        applyPanelLayer(panel);
+        const open = panelIsOpen(panel);
+        panel.wrapper.dataset.codexPanelOpen = open ? "1" : "0";
+        panel.toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        panel.toggle.textContent = open ? "收起" : "展开";
+        layoutPanel(panel);
+      };
+      const applyPanelLayer = (panel) => {
+        panel.wrapper.style.setProperty("--codex-panel-z", String(panel.zIndex));
+      };
+      const promotePanel = (panel) => {
+        if (!desktopActive) return;
+        desktopPanels.forEach((candidate) => {
+          candidate.zIndex = candidate === panel ? 36 : 30;
+          applyPanelLayer(candidate);
+        });
+      };
+      const preservePanelAudioUnlock = (panel) => {
+        const panelId = panel.id;
+        try {
+          const labAudio = window.labAudio;
+          if (!labAudio || labAudio.unlocked === true) return;
+          let result;
+          if (typeof labAudio.unlock === "function") result = labAudio.unlock();
+          else if (typeof labAudio.resume === "function") result = labAudio.resume();
+          else if (typeof labAudio.play === "function") result = labAudio.play("tap");
+          if (result && typeof result.catch === "function") {
+            result.catch((error) => {
+              console.warn("[desktop-panels] audio unlock failed for panel", panelId, error);
+            });
+          }
+        } catch (error) {
+          console.warn("[desktop-panels] audio unlock failed for panel", panelId, error);
+        }
+      };
+      const releasePanelPointer = (panel, pointerId) => {
+        try {
+          if (!panel.header.hasPointerCapture || panel.header.hasPointerCapture(pointerId)) {
+            panel.header.releasePointerCapture(pointerId);
+          }
+        } catch (error) {
+          console.warn("[desktop-panels] pointer release failed for panel", panel.id, error);
+        }
+      };
+      const cancelPanelDrag = (panel) => {
+        const drag = panel.drag;
+        if (!drag) {
+          if (desktopActive) setPanelDragging(panel, false);
+          return;
+        }
+        try {
+          releasePanelPointer(panel, drag.pointerId);
+        } finally {
+          panel.drag = null;
+          if (desktopActive) setPanelDragging(panel, false);
+        }
+      };
+      const bindPanelListener = (target, type, listener, options) => {
+        target.addEventListener(type, listener, options);
+        panelCleanupCallbacks.push(() => target.removeEventListener(type, listener, options));
+      };
+      const snapshotPanelToggleTransaction = (transaction, status) => transaction ? {
+        generation:transaction.generation,
+        sourceId:transaction.sourceId,
+        panelWasOpen:transaction.panelWasOpen,
+        peerWasOpen:transaction.peerWasOpen,
+        targets:{ ...transaction.targets },
+        applications:transaction.applications,
+        lastReason:transaction.lastReason,
+        status,
+      } : null;
+      const clearPanelToggleHandles = () => {
+        if (panelToggleFrame) cancelAnimationFrame(panelToggleFrame);
+        if (panelToggleTimer) clearTimeout(panelToggleTimer);
+        panelToggleFrame = 0;
+        panelToggleTimer = 0;
+      };
+      const cancelPanelToggleTransaction = (reason = "cancelled") => {
+        panelToggleGeneration += 1;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, reason);
+        }
+        clearPanelToggleHandles();
+        panelToggleTransaction = null;
+        return panelToggleGeneration;
+      };
+      const applyPanelToggleTransaction = (generation, reason) => {
+        if (!desktopPanelMutationAllowed()) return false;
+        const transaction = panelToggleTransaction;
+        if (!transaction || transaction.generation !== generation || panelToggleGeneration !== generation) return false;
+        desktopPanels.forEach((candidate) => {
+          if (Object.prototype.hasOwnProperty.call(transaction.targets, candidate.id)) {
+            setPanelOpen(candidate, transaction.targets[candidate.id]);
+          }
+        });
+        desktopPanels.forEach(syncPanel);
+        transaction.applications += 1;
+        transaction.lastReason = reason;
+        return true;
+      };
+      const schedulePanelToggleTransaction = (generation, reason) => {
+        if (!desktopActive || !panelToggleTransaction || panelToggleTransaction.generation !== generation || panelToggleGeneration !== generation) return;
+        if (panelToggleFrame) return;
+        panelToggleFrame = requestAnimationFrame(() => {
+          panelToggleFrame = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          applyPanelToggleTransaction(generation, reason);
+        });
+      };
+      const armPanelToggleTransaction = (generation) => {
+        panelToggleTimer = setTimeout(() => {
+          panelToggleTimer = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          if (!applyPanelToggleTransaction(generation, "settle-expiry")) return;
+          panelLastTransaction = snapshotPanelToggleTransaction(
+            panelToggleTransaction,
+            panelToggleTransaction.commitStatus || "committed",
+          );
+          panelToggleTransaction = null;
+        }, panelToggleSettleMs);
+      };
+      const beginPanelToggleTransaction = (panel) => {
+        if (!desktopPanelMutationAllowed()) return null;
+        const previousTargets = panelToggleTransaction?.targets || null;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "superseded");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const peer = desktopPanels.find((candidate) => candidate !== panel) || null;
+        const panelWasOpen = previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, panel.id)
+          ? previousTargets[panel.id]
+          : panelIsOpen(panel);
+        const peerWasOpen = peer && previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, peer.id)
+          ? previousTargets[peer.id]
+          : peer ? panelIsOpen(peer) : false;
+        panelToggleTransaction = {
+          generation,
+          sourceId:panel.id,
+          panelWasOpen,
+          peerWasOpen,
+          targets:{
+            [panel.id]:!panelWasOpen,
+            ...(peer ? { [peer.id]:peerWasOpen } : {}),
+          },
+          applications:0,
+          lastReason:"captured",
+        };
+        armPanelToggleTransaction(generation);
+        return generation;
+      };
+      const beginPanelResetTransaction = () => {
+        if (!desktopPanelMutationAllowed()) return null;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "reset-requested");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const [panel, peer] = desktopPanels;
+        panelToggleTransaction = {
+          generation,
+          sourceId:"resetBtn",
+          panelWasOpen:panel ? panelIsOpen(panel) : false,
+          peerWasOpen:peer ? panelIsOpen(peer) : false,
+          targets:Object.fromEntries(desktopPanels.map((candidate) => [candidate.id, false])),
+          applications:0,
+          lastReason:"captured",
+          commitStatus:"reset-committed",
+        };
+        applyPanelToggleTransaction(generation, "reset-capture");
+        armPanelToggleTransaction(generation);
+        return generation;
+      };
+      const panelToggleDebugSnapshot = () => ({
+        generation:panelToggleGeneration,
+        settleMs:panelToggleSettleMs,
+        pending:Number(Boolean(panelToggleFrame)) + Number(Boolean(panelToggleTimer)),
+        active:desktopActive,
+        current:snapshotPanelToggleTransaction(panelToggleTransaction, "active"),
+        last:panelLastTransaction ? { ...panelLastTransaction, targets:{ ...panelLastTransaction.targets } } : null,
+      });
+      const bindPanelDrag = (panel) => {
+        const { wrapper, header, toggle } = panel;
+        const onWrapperPointerDown = (event) => {
+          if (!desktopActive) return;
+          if (toggle.contains(event.target)) wrapper.dataset.moved = "1";
+          promotePanel(panel);
+        };
+        const onWrapperClick = () => promotePanel(panel);
+        const onToggleClickCapture = () => {
+          if (!desktopActive) return;
+          beginPanelToggleTransaction(panel);
+        };
+        const onToggleClick = () => {
+          const generation = panelToggleTransaction?.generation;
+          if (!desktopActive || !generation || panelToggleTransaction.sourceId !== panel.id) return;
+          schedulePanelToggleTransaction(generation, "click-bubble");
+        };
+        const onHeaderPointerDown = (event) => {
+          if (!desktopActive || event.target.closest?.("button")) return;
+          if (event.button !== undefined && event.button !== 0) return;
+          preservePanelAudioUnlock(panel);
+          event.stopImmediatePropagation();
+          event.preventDefault();
+          const wrapperRect = wrapper.getBoundingClientRect();
+          panel.drag = {
+            pointerId:event.pointerId,
+            startX:event.clientX,
+            startY:event.clientY,
+            offsetX:event.clientX - wrapperRect.left,
+            offsetY:event.clientY - wrapperRect.top,
+            active:false,
+          };
+          promotePanel(panel);
+          try {
+            header.setPointerCapture(event.pointerId);
+          } catch (error) {
+            console.warn("[desktop-panels] pointer capture failed for panel", panel.id, error);
+            panel.drag = null;
+            setPanelDragging(panel, false);
+          }
+        };
+        const onHeaderPointerMove = (event) => {
+          const drag = panel.drag;
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          event.stopImmediatePropagation();
+          if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
+          drag.active = true;
+          setPanelDragging(panel, true);
+          const stageRect = stage.getBoundingClientRect();
+          if (!applyAnchor(panel, {
+            x:event.clientX - stageRect.left - drag.offsetX,
+            y:event.clientY - stageRect.top - drag.offsetY,
+          })) return;
+          layoutPanel(panel);
+          event.preventDefault();
+        };
+        const finishDrag = (event) => {
+          const drag = panel.drag;
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          event.stopImmediatePropagation();
+          try {
+            releasePanelPointer(panel, event.pointerId);
+          } finally {
+            panel.drag = null;
+            if (desktopActive) {
+              setPanelDragging(panel, false);
+              layoutPanel(panel);
+            }
+          }
+        };
+        const onLostPointerCapture = (event) => {
+          if (!panel.drag || event.pointerId !== panel.drag.pointerId) return;
+          panel.drag = null;
+          if (desktopActive) setPanelDragging(panel, false);
+        };
+        bindPanelListener(wrapper, "pointerdown", onWrapperPointerDown, true);
+        bindPanelListener(wrapper, "click", onWrapperClick, true);
+        bindPanelListener(toggle, "click", onToggleClickCapture, true);
+        bindPanelListener(toggle, "click", onToggleClick);
+        bindPanelListener(header, "pointerdown", onHeaderPointerDown, true);
+        bindPanelListener(header, "pointermove", onHeaderPointerMove, true);
+        bindPanelListener(header, "pointerup", finishDrag, true);
+        bindPanelListener(header, "pointercancel", finishDrag, true);
+        bindPanelListener(header, "lostpointercapture", onLostPointerCapture, true);
+      };
+      const cancelPanelFrames = (panel) => {
+        if (panel.measureFrame) cancelAnimationFrame(panel.measureFrame);
+        panel.measureFrame = 0;
+        panel.measureRetried = false;
+        panel.measureWarned = false;
+      };
+      const resetDesktopPanelLayout = () => {
+        if (!desktopPanelMutationAllowed()) return;
+        const anchors = getDefaultAnchors();
+        desktopPanels.forEach((panel, index) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+          panel.zIndex = index === 0 ? 36 : 30;
+          if (!applyAnchor(panel, anchors[index])) return;
+          applyPanelLayer(panel);
+        });
+      };
+      const resetDesktopPanels = (cancelTransaction = true) => {
+        if (!desktopActive) return;
+        if (cancelTransaction) cancelPanelToggleTransaction("reset");
+        resetDesktopPanelLayout();
+        desktopPanels.forEach((panel) => {
+          setPanelOpen(panel, false);
+          syncPanel(panel);
+        });
+      };
+      const rememberPanelMoved = (panel) => {
+        panel.originalMoved = {
+          present:panel.wrapper.hasAttribute("data-moved"),
+          value:panel.wrapper.getAttribute("data-moved"),
+        };
+      };
+      const activateDesktopPanels = () => {
+        desktopActive = true;
+        desktopPanels.forEach((panel) => {
+          rememberPanelMoved(panel);
+          const { wrapper, header, body } = panel;
+          wrapper.dataset.codexDesktopPanel = "1";
+          header.dataset.codexPanelHeader = "1";
+          body.dataset.codexPanelBody = "1";
+          wrapper.dataset.codexPanelOpen = panelIsOpen(panel) ? "1" : "0";
+          wrapper.dataset.codexPanelDragging = "0";
+          wrapper.dataset.moved = "1";
+        });
+        if (!desktopInitialized) {
+          desktopInitialized = true;
+          resetDesktopPanels();
+          return;
+        }
+        const defaults = getDefaultAnchors();
+        desktopPanels.forEach((panel, index) => {
+          if (!applyAnchor(panel, panel.anchor || defaults[index])) return;
+          applyPanelLayer(panel);
+          syncPanel(panel);
+        });
+      };
+      const deactivateDesktopPanels = () => {
+        if (!desktopActive) return;
+        cancelPanelToggleTransaction("deactivate");
+        desktopPanels.forEach((panel) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+          const { wrapper, header, body, originalMoved } = panel;
+          delete wrapper.dataset.codexDesktopPanel;
+          delete header.dataset.codexPanelHeader;
+          delete body.dataset.codexPanelBody;
+          delete wrapper.dataset.codexPanelOpen;
+          delete wrapper.dataset.codexPanelDragging;
+          delete wrapper.dataset.codexPanelX;
+          delete wrapper.dataset.codexPanelY;
+          wrapper.style.removeProperty("--codex-panel-body-width");
+          wrapper.style.removeProperty("--codex-panel-body-height");
+          wrapper.style.removeProperty("--codex-panel-left");
+          wrapper.style.removeProperty("--codex-panel-top");
+          wrapper.style.removeProperty("--codex-panel-z");
+          if (originalMoved.present) wrapper.setAttribute("data-moved", originalMoved.value ?? "");
+          else wrapper.removeAttribute("data-moved");
+        });
+        desktopActive = false;
+      };
+      const syncDesktopPanelMode = () => {
+        const { width } = getStageSize();
+        if (!width) return;
+        if (width <= desktopBreakpoint) {
+          deactivateDesktopPanels();
+          return;
+        }
+        if (!desktopActive) {
+          activateDesktopPanels();
+          return;
+        }
+        desktopPanels.forEach((panel) => {
+          if (!applyAnchor(panel, panel.anchor)) return;
+          applyPanelLayer(panel);
+          syncPanel(panel);
+        });
+      };
+      const queuePanelSync = (records = []) => {
+        if (!desktopPanelMutationAllowed()) return;
+        const transaction = panelToggleTransaction;
+        const panelClassChanged = records.some((record) => record.type === "attributes" && record.attributeName === "class");
+        if (transaction && panelClassChanged) {
+          schedulePanelToggleTransaction(transaction.generation, "class-mutation");
+          return;
+        }
+        if (panelMutationFrame) return;
+        const generation = panelToggleGeneration;
+        panelMutationFrame = requestAnimationFrame(() => {
+          panelMutationFrame = 0;
+          if (!desktopPanelMutationAllowed() || generation !== panelToggleGeneration) return;
+          desktopPanels.forEach(syncPanel);
+        });
+      };
+      const schedulePanelResize = () => {
+        clearTimeout(panelResizeTimer);
+        panelResizeTimer = setTimeout(syncDesktopPanelMode, 120);
+      };
+      const isResetIntent = (button) => button.textContent.includes("重置");
+      const managedPanelNodesConnected = () => stage?.isConnected && desktopPanels.every((panel) =>
+        [panel.wrapper, panel.header, panel.body, panel.toggle].every((node) => node.isConnected));
+      const teardownDesktopPanels = () => {
+        cancelPanelToggleTransaction("disconnect");
+        clearTimeout(panelResizeTimer);
+        panelResizeTimer = 0;
+        if (panelMutationFrame) cancelAnimationFrame(panelMutationFrame);
+        panelMutationFrame = 0;
+        if (desktopActive) deactivateDesktopPanels();
+        else desktopPanels.forEach((panel) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+        });
+        if (mutationObserver) mutationObserver.disconnect();
+        if (positionedParentObserver) positionedParentObserver.disconnect();
+        if (resizeObserver) resizeObserver.disconnect();
+        if (lifecycleObserver) lifecycleObserver.disconnect();
+        mutationObserver = null;
+        positionedParentObserver = null;
+        resizeObserver = null;
+        lifecycleObserver = null;
+        panelCleanupCallbacks.splice(0).reverse().forEach((cleanup) => cleanup());
+        desktopPanels = [];
+      };
+      const installDesktopPanels = () => {
+        if (panelCoordinatorInstalled) return;
+        panelCoordinatorInstalled = true;
+        const resolved = resolveDesktopPanels();
+        if (!resolved) return;
+        desktopPanels = resolved;
+        desktopPanels.forEach(bindPanelDrag);
+        mutationObserver = new MutationObserver(queuePanelSync);
+        desktopPanels.forEach((panel) => {
+          mutationObserver.observe(panel.wrapper, {
+            attributes:true,
+            attributeFilter:["class", "data-moved"],
+          });
+          mutationObserver.observe(panel.body, {
+            attributes:true,
+            attributeFilter:["class"],
+          });
+        });
+        const positionedParents = [...new Set(desktopPanels.map((panel) => panel.wrapper.offsetParent))]
+          .filter((parent) => parent && parent !== stage);
+        if (positionedParents.length) {
+          positionedParentObserver = new MutationObserver(schedulePanelResize);
+          positionedParents.forEach((parent) => positionedParentObserver.observe(parent, {
+            attributes:true,
+            attributeFilter:["class", "style"],
+          }));
+        }
+        bindPanelListener(window, "resize", schedulePanelResize);
+        if ("ResizeObserver" in window) {
+          resizeObserver = new ResizeObserver(schedulePanelResize);
+          resizeObserver.observe(stage);
+          positionedParents.forEach((parent) => resizeObserver.observe(parent));
+        }
+        lifecycleObserver = new MutationObserver(() => {
+          if (!managedPanelNodesConnected()) teardownDesktopPanels();
+        });
+        lifecycleObserver.observe(document.documentElement, { childList:true, subtree:true });
+        const resetButtons = document.querySelectorAll("#resetBtn");
+        if (resetButtons.length === 1) {
+          const resetButton = document.getElementById("resetBtn");
+          const onResetClick = () => {
+            if (!isResetIntent(resetButton)) return;
+            resetDesktopPanelLayout();
+            beginPanelResetTransaction();
+          };
+          bindPanelListener(resetButton, "click", onResetClick, true);
+        } else {
+          console.warn("[desktop-panels] expected one reset button", "resetBtn");
+        }
+        /** A programmatic request supersedes an older click's settle transaction.
+         * @param {string} panelId Actual managed wrapper id.
+         * @param {boolean} open Requested UI visibility; no model mutation.
+         * @param {boolean} exclusive Close the peer only when opening the target.
+         * @returns {boolean} Whether the desktop owner handled this request.
+         */
+        const requestPanelOpen = (panelId, open = true, exclusive = false) => {
+          if (typeof open !== "boolean" || typeof exclusive !== "boolean" ||
+              window.__codexPageControllerV1?.getState().destroyed || !desktopPanelMutationAllowed()) return false;
+          const panel = desktopPanels.find((candidate) => candidate.wrapper.id === panelId);
+          if (!panel || panel.wrapper.inert || !managedPanelNodesConnected()) return false;
+          const pendingTargets = panelToggleTransaction?.targets;
+          const peers = desktopPanels.filter((candidate) => candidate !== panel);
+          if (pendingTargets) peers.forEach((candidate) => {
+            if (Object.prototype.hasOwnProperty.call(pendingTargets, candidate.id))
+              setPanelOpen(candidate, pendingTargets[candidate.id]);
+          });
+          cancelPanelToggleTransaction("programmatic-request");
+          if (exclusive && open) peers.forEach((candidate) => setPanelOpen(candidate, false));
+          setPanelOpen(panel, open);
+          desktopPanels.forEach(syncPanel);
+          return true;
+        };
+        const panelCoordinatorApi = { version:panelStandardVersion, setOpen:requestPanelOpen,
+          /** Stop this page's UI handles when its science owner is destroyed. */
+          destroy:teardownDesktopPanels };
+        if (window.__CODEX_PHYSICS_PANEL_TEST__ === true) panelCoordinatorApi.getTransactionState = panelToggleDebugSnapshot;
+        window.__codexDesktopPanels = Object.freeze(panelCoordinatorApi);
+        syncDesktopPanelMode();
+      };
+      const isolateThemePointer = (event) => {
+        if (button.contains(event.target)) event.stopPropagation();
+      };
+      window.addEventListener("pointerdown", isolateThemePointer, true);
+      window.addEventListener("mousedown", isolateThemePointer, true);
+      window.addEventListener("touchstart", isolateThemePointer, { capture:true, passive:true });
+      window.addEventListener("click", (event) => {
+        if (!button.contains(event.target)) return;
+        event.stopPropagation();
+        applyTheme(root.dataset.theme === "light" ? "dark" : "light", true);
+      }, true);
+      window.addEventListener("storage", (event) => {
+        if (event.key === themeKey) applyTheme(event.newValue, false);
+      });
+      applyTheme(root.dataset.theme, false);
+      installDesktopPanels();
+    })();
+    }, {once:true});
+  
+}
+</script>
+<script id="codex-stage-tools-runtime">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+(() => {
+  'use strict';
+  function mount() {
+    const stage = document.querySelector('#stage');
+    const lamp = stage?.querySelector('#hintLamp, .hint-lamp');
+    const pop = stage?.querySelector('#hintPop');
+    const hud = stage?.querySelector('.hud');
+    if (!stage || !lamp || !pop || !hud || stage.dataset.stageToolsMounted || window.__codexPageControllerV1?.getState().destroyed) return;
+    stage.dataset.stageToolsMounted = 'true';
+    const wrap = lamp.closest('.hint-lamp-wrap');
+    const anchor = wrap || lamp;
+    let frame = 0;
+    let disposed = false;
+    const put = (node, key, value) => {
+      if (node.style.getPropertyValue(key) !== value || node.style.getPropertyPriority(key) !== 'important') {
+        node.style.setProperty(key, value, 'important');
+      }
+    };
+    const pixels = value => `${Math.round(value * 100) / 100}px`;
+    function expanded() {
+      return pop.classList.contains('open') || Boolean(wrap?.classList.contains('open'));
+    }
+    function syncExpanded() {
+      lamp.setAttribute('aria-controls', pop.id);
+      lamp.setAttribute('aria-expanded', String(expanded()));
+      lamp.setAttribute('aria-label', expanded() ? '收起提示' : '查看提示');
+    }
+    function closeHint() {
+      // Reuse the page's own close action so legacy state.hintOpen and its
+      // wrapper stay synchronized with the popover after Escape/outside clicks.
+      if (wrap ? wrap.classList.contains('open') : expanded()) lamp.click();
+      pop.classList.remove('open');
+      wrap?.classList.remove('open');
+      syncExpanded();
+    }
+    function managedHint() {
+      if (lamp.dataset.stageHint !== 'managed') return;
+      pop.textContent = document.querySelector('#taskHint')?.textContent || '按步骤操作器材，观察现象并记录数据。';
+      pop.classList.toggle('open');
+      syncExpanded();
+    }
+    lamp.addEventListener('click', managedHint);
+    function layout() {
+      frame = 0;
+      if (disposed) return;
+      const s = stage.getBoundingClientRect();
+      const h = hud.getBoundingClientRect();
+      const originX = s.left + stage.clientLeft;
+      const originY = s.top + stage.clientTop;
+      const left = Math.max(8, h.left - originX);
+      const top = Math.max(8, h.bottom - originY + 6);
+      put(anchor, 'position', 'absolute');
+      put(anchor, 'left', pixels(left));
+      put(anchor, 'right', 'auto');
+      put(anchor, 'top', pixels(top));
+      put(anchor, 'bottom', 'auto');
+      put(anchor, 'z-index', '72');
+      if (wrap) {
+        put(wrap, 'width', '36px'); put(wrap, 'height', '36px');
+        put(lamp, 'position', 'static'); put(lamp, 'transform', 'none');
+      }
+      for (const button of [lamp, stage.querySelector('#audioToggle')].filter(Boolean)) {
+        put(button, 'width', '36px'); put(button, 'height', '36px');
+        put(button, 'min-width', '36px'); put(button, 'min-height', '36px');
+        put(button, 'padding', '0'); put(button, 'margin', '0');
+        put(button, 'display', 'grid'); put(button, 'place-items', 'center');
+        put(button, 'font-size', '18px'); put(button, 'box-sizing', 'border-box');
+      }
+      const audio = stage.querySelector('#audioToggle');
+      if (audio) {
+        put(audio, 'position', 'absolute'); put(audio, 'left', pixels(left + 42));
+        put(audio, 'right', 'auto'); put(audio, 'top', pixels(top));
+        put(audio, 'bottom', 'auto'); put(audio, 'z-index', '72');
+        put(audio, 'border', '1px solid rgba(150,170,190,.38)');
+        put(audio, 'border-radius', '8px');
+        put(audio, 'background', 'rgba(100,120,140,.13)');
+        put(audio, 'cursor', 'pointer');
+      }
+      put(pop, 'position', 'absolute'); put(pop, 'box-sizing', 'border-box');
+      put(pop, 'left', wrap ? '0px' : pixels(left)); put(pop, 'right', 'auto');
+      put(pop, 'top', pixels(wrap ? 44 : top + 44)); put(pop, 'bottom', 'auto');
+      put(pop, 'transform', 'none'); put(pop, 'z-index', '71');
+      put(pop, 'width', pixels(Math.max(1, Math.min(340, stage.clientWidth - left - 10))));
+      put(pop, 'max-width', 'none');
+      put(pop, 'max-height', pixels(Math.max(48, stage.clientHeight - top - 60)));
+      put(pop, 'overflow-y', 'auto'); put(pop, 'overflow-wrap', 'anywhere');
+      syncExpanded();
+    }
+    const requestLayout = () => { if (!disposed && !frame) frame = requestAnimationFrame(layout); };
+    function onKey(event) {
+      if (event.key === 'Escape' && expanded()) {
+        closeHint(); lamp.focus({ preventScroll:true });
+      }
+    }
+    function onOutside(event) {
+      if (!lamp.contains(event.target) && !pop.contains(event.target)) closeHint();
+    }
+    const changes = new MutationObserver(syncExpanded);
+    changes.observe(pop, { attributes:true, attributeFilter:['class'] });
+    if (wrap) changes.observe(wrap, { attributes:true, attributeFilter:['class'] });
+    const sizes = new ResizeObserver(requestLayout);
+    sizes.observe(hud); sizes.observe(stage);
+    window.addEventListener('resize', requestLayout);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onOutside, { passive:true });
+    lamp.addEventListener('click', requestLayout);
+    function dispose() {
+      if (disposed) return;
+      disposed = true; cancelAnimationFrame(frame); frame = 0;
+      window.removeEventListener('pagehide', dispose);
+      sizes.disconnect(); changes.disconnect();
+      window.removeEventListener('resize', requestLayout);
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onOutside);
+      lamp.removeEventListener('click', requestLayout);
+      lamp.removeEventListener('click', managedHint);
+      delete stage.dataset.stageToolsMounted;
+    }
+    window.__codexStageToolsV1 = Object.freeze({
+      /** Stop only this UI owner's frame, observers and event handlers. */
+      destroy() { dispose(); window.removeEventListener('pageshow', onPageShow); },
+      getState: () => ({disposed, ownedFrames:frame ? 1 : 0})
+    });
+    window.addEventListener('pagehide', dispose, { once:true });
+    layout();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+  function onPageShow(event) { if (event.persisted && !window.__codexPageControllerV1?.getState().destroyed) mount(); }
+  window.addEventListener('pageshow', onPageShow);
+})();
+
+}
+</script>
+<script id="codex-science-panel-clearance">
+{
+  const {requestAnimationFrame, cancelAnimationFrame, setTimeout, clearTimeout} =
+    window.__codexScienceUiSchedulerV1;
+
+(() => {
+  'use strict';
+  function mount() {
+    const stage=document.getElementById('stage');
+    const panels=['controlDock','dataDock'].map(id=>document.getElementById(id));
+    if(!stage||panels.some(panel=>!panel?.querySelector('.drawer-body')||!panel.querySelector('.drawer-header')))throw new Error('[science-panels] 缺少完整标准面板');if(window.__codexSciencePanelClearance&&!window.__codexSciencePanelClearance.getState().disposed)throw new Error('[science-panels] 重复面板布局实例');
+    const abort=new AbortController();let frame=0,disposed=false,minimum=null;
+    const offsets=new WeakMap(),variables=new Map(),transforms=new Map();
+    function setVariable(key,value){let saved=variables.get(key);if(!saved){saved={value:stage.style.getPropertyValue(key),priority:stage.style.getPropertyPriority(key),owned:value};variables.set(key,saved);}saved.owned=value;if(stage.style.getPropertyValue(key)!==value)stage.style.setProperty(key,value);}
+    function restoreVariables(){for(const [key,saved]of variables){if(stage.style.getPropertyValue(key)===saved.owned&&stage.style.getPropertyPriority(key)===''){if(saved.value)stage.style.setProperty(key,saved.value,saved.priority);else stage.style.removeProperty(key);}}variables.clear();}
+    const rect=node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+    const overlap=(a,b)=>Math.min(a.right,b.right)-Math.max(a.x,b.x)>1&&Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1;
+    const body=panel=>panel.querySelector('.drawer-body');
+    const visible=panel=>!panel.classList.contains('collapsed')&&body(panel).getClientRects().length>0;
+    function restoreTransform(node){const saved=transforms.get(node);if(!saved)return;if(node.style.getPropertyValue('transform')===saved.owned&&node.style.getPropertyPriority('transform')==='important'){if(saved.value)node.style.setProperty('transform',saved.value,saved.priority);else node.style.removeProperty('transform');}transforms.delete(node);offsets.delete(node);}
+    function move(node,x,y){if(!x&&!y){restoreTransform(node);return;}let saved=transforms.get(node);const old=offsets.get(node);if(saved&&old?.x===x&&old?.y===y&&node.style.getPropertyValue('transform')===saved.owned&&node.style.getPropertyPriority('transform')==='important')return;if(!saved){saved={value:node.style.getPropertyValue('transform'),priority:node.style.getPropertyPriority('transform'),computed:getComputedStyle(node).transform,owned:''};transforms.set(node,saved);}const value=`translate(${x}px,${y}px)`+(saved.computed==='none'?'':' '+saved.computed);offsets.set(node,{x,y});node.style.setProperty('transform',value,'important');saved.owned=node.style.getPropertyValue('transform');}
+    function restoreMinimum(){if(!minimum)return;if(stage.style.getPropertyValue('min-height')===minimum.owned&&stage.style.getPropertyPriority('min-height')==='important'){if(minimum.value)stage.style.setProperty('min-height',minimum.value,minimum.priority);else stage.style.removeProperty('min-height');}minimum=null;}
+    function layout(){
+      frame=0;if(disposed)return;
+      const bounds=rect(stage),tools=['scienceHud','hintLamp','audioToggle'].map(id=>document.getElementById(id)).filter(node=>node?.getClientRects().length);
+      if(matchMedia('(max-width:720px)').matches){
+        for(const panel of panels)move(body(panel),0,0);
+        const tabs=document.getElementById('mobileTabs'),tabBounds=tabs?.getClientRects().length?rect(tabs):null;
+        const sheetBottom=tabBounds?Math.ceil(bounds.bottom-tabBounds.y):62;
+        setVariable('--science-mobile-sheet-bottom',sheetBottom+'px');setVariable('--science-apparatus-bottom',(sheetBottom+6)+'px');
+        const bottom=Math.max(bounds.y,...tools.map(node=>rect(node).bottom));
+        const available=Math.floor(bounds.bottom-sheetBottom-bottom-12-16);
+        if(available<48){
+          const owned=Math.ceil(bottom-bounds.y+sheetBottom+12+16+48)+'px';
+          if(!minimum||stage.style.getPropertyValue('min-height')!==minimum.owned||stage.style.getPropertyPriority('min-height')!=='important')minimum={value:stage.style.getPropertyValue('min-height'),priority:stage.style.getPropertyPriority('min-height'),owned};
+          minimum.owned=owned;stage.style.setProperty('min-height',owned,'important');
+        }
+        const value=Math.max(48,Math.min(188,available))+'px';
+        setVariable('--science-mobile-sheet-limit',value);
+        return;
+      }
+      restoreMinimum();
+      restoreVariables();
+      const headers=[...panels.map(panel=>rect(panel.querySelector('.drawer-header'))),...tools.map(rect)];
+      // Data has deterministic placement priority; control fits around it, not vice versa.
+      for(const panel of [...panels].reverse()){
+        const node=body(panel);if(!visible(panel)){move(node,0,0);continue;}
+        const measured=rect(node),old=offsets.get(node)||{x:0,y:0};
+        const base={...measured,x:measured.x-old.x,right:measured.right-old.x,y:measured.y-old.y,bottom:measured.bottom-old.y};
+        const obstacles=[...headers];
+        if(panel===panels[0]&&visible(panels[1]))obstacles.push(rect(body(panels[1])));
+        const xs=new Set([0]),ys=new Set([0]);
+        for(const obstacle of obstacles){xs.add(obstacle.x-base.right-8);xs.add(obstacle.right-base.x+8);ys.add(obstacle.y-base.bottom-8);ys.add(obstacle.bottom-base.y+8);}
+        const candidates=[];
+        for(const x of xs)for(const y of ys){
+          const next={...base,x:base.x+x,right:base.right+x,y:base.y+y,bottom:base.bottom+y};
+          if(next.x<bounds.x+4||next.right>bounds.right-4||next.y<bounds.y+4||next.bottom>bounds.bottom-4||obstacles.some(obstacle=>overlap(next,obstacle)))continue;
+          candidates.push({x,y,cost:Math.abs(x)+Math.abs(y)*4});
+        }
+        candidates.sort((a,b)=>a.cost-b.cost);const next=candidates[0];
+        // Canonical placement remains the fallback on genuinely space-constrained stages.
+        panel.dataset.scienceClearance=next?'fitted':'constrained';move(node,next?.x||0,next?.y||0);
+      }
+    }
+    function schedule(){if(!disposed&&!frame)frame=requestAnimationFrame(layout);}
+    const changes=new MutationObserver(schedule);
+    const sizes=new ResizeObserver(schedule);sizes.observe(stage);
+    for(const panel of panels){changes.observe(panel,{attributes:true,attributeFilter:['class','style','data-codex-panel-x','data-codex-panel-y']});sizes.observe(body(panel));}
+    for(const id of ['scienceHud','hintLamp','audioToggle','mobileTabs']){const node=document.getElementById(id);if(node){sizes.observe(node);changes.observe(node,{attributes:true,attributeFilter:['style','class']});}}
+    window.addEventListener('resize',schedule,{signal:abort.signal});
+    function destroy(){if(disposed)return;disposed=true;abort.abort();changes.disconnect();sizes.disconnect();if(frame)cancelAnimationFrame(frame);frame=0;restoreMinimum();restoreVariables();for(const node of [...transforms.keys()])restoreTransform(node);}
+    window.addEventListener('pagehide',destroy,{once:true,signal:abort.signal});
+    window.__codexSciencePanelClearance={destroy,getState:()=>({disposed,ownedFrames:frame?1:0,minimumProtected:Boolean(minimum)})};schedule();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
+
+}
+</script>
+<style id="codex-science-consistency-style">
+/* Keep the existing 164px panel anchor; enlarge only the actual header ink box. */
+@media(min-width:721px){
+html body #app #stage:is(#stage):is(#stage) [data-codex-desktop-panel="1"]{width:164px!important;min-width:164px!important;max-width:164px!important;margin-left:0!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]{display:flex!important;align-items:center!important;gap:8px!important;width:var(--science-header-width,164px)!important;min-width:var(--science-header-width,164px)!important;max-width:var(--science-header-width,164px)!important;height:var(--science-header-height,44px)!important;min-height:44px!important;max-height:none!important;padding:2px 6px!important;overflow:visible!important;left:max(calc(12px - var(--codex-panel-left)),min(0px,calc(164px - var(--science-header-width,164px))))!important;right:auto!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>*{min-height:0!important;max-height:none!important;position:static!important;grid-column:auto!important;grid-row:auto!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>.dockTitle{display:flex!important;flex:1 1 auto!important;gap:6px!important;min-width:0!important;width:auto!important;max-width:none!important;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;line-height:1.3!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>.drawer-actions{display:flex!important;flex:0 0 auto!important;gap:6px!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"]>:is(.drawer-actions,.codex-drawer-actions):empty{display:none!important}
+html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"] button{width:auto!important;min-width:44px!important;max-width:none!important;height:auto!important;min-height:44px!important;max-height:none!important;line-height:1.3!important;padding:4px!important}
+html body #app #stage:is(#stage):is(#stage) #dataNotice{position:static!important;min-height:18px!important;height:auto!important;max-height:none!important;width:auto!important;line-height:1.2!important;overflow:visible!important}
+}
+html body #app #stage #dataClearBtn{min-width:44px!important;min-height:44px!important;max-width:100%!important;height:auto!important;margin:8px 0!important;padding:8px!important;white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.4!important}
+@media(max-width:720px){
+html body #app #stage:is(#stage) .drawer.mobile-sheet .sheet-close{width:44px!important;min-width:44px!important;max-width:none!important;height:44px!important;min-height:44px!important;max-height:none!important;box-sizing:border-box!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard){grid-template-columns:minmax(0,1fr) auto!important;align-items:start!important;gap:8px!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard) .task-step{display:block!important;position:static!important;grid-column:1!important;grid-row:1!important;width:max-content!important;min-width:0!important;max-width:100%!important;height:auto!important;min-height:0!important;margin:0!important;padding:6px 10px!important;clip:auto!important;clip-path:none!important;white-space:normal!important;overflow:visible!important;overflow-wrap:anywhere!important;line-height:1.2!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard)>.task-text{grid-column:1 / -1!important;grid-row:2!important;min-width:0!important}
+html body #app :is(#taskCard,#xn-task,#xnStepCard)>.progress-dots{grid-column:2!important;grid-row:1!important;align-self:center!important;max-width:100%!important;flex-wrap:wrap!important}
+}
+</style>
+<script id="codex-science-consistency-runtime">
+(()=>{
+  function mount(){
+    const shell=window.__codexScienceShell,stage=document.getElementById('stage'),state=window.__codexPageControllerV1?.getState();
+    if(!shell||!stage||state?.destroyed)return;
+    const panels=['controlDock','dataDock'].map(id=>document.getElementById(id)),headers=panels.map(panel=>panel?.querySelector('[data-codex-panel-header],.drawer-header')),actions=headers.map((head,i)=>head?.querySelector('#'+['control','data'][i]+'ToggleBtn')?.closest('.drawer-actions'));
+    if(['clearRecords','syncState','syncPresentation','destroy'].some(method=>typeof shell[method]!=='function')||panels.some((panel,i)=>!panel?.querySelector('.drawer-body')||!headers[i]?.querySelector('.dockTitle')||!actions[i]||!headers[i].contains(actions[i]))){console.error('[science-consistency] 缺少完整实验或数据面板接口');return;}
+    const events=new AbortController();
+    const clear=document.createElement('button');clear.id='dataClearBtn';clear.type='button';clear.className='iconBtn';clear.textContent='清空记录';clear.setAttribute('aria-label','清空数据面板记录，不重置关卡');
+    panels[1].querySelector('.drawer-body').append(clear);
+    const syncClear=s=>{const disabled=!s||s.destroyed||s.paused||s.mode==='auto';if(clear.disabled!==disabled)clear.disabled=disabled;};
+    clear.addEventListener('click',()=>{const s=window.__codexPageControllerV1?.getState();if(!s||s.destroyed||s.paused||s.mode==='auto')return;shell.clearRecords();},{signal:events.signal});
+    let destroyed=false;
+    function measure(){
+      if(destroyed||matchMedia('(max-width:720px)').matches)return;
+      const available=Math.max(44,stage.getBoundingClientRect().width-24),updates=headers.map((head,i)=>{const title=head.querySelector('.dockTitle'),range=document.createRange();range.selectNodeContents(title);const text=range.getBoundingClientRect(),actionBox=actions[i].getBoundingClientRect(),buttons=[...head.querySelectorAll('button')].map(n=>n.getBoundingClientRect());return{panel:panels[i],width:Math.min(available,Math.max(164,Math.ceil(text.width+actionBox.width+22))),height:Math.max(44,Math.ceil(Math.max(text.height+4,...buttons.map(r=>r.height))))};});
+      for(const{panel,width,height}of updates)for(const[name,value]of[['--science-header-width',width+'px'],['--science-header-height',height+'px']])if(panel.style.getPropertyValue(name)!==value)panel.style.setProperty(name,value);
+    }
+    const sizes=new ResizeObserver(measure);sizes.observe(stage);headers.forEach((head,i)=>{sizes.observe(head.querySelector('.dockTitle'));sizes.observe(actions[i]);});
+    const changes=new MutationObserver(records=>{if(records.some(r=>r.type==='childList'||r.oldValue!==r.target.getAttribute(r.attributeName)))measure();});
+    for(const head of headers)changes.observe(head,{childList:true,attributes:true,attributeFilter:['style','class'],attributeOldValue:true,subtree:true});
+    for(const panel of panels)changes.observe(panel,{attributes:true,attributeFilter:['class'],attributeOldValue:true});
+    window.addEventListener('resize',measure,{signal:events.signal});
+    for(const method of['syncState','syncPresentation']){const original=shell[method].bind(shell);shell[method]=(...args)=>{const result=original(...args);if(!destroyed)syncClear(args[0]??window.__codexPageControllerV1?.getState());return result;};}
+    const originalDestroy=shell.destroy.bind(shell);shell.destroy=(...args)=>{if(!destroyed){destroyed=true;events.abort();sizes.disconnect();changes.disconnect();clear.disabled=true;}return originalDestroy(...args);};
+    window.addEventListener('pagehide',()=>shell.destroy(),{once:true,signal:events.signal});syncClear(state);measure();document.fonts.ready.then(()=>{if(!destroyed)measure();});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+})();
+</script>
+
+<style id="codex-science-mobile-tab-height-v1">
+@media(max-width:720px){html body #app #stage:is(#stage) #mobileTabs{height:auto!important;min-height:44px!important;max-height:none!important;align-items:stretch!important}html body #app #stage:is(#stage) #mobileTabs button{height:auto!important;min-height:44px!important;max-height:none!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.35!important}}
+</style>
+<style id="codex-science-clearance-consumers-v1">
+@media(max-width:720px){html body #app #stage:is(#stage) .drawer.mobile-sheet{bottom:var(--science-mobile-sheet-bottom,62px)!important}html body #app #stage:is(#stage){padding-bottom:var(--science-apparatus-bottom,68px)!important}}
+@media(min-width:721px){html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"] button{position:static!important;inset:auto!important;transform:none!important;margin:0!important}}
+</style>
 </body>
 </html>
