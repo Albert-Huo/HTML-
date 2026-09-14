@@ -1656,7 +1656,7 @@ body #app .toolbar button:disabled{
           '乙、丙比较：压力相同，受力面积减小时海绵形变更明显。',
           '结论：压力作用效果与压力大小和受力面积有关。'
         ],
-        tableHeaders:['场景','压力(N)','受力面积(cm²)','海绵形变(mm)'],
+        tableHeaders:['场景','压力(N)','受力面积(cm²)','模拟形变(mm)'],
         controls:[],
         actions:[],
         tasks:[
@@ -2814,6 +2814,7 @@ body #app .toolbar button:disabled{
         }
         case 27:{
           const sceneLabel = ap.lastScene;
+          if(lab27Pointer.mode){ showToast('请先放好器材，再等待形变稳定后记录'); return null; }
           const expect = ['甲','乙','丙'][state.currentTask] || '';
           if(!ap.deskPlaced){
             showToast('请先把小桌拖到海绵上');
@@ -3255,7 +3256,7 @@ body #app .toolbar button:disabled{
           pillA.textContent = `场景：${ap.lastScene || '甲'}`;
           pillB.textContent = ap.deskPlaced ? `压力：${ap.lastForce || 0}N` : '压力：--';
           pillC.textContent = ap.deskPlaced ? `面积：${ap.lastArea || 0}cm²` : '面积：--';
-          pillD.textContent = ap.deskPlaced ? `形变：${displaySink.toFixed(1)}mm` : '形变：--';
+          pillD.textContent = ap.deskPlaced ? `模拟形变：${displaySink.toFixed(1)}mm` : '模拟形变：--';
           break;
           }
         case 28:
@@ -3427,17 +3428,45 @@ body #app .toolbar button:disabled{
       const rect = scene.getBoundingClientRect();
       const W = rect.width;
       const H = rect.height;
-      const sponge = { x:W*0.14, y:H-212, w:W*0.34, h:86 };
-      const tray = { x:W*0.56, y:H-94, w:W*0.19, h:16 };
-      const deskCx = sponge.x + sponge.w * 0.48;
-      const deskW = Math.min(132, sponge.w * 0.56);
-      const deskTopH = 15;
-      const legH = 34;
-      const sinkBaseY = sponge.y - 12;
-      const weightSize = 24;
-      const deskStageX = Math.max(26, sponge.x - deskW - 36);
-      const deskStageY = sponge.y - 8;
-      return { W, H, sponge, tray, deskCx, deskW, deskTopH, legH, sinkBaseY, weightSize, deskStageX, deskStageY };
+      let safeTop = 10;
+      ['hintLamp','audioToggle'].forEach(id=>{
+        const tool = document.getElementById(id);
+        if(tool){ const box = tool.getBoundingClientRect(); safeTop = Math.max(safeTop, box.bottom - rect.top + 10); }
+      });
+      const spongeW = Math.min(430, W - 40);
+      const info = { x:(W-Math.min(430,W-24))/2, y:safeTop, w:Math.min(430,W-24), h:84 };
+      const sponge = { x:(W-spongeW)/2, y:Math.max(info.y+info.h+88,H*0.45), w:spongeW, h:68, depth:12 };
+      const deskCx = sponge.x + sponge.w * 0.5;
+      const deskW = Math.min(144, sponge.w * 0.46);
+      const deskTopH = 12;
+      const legH = 36;
+      const weightSize = 36;
+      const deskStageX = sponge.x + 10;
+      const deskStageY = sponge.y + sponge.h + 16;
+      const tray = { x:sponge.x+sponge.w-86, y:deskStageY+legH+deskTopH, w:76, h:8 };
+      return { W, H, info, sponge, tray, deskCx, deskW, deskTopH, legH, weightSize, deskStageX, deskStageY };
+    }
+
+    function getLab27FootCenters(desk=getLab27PlacedDeskRect()){
+      return [0.12,0.26,0.74,0.88].map(ratio=>desk.x+desk.w*ratio);
+    }
+
+    function getLab27FoamSurfaceY(x, g=getLab27Layout(), ap=state.apparatus){
+      if(!ap.deskPlaced) return g.sponge.y;
+      const sink = clamp(ap.sinkDepth || 0, 0, g.sponge.h * 0.7);
+      const left = g.deskCx - g.deskW/2, right = g.deskCx + g.deskW/2;
+      let influence;
+      if(ap.orientation === 'down'){
+        const distance = Math.max(left-x,0,x-right);
+        influence = Math.exp(-Math.pow(distance/17,2));
+      }else{
+        const halfFoot = 4, shoulder = Math.min(10,g.deskW*0.055);
+        influence = Math.max(...getLab27FootCenters({x:left,w:g.deskW}).map(cx=>{
+          const distance = Math.max(0,Math.abs(x-cx)-halfFoot);
+          return Math.exp(-Math.pow(distance/shoulder,2));
+        }));
+      }
+      return g.sponge.y + sink*influence;
     }
 
     function getLab27Metrics(){
@@ -3493,18 +3522,10 @@ body #app .toolbar button:disabled{
     function getLab27PlacedDeskRect(){
       const ap = state.apparatus;
       const g = getLab27Layout();
-      const sink = ap.sinkDepth;
-      if(ap.orientation === 'up'){
-        return {
-          x:g.deskCx - g.deskW * 0.5,
-          y:g.sinkBaseY - g.legH + sink,
-          w:g.deskW,
-          h:g.legH + g.deskTopH
-        };
-      }
+      const sink = clamp(ap.sinkDepth || 0, 0, g.sponge.h * 0.7);
       return {
         x:g.deskCx - g.deskW * 0.5,
-        y:g.sponge.y - (g.legH + g.deskTopH) + 2.2,
+        y:g.sponge.y + sink - (g.legH + g.deskTopH),
         w:g.deskW,
         h:g.legH + g.deskTopH
       };
@@ -3528,10 +3549,9 @@ body #app .toolbar button:disabled{
         const surfaceY = ap.orientation === 'up'
           ? deskBox.y
           : deskBox.y + g.legH;
-        return { x:g.deskCx - size * 0.5, y:surfaceY - size * 0.9, w:size, h:size };
+        return { x:g.deskCx - size * 0.5, y:surfaceY - size, w:size, h:size };
       }
-      const traySurfaceY = g.tray.y - 5;
-      return { x:g.tray.x + g.tray.w * 0.5 - size * 0.5, y:traySurfaceY - size * 0.9, w:size, h:size };
+      return { x:g.tray.x + g.tray.w * 0.5 - size * 0.5, y:g.tray.y - size, w:size, h:size };
     }
 
     function getLab27DeskRect(){
@@ -3540,8 +3560,8 @@ body #app .toolbar button:disabled{
       if(ap.deskPlaced) return getLab27PlacedDeskRect();
       ensureLab27DeskStagePos();
       return {
-        x: ap.dragDeskX,
-        y: ap.dragDeskY,
+        x: lab27Pointer.mode === 'desk' ? ap.dragDeskX : g.deskStageX,
+        y: lab27Pointer.mode === 'desk' ? ap.dragDeskY : g.deskStageY,
         w: g.deskW,
         h: g.legH + g.deskTopH
       };
@@ -3597,7 +3617,7 @@ body #app .toolbar button:disabled{
       const p = stagePointToScene(stageX, stageY);
       const g = getLab27Layout();
       ap.dragDeskX = clamp(p.x - lab27Pointer.offX, 12, scene.getBoundingClientRect().width - g.deskW - 12);
-      ap.dragDeskY = clamp(p.y - lab27Pointer.offY, 18, g.sponge.y + 12);
+      ap.dragDeskY = clamp(p.y - lab27Pointer.offY, g.info.y+g.info.h+8, g.H-g.legH-g.deskTopH-10);
     }
 
     function commitLab27DeskDropAtStagePoint(stageX, stageY){
@@ -3633,7 +3653,32 @@ body #app .toolbar button:disabled{
       const p = stagePointToScene(stageX, stageY);
       const size = getLab27Layout().weightSize;
       ap.dragWeightX = clamp(p.x - lab27Pointer.offX, 6, scene.getBoundingClientRect().width - size - 6);
-      ap.dragWeightY = clamp(p.y - lab27Pointer.offY, 6, scene.getBoundingClientRect().height - size - 74);
+      ap.dragWeightY = clamp(p.y - lab27Pointer.offY, 6, scene.getBoundingClientRect().height - size - 10);
+      if(lab27Pointer.from === 'desk' && !lab27Pointer.detached){
+        const desk = getLab27PlacedDeskRect();
+        const surfaceY = desk.y + (ap.orientation === 'up' ? 0 : getLab27Layout().legH);
+        const cx = ap.dragWeightX + size/2;
+        if(Math.abs(ap.dragWeightY+size-surfaceY)>3 || cx<desk.x || cx>desk.x+desk.w){
+          lab27Pointer.detached = true;
+          ap.weightPos = 'held';
+          refreshLab27Setup(false);
+        }
+      }
+    }
+
+    function beginLab27WeightDrag(rect, x, y, pointerId){
+      Object.assign(lab27Pointer,{mode:'weight',id:pointerId,offX:clamp(x-rect.x,0,rect.w),offY:clamp(y-rect.y,0,rect.h),from:state.apparatus.weightPos,detached:false});
+      state.apparatus.dragWeightX = rect.x;
+      state.apparatus.dragWeightY = rect.y;
+    }
+
+    function cancelLab27Drag(){
+      const id = lab27Pointer.id;
+      if(lab27Pointer.mode === 'weight') state.apparatus.weightPos = lab27Pointer.from;
+      lab27Pointer.id = null;
+      lab27Pointer.mode = '';
+      if(id !== null && scene.hasPointerCapture(id)) scene.releasePointerCapture(id);
+      refreshLab27Setup(false);
     }
 
     function commitLab27WeightDropAtStagePoint(stageX, stageY){
@@ -3643,7 +3688,10 @@ body #app .toolbar button:disabled{
       const deskDrop = getLab27DeskDropRect();
       const trayDrop = getLab27TrayDropRect();
       let changed = false;
-      if(rectContainsPoint(deskDrop, p.x, p.y)){
+      if(rectContainsPoint(trayDrop, p.x, p.y)){
+        ap.weightPos = 'tray';
+        changed = true;
+      }else if(rectContainsPoint(deskDrop, p.x, p.y)){
         if(!ap.deskPlaced){
           showToast('先把小桌拖到海绵上');
           ap.weightPos = lab27Pointer.from || ap.weightPos;
@@ -3651,9 +3699,6 @@ body #app .toolbar button:disabled{
           ap.weightPos = 'desk';
           changed = true;
         }
-      }else if(rectContainsPoint(trayDrop, p.x, p.y)){
-        ap.weightPos = 'tray';
-        changed = true;
       }else{
         ap.weightPos = lab27Pointer.from || ap.weightPos;
       }
@@ -4528,297 +4573,119 @@ body #app .toolbar button:disabled{
     }
 
     function draw27(ctx,W,H){
-      const ap = state.apparatus;
-      const g = getLab27Layout();
-      const meta = getLab27Metrics();
-      const sink = ap.deskPlaced ? getLab27DisplayedSink() : 0;
-      const desk = getLab27DeskRect();
-      const weightRect = getLab27WeightRect();
-      const deskDrop = getLab27DeskDropRect();
-      const trayDrop = getLab27TrayDropRect();
+      const ap = state.apparatus, g = getLab27Layout(), meta = getLab27Metrics();
+      const desk = getLab27DeskRect(), weight = getLab27WeightRect();
+      const s = g.sponge, bottom = s.y+s.h, depth = s.depth;
+      const surface = x=>getLab27FoamSurfaceY(x,g,ap);
+      const traceSurface = (offsetX=0,offsetY=0,reverse=false)=>{
+        const steps = Math.ceil(s.w/2);
+        for(let i=0;i<=steps;i++){
+          const x = s.x+s.w*(reverse ? 1-i/steps : i/steps);
+          ctx.lineTo(x+offsetX,surface(x)+offsetY);
+        }
+      };
+      const frontPath = ()=>{
+        ctx.beginPath(); ctx.moveTo(s.x,bottom);
+        traceSurface(); ctx.lineTo(s.x+s.w,bottom); ctx.closePath();
+      };
 
-      const deskSurfaceY = desk.y + (ap.orientation === 'up' ? 0 : g.legH);
-      const deskContactY = ap.orientation === 'up' ? desk.y : desk.y + g.legH + g.deskTopH;
-      const contactW = ap.orientation === 'up' ? g.deskW * 0.72 : g.deskW * 0.82;
-      const depressDepth = clamp(
-        sink * (ap.orientation === 'up' ? 0.96 : 0.58),
-        ap.orientation === 'up' ? 12.0 : 0.9,
-        ap.orientation === 'up' ? 30 : 7.2
-      );
-      const spongeTop = !ap.deskPlaced ? g.sponge.y : (ap.orientation === 'up' ? g.sponge.y + 10 : g.sponge.y);
-      const leftX = g.sponge.x;
-      const rightX = g.sponge.x + g.sponge.w;
-      const dipL = g.deskCx - contactW * 0.5;
-      const dipR = g.deskCx + contactW * 0.5;
-      const spongeGrad = ctx.createLinearGradient(0, g.sponge.y, 0, g.sponge.y + g.sponge.h);
-      spongeGrad.addColorStop(0, '#ffcf76');
-      spongeGrad.addColorStop(0.55, '#f3b45d');
-      spongeGrad.addColorStop(1, '#d68433');
-      ctx.fillStyle = spongeGrad;
-      ctx.beginPath();
-      ctx.moveTo(leftX, g.sponge.y + g.sponge.h);
-      ctx.lineTo(leftX, spongeTop);
-      if(!ap.deskPlaced){
-        ctx.lineTo(rightX, spongeTop);
-      }else if(ap.orientation === 'up'){
-        const legCenters = [desk.x + 18, desk.x + g.deskW - 18, desk.x + 38, desk.x + g.deskW - 38];
-        const ordered = [...legCenters].sort((a,b)=>a-b);
-        const dimpleW = 13;
-        const shallowLift = Math.max(1.4, depressDepth * 0.18);
-        ctx.bezierCurveTo(leftX + 28, spongeTop - 2, ordered[0] - 24, spongeTop - 1, ordered[0] - dimpleW, spongeTop + shallowLift);
-        ordered.forEach((cx, idx)=>{
-          ctx.quadraticCurveTo(cx - dimpleW * 0.35, spongeTop + depressDepth * 0.72, cx, spongeTop + depressDepth);
-          ctx.quadraticCurveTo(cx + dimpleW * 0.35, spongeTop + depressDepth * 0.72, cx + dimpleW, spongeTop + shallowLift);
-          const next = ordered[idx + 1];
-          if(next){
-            const mid = (cx + next) * 0.5;
-            ctx.quadraticCurveTo(mid, spongeTop + shallowLift * 0.55, next - dimpleW, spongeTop + shallowLift);
-          }
-        });
-        ctx.bezierCurveTo(ordered[ordered.length - 1] + 18, spongeTop + 1, rightX - 28, spongeTop - 2, rightX, spongeTop);
-      }else{
-        const shoulderDip = depressDepth * 0.84;
-        const centerDip = depressDepth * 0.9;
-        const troughHalf = contactW * 0.28;
-        ctx.bezierCurveTo(leftX + 28, spongeTop - 2, dipL - 44, spongeTop + 0.3, dipL - 20, spongeTop + shoulderDip);
-        ctx.quadraticCurveTo(dipL + 6, spongeTop + centerDip, g.deskCx - troughHalf, spongeTop + centerDip);
-        ctx.lineTo(g.deskCx + troughHalf, spongeTop + centerDip);
-        ctx.quadraticCurveTo(dipR - 6, spongeTop + centerDip, dipR + 20, spongeTop + shoulderDip);
-        ctx.bezierCurveTo(dipR + 44, spongeTop + 0.3, rightX - 28, spongeTop - 2, rightX, spongeTop);
-      }
-      ctx.lineTo(rightX, g.sponge.y + g.sponge.h);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#ffd7a4';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(leftX, g.sponge.y + g.sponge.h);
-      ctx.lineTo(leftX, spongeTop);
-      if(!ap.deskPlaced){
-        ctx.lineTo(rightX, spongeTop);
-      }else if(ap.orientation === 'up'){
-        const legCenters = [desk.x + 18, desk.x + g.deskW - 18, desk.x + 38, desk.x + g.deskW - 38];
-        const ordered = [...legCenters].sort((a,b)=>a-b);
-        const dimpleW = 13;
-        const shallowLift = Math.max(1.4, depressDepth * 0.18);
-        ctx.bezierCurveTo(leftX + 28, spongeTop - 2, ordered[0] - 24, spongeTop - 1, ordered[0] - dimpleW, spongeTop + shallowLift);
-        ordered.forEach((cx, idx)=>{
-          ctx.quadraticCurveTo(cx - dimpleW * 0.35, spongeTop + depressDepth * 0.72, cx, spongeTop + depressDepth);
-          ctx.quadraticCurveTo(cx + dimpleW * 0.35, spongeTop + depressDepth * 0.72, cx + dimpleW, spongeTop + shallowLift);
-          const next = ordered[idx + 1];
-          if(next){
-            const mid = (cx + next) * 0.5;
-            ctx.quadraticCurveTo(mid, spongeTop + shallowLift * 0.55, next - dimpleW, spongeTop + shallowLift);
-          }
-        });
-        ctx.bezierCurveTo(ordered[ordered.length - 1] + 18, spongeTop + 1, rightX - 28, spongeTop - 2, rightX, spongeTop);
-      }else{
-        const shoulderDip = depressDepth * 0.84;
-        const centerDip = depressDepth * 0.9;
-        const troughHalf = contactW * 0.28;
-        ctx.bezierCurveTo(leftX + 28, spongeTop - 2, dipL - 44, spongeTop + 0.3, dipL - 20, spongeTop + shoulderDip);
-        ctx.quadraticCurveTo(dipL + 6, spongeTop + centerDip, g.deskCx - troughHalf, spongeTop + centerDip);
-        ctx.lineTo(g.deskCx + troughHalf, spongeTop + centerDip);
-        ctx.quadraticCurveTo(dipR - 6, spongeTop + centerDip, dipR + 20, spongeTop + shoulderDip);
-        ctx.bezierCurveTo(dipR + 44, spongeTop + 0.3, rightX - 28, spongeTop - 2, rightX, spongeTop);
-      }
-      ctx.lineTo(rightX, g.sponge.y + g.sponge.h);
-      ctx.closePath();
-      ctx.clip();
-      for(let i=0;i<12;i++){
-        const px = g.sponge.x + 8 + i * (g.sponge.w / 11);
-        ctx.strokeStyle = 'rgba(255,255,255,.10)';
-        ctx.beginPath();
-        ctx.moveTo(px, g.sponge.y + 10);
-        ctx.lineTo(px + 12, g.sponge.y + g.sponge.h - 10);
-        ctx.stroke();
-      }
-      for(let i=0;i<18;i++){
-        const px = g.sponge.x + 12 + (i % 6) * (g.sponge.w / 6) + ((i / 6)|0) * 9;
-        const py = g.sponge.y + 18 + ((i * 17) % Math.max(28, g.sponge.h - 34));
-        ctx.fillStyle = 'rgba(255,244,206,.16)';
-        ctx.beginPath();
-        ctx.arc(px, py, 2.2 + (i % 3) * 0.8, 0, Math.PI * 2);
-        ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.22)';
+      ctx.beginPath(); ctx.ellipse(g.deskCx,bottom+7,s.w*.52,9,0,0,Math.PI*2); ctx.fill();
+      // The top and pores use the same compressed coordinates as the contact surface.
+      const foamTop = ctx.createLinearGradient(0,s.y-depth,0,s.y+28);
+      foamTop.addColorStop(0,'#eed395'); foamTop.addColorStop(1,'#cba15a');
+      ctx.fillStyle = foamTop;
+      ctx.beginPath(); ctx.moveTo(s.x,surface(s.x));
+      traceSurface(); traceSurface(depth*.6,-depth,true); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#aa793a';
+      ctx.beginPath(); ctx.moveTo(s.x+s.w,surface(s.x+s.w));
+      ctx.lineTo(s.x+s.w+depth*.6,surface(s.x+s.w)-depth);
+      ctx.lineTo(s.x+s.w+depth*.6,bottom-depth); ctx.lineTo(s.x+s.w,bottom); ctx.closePath(); ctx.fill();
+      const foamFront = ctx.createLinearGradient(0,s.y,0,bottom);
+      foamFront.addColorStop(0,'#dfbc77'); foamFront.addColorStop(.6,'#cda363'); foamFront.addColorStop(1,'#b48748');
+      ctx.fillStyle = foamFront; frontPath(); ctx.fill();
+      ctx.save(); frontPath(); ctx.clip();
+      for(let row=0;row<7;row++) for(let col=0;col<Math.ceil(s.w/9);col++){
+        const seed = (col*37+row*53)%97;
+        const x = s.x+5+col*9+(row%2)*3+(seed%4);
+        const fraction = (row+.45+(seed%7)*.05)/7.6;
+        const top = surface(x), compression = (bottom-top)/s.h;
+        const y = top+(bottom-top)*fraction;
+        const rx = 1.1+(seed%5)*.26, ry = rx*compression*.78;
+        ctx.fillStyle = 'rgba(105,70,27,'+(.16+(seed%3)*.03)+')';
+        ctx.beginPath(); ctx.ellipse(x,y,rx,ry,(seed%4)*.3,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = 'rgba(255,235,175,.24)'; ctx.lineWidth = .65;
+        ctx.beginPath(); ctx.ellipse(x+.35,y+.35,rx,ry,0,.2,Math.PI); ctx.stroke();
       }
       ctx.restore();
+      ctx.strokeStyle = 'rgba(255,231,171,.75)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(s.x,surface(s.x)); traceSurface(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(92,64,29,.6)';
+      ctx.beginPath(); ctx.moveTo(s.x,surface(s.x)); ctx.lineTo(s.x,bottom);
+      ctx.lineTo(s.x+s.w,bottom); ctx.lineTo(s.x+s.w,surface(s.x+s.w)); ctx.stroke();
 
-      if(ap.deskPlaced && ap.orientation === 'down'){
-        const pocketTopY = deskContactY - 0.05;
-        const pocketBottomY = deskContactY + depressDepth * 0.76;
-        const leftPocketL = desk.x + 8;
-        const leftPocketR = dipL - 6;
-        const rightPocketL = dipR + 6;
-        const rightPocketR = desk.x + g.deskW - 8;
-        ctx.fillStyle = 'rgba(6,12,20,.42)';
-        if(leftPocketR - leftPocketL > 8){
-          ctx.beginPath();
-          ctx.moveTo(leftPocketL, pocketTopY);
-          ctx.quadraticCurveTo(leftPocketL + 4, pocketBottomY * 0.98, leftPocketR - 4, pocketBottomY);
-          ctx.quadraticCurveTo(leftPocketR - 1, pocketTopY + 1.2, leftPocketR, pocketTopY);
-          ctx.closePath();
-          ctx.fill();
-        }
-        if(rightPocketR - rightPocketL > 8){
-          ctx.beginPath();
-          ctx.moveTo(rightPocketL, pocketTopY);
-          ctx.quadraticCurveTo(rightPocketL + 1, pocketTopY + 1.2, rightPocketL + 4, pocketBottomY);
-          ctx.quadraticCurveTo(rightPocketR - 4, pocketBottomY * 0.98, rightPocketR, pocketTopY);
-          ctx.closePath();
-          ctx.fill();
-        }
+      const boardY = desk.y+(ap.orientation==='up'?0:g.legH);
+      const feet = getLab27FootCenters(desk);
+      const leg = (cx,index)=>{
+        const rear = index===1 || index===2, dy = rear ? -7 : 0;
+        const y = ap.orientation==='up' ? desk.y+g.deskTopH+dy : desk.y+dy;
+        const wood = ctx.createLinearGradient(cx-4,0,cx+4,0);
+        wood.addColorStop(0,rear?'#92663b':'#bb8951'); wood.addColorStop(.5,rear?'#b78b53':'#dfb47a'); wood.addColorStop(1,'#8e6035');
+        ctx.fillStyle = wood; ctx.fillRect(cx-4,y,8,g.legH);
+        ctx.strokeStyle = 'rgba(83,48,20,.35)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(cx-1,y+4); ctx.lineTo(cx-1,y+g.legH-3); ctx.stroke();
+      };
+      [1,2].forEach(index=>leg(feet[index],index));
+      if(ap.orientation==='up') [0,3].forEach(index=>leg(feet[index],index));
+      const board = ctx.createLinearGradient(0,boardY,0,boardY+g.deskTopH);
+      board.addColorStop(0,'#d4aa71'); board.addColorStop(.65,'#b78148'); board.addColorStop(1,'#956131');
+      ctx.fillStyle = board; ctx.fillRect(desk.x,boardY,desk.w,g.deskTopH);
+      ctx.fillStyle = '#e4c28e';
+      ctx.beginPath(); ctx.moveTo(desk.x,boardY); ctx.lineTo(desk.x+6,boardY-7);
+      ctx.lineTo(desk.x+desk.w,boardY-7); ctx.lineTo(desk.x+desk.w,boardY); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = '#edcf9b'; ctx.lineWidth = 1; ctx.strokeRect(desk.x,boardY,desk.w,g.deskTopH);
+      ctx.strokeStyle = 'rgba(113,70,28,.25)';
+      for(let i=0;i<3;i++){ ctx.beginPath(); ctx.moveTo(desk.x+8,boardY+3+i*3); ctx.lineTo(desk.x+desk.w-8,boardY+4+i*3); ctx.stroke(); }
+      if(ap.orientation==='down') [0,3].forEach(index=>leg(feet[index],index));
+
+      ctx.fillStyle = '#57636e'; roundRectPath(ctx,g.tray.x,g.tray.y,g.tray.w,g.tray.h,3); ctx.fill();
+      ctx.fillStyle = '#96a2ab'; ctx.fillRect(g.tray.x+3,g.tray.y,g.tray.w-6,2);
+      ctx.fillStyle = 'rgba(0,0,0,.22)';
+      ctx.beginPath(); ctx.ellipse(weight.x+weight.w/2,weight.y+weight.h,weight.w*.4,3,0,0,Math.PI*2); ctx.fill();
+      const metal = ctx.createLinearGradient(weight.x,0,weight.x+weight.w,0);
+      metal.addColorStop(0,'#72808c'); metal.addColorStop(.2,'#d5dce0');
+      metal.addColorStop(.45,'#f2f5f6'); metal.addColorStop(.75,'#a6b0b8'); metal.addColorStop(1,'#60717e');
+      const cx = weight.x+weight.w/2, bodyY = weight.y+12, bodyW = weight.w*.76;
+      ctx.fillStyle = metal; ctx.fillRect(cx-bodyW/2,bodyY,bodyW,weight.h-15);
+      ctx.beginPath(); ctx.ellipse(cx,weight.y+weight.h-3,bodyW/2,3,0,0,Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx,bodyY,bodyW/2,3,0,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#e7edf0'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(cx,weight.y+6,4,Math.PI,0);
+      ctx.lineTo(cx+4,bodyY); ctx.moveTo(cx-4,weight.y+6); ctx.lineTo(cx-4,bodyY); ctx.stroke();
+      ctx.strokeStyle = 'rgba(48,65,79,.45)'; ctx.lineWidth = .8;
+      ctx.beginPath(); ctx.ellipse(cx,bodyY,bodyW/2,3,0,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx-bodyW/2,bodyY); ctx.lineTo(cx-bodyW/2,weight.y+weight.h-3); ctx.stroke();
+
+      if(lab27Pointer.mode){
+        const targets = lab27Pointer.mode==='desk' ? [getLab27DeskDropRect()] : [getLab27DeskDropRect(),getLab27TrayDropRect()];
+        ctx.save(); ctx.setLineDash([5,4]); ctx.strokeStyle = 'rgba(127,230,177,.65)'; ctx.lineWidth = 1.5;
+        targets.forEach(r=>{roundRectPath(ctx,r.x,r.y,r.w,r.h,10);ctx.stroke();}); ctx.restore();
       }
-
-      const trayY = g.tray.y;
-      ctx.fillStyle = '#be9152';
-      ctx.fillRect(g.tray.x, trayY, g.tray.w, g.tray.h);
-      ctx.fillStyle = '#94693a';
-      ctx.fillRect(g.tray.x + 8, trayY - 5, g.tray.w - 16, 5);
-      ctx.fillStyle = '#dfeaff';
-      ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText('备用钩码', g.tray.x + 34, trayY + 28);
-
-      const tagX = g.sponge.x + 8;
-      const chipY = 18;
-      if(W >= 600) ['甲','乙','丙'].forEach((label, idx)=>{
-        const x = tagX + idx * 54;
-        const active = meta.sceneLabel === label;
-        ctx.fillStyle = active ? 'rgba(127,230,177,.18)' : 'rgba(255,255,255,.06)';
-        ctx.strokeStyle = active ? '#7fe6b1' : 'rgba(255,255,255,.16)';
-        ctx.lineWidth = 1.4;
-        roundRectPath(ctx, x, chipY, 40, 24, 12);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = active ? '#bff6d8' : '#dfeaff';
-        ctx.font = 'bold 12px -apple-system,Segoe UI';
-        ctx.fillText(label, x + 14, chipY + 16);
-      });
-
-      if(lab27Pointer.mode === 'desk'){
-        ctx.strokeStyle = 'rgba(127,230,177,.75)';
-        ctx.lineWidth = 2;
-        roundRectPath(ctx, deskDrop.x, deskDrop.y, deskDrop.w, deskDrop.h, 14);
-        ctx.stroke();
-      }else if(lab27Pointer.mode === 'weight'){
-        const hoverRect = rectContainsPoint(deskDrop, weightRect.x + weightRect.w * 0.5, weightRect.y + weightRect.h * 0.5)
-          ? deskDrop
-          : (rectContainsPoint(trayDrop, weightRect.x + weightRect.w * 0.5, weightRect.y + weightRect.h * 0.5) ? trayDrop : null);
-        if(hoverRect){
-          ctx.strokeStyle = 'rgba(127,230,177,.65)';
-          ctx.lineWidth = 2;
-          roundRectPath(ctx, hoverRect.x, hoverRect.y, hoverRect.w, hoverRect.h, 14);
-          ctx.stroke();
-        }
-      }
-
-      if(ap.orientation === 'up'){
-        const topY = desk.y;
-        ctx.fillStyle = 'rgba(15,28,44,.18)';
-        [desk.x + 18, desk.x + g.deskW - 18, desk.x + 38, desk.x + g.deskW - 38].forEach((cx)=>{
-          ctx.beginPath();
-          ctx.ellipse(cx, deskSurfaceY + 4.5, 7.5, 3.8 + depressDepth * 0.14, 0, 0, Math.PI * 2);
-          ctx.fill();
-        });
-        ctx.fillStyle = '#9fd8ff';
-        ctx.fillRect(desk.x, topY, g.deskW, g.deskTopH);
-        ctx.strokeStyle = '#eaf6ff';
-        ctx.strokeRect(desk.x, topY, g.deskW, g.deskTopH);
-        const legXs = [desk.x + 14, desk.x + g.deskW - 22, desk.x + 34, desk.x + g.deskW - 42];
-        legXs.forEach((lx)=>{
-          ctx.fillStyle = '#88bddf';
-          ctx.fillRect(lx, topY + g.deskTopH, 8, g.legH);
-          ctx.fillStyle = '#6ea6c7';
-          ctx.fillRect(lx - 2, topY + g.deskTopH + g.legH - 2 + sink * 0.06, 12, 4);
-        });
-      }else{
-        const topY = desk.y;
-        ctx.fillStyle = '#9fd8ff';
-        ctx.fillRect(desk.x, topY + g.legH, g.deskW, g.deskTopH);
-        ctx.strokeStyle = '#eaf6ff';
-        ctx.strokeRect(desk.x, topY + g.legH, g.deskW, g.deskTopH);
-        const legXs = [desk.x + 12, desk.x + g.deskW - 20, desk.x + 32, desk.x + g.deskW - 40];
-        legXs.forEach((lx)=>{
-          ctx.fillStyle = '#88bddf';
-          ctx.fillRect(lx, topY + 2, 8, g.legH);
-          ctx.fillStyle = '#7fb4d3';
-          ctx.fillRect(lx - 2, topY - 3, 12, 5);
-        });
-      }
-
-      const wx = weightRect.x, wy = weightRect.y, ww = weightRect.w, wh = weightRect.h;
-      const weightMetal = ctx.createLinearGradient(wx, wy, wx + ww, wy);
-      weightMetal.addColorStop(0, '#b6c2d2');
-      weightMetal.addColorStop(0.45, '#eef5ff');
-      weightMetal.addColorStop(1, '#8c9bb2');
-      ctx.fillStyle = 'rgba(8,16,26,.18)';
-      ctx.beginPath();
-      ctx.ellipse(wx + ww * 0.5, wy + wh * 0.94, ww * 0.24, wh * 0.06, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = weightMetal;
-      ctx.beginPath();
-      ctx.ellipse(wx + ww * 0.5, wy + wh * 0.34, ww * 0.28, wh * 0.10, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillRect(wx + ww * 0.22, wy + wh * 0.34, ww * 0.56, wh * 0.46);
-      ctx.beginPath();
-      ctx.ellipse(wx + ww * 0.5, wy + wh * 0.80, ww * 0.28, wh * 0.10, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#eef5ff';
-      ctx.lineWidth = 1.35;
-      ctx.strokeRect(wx + ww * 0.22, wy + wh * 0.34, ww * 0.56, wh * 0.46);
-      ctx.beginPath();
-      ctx.arc(wx + ww * 0.5, wy + wh * 0.16, ww * 0.11, Math.PI, 0);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(wx + ww * 0.39, wy + wh * 0.16);
-      ctx.lineTo(wx + ww * 0.39, wy + wh * 0.28);
-      ctx.moveTo(wx + ww * 0.61, wy + wh * 0.16);
-      ctx.lineTo(wx + ww * 0.61, wy + wh * 0.28);
-      ctx.stroke();
-
-      const compactInfo = W < 600;
-      const infoX = compactInfo ? 12 : W * 0.54;
-      const infoY = compactInfo ? 10 : H - 250;
-      const infoW = compactInfo ? W - 24 : 228;
-      const infoH = compactInfo ? 72 : 112;
-      ctx.fillStyle = 'rgba(21,33,49,.82)';
-      ctx.fillRect(infoX, infoY, infoW, infoH);
-      ctx.strokeStyle = 'rgba(149,183,216,.7)';
-      ctx.strokeRect(infoX, infoY, infoW, infoH);
-      ctx.fillStyle = '#dfeaff';
-      ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText(`场景：${meta.sceneLabel}`, infoX + 12, infoY + 20);
-      ctx.fillText(`压力：${ap.deskPlaced ? meta.force.toFixed(1)+'N' : '--'}`, compactInfo ? infoX + infoW - 106 : infoX + 16, infoY + (compactInfo ? 20 : 44));
-      ctx.fillText(`受力面积：${ap.deskPlaced ? meta.area + 'cm²' : '--'}`, infoX + 12, infoY + (compactInfo ? 42 : 66));
-      ctx.fillText(`海绵形变：${ap.deskPlaced ? sink.toFixed(1)+'mm' : '--'}`, infoX + 12, infoY + (compactInfo ? 62 : 88));
-
-      let opLabel = '拖动小桌到海绵上';
-      if(ap.deskPlaced){
-        if(state.freeMode){
-          opLabel = ap.orientation === 'down'
-            ? '翻面后可拖动钩码继续探索'
-            : '拖动钩码，自由探索；点击小桌可翻面';
-        }else if(state.currentTask === 0){
-          opLabel = '场景甲：小桌朝上，不加钩码并记录';
-        }else if(state.currentTask === 1){
-          opLabel = '场景乙：把钩码放到小桌上并记录';
-        }else if(state.currentTask === 2){
-          opLabel = ap.orientation === 'down'
-            ? (ap.weightPos === 'desk' ? '场景丙：已翻面，请记录当前形变' : '先把钩码重新放到翻面后的小桌上')
-            : (ap.weightPos === 'desk' ? '先将钩码放回托盘，再翻小桌' : '点击小桌翻面，再把钩码放上去');
-        }else{
-          opLabel = '比较甲、乙、丙并分析结论';
-        }
-      }
-      ctx.fillStyle = 'rgba(12,20,30,.92)';
-      roundRectPath(ctx, g.sponge.x, H - 56, 280, 28, 14);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(126,214,255,.26)';
-      ctx.stroke();
-      ctx.fillStyle = '#dfeaff';
-      ctx.font = '12px -apple-system,Segoe UI';
-      ctx.fillText(opLabel, g.sponge.x + 12, H - 38);
+      ctx.font = '12px -apple-system,Segoe UI'; ctx.fillStyle = '#c6d1dc'; ctx.textAlign = 'center';
+      ctx.fillText('钩码托盘',g.tray.x+g.tray.w/2,g.tray.y+24);
+      if(!ap.deskPlaced) ctx.fillText('小桌',desk.x+desk.w/2,desk.y+desk.h+22);
+      ctx.textAlign = 'left';
+      const info = g.info, secondX = info.x+info.w*.52;
+      ctx.fillStyle = 'rgba(20,31,43,.92)'; roundRectPath(ctx,info.x,info.y,info.w,info.h,10); ctx.fill();
+      ctx.strokeStyle = 'rgba(141,174,194,.3)'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.fillStyle = '#e1e9f0'; ctx.font = '12px -apple-system,Segoe UI';
+      ctx.fillText('场景：'+(lab27Pointer.mode ? '摆放中' : meta.sceneLabel),info.x+12,info.y+22);
+      ctx.fillText('压力 '+(ap.deskPlaced ? meta.force.toFixed(1)+' N' : '—'),secondX,info.y+22);
+      ctx.fillText('受力面积 '+(ap.deskPlaced ? meta.area+' cm²' : '—'),info.x+12,info.y+46);
+      ctx.fillStyle = '#edce91';
+      ctx.fillText('模拟形变 '+(ap.deskPlaced ? getLab27DisplayedSink().toFixed(1)+' mm' : '—'),secondX,info.y+46);
+      ctx.font = '10px -apple-system,Segoe UI'; ctx.fillStyle = '#94a6b5';
+      ctx.fillText('数值为示意模拟，非教材实测',info.x+12,info.y+72);
     }
 
     function draw28(ctx,W,H){
@@ -5145,21 +5012,15 @@ body #app .toolbar button:disabled{
         }
         lab27Pointer.id = null;
         lab27Pointer.mode = '';
+        if(scene.hasPointerCapture(e.pointerId)) scene.releasePointerCapture(e.pointerId);
       };
 
       scene.addEventListener('pointerdown', (e)=>{
-        if(state.autoPlaying) return;
+        if(state.autoPlaying || lab27Pointer.id !== null) return;
         const p = scenePointFromEvent(e);
         const weightRect = getLab27WeightRect();
         if(rectContainsPoint(weightRect, p.x, p.y)){
-          lab27Pointer.mode = 'weight';
-          lab27Pointer.id = e.pointerId;
-          lab27Pointer.offX = clamp(p.x - weightRect.x, 0, weightRect.w);
-          lab27Pointer.offY = clamp(p.y - weightRect.y, 0, weightRect.h);
-          lab27Pointer.from = state.apparatus.weightPos;
-          lab27Pointer.fromPlaced = !!state.apparatus.deskPlaced;
-          state.apparatus.dragWeightX = weightRect.x;
-          state.apparatus.dragWeightY = weightRect.y;
+          beginLab27WeightDrag(weightRect,p.x,p.y,e.pointerId);
           scene.setPointerCapture(e.pointerId);
           e.preventDefault();
           return;
@@ -5205,7 +5066,8 @@ body #app .toolbar button:disabled{
       });
 
       scene.addEventListener('pointerup', endDrag);
-      scene.addEventListener('pointercancel', endDrag);
+      scene.addEventListener('pointercancel', e=>{ if(lab27Pointer.id === e.pointerId) cancelLab27Drag(); });
+      scene.addEventListener('lostpointercapture', e=>{ if(lab27Pointer.id === e.pointerId) cancelLab27Drag(); });
     }
 
     function updateDynamic(dt){
@@ -5236,7 +5098,8 @@ body #app .toolbar button:disabled{
         if(document.hidden){
           ap.sinkDepth = ap.targetSinkDepth;
         }else{
-          ap.sinkDepth += (ap.targetSinkDepth - ap.sinkDepth) * Math.min(1, dt * 0.03);
+          const responseMs = ap.targetSinkDepth > ap.sinkDepth ? 210 : 300;
+          ap.sinkDepth += (ap.targetSinkDepth - ap.sinkDepth) * (1 - Math.exp(-Math.max(0,dt)/responseMs));
         }
         if(Math.abs(ap.sinkDepth - prevSink) > 0.04){
           updatePills();
@@ -5442,6 +5305,7 @@ body #app .toolbar button:disabled{
       clearAllTimers();
       lab15Pointer.id = null;
       lab15Pointer.mode = '';
+      if(LAB_ID === 27) cancelLab27Drag();
       lab27Pointer.id = null;
       lab27Pointer.mode = '';
       state.stepWarnIdx = -1;
@@ -5482,13 +5346,30 @@ body #app .toolbar button:disabled{
         ensure();
       };
       /* codex-physics-mode-source:local-wait:end */
+      const demoSetLab27PanelOpen = async (open)=>{
+        setControlCollapsed(!open);
+        controlDock.classList.toggle('collapsed', !open);
+        window.dispatchEvent(new CustomEvent('exp35:panel-state-changed'));
+        await wait(200);
+      };
       const doA = async (id, ms=950)=>{ performAction(id, false); updatePills(); await /* codex-physics-mode-source:phase-action-motion */ wait(ms, 'actionMotion'); };
       const doR = async (ms=850)=>{
         const before = state.records.length;
+        if(LAB_ID === 27){
+          let elapsed = 0;
+          while(Math.abs(state.apparatus.sinkDepth-state.apparatus.targetSinkDepth)>0.45){
+            if(elapsed >= 5000) throw new Error('foam-not-settled');
+            await wait(80); elapsed += 80;
+          }
+          await demoSetLab27PanelOpen(true);
+          await clickElementWithCursor(recordBtn,360);
+          ensure();
+        }
         addRecord();
         await /* codex-physics-mode-source:phase-record-confirm */ wait(ms, 'recordConfirm');
         ensure();
         if(state.records.length <= before) throw new Error('record-not-persisted');
+        if(LAB_ID === 27) await demoSetLab27PanelOpen(false);
       };
       const doStep = async (idx, msg, ms=700)=>{
         setStepUI(idx);
@@ -5682,6 +5563,7 @@ body #app .toolbar button:disabled{
           setVar('leftArm',12); setVar('leftForce',2); setVar('rightArm',6); setVar('rightForce',4);
           await doA('setLever', 850); await doA('observeLeverBalance', 900); await doR();
         }else if(LAB_ID===27){
+          await demoSetLab27PanelOpen(false);
           const ensureUp = async ()=>{
             if(state.apparatus.orientation === 'up') return;
             const p = scenePointToStage(...Object.values(getLab27DeskScenePoint()));
@@ -5710,13 +5592,7 @@ body #app .toolbar button:disabled{
             const weight = getLab27WeightRect();
             const start = scenePointToStage(weight.x + weight.w * 0.5, weight.y + weight.h * 0.5);
             const end = scenePointToStage(targetScenePoint.x, targetScenePoint.y);
-            lab27Pointer.mode = 'weight';
-            lab27Pointer.id = 1;
-            lab27Pointer.offX = weight.w * 0.5;
-            lab27Pointer.offY = weight.h * 0.5;
-            lab27Pointer.from = state.apparatus.weightPos;
-            state.apparatus.dragWeightX = weight.x;
-            state.apparatus.dragWeightY = weight.y;
+            beginLab27WeightDrag(weight,weight.x+weight.w/2,weight.y+weight.h/2,1);
             await dragDemoCursorPath([start, end], 860, (pt)=>applyLab27WeightDragAtStagePoint(pt.x, pt.y));
             commitLab27WeightDropAtStagePoint(end.x, end.y);
             await wait(760);
@@ -5776,6 +5652,7 @@ body #app .toolbar button:disabled{
         }
 
         await doStep(3, '步骤4：分析结论', 1200);
+        if(LAB_ID === 27) await demoSetLab27PanelOpen(true);
         await clickElementWithCursor(analyzeBtn, 760);
         analyzeConclusion(false);
         recalcProgress();
@@ -6371,7 +6248,7 @@ body #app .toolbar button:disabled{
     dataTab?.setAttribute('aria-expanded', String(dataOpen));
     syncBadge();
   }
-  function setInitialMobileState(){ if (isMobile()) { forceClassState('data', false); forceClassState('control', true); } syncMobileShell(); }
+  function setInitialMobileState(){ if (isMobile()) { forceClassState('data', false); forceClassState('control', false); } syncMobileShell(); }
   experimentTab?.addEventListener('click', () => clickToOpen('control'));
   dataTab?.addEventListener('click', () => clickToOpen('data'));
   controlClose?.addEventListener('click', () => { forceClassState('control', false); syncMobileShell(); });
