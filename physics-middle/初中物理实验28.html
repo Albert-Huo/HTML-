@@ -1676,7 +1676,7 @@ body #app .toolbar button:disabled{
         name:'观察液体对器壁的压强',
         catalog:'中小学实验教学目录 初中物理 28',
         textbook:'人教版初中物理 八下（液体压强现象）',
-        apparatusHint:'器材：透明容器、同一侧孔和喷距对比尺。打开侧孔，观察液面下降时喷流的变化。',
+        apparatusHint:'透明侧孔容器与喷距尺。读数为示意模拟，非实测。',
         bullets:[
           '打开容器侧孔，水向外喷出，说明液体对器壁有压强。',
           '保持侧孔位置不变，持续观察液面下降时喷流越来越近。',
@@ -1687,7 +1687,7 @@ body #app .toolbar button:disabled{
         actions:[{id:'startSameHole', label:'打开同一侧孔'}],
         tasks:[
           {text:'打开同一侧孔，观察水从器壁向外喷出。', hint:'点击“打开同一侧孔”，观察开始放水的现象。'},
-          {text:'继续观察液面下降，比较同一侧孔的喷距变化。', hint:'白色虚线保留初始轨迹，蓝色水流显示当前喷距。'},
+          {text:'继续观察液面下降，比较同一侧孔的喷距变化。', hint:'白色虚线是开始轨迹，蓝色是当前水流。观察结束后模拟自动封孔。'},
           {text:'分别记录开始放水和液面降低后的两组观察数据。', hint:'点击两次“记录数据”，比较同一侧孔的高、低液面。'},
           {text:'点击“分析结论”，完成本实验。', hint:'用侧孔喷水及液面下降时的喷距变化说明器壁压强。'}
         ]
@@ -2027,6 +2027,9 @@ body #app .toolbar button:disabled{
         case 27: return { pressed:false, sinkDepth:0, lastP:0, lastArea:20, lastForce:15, tests:[] };
         case 28: return {
           sameHoleOpened:false,
+          sameHoleFlowPhase:'ready',
+          sameHoleVisualTime:0,
+          sameHoleTailElapsed:0,
           sameHoleAnimating:false,
           sameHoleObserved:false,
           sameHoleProgress:0,
@@ -2651,9 +2654,12 @@ body #app .toolbar button:disabled{
         }
         case 28:{
           if(actionId === 'startSameHole'){
-            if(ap.sameHoleAnimating) break;
+            if(ap.sameHoleAnimating || ap.sameHoleFlowPhase === 'tail') break;
             ap.observationRun += 1;
             ap.sameHoleOpened = true;
+            ap.sameHoleFlowPhase = 'draining';
+            ap.sameHoleVisualTime = 0;
+            ap.sameHoleTailElapsed = 0;
             ap.sameHoleAnimating = true;
             ap.sameHoleObserved = false;
             ap.sameHoleProgress = 0;
@@ -2662,7 +2668,7 @@ body #app .toolbar button:disabled{
             ap.tests = [{ type:'high', run:ap.observationRun, level:ap.sameHoleLevel, depth:ap.sameHoleLevel - ap.sameHoleHoleHeight, jet:ap.sameHoleJetCurrent }];
             state.analysisOk = false;
             changed = true;
-            setStatus('同一侧孔持续喷水中，请观察液面下降时喷流逐渐变近');
+            setStatus('放水观察中：液面下降，喷距变近');
           }
           break;
         }
@@ -3236,9 +3242,11 @@ body #app .toolbar button:disabled{
           break;
         case 28:
           pillA.textContent = `孔上液深:${(ap.sameHoleLevel - ap.sameHoleHoleHeight).toFixed(1)}cm`;
-          pillB.textContent = `当前喷距:${ap.sameHoleJetCurrent.toFixed(1)}cm`;
-          pillC.textContent = `侧孔:${ap.sameHoleOpened ? '已打开' : '待打开'}`;
+          pillB.textContent = `${ap.sameHoleFlowPhase === 'draining' ? '模拟喷距' : '末次模拟喷距'}:${ap.sameHoleJetCurrent.toFixed(1)}cm`;
+          pillC.textContent = `侧孔:${ap.sameHoleFlowPhase === 'draining' ? '放水中' : ap.sameHoleOpened ? '已封闭' : '待打开'}`;
           pillD.textContent = `记录:${state.records.length}条`;
+          { const btn = getActionButtonById('startSameHole');
+            if(btn) btn.textContent = ap.sameHoleOpened ? '重新装水并观察' : '打开同一侧孔'; }
           break;
         case 29:
           pillA.textContent = `深度:${state.vars.depth}cm`;
@@ -4270,176 +4278,225 @@ body #app .toolbar button:disabled{
       ctx.fillText(`凹陷深度：${sink.toFixed(1)} mm`, gx + 20, gy + 100);
     }
 
+    const LAB28_TIMING = Object.freeze({ observation:6000, tail:450 });
+    // Glass and meniscus layers adapted from labs 14 / 12-1; keep lab 28's fixed-hole model.
+    function getLab28Layout(W=scene.clientWidth, H=scene.clientHeight){
+      const box = scene.getBoundingClientRect();
+      const safeTop = Math.max(8, ...['modeTag','statusTag','hintLamp','audioToggle'].map(id => {
+        const el = document.getElementById(id);
+        return el ? el.getBoundingClientRect().bottom - box.top + 10 : 0;
+      }));
+      const readout = { x:12, y:safeTop, w:W-24, h:46 };
+      const tankW = clamp(W * 0.24, 70, 120);
+      const y = readout.y + readout.h + 24;
+      const maxCm = 32;
+      const pxPerCm = Math.max(1, Math.min(7.4, (W-tankW-44)/maxCm, (H-y-54)/32));
+      const groupW = tankW + 14 + maxCm*pxPerCm;
+      const x = (W-groupW)/2;
+      const tank = { x, y, w:tankW, h:32*pxPerCm, bottom:y+32*pxPerCm };
+      const hole = { x:x+tankW-3, y:tank.bottom-state.apparatus.sameHoleHoleHeight*pxPerCm, length:12 };
+      const surfaceY = hole.y+state.apparatus.sameHoleFallHeight*pxPerCm;
+      const collector = { x:tank.x-9, y:surfaceY-2, surfaceY,
+        w:hole.x+hole.length+maxCm*pxPerCm-(tank.x-9)+8 };
+      return { W, H, readout, tank, hole, jetStart:{x:hole.x+hole.length,y:hole.y},
+        collector, pxPerCm, ruler:{y:tank.bottom+22,maxCm} };
+    }
+
+    function getLab28JetPoint(jetCm, t, g=getLab28Layout()){
+      return { x:g.jetStart.x+Math.max(0,jetCm)*g.pxPerCm*t,
+        y:g.jetStart.y+state.apparatus.sameHoleFallHeight*g.pxPerCm*t*t };
+    }
+
     function draw28(ctx,W,H){
       const ap = state.apparatus;
-      const topY = H * 0.18;
-      const tankH = H * 0.5;
-      const tankWidth = Math.min(240, W * 0.28);
-      const pxPerCm = Math.min(5, (W - tankWidth - 64) / 44);
+      const g = getLab28Layout(W,H);
+      const tank = g.tank, hole = g.hole, r = g.readout;
+      const flowing = ap.sameHoleFlowPhase === 'draining';
+      const tail = ap.sameHoleFlowPhase === 'tail';
+      const time = ap.sameHoleVisualTime || 0;
+      const waterY = tank.bottom-ap.sameHoleLevel*g.pxPerCm;
+      const cx = tank.x+tank.w/2;
+      const rimH = Math.min(8,tank.w*0.08);
+      ctx.save();
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
 
-      function drawSceneTitle(x, y, text, color='#dfeaff', maxWidth=Infinity){
-        const lines = Array.isArray(text) ? text : [text];
-        let size = 14;
-        while(size > 10){
-          ctx.font = `bold ${size}px -apple-system,Segoe UI`;
-          if(lines.every(line => ctx.measureText(line).width <= maxWidth)) break;
-          size -= 1;
-        }
-        ctx.fillStyle = color;
-        ctx.font = `bold ${size}px -apple-system,Segoe UI`;
-        lines.forEach((line, index) => ctx.fillText(line, x, y + index * (size + 3)));
+      // Two compact readings, separated from measured HUD/tools and the open mouth.
+      ctx.fillStyle = 'rgba(18,35,45,.72)';
+      ctx.strokeStyle = 'rgba(164,212,229,.20)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(r.x,r.y,r.w,r.h,9); ctx.fill(); ctx.stroke();
+      ctx.font = '600 12px -apple-system,Segoe UI';
+      ctx.fillStyle = '#dfedf4';
+      ctx.fillText('孔上液深 '+Math.max(0,ap.sameHoleLevel-ap.sameHoleHoleHeight).toFixed(1)+' cm',r.x+10,r.y+18);
+      ctx.fillStyle = '#a9e0ed';
+      const jetLabel = flowing ? '喷距 ' : ap.sameHoleOpened ? '末次喷距 ' : '喷距 ';
+      ctx.fillText(jetLabel+(ap.sameHoleOpened ? ap.sameHoleJetCurrent.toFixed(1)+' cm' : '—'),r.x+r.w/2+2,r.y+18);
+      ctx.font = '10px -apple-system,Segoe UI';
+      ctx.fillStyle = '#97afbf';
+      ctx.fillText('示意模拟 · 非实测',r.x+10,r.y+36);
+
+      // A shallow collector/bench gives the glass base and jet landing the same support.
+      const trayX = g.collector.x, trayW = g.collector.w, trayY = g.collector.y;
+      const trayGrad = ctx.createLinearGradient(0,trayY,0,trayY+14);
+      trayGrad.addColorStop(0,'#8f9da6'); trayGrad.addColorStop(.35,'#536674'); trayGrad.addColorStop(1,'#293d49');
+      ctx.fillStyle = trayGrad;
+      ctx.beginPath(); ctx.roundRect(trayX,trayY,trayW,12,4); ctx.fill();
+      ctx.strokeStyle = 'rgba(208,228,237,.42)';
+      ctx.beginPath();ctx.moveTo(trayX+5,trayY+2);ctx.lineTo(trayX+trayW-5,trayY+2);ctx.stroke();
+      ctx.fillStyle = 'rgba(0,0,0,.22)';
+      ctx.beginPath();ctx.ellipse(cx,g.collector.surfaceY+1,tank.w*.57,2,0,0,Math.PI*2);ctx.fill();
+
+      // Rear mouth / shell first; a transparent open ellipse is not a lid.
+      const glass = ctx.createLinearGradient(tank.x,0,tank.x+tank.w,0);
+      glass.addColorStop(0,'rgba(198,225,234,.20)');
+      glass.addColorStop(.16,'rgba(187,219,230,.06)');
+      glass.addColorStop(.75,'rgba(157,205,222,.03)');
+      glass.addColorStop(1,'rgba(183,218,232,.20)');
+      ctx.fillStyle = glass;
+      ctx.beginPath();ctx.roundRect(tank.x,tank.y,tank.w,tank.h, [2,2,12,12]);ctx.fill();
+      ctx.strokeStyle = 'rgba(170,212,229,.48)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();ctx.ellipse(cx,tank.y,tank.w/2,rimH,0,Math.PI,Math.PI*2);ctx.stroke();
+
+      // Clip water into the curved glass bottom, preserving level → height mapping.
+      ctx.save();
+      ctx.beginPath();ctx.roundRect(tank.x+3,tank.y+2,tank.w-6,tank.h-4,[0,0,10,10]);ctx.clip();
+      const water = ctx.createLinearGradient(0,waterY,0,tank.bottom);
+      water.addColorStop(0,'rgba(149,217,232,.40)');
+      water.addColorStop(.4,'rgba(81,169,195,.36)');
+      water.addColorStop(1,'rgba(52,143,176,.58)');
+      ctx.fillStyle = water;
+      ctx.fillRect(tank.x+3,waterY,tank.w-6,tank.bottom-waterY);
+      ctx.fillStyle = 'rgba(169,228,237,.28)';
+      ctx.beginPath();ctx.ellipse(cx,waterY,(tank.w-6)/2,rimH*.68,0,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle = 'rgba(194,242,247,.60)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();ctx.moveTo(tank.x+4,waterY-2);
+      ctx.quadraticCurveTo(cx,waterY+3,tank.x+tank.w-4,waterY-2);ctx.stroke();
+      if(flowing){
+        ctx.strokeStyle = 'rgba(218,246,250,.16)';
+        ctx.beginPath();ctx.ellipse(cx,waterY+1,tank.w*.24+Math.sin(time/430)*2,1.3,0,0,Math.PI);ctx.stroke();
       }
+      ctx.restore();
 
-      function drawBenchTank(x, y, w, h, fillRatio, liquidColor, label){
-        const innerPad = 8;
-        const liquidTop = y + h * (1 - clamp(fillRatio, 0, 1));
-        ctx.fillStyle = '#7a6041';
-        ctx.fillRect(x - 14, y + h + 8, w + 28, 12);
-        ctx.fillRect(x - 18, y + h + 18, 10, 30);
-        ctx.fillRect(x + w + 8, y + h + 18, 10, 30);
+      // Front glass edges and narrow reflections, never opaque over the liquid.
+      ctx.strokeStyle = 'rgba(210,235,244,.63)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();ctx.moveTo(tank.x,tank.y);
+      ctx.lineTo(tank.x,tank.bottom-11);ctx.quadraticCurveTo(tank.x,tank.bottom,cx,tank.bottom);
+      ctx.quadraticCurveTo(tank.x+tank.w,tank.bottom,tank.x+tank.w,tank.bottom-11);
+      ctx.lineTo(tank.x+tank.w,tank.y);ctx.stroke();
+      const shine = ctx.createLinearGradient(0,tank.y,0,tank.bottom);
+      shine.addColorStop(0,'rgba(239,250,255,.28)');shine.addColorStop(1,'rgba(239,250,255,.04)');
+      ctx.fillStyle = shine;
+      ctx.beginPath();ctx.roundRect(tank.x+8,tank.y+12,Math.max(4,tank.w*.07),tank.h-28,4);ctx.fill();
+      ctx.strokeStyle = 'rgba(239,250,255,.78)';
+      ctx.lineWidth = 1.7;
+      ctx.beginPath();ctx.ellipse(cx,tank.y,tank.w/2,rimH,0,0,Math.PI);ctx.stroke();
+      ctx.strokeStyle = 'rgba(193,222,234,.48)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();ctx.ellipse(cx,tank.bottom-2,tank.w*.52,2,0,0,Math.PI*2);ctx.stroke();
 
-        ctx.fillStyle = 'rgba(220,237,255,.1)';
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = '#d3e2f3';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x, y, w, h);
-        ctx.fillStyle = '#d7e3ef';
-        ctx.fillRect(x - 6, y - 6, w + 12, 8);
-        ctx.fillStyle = liquidColor;
-        ctx.fillRect(x + innerPad, liquidTop, w - innerPad * 2, y + h - liquidTop - innerPad);
-        ctx.fillStyle = 'rgba(255,255,255,.24)';
+      // Height ticks are cm, not an invented cylinder volume range.
+      ctx.font = '10px -apple-system,Segoe UI';
+      for(let cm=0;cm<=30;cm+=2){
+        const yy=tank.bottom-cm*g.pxPerCm;
+        ctx.strokeStyle='rgba(221,240,247,.55)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(tank.x+tank.w*.45,yy);
+        ctx.lineTo(tank.x+tank.w*.45+(cm%10===0?12:cm%5===0?9:5),yy);ctx.stroke();
+        if(cm%10===0){
+          ctx.fillStyle='#d5e7ef';ctx.fillText(String(cm),tank.x+tank.w*.45+15,yy+3);
+        }
+      }
+      ctx.fillStyle='#aac4d3';ctx.fillText('cm',tank.x+tank.w*.45+15,tank.y+34);
+
+      // Port, liquid channel and external jet share exact endpoint geometry.
+      ctx.fillStyle='rgba(215,232,239,.67)';
+      ctx.beginPath();ctx.roundRect(hole.x-2,hole.y-4,hole.length+3,8,3);ctx.fill();
+      ctx.strokeStyle=flowing?'#92d6e5':'#748995';ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(hole.x-3,hole.y);ctx.lineTo(g.jetStart.x,hole.y);ctx.stroke();
+      const plugY=hole.y+(flowing? -17:0);
+      ctx.fillStyle='#aa8160';ctx.strokeStyle='#e0b991';ctx.lineWidth=1;
+      ctx.beginPath();ctx.roundRect(g.jetStart.x-2,plugY-5,7,10,2);ctx.fill();ctx.stroke();
+
+      function referencePath(distance,color){
+        ctx.save();ctx.setLineDash([4,5]);ctx.strokeStyle=color;ctx.lineWidth=1;
         ctx.beginPath();
-        ctx.ellipse(x + w * 0.5, liquidTop + 2, Math.max(10, (w - innerPad * 2) * 0.5), 4.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,.22)';
-        ctx.fillRect(x + innerPad + 8, liquidTop + 4, 14, y + h - liquidTop - 16);
-        ctx.strokeStyle = 'rgba(225,238,255,.56)';
-        ctx.lineWidth = 1.2;
-        for(let i=0;i<=7;i++){
-          const yy = y + h - i * (h / 7);
-          ctx.beginPath();
-          ctx.moveTo(x - 12, yy);
-          ctx.lineTo(x, yy);
-          ctx.stroke();
+        for(let i=0;i<=48;i++){
+          const p=getLab28JetPoint(distance,i/48,g);
+          if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
         }
-        ctx.fillStyle = '#dfeaff';
-        ctx.font = '12px -apple-system,Segoe UI';
-        ctx.fillText(label, x + 2, y - 14);
-        return { x, y, w, h, liquidTop, bottom:y + h };
+        ctx.stroke();ctx.restore();
       }
-
-      function drawHorizontalRuler(zeroX, y, lenCm, title){
-        const x = zeroX;
-        const w = lenCm * pxPerCm + 12;
-        ctx.fillStyle = '#f1e2a8';
-        ctx.fillRect(x, y, w, 18);
-        ctx.strokeStyle = '#d2bf7d';
-        ctx.strokeRect(x, y, w, 18);
-        ctx.strokeStyle = 'rgba(90,70,25,.55)';
-        ctx.lineWidth = 1;
-        for(let i=0;i<=lenCm;i++){
-          const tx = x + i * pxPerCm;
-          const tick = i % 10 === 0 ? 10 : i % 5 === 0 ? 7 : 4;
-          ctx.beginPath();
-          ctx.moveTo(tx, y);
-          ctx.lineTo(tx, y + tick);
-          ctx.stroke();
-          if(i < lenCm && i % 10 === 0){
-            ctx.fillStyle = '#54472d';
-            ctx.font = '10px -apple-system,Segoe UI';
-            ctx.fillText(`${i}`, tx - (i === 0 ? 1 : 3), y + 16);
+      function waterPoint(t){ return getLab28JetPoint(ap.sameHoleJetCurrent,t,g); }
+      function waterSegment(from,to,width,color){
+        if(from>=to)return;
+        ctx.beginPath();
+        const first=waterPoint(from);ctx.moveTo(first.x,first.y);
+        for(let i=1;i<=28;i++){const p=waterPoint(from+(to-from)*i/28);ctx.lineTo(p.x,p.y);}
+        ctx.lineCap='round';ctx.lineWidth=width;ctx.strokeStyle=color;ctx.stroke();
+      }
+      if(ap.sameHoleOpened){
+        const highJet=sameHoleJetCm(ap.sameHoleLevelStart,ap.sameHoleHoleHeight,ap.sameHoleFallHeight);
+        referencePath(highJet,'rgba(224,234,240,.40)');
+        if(!flowing) referencePath(ap.sameHoleJetCurrent,'rgba(127,187,203,.44)');
+        if(flowing || tail){
+          // After sealing, the near end moves away; no new stream emerges from the plug.
+          const from=tail?clamp(ap.sameHoleTailElapsed/LAB28_TIMING.tail,0,1):0;
+          waterSegment(from,.86,3.2,'rgba(108,187,212,.46)');
+          waterSegment(from,.82,1.6,'rgba(183,235,245,.78)');
+          for(let i=0;i<8;i++){
+            const t=(time/680+i/8)%1;
+            if(t<from || t>.98)continue;
+            const p=waterPoint(t);
+            if(t<.78){
+              waterSegment(Math.max(from,t-.018),Math.min(.82,t+.023),1.1,'rgba(238,253,255,.72)');
+            }else{
+              ctx.save();ctx.translate(p.x,p.y);ctx.rotate(Math.atan2(24*g.pxPerCm*t,ap.sameHoleJetCurrent*g.pxPerCm));
+              ctx.fillStyle='rgba(166,227,242,.85)';
+              ctx.beginPath();ctx.ellipse(0,0,2.1,1.2,0,0,Math.PI*2);ctx.fill();ctx.restore();
+            }
           }
-        }
-        if(title){
-          ctx.fillStyle = '#cddaf0';
-          ctx.font = '11px -apple-system,Segoe UI';
-          ctx.fillText(title, x, y - 6);
-        }
-      }
-
-      function drawJetReal(startX, startY, jetCm, color, opts={}){
-        const dist = Math.max(0, jetCm) * pxPerCm;
-        const endX = startX + dist;
-        const endY = opts.landingY ?? startY + 48;
-        const c1x = startX + dist / 3;
-        const c1y = startY;
-        const c2x = startX + dist * 2 / 3;
-        const c2y = startY + (endY - startY) / 3;
-        ctx.save();
-        if(opts.dash) ctx.setLineDash([6,4]);
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = opts.shadowColor || 'rgba(255,255,255,.18)';
-        ctx.lineWidth = opts.shadowWidth || 7;
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, endX, endY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = opts.width || 4;
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, endX, endY);
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,.42)';
-        ctx.lineWidth = Math.max(1.2, (opts.width || 4) * 0.36);
-        ctx.beginPath();
-        ctx.moveTo(startX + 1, startY - 1);
-        ctx.bezierCurveTo(c1x, c1y - 1, c2x, c2y - 1, endX, endY - 1);
-        ctx.stroke();
-        if(opts.showSplash !== false){
-          ctx.fillStyle = color;
-          ctx.beginPath();
-          ctx.arc(endX, endY, 2.2, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.globalAlpha = 0.9;
-          ctx.beginPath();
-          ctx.arc(endX + 7, endY + 3, 1.8, 0, Math.PI * 2);
-          ctx.arc(endX + 12, endY + 1, 1.4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-        return { endX, endY };
-      }
-
-      function drawSameHoleScene(x, y, scale=1){
-        const tankW = tankWidth * scale;
-        const tank = drawBenchTank(x, y, tankW, tankH, ap.sameHoleLevel / 32, 'rgba(93,165,255,.38)', '清水');
-        drawSceneTitle(x, y - 42, '同一侧孔：液面下降，喷距变近', '#dfeaff', W - x - 16);
-
-        const holeY = tank.bottom - (ap.sameHoleHoleHeight / 32) * tankH;
-        const holeX = tank.x + tank.w - 2;
-        ctx.fillStyle = '#d3a54c';
-        ctx.fillRect(holeX - 1, holeY - 5, 12, 12);
-        ctx.fillStyle = '#dfeaff';
-        ctx.font = '12px -apple-system,Segoe UI';
-        ctx.fillText(`孔上液深 ${(ap.sameHoleLevel - ap.sameHoleHoleHeight).toFixed(1)} cm`, tank.x - 2, tank.y - 28);
-        const rulerY = tank.bottom + 34;
-        drawHorizontalRuler(holeX + 8, rulerY, 40, '喷距对比尺');
-        if(ap.sameHoleOpened){
-          drawJetReal(holeX + 8, holeY + 2, sameHoleJetCm(ap.sameHoleLevelStart, ap.sameHoleHoleHeight, ap.sameHoleFallHeight), 'rgba(255,255,255,.45)', {
-            dash:true,
-            width:3,
-            shadowWidth:5,
-            shadowColor:'rgba(255,255,255,.08)',
-            showSplash:false,
-            landingY:tank.bottom + 2
-          });
-          const jet = drawJetReal(holeX + 8, holeY + 2, ap.sameHoleJetCurrent, '#8fd8ff', { width:4.5, landingY:tank.bottom + 2 });
-          ctx.fillStyle = '#8fd8ff';
-          ctx.font = '11px -apple-system,Segoe UI';
-          ctx.fillText(`当前喷距 ${ap.sameHoleJetCurrent.toFixed(1)}cm`, holeX + 18, holeY - 8);
-          ctx.strokeStyle = 'rgba(143,216,255,.5)';
-          ctx.setLineDash([4,4]);
-          ctx.beginPath();
-          ctx.moveTo(jet.endX, rulerY - 14);
-          ctx.lineTo(jet.endX, rulerY + 18);
-          ctx.stroke();
-          ctx.setLineDash([]);
+          const landing=waterPoint(1);
+          const fade=tail?1-ap.sameHoleTailElapsed/LAB28_TIMING.tail:1;
+          ctx.save();ctx.globalAlpha=clamp(fade,0,1);
+          ctx.strokeStyle='rgba(153,224,240,.55)';ctx.lineWidth=1;
+          const ripple=(time%480)/480;
+          ctx.beginPath();ctx.ellipse(landing.x,g.collector.surfaceY,3+ripple*10,1+ripple*1.5,0,0,Math.PI*2);ctx.stroke();
+          for(let i=0;i<4;i++){
+            const age=(time/420+i/4)%1;
+            const side=i%2===0?-1:1;
+            ctx.fillStyle='rgba(168,229,244,.7)';
+            ctx.beginPath();ctx.ellipse(landing.x+side*age*11,g.collector.surfaceY-Math.sin(age*Math.PI)*7,1.1,1.5,side*.4,0,Math.PI*2);ctx.fill();
+          }
+          ctx.restore();
         }
       }
 
-      drawSameHoleScene((W - tankWidth - 40 * pxPerCm - 24) / 2, topY, 1);
+      const rulerY=g.ruler.y,zero=g.jetStart.x;
+      const rulerGrad=ctx.createLinearGradient(0,rulerY,0,rulerY+22);
+      rulerGrad.addColorStop(0,'#ddd1aa');rulerGrad.addColorStop(1,'#bba77a');
+      ctx.fillStyle=rulerGrad;
+      ctx.beginPath();ctx.roundRect(zero-3,rulerY,g.ruler.maxCm*g.pxPerCm+6,22,2);ctx.fill();
+      ctx.font='10px -apple-system,Segoe UI';
+      for(let cm=0;cm<=g.ruler.maxCm;cm++){
+        const xx=zero+cm*g.pxPerCm;
+        ctx.strokeStyle='rgba(69,61,43,.62)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(xx,rulerY);ctx.lineTo(xx,rulerY+(cm%10===0?9:cm%5===0?6:3));ctx.stroke();
+        if(cm%10===0){ctx.fillStyle='#4e4532';ctx.fillText(String(cm),xx-(cm===0?0:5),rulerY+19);}
+      }
+      if(ap.sameHoleOpened){
+        for(const [distance,color] of [
+          [sameHoleJetCm(ap.sameHoleLevelStart,ap.sameHoleHoleHeight,ap.sameHoleFallHeight),'#c1ccd4'],
+          [ap.sameHoleJetCurrent,'#8ad0e5']
+        ]){
+          const xx=zero+distance*g.pxPerCm;
+          ctx.fillStyle=color;
+          ctx.beginPath();ctx.moveTo(xx,rulerY-2);ctx.lineTo(xx-3,rulerY-7);ctx.lineTo(xx+3,rulerY-7);ctx.closePath();ctx.fill();
+        }
+      }
+      ctx.restore();
     }
 
     function draw29(ctx,W,H){
@@ -4731,18 +4788,33 @@ body #app .toolbar button:disabled{
       }
       if(LAB_ID === 28){
         if(ap.sameHoleAnimating){
-          ap.sameHoleProgress = clamp(ap.sameHoleProgress + dt / 3200, 0, 1);
+          ap.sameHoleVisualTime += Math.max(0,dt);
+          ap.sameHoleProgress = clamp(ap.sameHoleProgress + dt / LAB28_TIMING.observation, 0, 1);
           const t = ap.sameHoleProgress;
-          const ease = 1 - Math.pow(1 - t, 2.2);
-          ap.sameHoleLevel = round(ap.sameHoleLevelStart + (ap.sameHoleLevelEnd - ap.sameHoleLevelStart) * ease, 1);
+          // Ideal constant-section draining: square-root water head decreases uniformly.
+          const rootStart = Math.sqrt(ap.sameHoleLevelStart-ap.sameHoleHoleHeight);
+          const rootEnd = Math.sqrt(ap.sameHoleLevelEnd-ap.sameHoleHoleHeight);
+          ap.sameHoleLevel = ap.sameHoleHoleHeight + Math.pow(rootStart+(rootEnd-rootStart)*t,2);
           ap.sameHoleJetCurrent = sameHoleJetCm(ap.sameHoleLevel, ap.sameHoleHoleHeight, ap.sameHoleFallHeight);
           if(t >= 1){
             ap.sameHoleAnimating = false;
             ap.sameHoleObserved = true;
+            ap.sameHoleLevel = ap.sameHoleLevelEnd;
+            ap.sameHoleFlowPhase = 'tail';
+            ap.sameHoleTailElapsed = 0;
             ap.tests.push({ type:'low', run:ap.observationRun, level:ap.sameHoleLevel, depth:ap.sameHoleLevel - ap.sameHoleHoleHeight, jet:ap.sameHoleJetCurrent });
-            setStatus('液面下降时，同一侧孔喷流逐渐变近');
+            setStatus('观察完成，模拟自动封孔，尾水落下');
             updatePills();
             if(!state.autoPlaying) tryPassStep(false);
+          }
+        }else if(ap.sameHoleFlowPhase === 'tail'){
+          const elapsed = Math.min(Math.max(0,dt),LAB28_TIMING.tail-ap.sameHoleTailElapsed);
+          ap.sameHoleVisualTime += elapsed;
+          ap.sameHoleTailElapsed += elapsed;
+          if(ap.sameHoleTailElapsed >= LAB28_TIMING.tail){
+            ap.sameHoleFlowPhase = 'closed';
+            setStatus('侧孔已封闭，虚线保留喷距对比');
+            updatePills();
           }
         }
       }
@@ -5196,8 +5268,8 @@ body #app .toolbar button:disabled{
           await doAWithCursor('startSameHole', 180);
           setControlCollapsed(true);
           setDataCollapsed(true);
-          await doStep(1, '步骤2：观察同孔液面下降', 3400);
-          if(!state.apparatus.sameHoleObserved) throw new Error('AUTO_OBSERVATION_NOT_CONFIRMED');
+          await doStep(1, '步骤2：观察同孔液面下降', LAB28_TIMING.observation+LAB28_TIMING.tail+350);
+          if(!state.apparatus.sameHoleObserved || state.apparatus.sameHoleFlowPhase !== 'closed') throw new Error('AUTO_OBSERVATION_NOT_CONFIRMED');
           setControlCollapsed(false);
           await doStep(2, '步骤3：记录高、低液面', 700);
           await clickElementWithCursor(recordBtn, 620);
@@ -5819,7 +5891,7 @@ body #app .toolbar button:disabled{
     dataTab?.setAttribute('aria-expanded', String(dataOpen));
     syncBadge();
   }
-  function setInitialMobileState(){ if (isMobile()) { forceClassState('data', false); forceClassState('control', true); } syncMobileShell(); }
+  function setInitialMobileState(){ if (isMobile()) { forceClassState('data', false); forceClassState('control', false); } syncMobileShell(); }
   experimentTab?.addEventListener('click', () => clickToOpen('control'));
   dataTab?.addEventListener('click', () => clickToOpen('data'));
   controlClose?.addEventListener('click', () => { forceClassState('control', false); syncMobileShell(); });
