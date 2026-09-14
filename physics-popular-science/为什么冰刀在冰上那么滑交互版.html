@@ -1378,6 +1378,14 @@ html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!i
 <style id="codex-b7-entry-record-style">
 html body #b7Cursor{width:26px;height:32px;z-index:2147483646;transform:none!important;transition:opacity .18s ease!important;text-shadow:none!important;background:none!important;border:0!important;filter:drop-shadow(0 2px 3px #0008)}html body #b7Cursor.tap svg{animation:b7CursorPress 220ms ease-in-out both}@keyframes b7CursorPress{0%,100%{opacity:1}50%{opacity:.7}}
 </style>
+<style id="ice-observation-panel-style">
+body #app #stage #dataDock #iceObservation{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;padding:0 0 12px;border:0;border-bottom:1px solid var(--b7-line);border-radius:0;background:transparent!important}
+body #app #stage #dataDock .ice-data-title{margin:0 0 8px;font-size:14px;line-height:1.5;font-weight:800;color:inherit}
+body #app #stage #dataDock #iceObservation .ice-data-title{grid-column:1/-1;margin:0}
+body #app #stage #dataDock #iceObservation p{font-size:13px;line-height:1.5}
+body #app #stage #dataDock #iceObservation output{font-size:14px}
+body #app #stage #dataDock #iceHistoryTitle{margin-top:12px}
+</style>
 </head>
 <body>
 <main id="app">
@@ -2381,7 +2389,11 @@ const b7Experiment={
     let records=[],unseen=0;
     const table=document.createElement('table');table.className='record';table.id='scienceRecordTable';table.innerHTML='<thead><tr><th>次数</th><th>模式与关卡</th><th>操作</th><th>观察快照</th></tr></thead><tbody id="recordBody"></tbody>';
     const empty=document.createElement('div');empty.className='empty';empty.textContent='暂无观察记录。';
-    data.body.prepend(empty,table);
+    const observation=document.querySelector(config.observation);
+    if(!observation)throw new Error('[science-shell] 缺少冰刀实时观测区');
+    observation.insertAdjacentHTML('afterbegin','<h3 class="ice-data-title">当前观测</h3>');
+    const historyTitle=document.createElement('h3');historyTitle.id='iceHistoryTitle';historyTitle.className='ice-data-title';historyTitle.textContent='观察记录';
+    data.body.prepend(observation,historyTitle,empty,table);
     const sync=()=>{
       if(destroyed)return;
       const mobile=matchMedia('(max-width:720px)').matches;
@@ -3738,6 +3750,22 @@ html body #app :is(#taskCard,#xn-task,#xnStepCard)>.progress-dots{grid-column:2!
 <style id="codex-science-clearance-consumers-v1">
 @media(max-width:720px){html body #app #stage:is(#stage) .drawer.mobile-sheet{bottom:var(--science-mobile-sheet-bottom,62px)!important}html body #app #stage:is(#stage){padding-bottom:var(--science-apparatus-bottom,68px)!important}}
 @media(min-width:721px){html body #app #stage:is(#stage):is(#stage) [data-codex-panel-header="1"] button{position:static!important;inset:auto!important;transform:none!important;margin:0!important}}
+</style>
+<style id="ice-task-card-compact-v1">
+html body #app #taskCard{position:relative!important;grid-template-columns:minmax(0,1fr) auto!important;gap:4px 8px!important;padding:12px 14px!important;border-radius:10px!important;align-items:center!important}
+html body #app #taskCard #taskStep{display:block!important;position:absolute!important;width:1px!important;min-width:1px!important;max-width:1px!important;height:1px!important;min-height:0!important;max-height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+html body #app #taskCard>.task-text{grid-column:1!important;grid-row:1!important;min-width:0!important}
+html body #app #taskCard #taskText{font-size:14px!important;line-height:1.55!important;font-weight:400!important;white-space:normal!important;overflow-wrap:anywhere!important}
+html body #app #taskCard #taskHint{margin-top:2px!important;font-size:12px!important;line-height:1.55!important;white-space:normal!important}
+html body #app #taskCard>.progress-dots{position:static!important;right:auto!important;grid-column:2!important;grid-row:1!important;justify-content:flex-end!important;justify-self:end!important;align-self:center!important;gap:6px!important;margin:0!important}
+html body #app #taskCard>.progress-dots>*{width:10px!important;height:10px!important;outline-width:1px!important}
+@media(max-width:720px){
+  html body #app #taskCard{padding:8px 10px!important}
+  html body #app #taskCard #taskText{font-size:13px!important;line-height:1.38!important;font-weight:650!important}
+  html body #app #taskCard #taskHint{font-size:11px!important;line-height:1.38!important}
+  html body #app #taskCard>.progress-dots{gap:5px!important}
+  html body #app #taskCard>.progress-dots>*{width:8px!important;height:8px!important}
+}
 </style>
 </body>
 </html>
