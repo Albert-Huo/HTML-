@@ -980,6 +980,22 @@ body #app .toolbar button:disabled{
   }
 </style>
 
+<style id="lab29-apparatus-layout">
+  #labArea{position:relative}
+  #lab29Scenes{position:absolute;display:flex;gap:6px;z-index:65}
+  #lab29Scenes[hidden]{display:none}
+  #lab29Scenes button{flex:1;min-height:32px;padding:5px 8px;font-size:12px;background:#132631;border:1px solid #375463;border-radius:8px;color:#cbdde6}
+  #lab29Scenes button[aria-pressed="true"]{background:#124b4b;border-color:#58c7b3;color:#efffff}
+  body #app #stage #controlDock #actionBtns:empty,
+  body #app #stage #controlDock #controlFields:empty{display:none!important}
+  @media(max-width:720px){
+    body #app #stage#stage #controlDock #controlBody,
+    body #app #stage#stage #dataDock #dataBody{grid-template-columns:minmax(0,1fr) 32px!important}
+    body #app #stage#stage #controlDock #controlBody .sheet-close,
+    body #app #stage#stage #dataDock #dataBody .sheet-close{display:inline-flex!important;width:32px!important;min-width:32px!important;height:32px!important}
+    body #app #stage#stage #dataDock #dataBody{max-height:132px!important}
+  }
+</style>
 </head>
 <body>
 <script id="codex-lab-sound-bus" data-native-audio="false">
@@ -1225,6 +1241,11 @@ body #app .toolbar button:disabled{
     <div class="hint-pop" id="hintPop"></div>
 <div class="lab-area" id="labArea">
       <canvas id="scene"></canvas>
+      <div id="lab29Scenes" role="group" aria-label="切换观察器材" hidden>
+        <button type="button" data-scene="side">侧膜容器</button>
+        <button type="button" data-scene="bottom">底膜容器</button>
+        <button type="button" data-scene="bag">塑料袋</button>
+      </div>
     </div>
 
     <div class="dock drawer control" id="controlDock" style="left:10px; bottom:10px;">
@@ -1700,20 +1721,20 @@ body #app .toolbar button:disabled{
       29:{
         name:'观察或体验液体的内部压强',
         catalog:'中小学实验教学目录 初中物理 29',
-        textbook:'人教版初中物理 八下（液体内部压强）',
+        textbook:'人教版八下相关原理；本页器材为教学示意',
         apparatusHint:'器材：带侧膜和底膜的空容器 + 水杯 + 空塑料袋。先向容器或塑料袋加水，再观察鼓起现象。',
         bullets:[
           '先把水加到带侧膜的空容器里，观察侧膜向外鼓起。',
           '再向带底膜的空容器加水，观察底膜向下鼓起。',
-          '最后向空塑料袋加水，体验袋壁向各个方向鼓起。'
+          '最后向开口塑料袋加水，观察袋壁被水撑鼓。'
         ],
         tableHeaders:['体验场景','现象','作用方向','备注'],
         controls:[],
         actions:[],
         tasks:[
-          {text:'先拖动水杯向空容器加水，观察侧壁橡皮膜向外鼓起，并记录现象。', hint:'本步只看侧壁受液体压强作用的现象。'},
-          {text:'再向底部带橡皮膜的空容器加水，观察其向下鼓起，并记录现象。', hint:'本步只看底部受液体压强作用的现象。'},
-          {text:'拖动水杯向空塑料袋加水，观察袋壁向四周鼓起，并记录现象。', hint:'本步体验液体内部各方向都有压强。'},
+          {text:'向侧膜容器加水，观察膜的变化并记录。', hint:'拖水杯到开口，持杯约 2 秒；松手观察。水未接触膜时，膜不鼓起。'},
+          {text:'向底膜容器加水，观察膜的变化并记录。', hint:'对准开口持杯加水；松手后观察底膜向下鼓起。'},
+          {text:'向塑料袋加水，观察袋壁的变化并记录。', hint:'对准袋口持杯加水；松手后观察袋壁被水撑鼓。'},
           {text:'点击“分析结论”，完成本实验。', hint:'结论应包含“液体内部各个方向都有压强”。'}
         ]
       },
@@ -2033,25 +2054,16 @@ body #app .toolbar button:disabled{
           lastScene:'',
           lastPhenomenon:'',
           lastDirection:'',
-          lastStrength:0,
+          selectedScene:'side', visualTime:0,
           sideCupLevel:0.82,
           bottomCupLevel:0.82,
           bagCupLevel:0.82,
-          sideCupLevelTarget:0.82,
-          bottomCupLevelTarget:0.82,
-          bagCupLevelTarget:0.82,
           sideFill:0,
           bottomFill:0,
           bagFill:0,
           sideBulge:0,
           bottomBulge:0,
           bagBulge:0,
-          sideFillTarget:0,
-          bottomFillTarget:0,
-          bagFillTarget:0,
-          sideTarget:0,
-          bottomTarget:0,
-          bagTarget:0,
           hitZones:{},
           sideObserved:false,
           bottomObserved:false,
@@ -2121,6 +2133,7 @@ body #app .toolbar button:disabled{
     }
 
     function setFreeMode(on){
+      if(LAB_ID===29) resetLab29Pointer();
       state.freeMode = !!on;
       updateModeTag();
       freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
@@ -2815,13 +2828,22 @@ body #app .toolbar button:disabled{
           return { c1:String(ap.lastDepth), c2:String(round(ap.lastDepth * 0.1, 2)), c3:String(ap.lastJet), c4:'侧壁压强表现', y:ap.lastJet };
         }
         case 29:{
-          if(!ap.lastScene){ showToast('请先向器材加水并观察现象'); return null; }
+          const kind=getLab29Layout().active;
+          if(lab29Pointer.dragging || ap[kind+'Fill']<.98 || !ap[kind+'Observed'] ||
+             Math.abs(ap[kind+'Bulge']-getLab29Load(kind,ap[kind+'Fill']))>.015){
+            showToast('请持续加水，松手待形变稳定后再记录'); return null;
+          }
+          const info={
+            side:['侧壁橡皮膜','向外鼓起','侧向'],
+            bottom:['底部橡皮膜','向下鼓起','向下'],
+            bag:['装水塑料袋','袋壁被水撑鼓','侧向、向下']
+          }[kind];
           return {
-            c1:ap.lastScene,
-            c2:ap.lastPhenomenon,
-            c3:ap.lastDirection,
+            c1:info[0],
+            c2:info[1],
+            c3:info[2],
             c4:state.freeMode ? '自由体验' : '引导体验',
-            y:ap.lastStrength || 1
+            y:0
           };
         }
         case 30:{
@@ -3397,207 +3419,159 @@ body #app .toolbar button:disabled{
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     }
 
-    function getLab29Layout(W, H){
-      const showAll = state.freeMode || state.currentTask >= 3;
-      if(!showAll){
-        const big = { x: W*0.23, y: H*0.12, w: W*0.50, h: H*0.72 };
-        if(state.currentTask === 0) return { showAll:false, side:big, active:'side' };
-        if(state.currentTask === 1) return { showAll:false, bottom:big, active:'bottom' };
-        return { showAll:false, bag:big, active:'bag' };
+    const LAB29_POUR_MS = 1800;
+    const LAB29_KINDS = ['side','bottom','bag'];
+    function getLab29Layout(W=scene.clientWidth, H=scene.clientHeight){
+      // Measured tool clearance and glass layering adapted from lab 28.
+      const box = scene.getBoundingClientRect();
+      const safeTop = Math.max(8, ...['modeTag','statusTag','hintLamp','audioToggle'].map(id=>{
+        const el=document.getElementById(id);
+        return el ? el.getBoundingClientRect().bottom-box.top+10 : 0;
+      }));
+      const canSwitch = state.freeMode || state.currentTask >= 3;
+      const active = canSwitch ? state.apparatus.selectedScene : LAB29_KINDS[state.currentTask];
+      const width = Math.min(W-24, 560);
+      const y = safeTop+34+(canSwitch ? 38 : 0);
+      let visibleBottom=H-12;
+      const openDocks=[controlDock,dataDock].filter(dock=>
+        !dock.classList.contains('collapsed') && getComputedStyle(dock).display!=='none');
+      const dataViewing=W<=760 && openDocks.includes(dataDock);
+      if(W<=760) for(const dock of openDocks){
+        const top=dock.getBoundingClientRect().top-box.top;
+        if(top>y+70) visibleBottom=Math.min(visibleBottom,top-10);
       }
-      const y = H*0.2;
-      const w = W*0.22;
-      const h = H*0.56;
-      return {
-        showAll:true,
-        side:{ x: W*0.07, y, w, h },
-        bottom:{ x: W*0.385, y, w, h },
-        bag:{ x: W*0.695, y: y + H*0.01, w: W*0.21, h: H*0.52 },
-        active:'all'
-      };
+      const room=Math.max(130,visibleBottom-y);
+      const rect={x:(W-width)/2,y,w:width,h:room,dataViewing};
+      return {safeTop,canSwitch,dataViewing,showAll:false,active:active||'side',side:{...rect},bottom:{...rect},bag:{...rect}};
     }
 
     function getLab29CupRect(rect){
-      return {
-        x: rect.x + rect.w * 0.60,
-        y: rect.y + rect.h * 0.08,
-        w: rect.w * 0.30,
-        h: rect.h * 0.28
-      };
+      const tank=getLab29TankRect(rect);
+      const receiver=Math.PI/4*(tank.w-4)**2*(tank.h-4)*.78;
+      // Frustum pitcher capacity and cylinder capacity share one display scale.
+      let lo=52,hi=190;
+      for(let i=0;i<24;i++){
+        const w=(lo+hi)/2,top=w-16,base=w-24,h=w*1.12-15;
+        const transferred=Math.PI*h*(top*top+top*base+base*base)/12*.66;
+        if(transferred<receiver)lo=w;else hi=w;
+      }
+      const w=(lo+hi)/2,h=w*1.12;
+      return {x:rect.x+rect.w-w-20,y:rect.y+4,w,h};
     }
 
     function getLab29TankRect(rect){
-      return {
-        x: rect.x + rect.w * 0.35,
-        y: rect.y + rect.h * 0.23,
-        w: rect.w * 0.20,
-        h: rect.h * 0.50
-      };
+      const h=rect.dataViewing?clamp(rect.h-52,80,126):clamp(rect.h*.36,80,132);
+      const w=clamp(h*.70,70,100);
+      const y=rect.dataViewing?rect.y+8:rect.y+rect.h-h-44;
+      return {x:rect.x+rect.w*.30-w/2,y,w,h};
     }
 
     function getLab29BagRect(rect){
-      return {
-        x: rect.x + rect.w * 0.39,
-        y: rect.y + rect.h * 0.27,
-        w: rect.w * 0.16,
-        h: rect.h * 0.30
-      };
+      const tank=getLab29TankRect(rect),w=tank.w*1.20;
+      return {x:rect.x+rect.w*.30-w/2,y:tank.y,w,h:tank.h};
     }
 
-    function getLab29TargetRect(rect, kind){
-      if(kind === 'side' || kind === 'bottom'){
-        const tank = getLab29TankRect(rect);
-        return {
-          x: tank.x - 44,
-          y: tank.y - 24,
-          w: tank.w + 88,
-          h: 56
-        };
+    function getLab29TargetRect(rect,kind){
+      const item=kind==='bag'?getLab29BagRect(rect):getLab29TankRect(rect);
+      return {x:item.x-12,y:item.y-30,w:item.w+24,h:48};
+    }
+
+    function getLab29PourAnchor(rect,kind){
+      const item=kind==='bag'?getLab29BagRect(rect):getLab29TankRect(rect);
+      return {x:item.x+item.w/2,y:item.y};
+    }
+
+    function getLab29CupPolygon(rect,rot,pivotX,pivotY){
+      const cos=Math.cos(rot),sin=Math.sin(rot);
+      return [[8,10],[rect.w-8,10],[rect.w-12,rect.h-5],[12,rect.h-5]].map(([x,y])=>({
+        x:rect.x+pivotX+(x-pivotX)*cos-(y-pivotY)*sin,
+        y:rect.y+pivotY+(x-pivotX)*sin+(y-pivotY)*cos
+      }));
+    }
+
+    function lab29PolygonArea(points){
+      return Math.abs(points.reduce((sum,p,i)=>{
+        const q=points[(i+1)%points.length];
+        return sum+p.x*q.y-q.x*p.y;
+      },0))/2;
+    }
+
+    function lab29WaterPolygon(points,lineY){
+      const clipped=[];
+      points.forEach((p,i)=>{
+        const q=points[(i+1)%points.length],inside=p.y>=lineY,next=q.y>=lineY;
+        if(inside) clipped.push(p);
+        if(inside!==next){
+          const t=(lineY-p.y)/(q.y-p.y);
+          clipped.push({x:p.x+(q.x-p.x)*t,y:lineY});
+        }
+      });
+      return clipped;
+    }
+
+    function getLab29CupWaterLine(rect,rot,pivotX,pivotY,fill){
+      const polygon=getLab29CupPolygon(rect,rot,pivotX,pivotY);
+      const area=lab29PolygonArea(polygon);
+      let lo=Math.min(...polygon.map(p=>p.y)),hi=Math.max(...polygon.map(p=>p.y));
+      for(let i=0;i<24;i++){
+        const mid=(lo+hi)/2;
+        if(lab29PolygonArea(lab29WaterPolygon(polygon,mid))>area*fill) lo=mid;
+        else hi=mid;
       }
-      const bag = getLab29BagRect(rect);
-      return {
-        x: bag.x - 26,
-        y: bag.y - 22,
-        w: bag.w + 52,
-        h: 52
-      };
+      return (lo+hi)/2;
     }
 
-    function getLab29PourAnchor(rect, kind){
-      if(kind === 'side' || kind === 'bottom'){
-        const tank = getLab29TankRect(rect);
-        return {
-          x: tank.x + tank.w * 0.5,
-          y: tank.y + 6
-        };
+    function getLab29PourCupRect(anchor,kind,sourceRect){
+      const w=sourceRect.w,h=sourceRect.h,pivotX=w*.8,pivotY=h*.72;
+      const fill=state.apparatus[kind+'CupLevel'];
+      // Tilt to the current free surface at the spout, not a fixed angle.
+      let lo=-1.55,hi=0;
+      for(let i=0;i<18;i++){
+        const rot=(lo+hi)/2,poly=getLab29CupPolygon({x:0,y:0,w,h},rot,pivotX,pivotY);
+        const lipY=pivotY+(7-pivotX)*Math.sin(rot)+(10-pivotY)*Math.cos(rot);
+        const capacity=lab29PolygonArea(lab29WaterPolygon(poly,lipY))/lab29PolygonArea(poly);
+        if(capacity<fill) lo=rot; else hi=rot;
       }
-      const bag = getLab29BagRect(rect);
-      return {
-        x: bag.x + bag.w * 0.5,
-        y: bag.y + 4
-      };
+      const rot=(lo+hi)/2,cos=Math.cos(rot),sin=Math.sin(rot);
+      const dx=pivotX+(7-pivotX)*cos-(10-pivotY)*sin;
+      const dy=pivotY+(7-pivotX)*sin+(10-pivotY)*cos;
+      const polygon=getLab29CupPolygon({x:0,y:0,w,h},rot,pivotX,pivotY);
+      const clearance=Math.max(28,Math.max(...polygon.map(p=>p.y))-dy+14);
+      return {x:anchor.x-dx,y:anchor.y-clearance-dy,w,h,rot,pivotX,pivotY};
     }
 
-    function getLab29PourCupRect(anchor, kind, sourceRect){
-      const w = sourceRect ? sourceRect.w : (kind === 'bag' ? 74 : 72);
-      const h = sourceRect ? sourceRect.h : (kind === 'bag' ? 56 : 54);
-      const rot = -1.14;
-      const pivotX = w * 0.8;
-      const pivotY = h * 0.72;
-      const lipLocalX = 7;
-      const lipLocalY = 10;
-      const cos = Math.cos(rot);
-      const sin = Math.sin(rot);
-      const dx = lipLocalX - pivotX;
-      const dy = lipLocalY - pivotY;
-      const worldDx = dx * cos - dy * sin;
-      const worldDy = dx * sin + dy * cos;
-      return {
-        x: anchor.x - pivotX - worldDx,
-        y: anchor.y - pivotY - worldDy,
-        w,
-        h,
-        rot,
-        pivotX,
-        pivotY
-      };
+    function getLab29Load(kind,fill){
+      if(kind!=='side') return fill;
+      const depth=Math.max(0,.78*fill-.28);
+      // Qualitative local load: partial wetting starts at the membrane's lower edge.
+      return clamp(depth/.50,0,1)*clamp(depth/.24,0,1);
     }
 
     function resetLab29Pointer(){
-      lab29Pointer.id = null;
-      lab29Pointer.kind = '';
-      lab29Pointer.dragging = false;
-      lab29Pointer.overTarget = false;
-      lab29Pointer.hoverStart = 0;
+      const id=lab29Pointer.id;
+      lab29Pointer.id=null;
+      lab29Pointer.kind='';
+      lab29Pointer.dragging=false;
+      lab29Pointer.overTarget=false;
+      lab29Pointer.hoverStart=0;
+      if(id!=null && scene.hasPointerCapture(id)) scene.releasePointerCapture(id);
     }
 
-    function getLab29PourPreview(kind){
-      if(!lab29Pointer.dragging || lab29Pointer.kind !== kind || !lab29Pointer.overTarget || !lab29Pointer.hoverStart) return null;
-      const t = clamp((performance.now() - lab29Pointer.hoverStart) / 760, 0, 1);
-      const ap = state.apparatus;
-      const currentCup = kind === 'side'
-        ? ap.sideCupLevel
-        : kind === 'bottom'
-          ? ap.bottomCupLevel
-          : ap.bagCupLevel;
-      return {
-        progress: t,
-        cupFill: currentCup + (0.16 - currentCup) * t
-      };
-    }
-
-    function commitLab29PourPreview(kind){
-      const ap = state.apparatus;
-      const preview = getLab29PourPreview(kind);
-      if(!preview) return;
-      if(kind === 'side'){
-        ap.sideCupLevel = preview.cupFill;
-        ap.sideFill = ap.sideFill + (1 - ap.sideFill) * preview.progress;
-        ap.sideBulge = ap.sideBulge + (1 - ap.sideBulge) * preview.progress;
-      }else if(kind === 'bottom'){
-        ap.bottomCupLevel = preview.cupFill;
-        ap.bottomFill = ap.bottomFill + (1 - ap.bottomFill) * preview.progress;
-        ap.bottomBulge = ap.bottomBulge + (1 - ap.bottomBulge) * preview.progress;
-      }else if(kind === 'bag'){
-        ap.bagCupLevel = preview.cupFill;
-        ap.bagFill = ap.bagFill + (1 - ap.bagFill) * preview.progress;
-        ap.bagBulge = ap.bagBulge + (1 - ap.bagBulge) * preview.progress;
-      }
-    }
-
-    function performLab29Pour(kind, showStep=true){
-      const ap = state.apparatus;
-      const order = ['side','bottom','bag'];
-      if(!state.freeMode && !state.autoPlaying){
-        const expected = order[state.currentTask];
-        if(expected && expected !== kind){
-          const hints = {
-            side:'当前步骤请先向侧壁橡皮膜容器加水。',
-            bottom:'当前步骤请先向底部橡皮膜容器加水。',
-            bag:'当前步骤请先向塑料袋加水。'
-          };
-          warnCurrentStep(hints[expected] || '请先完成当前步骤加水操作');
-          setStatus('越步加水已拦截');
-          return false;
-        }
-      }
-
-      const map = {
-        side:{ scene:'侧壁橡皮膜', phenomenon:'向外鼓起', direction:'侧向', strength:1.2, status:'已向侧壁容器加水，侧膜被液体向外顶起' },
-        bottom:{ scene:'底部橡皮膜', phenomenon:'向下鼓起', direction:'向下', strength:1.35, status:'已向底膜容器加水，底膜被液体向下顶起' },
-        bag:{ scene:'装水塑料袋', phenomenon:'袋壁向四周鼓起', direction:'各方向', strength:1.5, status:'已向塑料袋加水，袋壁向四周鼓起' }
-      };
-      const info = map[kind];
-      if(!info) return false;
-
-      commitLab29PourPreview(kind);
-
-      ap.lastScene = info.scene;
-      ap.lastPhenomenon = info.phenomenon;
-      ap.lastDirection = info.direction;
-      ap.lastStrength = info.strength;
-      ap.sideObserved = ap.sideObserved || kind === 'side';
-      ap.bottomObserved = ap.bottomObserved || kind === 'bottom';
-      ap.bagObserved = ap.bagObserved || kind === 'bag';
-      if(kind === 'side'){
-        ap.sideCupLevelTarget = 0.16;
-        ap.sideFillTarget = 1;
-        ap.sideTarget = 1;
-      }else if(kind === 'bottom'){
-        ap.bottomCupLevelTarget = 0.16;
-        ap.bottomFillTarget = 1;
-        ap.bottomTarget = 1;
-      }else{
-        ap.bagCupLevelTarget = 0.16;
-        ap.bagFillTarget = 1;
-        ap.bagTarget = 1;
-      }
+    function performLab29Pour(kind){
+      const ap=state.apparatus;
+      if(!LAB29_KINDS.includes(kind) || ap[kind+'Fill']<.98) return false;
+      const info={
+        side:{scene:'侧壁橡皮膜',phenomenon:'向外鼓起',direction:'侧向',status:'侧膜向外鼓起'},
+        bottom:{scene:'底部橡皮膜',phenomenon:'向下鼓起',direction:'向下',status:'底膜向下鼓起'},
+        bag:{scene:'装水塑料袋',phenomenon:'袋壁被水撑鼓',direction:'侧向、向下',status:'水撑鼓袋壁'}
+      }[kind];
+      ap.lastScene=info.scene;
+      ap.lastPhenomenon=info.phenomenon;
+      ap.lastDirection=info.direction;
+      ap.selectedScene=kind;
+      ap[kind+'Observed']=true;
       updatePills();
-      setStatus(info.status);
-      if(!state.autoPlaying){
-        showToast(`已加水：${info.phenomenon}`);
-        tryPassStep(false);
-      }
+      setStatus(info.status+'，观察后记录');
       return true;
     }
 
@@ -4516,386 +4490,195 @@ body #app .toolbar button:disabled{
     }
 
     function draw29(ctx,W,H){
-      const ap = state.apparatus;
-      const layout = getLab29Layout(W, H);
-      ap.hitZones = {};
+      const ap=state.apparatus,g=getLab29Layout(W,H),kind=g.active,rect=g[kind];
+      const fill=ap[kind+'Fill'],bulge=ap[kind+'Bulge'];
+      const item=kind==='bag'?getLab29BagRect(rect):getLab29TankRect(rect);
+      const cup=getLab29CupRect(rect),mouth=getLab29PourAnchor(rect,kind);
+      const pouring=lab29Pointer.dragging && lab29Pointer.kind===kind && lab29Pointer.overTarget && fill<1;
+      const cx=item.x+item.w/2,bottom=item.y+item.h;
+      const selectors=document.getElementById('lab29Scenes');
+      const hideSelectors=!g.canSwitch || lab29Pointer.dragging;
+      if(selectors.hidden!==hideSelectors) selectors.hidden=hideSelectors;
+      for(const [property,value] of Object.entries({top:g.safeTop+'px',left:rect.x+'px',width:rect.w+'px'})){
+        if(selectors.style[property]!==value) selectors.style[property]=value;
+      }
+      selectors.querySelectorAll('button').forEach(button=>{
+        const pressed=String(button.dataset.scene===kind),disabled=state.autoPlaying || lab29Pointer.dragging;
+        if(button.getAttribute('aria-pressed')!==pressed) button.setAttribute('aria-pressed',pressed);
+        if(button.disabled!==disabled) button.disabled=disabled;
+      });
+      ap.hitZones={};
+      if(!g.dataViewing) ap.hitZones[kind+'Source']={x:cup.x-5,y:cup.y-5,w:cup.w+15,h:cup.h+10};
+      ap.hitZones[kind+'Target']=getLab29TargetRect(rect,kind);
+      ctx.save();
+      ctx.textAlign='left';
+      if(!lab29Pointer.dragging){
+        ctx.fillStyle='#deedf4';ctx.font='600 14px -apple-system,Segoe UI';
+        ctx.fillText({side:'侧膜容器',bottom:'底膜容器',bag:'开口塑料袋'}[kind],rect.x+4,rect.y-10);
+        ctx.fillStyle='#92aebd';ctx.font='11px -apple-system,Segoe UI';
+        ctx.textAlign='right';ctx.fillText('形变示意 · 非测量',rect.x+rect.w-4,rect.y-10);ctx.textAlign='left';
+      }
 
-      const drawCard = (rect, title, accent='#74d6ff')=>{
-        ctx.fillStyle = 'rgba(10,16,24,.68)';
-        ctx.strokeStyle = 'rgba(139,198,255,.28)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(rect.x, rect.y, rect.w, rect.h, 18);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#dfeaff';
-        ctx.font = '600 14px -apple-system,Segoe UI';
-        ctx.fillText(title, rect.x + 12, rect.y + 24);
-        ctx.fillStyle = accent;
-        ctx.fillRect(rect.x + 12, rect.y + 31, 42, 2);
-      };
+      const metal=ctx.createLinearGradient(item.x-20,0,item.x+item.w+20,0);
+      metal.addColorStop(0,'#4a6575');metal.addColorStop(.45,'#b3c3cc');metal.addColorStop(.65,'#6f8797');metal.addColorStop(1,'#344d60');
+      const floor=bottom+34;
+      ctx.fillStyle='rgba(0,0,0,.28)';
+      ctx.beginPath();ctx.ellipse(cx,floor+7,item.w*.83,5,0,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=metal;
+      ctx.beginPath();ctx.roundRect(item.x-26,floor,item.w+52,8,3);ctx.fill();
+      const supportY=kind==='bag'?item.y:item.y+item.h*.18;
+      [item.x-17,item.x+item.w+17].forEach((x,i)=>{
+        ctx.fillRect(x-3,supportY-10,6,floor-supportY+10);
+        ctx.fillRect(i===0?x:item.x+item.w,supportY-3,17,6);
+      });
 
-      const drawCup = (rect, accent='#6cc7ff', opts={})=>{
-        const rot = opts.rot || 0;
-        const fillLevel = opts.fillLevel == null ? 0.76 : opts.fillLevel;
-        const pourSide = opts.pourSide || 'left';
-        const pivotX = opts.pivotX == null ? rect.w * 0.78 : opts.pivotX;
-        const pivotY = opts.pivotY == null ? rect.h * 0.68 : opts.pivotY;
-        const originX = rect.x + pivotX;
-        const originY = rect.y + pivotY;
-        const cos = Math.cos(rot);
-        const sin = Math.sin(rot);
-        const toWorld = (lx, ly)=>({
-          x: originX + (lx - pivotX) * cos - (ly - pivotY) * sin,
-          y: originY + (lx - pivotX) * sin + (ly - pivotY) * cos
+      let bagPath=null;
+      const waterY=bottom-item.h*.78*fill;
+      if(kind==='bag'){
+        // Fixed open mouth, freely hanging body; wet lower film expands more.
+        const neckL=item.x+item.w*.20,neckR=item.x+item.w*.80;
+        const extra=item.w*.14*bulge,sag=12*bulge;
+        bagPath=new Path2D();
+        bagPath.moveTo(neckL,item.y);
+        bagPath.bezierCurveTo(neckL-4,item.y+item.h*.28,item.x-extra,bottom-item.h*.31,item.x+item.w*.12,bottom+sag*.45);
+        bagPath.quadraticCurveTo(cx,bottom+sag,item.x+item.w*.88,bottom+sag*.45);
+        bagPath.bezierCurveTo(item.x+item.w+extra,bottom-item.h*.31,neckR+4,item.y+item.h*.28,neckR,item.y);
+        bagPath.closePath();
+        ctx.fillStyle='rgba(197,225,231,.07)';ctx.fill(bagPath);
+        ctx.save();ctx.clip(bagPath);
+        if(fill>0){
+          const water=ctx.createLinearGradient(0,waterY,0,bottom+sag);
+          water.addColorStop(0,'rgba(118,206,225,.32)');water.addColorStop(1,'rgba(49,146,179,.63)');
+          ctx.fillStyle=water;ctx.fillRect(item.x-extra-4,waterY,item.w+extra*2+8,item.h+20);
+          ctx.strokeStyle='rgba(186,239,244,.73)';ctx.lineWidth=1.2;
+          ctx.beginPath();ctx.moveTo(item.x-extra,waterY);
+          ctx.quadraticCurveTo(cx,waterY+2,item.x+item.w+extra,waterY);ctx.stroke();
+        }
+        ctx.strokeStyle='rgba(218,241,244,.19)';ctx.lineWidth=1;
+        for(let i=0;i<5;i++){
+          const x=item.x+item.w*(.22+i*.14);
+          ctx.beginPath();ctx.moveTo(x,item.y+8);
+          ctx.bezierCurveTo(x-7,item.y+item.h*.30,x+Math.sin(i)*extra,bottom-28,x+3,bottom+6);ctx.stroke();
+        }
+        ctx.restore();
+        ctx.strokeStyle='rgba(211,233,239,.65)';ctx.lineWidth=1.6;ctx.stroke(bagPath);
+        // Rear/front edges describe an open ellipse, not a sealed top seam.
+        ctx.clearRect(neckL+3,item.y-2,neckR-neckL-6,4);
+        ctx.strokeStyle='rgba(217,239,243,.64)';ctx.lineWidth=1.4;
+        ctx.beginPath();ctx.ellipse(cx,item.y,item.w*.30,5,0,0,Math.PI*2);ctx.stroke();
+        [neckL,neckR].forEach((x,i)=>{
+          const post=i===0?item.x-17:item.x+item.w+17;
+          ctx.fillStyle=metal;ctx.fillRect(Math.min(post,x),item.y-3,Math.abs(post-x),6);
+          ctx.fillStyle='#98adbb';ctx.beginPath();ctx.roundRect(x-5,item.y-7,10,16,3);ctx.fill();
+          ctx.fillStyle='#445d6a';ctx.fillRect(x-3,item.y+1,6,5);
         });
-        ctx.save();
-        ctx.translate(originX, originY);
-        ctx.rotate(rot);
-        ctx.translate(-pivotX, -pivotY);
-
-        const g = ctx.createLinearGradient(0, 0, 0, rect.h);
-        g.addColorStop(0, 'rgba(241,247,255,.96)');
-        g.addColorStop(1, 'rgba(193,214,237,.88)');
-        ctx.fillStyle = g;
-        ctx.strokeStyle = 'rgba(226,241,255,.94)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(6, 8);
-        ctx.quadraticCurveTo(rect.w * 0.54, 3, rect.w - 6, 8);
-        ctx.lineTo(rect.w - 10, rect.h - 4);
-        ctx.quadraticCurveTo(rect.w * 0.55, rect.h + 2, 8, rect.h - 5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,255,255,.62)';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(9, 10);
-        ctx.quadraticCurveTo(rect.w * 0.54, 5, rect.w - 9, 10);
-        ctx.stroke();
-
-        const liquidTopL = rect.h * (1 - fillLevel) + (pourSide === 'left' ? rect.h * 0.11 : rect.h * 0.03);
-        const liquidTopR = rect.h * (1 - fillLevel) + (pourSide === 'left' ? rect.h * 0.03 : rect.h * 0.11);
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(7, 9);
-        ctx.quadraticCurveTo(rect.w * 0.54, 5, rect.w - 7, 9);
-        ctx.lineTo(rect.w - 11, rect.h - 5);
-        ctx.quadraticCurveTo(rect.w * 0.55, rect.h - 1, 9, rect.h - 6);
-        ctx.closePath();
-        ctx.clip();
-        ctx.fillStyle = 'rgba(108,199,255,.46)';
-        ctx.beginPath();
-        ctx.moveTo(7, liquidTopL);
-        ctx.lineTo(rect.w - 7, liquidTopR);
-        ctx.lineTo(rect.w - 7, rect.h - 3);
-        ctx.lineTo(7, rect.h - 3);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,.24)';
-        ctx.beginPath();
-        ctx.moveTo(9, liquidTopL + 2);
-        ctx.lineTo(rect.w - 9, liquidTopR + 2);
-        ctx.strokeStyle = 'rgba(255,255,255,.3)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
-
-        ctx.strokeStyle = 'rgba(255,255,255,.22)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(rect.w * 0.18, 12);
-        ctx.lineTo(rect.w * 0.18, rect.h - 8);
-        ctx.stroke();
-
-        ctx.strokeStyle = accent;
-        ctx.lineWidth = 2.6;
-        const handleY = rect.h * 0.48;
-        ctx.beginPath();
-        ctx.arc(rect.w + 2, handleY, rect.h * 0.22, -Math.PI/2, Math.PI/2);
-        ctx.stroke();
-        ctx.restore();
-
-        const lipLocal = pourSide === 'left'
-          ? { x: 7, y: 10 }
-          : { x: rect.w - 7, y: 10 };
-        return {
-          lip: toWorld(lipLocal.x, lipLocal.y),
-          bodyCenter: toWorld(rect.w * 0.46, rect.h * 0.52)
-        };
-      };
-
-      const drawTargetHint = (target, active)=>{
-        const y = target.y + target.h * 0.58;
-        const centerX = target.x + target.w * 0.5;
-        const halfLen = Math.min(target.w * 0.22, 28);
-        const x1 = centerX - halfLen;
-        const x2 = centerX + halfLen;
-        ctx.strokeStyle = active ? 'rgba(124,225,255,.9)' : 'rgba(124,225,255,.36)';
-        ctx.lineWidth = active ? 2.2 : 1.3;
-        ctx.setLineDash(active ? [6,4] : [4,4]);
-        ctx.beginPath();
-        ctx.moveTo(x1, y);
-        ctx.lineTo(x2, y);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      };
-
-      const drawStatusPill = (x, y, text, color='#7fd1ff')=>{
-        ctx.fillStyle = 'rgba(13,22,34,.88)';
-        ctx.strokeStyle = 'rgba(123,183,255,.22)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.roundRect(x, y, Math.max(88, text.length * 12 + 18), 24, 12);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = color;
-        ctx.font = '12px -apple-system,Segoe UI';
-        ctx.fillText(text, x + 10, y + 16);
-      };
-
-      const drawMembraneTank = (rect, type)=>{
-        drawCard(rect, type === 'side' ? '侧壁橡皮膜' : '底部橡皮膜');
-        const tank = getLab29TankRect(rect);
-        const cup = getLab29CupRect(rect);
-        const target = getLab29TargetRect(rect, type);
-        const fill = type === 'side' ? ap.sideFill : ap.bottomFill;
-        const cupFill = type === 'side' ? ap.sideCupLevel : ap.bottomCupLevel;
-        const bulge = (type === 'side' ? ap.sideBulge : ap.bottomBulge) * 12;
-        const liquidH = tank.h * 0.76 * fill;
-        const liquidY = tank.y + tank.h - liquidH - 4;
-        const activeDrag = lab29Pointer.dragging && lab29Pointer.kind === type;
-        const preview = getLab29PourPreview(type);
-        const displayFill = preview ? fill + (1 - fill) * preview.progress : fill;
-        const displayBulge = preview ? ((type === 'side' ? ap.sideBulge : ap.bottomBulge) + (1 - (type === 'side' ? ap.sideBulge : ap.bottomBulge)) * preview.progress) * 12 : bulge;
-        const displayLiquidH = tank.h * 0.76 * displayFill;
-        const displayLiquidY = tank.y + tank.h - displayLiquidH - 4;
-
-        if(!activeDrag) drawCup(cup, '#6cc7ff', { fillLevel: cupFill });
-        drawTargetHint(target, activeDrag || fill < 0.98);
-
-        const glassFill = ctx.createLinearGradient(tank.x, tank.y, tank.x + tank.w, tank.y + tank.h);
-        glassFill.addColorStop(0, 'rgba(230,242,255,.12)');
-        glassFill.addColorStop(1, 'rgba(180,206,230,.06)');
-        ctx.fillStyle = glassFill;
-        ctx.fillRect(tank.x + 2, tank.y + 2, tank.w - 4, tank.h - 4);
-        ctx.strokeStyle = '#d6e8f8';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(tank.x, tank.y, tank.w, tank.h);
-        ctx.fillStyle = 'rgba(255,255,255,.24)';
-        ctx.fillRect(tank.x + 8, tank.y + 8, 10, tank.h - 16);
-
-        ctx.strokeStyle = 'rgba(230,242,255,.5)';
-        ctx.lineWidth = 1;
-        for(let i=0;i<=5;i++){
-          const yy = tank.y + tank.h - i*(tank.h/5);
-          ctx.beginPath();
-          ctx.moveTo(tank.x - 10, yy);
-          ctx.lineTo(tank.x, yy);
-          ctx.stroke();
-        }
-
-        if(displayFill > 0.01){
-          const waterGrad = ctx.createLinearGradient(tank.x, displayLiquidY, tank.x, tank.y + tank.h);
-          waterGrad.addColorStop(0, 'rgba(136,208,255,.62)');
-          waterGrad.addColorStop(1, 'rgba(68,138,220,.5)');
-          ctx.fillStyle = waterGrad;
-          ctx.fillRect(tank.x + 3, displayLiquidY, tank.w - 6, tank.y + tank.h - displayLiquidY - 3);
-          ctx.fillStyle = 'rgba(255,255,255,.28)';
-          ctx.fillRect(tank.x + 4, displayLiquidY, tank.w - 8, 3);
-        }
-
-        if(type === 'side'){
-          const cx = tank.x + tank.w;
-          const cy = tank.y + tank.h * 0.52;
-          ctx.fillStyle = '#f6f1d5';
-          ctx.beginPath();
-          ctx.moveTo(cx, cy - 18);
-          ctx.quadraticCurveTo(cx + 8 + displayBulge, cy, cx, cy + 18);
-          ctx.closePath();
-          ctx.fill();
-          ctx.strokeStyle = '#fff2c8';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-          if(displayFill > 0.02){
-            ctx.strokeStyle = 'rgba(126,205,255,.9)';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(cx + 8 + displayBulge, cy);
-            ctx.lineTo(cx + 28 + displayBulge, cy);
-            ctx.stroke();
-          }
-        }else{
-          const cx = tank.x + tank.w * 0.5;
-          const by = tank.y + tank.h;
-          ctx.fillStyle = '#f6f1d5';
-          ctx.beginPath();
-          ctx.moveTo(cx - 28, by);
-          ctx.quadraticCurveTo(cx, by + 8 + displayBulge, cx + 28, by);
-          ctx.closePath();
-          ctx.fill();
-          ctx.strokeStyle = '#fff2c8';
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
-          if(displayFill > 0.02){
-            ctx.strokeStyle = 'rgba(126,205,255,.9)';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(cx, by + 8 + displayBulge);
-            ctx.lineTo(cx, by + 28 + displayBulge);
-            ctx.stroke();
-          }
-        }
-
-        drawStatusPill(rect.x + 12, rect.y + rect.h - 30, displayFill > 0.05 ? (type === 'side' ? '侧膜外鼓' : '底膜下鼓') : '拖水杯加水');
-        ap.hitZones[`${type}Source`] = { x: cup.x - 8, y: cup.y - 8, w: cup.w + 16, h: cup.h + 16 };
-        ap.hitZones[`${type}Target`] = target;
-      };
-
-      const drawBag = (rect)=>{
-        drawCard(rect, '装水塑料袋', '#86e9bc');
-        const bag = getLab29BagRect(rect);
-        const cup = getLab29CupRect(rect);
-        const target = getLab29TargetRect(rect, 'bag');
-        const fill = ap.bagFill;
-        const cupFill = ap.bagCupLevel;
-        const bulge = ap.bagBulge * 12;
-        const activeDrag = lab29Pointer.dragging && lab29Pointer.kind === 'bag';
-        const preview = getLab29PourPreview('bag');
-        const displayFill = preview ? fill + (1 - fill) * preview.progress : fill;
-        const displayBulge = preview ? (ap.bagBulge + (1 - ap.bagBulge) * preview.progress) * 12 : bulge;
-        if(!activeDrag) drawCup(cup, '#7fe6b1', { fillLevel: cupFill });
-        drawTargetHint(target, activeDrag || fill < 0.98);
-
-        ctx.strokeStyle = '#d9ecff';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(bag.x + bag.w*0.18, bag.y);
-        ctx.quadraticCurveTo(bag.x + bag.w*0.5, bag.y - 8, bag.x + bag.w*0.82, bag.y);
-        ctx.lineTo(bag.x + bag.w, bag.y + bag.h*0.24);
-        ctx.quadraticCurveTo(bag.x + bag.w + bulge, bag.y + bag.h*0.5, bag.x + bag.w*0.84, bag.y + bag.h);
-        ctx.lineTo(bag.x + bag.w*0.16, bag.y + bag.h);
-        ctx.quadraticCurveTo(bag.x - bulge, bag.y + bag.h*0.5, bag.x, bag.y + bag.h*0.24);
-        ctx.closePath();
-        ctx.stroke();
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(bag.x + bag.w*0.18, bag.y + 2);
-        ctx.quadraticCurveTo(bag.x + bag.w*0.5, bag.y - 6, bag.x + bag.w*0.82, bag.y + 2);
-          ctx.lineTo(bag.x + bag.w - 2, bag.y + bag.h*0.24);
-          ctx.quadraticCurveTo(bag.x + bag.w + displayBulge - 3, bag.y + bag.h*0.5, bag.x + bag.w*0.82, bag.y + bag.h - 2);
-          ctx.lineTo(bag.x + bag.w*0.18, bag.y + bag.h - 2);
-          ctx.quadraticCurveTo(bag.x - displayBulge + 3, bag.y + bag.h*0.5, bag.x + 2, bag.y + bag.h*0.24);
-          ctx.closePath();
-          ctx.clip();
-        if(displayFill > 0.01){
-          const waterH = bag.h * 0.78 * displayFill;
-          const waterY = bag.y + bag.h - waterH;
-          const waterGrad = ctx.createLinearGradient(bag.x, waterY, bag.x, bag.y + bag.h);
-          waterGrad.addColorStop(0, 'rgba(136,208,255,.58)');
-          waterGrad.addColorStop(1, 'rgba(68,138,220,.48)');
-          ctx.fillStyle = waterGrad;
-          ctx.fillRect(bag.x - 8, waterY, bag.w + 16, bag.y + bag.h - waterY);
-          ctx.fillStyle = 'rgba(255,255,255,.14)';
-          ctx.fillRect(bag.x + 10, bag.y + 16, 12, bag.h - 26);
-        }
-        ctx.restore();
-
-        ctx.strokeStyle = 'rgba(120,225,180,.86)';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.moveTo(bag.x - displayBulge*0.8, bag.y + bag.h*0.44);
-        ctx.lineTo(bag.x - 14 - displayBulge*0.8, bag.y + bag.h*0.44);
-        ctx.moveTo(bag.x + bag.w + displayBulge*0.8, bag.y + bag.h*0.44);
-        ctx.lineTo(bag.x + bag.w + 14 + displayBulge*0.8, bag.y + bag.h*0.44);
-        ctx.moveTo(bag.x + bag.w*0.5, bag.y + bag.h + displayBulge*0.65);
-        ctx.lineTo(bag.x + bag.w*0.5, bag.y + bag.h + 20 + displayBulge*0.55);
-        ctx.stroke();
-
-        drawStatusPill(rect.x + 12, rect.y + rect.h - 30, displayFill > 0.05 ? '袋壁四向鼓起' : '拖水杯加水', '#86e9bc');
-        ap.hitZones.bagSource = { x: cup.x - 8, y: cup.y - 8, w: cup.w + 16, h: cup.h + 16 };
-        ap.hitZones.bagTarget = target;
-      };
-
-      if(layout.showAll){
-        drawMembraneTank(layout.side, 'side');
-        drawMembraneTank(layout.bottom, 'bottom');
-        drawBag(layout.bag);
-      }else if(layout.active === 'side'){
-        drawMembraneTank(layout.side, 'side');
-      }else if(layout.active === 'bottom'){
-        drawMembraneTank(layout.bottom, 'bottom');
       }else{
-        drawBag(layout.bag);
-      }
-
-      if(lab29Pointer.dragging){
-        const zone = layout[lab29Pointer.kind] || layout[layout.active];
-        const sourceCup = zone ? getLab29CupRect(zone) : { w: 56, h: 42 };
-        const baseRect = { x: lab29Pointer.x - sourceCup.w * 0.5, y: lab29Pointer.y - sourceCup.h * 0.55, w: sourceCup.w, h: sourceCup.h };
-        let floatRect = { ...baseRect };
-        let tilt = 0;
-        let pivot = { x: floatRect.w * 0.78, y: floatRect.h * 0.68 };
-        let cupPose = null;
-        const preview = getLab29PourPreview(lab29Pointer.kind);
-        if(lab29Pointer.overTarget){
-          const target = ap.hitZones[`${lab29Pointer.kind}Target`];
-          if(target){
-            const anchor = {
-              x: target.x + target.w * 0.5,
-              y: target.y + target.h * 0.58
-            };
-            const snapped = getLab29PourCupRect(anchor, lab29Pointer.kind, sourceCup);
-            floatRect = { x: snapped.x, y: snapped.y, w: snapped.w, h: snapped.h };
-            tilt = snapped.rot;
-            pivot = { x: snapped.pivotX, y: snapped.pivotY };
-          }
+        const rimH=6,cy=item.y+item.h*.60,mr=item.h*.12;
+        const glass=ctx.createLinearGradient(item.x,0,item.x+item.w,0);
+        glass.addColorStop(0,'rgba(192,223,232,.21)');glass.addColorStop(.18,'rgba(197,225,235,.04)');
+        glass.addColorStop(.8,'rgba(174,214,230,.03)');glass.addColorStop(1,'rgba(193,222,233,.18)');
+        ctx.fillStyle=glass;ctx.fillRect(item.x,item.y,item.w,item.h);
+        ctx.strokeStyle='rgba(173,213,227,.45)';ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.ellipse(cx,item.y,item.w/2,rimH,0,Math.PI,Math.PI*2);ctx.stroke();
+        ctx.save();ctx.beginPath();ctx.rect(item.x+2,item.y+1,item.w-4,item.h-2);ctx.clip();
+        if(fill>0){
+          const water=ctx.createLinearGradient(0,waterY,0,bottom);
+          water.addColorStop(0,'rgba(142,215,231,.35)');water.addColorStop(1,'rgba(52,149,180,.60)');
+          ctx.fillStyle=water;ctx.fillRect(item.x+2,waterY,item.w-4,bottom-waterY);
+          ctx.fillStyle='rgba(166,226,239,.24)';ctx.beginPath();ctx.ellipse(cx,waterY,item.w/2-3,4,0,0,Math.PI*2);ctx.fill();
+          ctx.strokeStyle='rgba(213,247,250,.60)';ctx.lineWidth=1;
+          ctx.beginPath();ctx.moveTo(item.x+3,waterY-1);
+          ctx.quadraticCurveTo(cx,waterY+2,item.x+item.w-3,waterY-1);ctx.stroke();
         }
-        cupPose = drawCup(floatRect, lab29Pointer.kind === 'bag' ? '#86e9bc' : '#6cc7ff', {
-          rot: tilt,
-          fillLevel: preview ? preview.cupFill : 0.82,
-          pourSide: 'left',
-          pivotX: pivot.x,
-          pivotY: pivot.y
-        });
-        if(lab29Pointer.overTarget){
-          const target = ap.hitZones[`${lab29Pointer.kind}Target`];
-          if(target && cupPose){
-            ctx.strokeStyle = 'rgba(143,216,255,.8)';
-            ctx.lineWidth = 3.2;
-            ctx.beginPath();
-            const targetX = target.x + target.w * 0.5;
-            const targetY = target.y + target.h * 0.52;
-            ctx.moveTo(cupPose.lip.x, cupPose.lip.y);
-            ctx.quadraticCurveTo((cupPose.lip.x + targetX) * 0.5, Math.min(cupPose.lip.y, targetY) - 14, targetX, targetY);
-            ctx.stroke();
-            for(let i=0;i<5;i++){
-              const t = i / 4;
-              const px = cupPose.lip.x + (targetX - cupPose.lip.x) * t;
-              const py = cupPose.lip.y + (targetY - cupPose.lip.y) * t + Math.sin(performance.now() * 0.01 + i) * 1.4;
-              ctx.fillStyle = 'rgba(143,216,255,.75)';
-              ctx.beginPath();
-              ctx.arc(px, py, 1.8 - t * 0.4, 0, Math.PI * 2);
-              ctx.fill();
-            }
-          }
-        }
-      }
+        ctx.restore();
 
-      if(ap.lastScene){
-        ctx.fillStyle = 'rgba(15,22,31,.84)';
-        ctx.strokeStyle = 'rgba(123,183,255,.28)';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.roundRect(W*0.55, H-70, W*0.32, 34, 16);
-        ctx.fill();
+        const membrane=new Path2D();
+        if(kind==='side'){
+          const x=item.x+item.w,depth=bulge*30;
+          membrane.moveTo(x,cy-mr);membrane.quadraticCurveTo(x+2*depth,cy,x,cy+mr);membrane.closePath();
+          ctx.save();ctx.clip(membrane);
+          ctx.fillStyle='rgba(87,174,202,.48)';ctx.fillRect(x,Math.max(waterY,cy-mr),depth+2,mr*2);
+          ctx.restore();
+          ctx.strokeStyle='#d9c38e';ctx.lineWidth=2;
+          ctx.beginPath();ctx.moveTo(x,cy-mr);ctx.quadraticCurveTo(x+2*depth,cy,x,cy+mr);ctx.stroke();
+          ctx.fillStyle=metal;
+          [cy-mr,cy+mr].forEach(y=>ctx.fillRect(x-5,y-3,10,6));
+        }else{
+          membrane.moveTo(item.x+1,bottom);
+          membrane.quadraticCurveTo(cx,bottom+2*bulge*26,item.x+item.w-1,bottom);
+          membrane.closePath();
+          ctx.fillStyle='rgba(72,155,185,.49)';ctx.fill(membrane);
+          ctx.strokeStyle='#d9c38e';ctx.lineWidth=2;
+          ctx.beginPath();ctx.moveTo(item.x+1,bottom);
+          ctx.quadraticCurveTo(cx,bottom+2*bulge*26,item.x+item.w-1,bottom);ctx.stroke();
+          ctx.fillStyle=metal;
+          ctx.fillRect(item.x-4,bottom-5,8,10);ctx.fillRect(item.x+item.w-4,bottom-5,8,10);
+        }
+        // Side hole interrupts the rigid wall; bottom membrane has no rigid base.
+        ctx.strokeStyle='rgba(211,235,243,.72)';ctx.lineWidth=1.7;ctx.beginPath();
+        ctx.moveTo(item.x,item.y);ctx.lineTo(item.x,bottom);
+        if(kind==='side'){
+          ctx.quadraticCurveTo(cx,bottom+5,item.x+item.w,bottom);
+          ctx.lineTo(item.x+item.w,cy+mr+3);
+          ctx.moveTo(item.x+item.w,cy-mr-3);ctx.lineTo(item.x+item.w,item.y);
+        }else{ctx.moveTo(item.x+item.w,bottom);ctx.lineTo(item.x+item.w,item.y);}
         ctx.stroke();
-        ctx.fillStyle = '#dfeaff';
-        ctx.font = '13px -apple-system,Segoe UI';
-        ctx.fillText(`现象：${ap.lastScene}${ap.lastPhenomenon ? '｜' + ap.lastPhenomenon : ''}`, W*0.57, H-48);
+        ctx.strokeStyle='rgba(219,245,249,.25)';ctx.lineWidth=3;
+        ctx.beginPath();ctx.moveTo(item.x+7,item.y+12);ctx.lineTo(item.x+7,bottom-12);ctx.stroke();
+        ctx.strokeStyle='rgba(219,245,249,.72)';ctx.lineWidth=1.8;
+        ctx.beginPath();ctx.ellipse(cx,item.y,item.w/2,rimH,0,0,Math.PI);ctx.stroke();
       }
+
+      const drawCup=(pose,level)=>{
+        const rot=pose.rot||0,px=pose.pivotX||pose.w*.8,py=pose.pivotY||pose.h*.72;
+        const polygon=getLab29CupPolygon(pose,rot,px,py);
+        const waterLine=getLab29CupWaterLine(pose,rot,px,py,level);
+        ctx.save();
+        ctx.translate(pose.x+px,pose.y+py);ctx.rotate(rot);ctx.translate(-px,-py);
+        const body=new Path2D();
+        body.moveTo(6,9);body.lineTo(pose.w-6,9);body.lineTo(pose.w-10,pose.h-4);
+        body.quadraticCurveTo(pose.w/2,pose.h+1,10,pose.h-4);body.closePath();
+        ctx.fillStyle='rgba(192,225,234,.12)';ctx.fill(body);
+        ctx.strokeStyle='rgba(209,233,241,.77)';ctx.lineWidth=1.5;ctx.stroke(body);
+        ctx.strokeStyle='rgba(190,219,231,.69)';ctx.lineWidth=2.6;
+        ctx.beginPath();ctx.arc(pose.w-8,pose.h*.46,pose.h*.19,-Math.PI/2,Math.PI/2);ctx.stroke();
+        ctx.restore();
+        ctx.save();ctx.beginPath();polygon.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.clip();
+        const water=ctx.createLinearGradient(0,waterLine,0,waterLine+pose.h);
+        water.addColorStop(0,'rgba(129,212,232,.49)');water.addColorStop(1,'rgba(53,153,186,.66)');
+        ctx.fillStyle=water;
+        const minX=Math.min(...polygon.map(p=>p.x)),maxX=Math.max(...polygon.map(p=>p.x));
+        ctx.fillRect(minX-2,waterLine,maxX-minX+4,pose.h*2);
+        ctx.strokeStyle='rgba(221,250,252,.72)';ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.moveTo(minX,waterLine);ctx.lineTo(maxX,waterLine);ctx.stroke();ctx.restore();
+        ctx.save();ctx.translate(pose.x+px,pose.y+py);ctx.rotate(rot);ctx.translate(-px,-py);
+        ctx.strokeStyle='rgba(226,246,249,.72)';ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.moveTo(6,9);ctx.quadraticCurveTo(pose.w/2,5,pose.w-6,9);ctx.stroke();
+        ctx.strokeStyle='rgba(223,247,250,.24)';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(13,15);ctx.lineTo(15,pose.h-10);ctx.stroke();ctx.restore();
+        return {x:pose.x+px+(7-px)*Math.cos(rot)-(10-py)*Math.sin(rot),
+          y:pose.y+py+(7-px)*Math.sin(rot)+(10-py)*Math.cos(rot)};
+      };
+
+      let lip=null;
+      if(lab29Pointer.dragging && lab29Pointer.kind===kind){
+        const pose=lab29Pointer.overTarget?getLab29PourCupRect(mouth,kind,cup):
+          {x:lab29Pointer.x-cup.w*.5,y:lab29Pointer.y-cup.h*.55,w:cup.w,h:cup.h};
+        lip=drawCup(pose,ap[kind+'CupLevel']);
+      }else if(!g.dataViewing) drawCup(cup,ap[kind+'CupLevel']);
+
+      if(pouring && lip){
+        // Gravity-driven downflow crosses the open mouth and ends at the live liquid surface.
+        const impactY=Math.max(mouth.y+8,waterY);
+        ctx.strokeStyle='rgba(134,218,239,.69)';ctx.lineWidth=3;ctx.lineCap='round';
+        ctx.beginPath();ctx.moveTo(lip.x,lip.y);ctx.lineTo(mouth.x,impactY);ctx.stroke();
+        ctx.strokeStyle='rgba(226,251,254,.65)';ctx.lineWidth=.8;
+        ctx.beginPath();ctx.moveTo(lip.x-.5,lip.y);ctx.lineTo(mouth.x-.5,impactY);ctx.stroke();
+        const phase=(ap.visualTime%360)/360;
+        ctx.strokeStyle='rgba(212,246,251,'+(.5*(1-phase))+')';ctx.lineWidth=1;
+        ctx.beginPath();ctx.ellipse(mouth.x,impactY,3+phase*12,1+phase*2,0,0,Math.PI*2);ctx.stroke();
+      }
+      ctx.restore();
     }
 
     function draw30(ctx,W,H){
@@ -5126,17 +4909,20 @@ body #app .toolbar button:disabled{
 
     function bindLab29StageInteraction(){
       if(LAB_ID !== 29) return;
+      document.querySelectorAll('#lab29Scenes button').forEach(button=>button.addEventListener('click',()=>{
+        if(state.autoPlaying) return;
+        resetLab29Pointer();
+        state.apparatus.selectedScene=button.dataset.scene;
+        drawScene();
+      }));
       const end = (e)=>{
         if(lab29Pointer.id !== e.pointerId) return;
-        if(lab29Pointer.dragging){
-          if(lab29Pointer.overTarget){
-            performLab29Pour(lab29Pointer.kind, true);
-          }else if(!state.autoPlaying){
-            showToast('请把水杯拖到器材开口处再松手');
-            setStatus('加水未完成：未对准器材开口');
-          }
-        }
+        const kind=lab29Pointer.kind,over=lab29Pointer.overTarget;
+        // Release capture before changing status/layout; cancel is never a successful pour.
         resetLab29Pointer();
+        if(e.type!=='pointerup') return;
+        if(over && performLab29Pour(kind)) return;
+        setStatus(state.apparatus[kind+'Fill']>0?'已停止加水，可继续倒水':'请把水杯拖到开口');
       };
       scene.addEventListener('pointerdown', (e)=>{
         if(state.autoPlaying) return;
@@ -5177,17 +4963,8 @@ body #app .toolbar button:disabled{
         const p = scenePointFromEvent(e);
         lab29Pointer.x = p.x;
         lab29Pointer.y = p.y;
-        const layout = getLab29Layout(scene.clientWidth, scene.clientHeight);
-        const zone = layout[lab29Pointer.kind] || layout[layout.active];
-        const sourceCup = zone ? getLab29CupRect(zone) : { w: 56, h: 42 };
-        const draggedRect = {
-          x: p.x - sourceCup.w * 0.5,
-          y: p.y - sourceCup.h * 0.55,
-          w: sourceCup.w,
-          h: sourceCup.h
-        };
         const target = state.apparatus.hitZones[`${lab29Pointer.kind}Target`];
-        const over = !!(target && rectOverlap(draggedRect, target));
+        const over = !!(target && rectContainsPoint(target,p.x,p.y));
         if(over && !lab29Pointer.overTarget) lab29Pointer.hoverStart = performance.now();
         if(!over) lab29Pointer.hoverStart = 0;
         lab29Pointer.overTarget = over;
@@ -5195,6 +4972,7 @@ body #app .toolbar button:disabled{
       });
       scene.addEventListener('pointerup', end);
       scene.addEventListener('pointercancel', end);
+      scene.addEventListener('lostpointercapture', end);
     }
 
     function updateDynamic(dt){
@@ -5221,18 +4999,21 @@ body #app .toolbar button:disabled{
         ap.progress = clamp(ap.progress + dt/900, 0, 1);
       }
       if(LAB_ID === 29){
-        const easeFill = Math.min(1, dt * 0.008);
-        const easeBulge = Math.min(1, dt * 0.014);
-        const easeCup = Math.min(1, dt * 0.012);
-        ap.sideCupLevel += (ap.sideCupLevelTarget - ap.sideCupLevel) * easeCup;
-        ap.bottomCupLevel += (ap.bottomCupLevelTarget - ap.bottomCupLevel) * easeCup;
-        ap.bagCupLevel += (ap.bagCupLevelTarget - ap.bagCupLevel) * easeCup;
-        ap.sideFill += (ap.sideFillTarget - ap.sideFill) * easeFill;
-        ap.bottomFill += (ap.bottomFillTarget - ap.bottomFill) * easeFill;
-        ap.bagFill += (ap.bagFillTarget - ap.bagFill) * easeFill;
-        ap.sideBulge += (ap.sideTarget - ap.sideBulge) * easeBulge;
-        ap.bottomBulge += (ap.bottomTarget - ap.bottomBulge) * easeBulge;
-        ap.bagBulge += (ap.bagTarget - ap.bagBulge) * easeBulge;
+        const elapsed=clamp(dt,0,80),kind=lab29Pointer.kind;
+        const flowing=lab29Pointer.dragging && lab29Pointer.overTarget && kind && ap[kind+'Fill']<1;
+        if(flowing){
+          ap[kind+'Fill']=Math.min(1,ap[kind+'Fill']+elapsed/LAB29_POUR_MS);
+          ap[kind+'CupLevel']=.82-.66*ap[kind+'Fill'];
+        }
+        let settling=false;
+        for(const k of LAB29_KINDS){
+          const target=getLab29Load(k,ap[k+'Fill']),diff=target-ap[k+'Bulge'];
+          if(Math.abs(diff)>.0001){
+            ap[k+'Bulge']+=diff*(1-Math.exp(-elapsed/140));
+            settling=true;
+          }else ap[k+'Bulge']=target;
+        }
+        if(flowing||settling) ap.visualTime+=elapsed;
       }
     }
 
@@ -5273,6 +5054,16 @@ body #app .toolbar button:disabled{
 
       ctx.fillStyle = 'rgba(6,10,16,.9)';
       ctx.fillRect(0,0,W,H);
+      if(LAB_ID===29){
+        ctx.fillStyle='#bfdae6';ctx.font='12px -apple-system,Segoe UI';
+        ctx.fillText('观察记录 · 不比较压强大小',12,22);
+        ['侧壁橡皮膜','底部橡皮膜','装水塑料袋'].forEach((name,i)=>{
+          const row=state.records.findLast(r=>r.c1===name),y=48+i*24;
+          ctx.fillStyle=row?'#82d6c3':'#718c9d';
+          ctx.fillText((row?'✓ ':'○ ')+name+'：'+(row?row.c2:'待观察'),12,y);
+        });
+        return;
+      }
       const left=38, right=W-10, top=12, bottom=H-24;
       const pw = right-left, ph = bottom-top;
 
@@ -5689,21 +5480,32 @@ body #app .toolbar button:disabled{
           await doR();
           setVar('depth',16); await doA('openHole', 800); await doA('observeJet', 900); await doR();
         }else if(LAB_ID===29){
-          const pour29 = async (kind, tip, ms=920)=>{
+          const pour29 = async (kind, tip)=>{
             const rect = scene.getBoundingClientRect();
             const layout = getLab29Layout(rect.width, rect.height);
             const zone = layout[kind];
             const source = getLab29CupRect(zone);
-            const target = getLab29TargetRect(zone, kind);
+            const target = getLab29PourAnchor(zone, kind);
             if(tip) showToast(tip);
+            lab29Pointer.kind=kind;
+            lab29Pointer.dragging=true;
+            lab29Pointer.overTarget=false;
+            lab29Pointer.x=source.x+source.w*.5;
+            lab29Pointer.y=source.y+source.h*.55;
+            // Same cup position and water ledger as a manual pour; no hidden instant filling.
             await dragDemoCursorPath([
-              scenePointToStage(source.x + source.w * 0.5, source.y + source.h * 0.55),
-              scenePointToStage((source.x + target.x + target.w*0.5) * 0.5, source.y + source.h * 0.4),
-              scenePointToStage(target.x + target.w * 0.5, target.y + target.h * 0.5)
-            ], 420);
-            performLab29Pour(kind, false);
-            updatePills();
-            await wait(ms);
+              scenePointToStage(lab29Pointer.x,lab29Pointer.y),
+              scenePointToStage(target.x,target.y)
+            ],680,p=>{
+              const point=stagePointToScene(p.x,p.y);
+              lab29Pointer.x=point.x;lab29Pointer.y=point.y;
+            });
+            ensure();
+            lab29Pointer.overTarget=true;
+            while(state.apparatus[kind+'Fill']<1) await wait(100,'actionMotion');
+            resetLab29Pointer();
+            performLab29Pour(kind);
+            await wait(850,'observePrimary');
           };
           await doStep(0, '步骤1：观察侧壁橡皮膜');
           await pour29('side', '向侧壁容器加水，观察侧膜外鼓');
@@ -5712,7 +5514,7 @@ body #app .toolbar button:disabled{
           await pour29('bottom', '向底膜容器加水，观察底膜下鼓');
           await doR();
           await doStep(2, '步骤3：观察装水塑料袋');
-          await pour29('bag', '向塑料袋加水，观察袋壁四向鼓起');
+          await pour29('bag', '向塑料袋加水，观察袋壁被水撑鼓');
           await doR();
         }else if(LAB_ID===30){
           await doStep(0, '步骤1：同液体变深度');
