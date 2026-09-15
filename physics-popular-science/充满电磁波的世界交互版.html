@@ -1426,6 +1426,20 @@ html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!i
       body #app #stage :is(#modeTag,#modeChip){animation:none!important;--codex-mode-ring-angle:0deg}
     }
   </style>
+<style id="science-em-core-viewport-v1">
+html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage){height:auto!important;min-height:0!important;max-height:none!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;gap:8px!important;padding:var(--science-apparatus-top,100px) 10px var(--science-apparatus-bottom,12px)!important;overflow:visible!important}
+html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emObservation{position:relative!important;inset:auto!important;align-self:stretch!important;width:100%!important;height:auto!important;margin:0!important;padding:6px 0!important;border:0!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px 12px!important;background:transparent!important;font-size:12px!important;line-height:1.5!important;pointer-events:none!important}
+html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emObservation>:is(h2,h3){display:none!important}
+html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emObservation p{margin:0!important;min-width:0!important;font-size:12px!important;line-height:1.5!important;overflow-wrap:anywhere!important}
+html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emObservation p:last-of-type,html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emObservation #bandTag{grid-column:1/-1!important}
+html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emObservation output{display:inline!important;font:inherit!important;color:inherit!important}
+html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emScienceScene{position:relative!important;inset:auto!important;width:100%!important;height:clamp(280px,42vh,420px)!important;flex:0 0 auto!important;margin:0!important;padding:0!important;border:0!important;transform:none!important;overflow:visible!important}
+html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emScienceScene>#scene{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;margin:0!important;padding:0!important;border:0!important;display:block!important;object-fit:contain!important;object-position:center!important;transform:none!important}
+@media(min-width:1024px){html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emObservation,html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage)>#emScienceScene{width:calc(100% - 300px)!important}}
+@media(max-width:720px){html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage):has(.drawer.mobile-sheet:not(.collapsed)){padding-bottom:calc(var(--science-apparatus-bottom,68px) + 96px)!important}html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage):has(.drawer.mobile-sheet:not(.collapsed))>#emScienceScene{height:260px!important}html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage) .drawer.mobile-sheet .drawer-body{max-height:96px!important}}
+@media(max-width:720px) and (max-height:800px){html body #app #stage:is(#stage):is(#stage):is(#stage):is(#stage):is(#stage):has(.drawer.mobile-sheet:not(.collapsed))>#emScienceScene{height:220px!important}}
+
+</style>
 </head>
 <body>
 <main id="app">
@@ -1458,7 +1472,7 @@ html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!i
   <!-- 舞台 -->
   <div class="stageWrap">
     <div id="stage" class="lab-area">
-      <canvas id="scene"></canvas>
+      <div id="emScienceScene"><canvas id="scene"></canvas></div>
 
       <!-- 对勾 -->
       <div class="checkmark" id="checkmark"><div></div></div>
@@ -1519,8 +1533,8 @@ let emSpawnDue=[0,0],emFreeEntry=null,emPending=null,emCursorTarget=null,emRetur
 
 let W,H,DPR=Math.min(2, window.devicePixelRatio||1);
 function resize(){
-  const cssWidth = stage.clientWidth;
-  const cssHeight = stage.clientHeight;
+  const cssWidth = document.getElementById('emScienceScene').clientWidth;
+  const cssHeight = document.getElementById('emScienceScene').clientHeight;
   const nextW = Math.max(1, Math.floor(cssWidth*DPR));
   const nextH = Math.max(1, Math.floor(cssHeight*DPR));
   if (canvas.width !== nextW) canvas.width=nextW;
@@ -1941,8 +1955,31 @@ async function switchBand(key,options={}){
   }finally{if(emPending===pending){emPending=null;emSync();}}
 }
 const emCursor=document.createElement('div');emCursor.className='codex-auto-cursor';emCursor.setAttribute('aria-hidden','true');stage.append(emCursor);
-function emPlaceCursor(){if(!emCursorTarget||emDestroyed)return;const target=document.querySelector(emCursorTarget);if(!target||!target.getClientRects().length)return;const body=target.closest('.drawer-body');if(body&&target.matches('tr'))body.scrollTop=body.scrollHeight;const rect=target.getBoundingClientRect(),base=stage.getBoundingClientRect(),clip=body?.getBoundingClientRect(),top=clip?Math.max(rect.top,clip.top):rect.top,bottom=clip?Math.min(rect.bottom,clip.bottom):rect.bottom;emCursor.style.left=(rect.left-base.left+rect.width/2)+'px';emCursor.style.top=((top+bottom)/2-base.top)+'px';emCursor.classList.add('show');}
-async function emPoint(selector,token,panel='control',lead=AUTO_DEMO_TIMING.cursorLead){window.__codexScienceShell?.open(panel,true,true);emCursorTarget=selector;if(!await emDelay(lead,token))return false;emPlaceCursor();return true;}
+function emPlaceCursor(){
+  const hide=()=>{emCursor.style.visibility='hidden';emCursor.classList.remove('show');return false;};
+  if(!emCursorTarget||emDestroyed)return hide();
+  const target=document.querySelector(emCursorTarget);
+  if(!target?.isConnected||!target.getClientRects().length)return hide();
+  const body=target.closest('.drawer-body');
+  if(body&&target.matches('tr'))body.scrollTop=body.scrollHeight;
+  const rect=target.getBoundingClientRect(),base=stage.getBoundingClientRect(),vv=window.visualViewport;
+  const viewport=vv?{left:vv.offsetLeft,top:vv.offsetTop,right:vv.offsetLeft+vv.width,bottom:vv.offsetTop+vv.height}:{left:0,top:0,right:innerWidth,bottom:innerHeight};
+  if(![rect.left,rect.top,rect.right,rect.bottom,base.left,base.top,stage.clientLeft,stage.clientTop,...Object.values(viewport)].every(Number.isFinite))return hide();
+  let left=Math.max(rect.left,viewport.left),top=Math.max(rect.top,viewport.top),right=Math.min(rect.right,viewport.right),bottom=Math.min(rect.bottom,viewport.bottom);
+  for(let ancestor=target;ancestor;ancestor=ancestor.parentElement){
+    const css=getComputedStyle(ancestor);
+    if(ancestor.inert||css.display==='none'||css.visibility==='hidden'||css.visibility==='collapse')return hide();
+    const clipX=/^(hidden|clip|scroll|auto)$/.test(css.overflowX),clipY=/^(hidden|clip|scroll|auto)$/.test(css.overflowY);
+    if(clipX||clipY){const r=ancestor.getBoundingClientRect(),x=r.left+ancestor.clientLeft,y=r.top+ancestor.clientTop;if(![x,y,ancestor.clientWidth,ancestor.clientHeight].every(Number.isFinite))return hide();if(clipX){left=Math.max(left,x);right=Math.min(right,x+ancestor.clientWidth);}if(clipY){top=Math.max(top,y);bottom=Math.min(bottom,y+ancestor.clientHeight);}}
+  }
+  if(!(right>left&&bottom>top))return hide();
+  const x=(left+right)/2,y=(top+bottom)/2,hit=document.elementFromPoint(x,y);
+  if(!hit||hit!==target&&!target.contains(hit))return hide();
+  const values={left:(x-base.left-stage.clientLeft+3)+'px',top:(y-base.top-stage.clientTop+2)+'px'};
+  for(const [key,value]of Object.entries(values))if(emCursor.style[key]!==value)emCursor.style[key]=value;
+  emCursor.style.visibility='visible';emCursor.classList.add('show');return true;
+}
+async function emPoint(selector,token,panel='control',lead=AUTO_DEMO_TIMING.cursorLead){window.__codexScienceShell?.open(panel,true,true);if(autoPlaying&&!emPaused&&selector==='#btnVIS')stage.scrollIntoView({block:'start',inline:'nearest'});emCursorTarget=selector;if(!await emDelay(lead,token))return false;emPlaceCursor();return true;}
 async function autoDemo(event){
   if(emDestroyed||freeMode||autoPlaying)return false;emReset();const token=++autoRunVersion;let succeeded=false;autoPlaying=true;window.labSoundBus?.unlock(event);emSync();
   try{for(const task of tasks){if(token!==autoRunVersion||emDestroyed)return false;if(!await emPoint('#'+btnMap[task.key].id,token))return false;emCursor.classList.add('tap');if(!await switchBand(task.key,{auto:true}))return false;emCursor.classList.remove('tap');window.__codexScienceShell?.open('data',true,true);emCursorTarget='#recordBody tr:last-child';emPlaceCursor();if(!await emDelay(AUTO_DEMO_TIMING.recordObserve+AUTO_DEMO_TIMING.transition,token))return false;}if(!await emUntil(()=>completed&&current===tasks.length&&emConclusionShown,token))return false;if(!await emDelay(AUTO_DEMO_TIMING.settle,token))return false;succeeded=token===autoRunVersion&&completed&&current===tasks.length&&emConclusionShown;return succeeded;}
@@ -3162,15 +3199,50 @@ resetFlow(false);emRender(0,false);emStartModel();
         const control = { x:Math.max(panelSafe, width - panelWidth - 12), y:58 };
         return [control, { x:control.x, y:control.y + panelHeaderHeight + 10 }];
       };
+      function projectHeader({x,y,width,height,offsetX=0,offsetY=0,bounds,peers,gap=8}){
+  const fields=[x,y,width,height,offsetX,offsetY,gap,bounds.left,bounds.top,bounds.right,bounds.bottom,...peers.flatMap(p=>[p.x,p.y,p.right,p.bottom])];
+  if(fields.some(v=>!Number.isFinite(v))||width<=0||height<=0||gap<0)throw new Error('Header geometry must be finite and dimensions positive');
+  const minX=bounds.left-offsetX,maxX=bounds.right-offsetX-width,minY=bounds.top-offsetY,maxY=bounds.bottom-offsetY-height;
+  if(maxX<minX||maxY<minY)return null;
+  const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
+  const proposed={x:clamp(x,minX,maxX),y:clamp(y,minY,maxY)};
+  const fits=p=>p.x>=minX&&p.x<=maxX&&p.y>=minY&&p.y<=maxY&&!peers.some(peer=>
+    p.x+offsetX<peer.right+gap&&p.x+offsetX+width>peer.x-gap&&p.y+offsetY<peer.bottom+gap&&p.y+offsetY+height>peer.y-gap);
+  if(fits(proposed))return proposed;
+  const candidates=peers.flatMap(peer=>[
+    {x:proposed.x,y:peer.bottom+gap-offsetY},
+    {x:proposed.x,y:peer.y-gap-offsetY-height},
+    {x:peer.x-gap-offsetX-width,y:proposed.y},
+    {x:peer.right+gap-offsetX,y:proposed.y},
+  ]).filter(fits);
+  candidates.sort((a,b)=>(a.x-proposed.x)**2+(a.y-proposed.y)**2-((b.x-proposed.x)**2+(b.y-proposed.y)**2));
+  return candidates[0]||null;
+}
+      function projectNativeHeader({x,y,width,height,panelWidth=164,parentOffsetX=0,offsetY=0,bounds,peers,gap=8}){
+  if(!Number.isFinite(panelWidth)||!Number.isFinite(parentOffsetX))throw new Error('Native header mapping must be finite');
+  const d=Math.min(0,panelWidth-width),floor=12+parentOffsetX,oldLeft=Math.max(floor,x+d);
+  const projected=projectHeader({x:oldLeft,y:y+offsetY,width,height,bounds:{...bounds,left:Math.max(bounds.left,floor)},peers,gap});
+  if(!projected)return null;
+  if(projected.x===oldLeft&&projected.y===y+offsetY&&x>=6)return {x,y};
+  const anchor={x:projected.x-d,y:projected.y-offsetY};
+  const actual=Math.max(floor,anchor.x+d),roundoff=8*Number.EPSILON*Math.max(1,Math.abs(anchor.x),Math.abs(d),Math.abs(projected.x));
+  if(Math.abs(actual-projected.x)>roundoff)throw new Error('Native header inverse projection is inconsistent');
+  return anchor;
+}
+      const getVisiblePanelArea = () => {
+        const {width,height}=getStageSize(),r=stage.getBoundingClientRect(),ox=r.left+stage.clientLeft,oy=r.top+stage.clientTop,v=window.visualViewport;
+        const left=v?v.offsetLeft:0,top=v?v.offsetTop:0,right=left+(v?v.width:window.innerWidth),bottom=top+(v?v.height:window.innerHeight);
+        if(![width,height,ox,oy,left,top,right,bottom].every(Number.isFinite)){console.warn('[desktop-panels] invalid viewport geometry');return {left:0,top:0,right:0,bottom:0};}
+        return {left:Math.max(panelSafe,left-ox+panelSafe),top:Math.max(panelSafe,top-oy+panelSafe),right:Math.min(width-panelSafe,right-ox-panelSafe),bottom:Math.min(height-panelSafe,bottom-oy-panelSafe)};
+      };
       const applyAnchor = (panel, nextAnchor) => {
         if (!desktopPanelMutationAllowed()) return false;
-        const { width, height } = getStageSize();
-        const maximumX = Math.max(panelSafe, width - panelWidth - panelSafe);
-        const maximumY = Math.max(panelSafe, height - panelHeaderHeight - panelSafe);
-        panel.anchor = {
-          x:clampPanelValue(nextAnchor.x, panelSafe, maximumX),
-          y:clampPanelValue(nextAnchor.y, panelSafe, maximumY),
-        };
+        const origin=stage.getBoundingClientRect(),header=panel.header.getBoundingClientRect(),wrapper=panel.wrapper.getBoundingClientRect(),parent=panel.wrapper.offsetParent,parentRect=parent?.getBoundingClientRect?.()||origin;
+        const parentOffsetX=parent&&parent!==stage?parentRect.left+parent.clientLeft-origin.left-stage.clientLeft:0;
+        const peers=desktopPanels.filter(peer=>peer!==panel&&peer.anchor).map(peer=>{const r=peer.header.getBoundingClientRect();return {x:r.left-origin.left-stage.clientLeft,y:r.top-origin.top-stage.clientTop,right:r.right-origin.left-stage.clientLeft,bottom:r.bottom-origin.top-stage.clientTop};});
+        const projected=projectNativeHeader({x:nextAnchor.x,y:nextAnchor.y,width:header.width,height:header.height,panelWidth,parentOffsetX,offsetY:header.top-wrapper.top,bounds:getVisiblePanelArea(),peers,gap:8});
+        if(!projected){if(!panel.visibilityWarned)console.warn('[desktop-panels] no visible non-overlapping header capacity',panel.id);panel.visibilityWarned=true;return false;}
+        panel.visibilityWarned=false;panel.anchor=projected;
         const offsetParent = panel.wrapper.offsetParent;
         const stageRect = stage.getBoundingClientRect();
         const offsetParentRect = offsetParent?.getBoundingClientRect?.() || stageRect;
@@ -3188,7 +3260,7 @@ resetFlow(false);emRender(0,false);emStartModel();
         return clampPanelValue(Math.min(desired, safeAvailable), minimum, maximum);
       };
       const choosePanelPlacement = (panel) => {
-        const { width:stageWidth, height:stageHeight } = getStageSize();
+        const area = getVisiblePanelArea();
         const anchor = panel.anchor || { x:panelSafe, y:panelSafe };
         const bodyRect = panel.body.getBoundingClientRect();
         const measuredWidth = Math.max(panel.body.scrollWidth || 0, bodyRect.width || 0);
@@ -3205,8 +3277,8 @@ resetFlow(false);emRender(0,false);emStartModel();
           panelBodyMinHeight,
           panelBodyMaxHeight,
         );
-        const leftSpace = Math.max(0, anchor.x + panelWidth - bodySafe);
-        const rightSpace = Math.max(0, stageWidth - anchor.x - bodySafe);
+        const leftSpace = Math.max(0, anchor.x + panelWidth - area.left - bodySafe);
+        const rightSpace = Math.max(0, area.right - anchor.x - bodySafe);
         const leftFits = leftSpace >= desiredWidth;
         const rightFits = rightSpace >= desiredWidth;
         let x;
@@ -3215,8 +3287,8 @@ resetFlow(false);emRender(0,false);emStartModel();
         else if (rightFits) x = "right";
         else x = leftSpace >= rightSpace ? "left" : "right";
         const availableWidth = x === "left" ? leftSpace : rightSpace;
-        const downSpace = Math.max(0, stageHeight - anchor.y - panelHeaderHeight - bodySafe);
-        const upSpace = Math.max(0, anchor.y - bodySafe);
+        const downSpace = Math.max(0, area.bottom - anchor.y - panelHeaderHeight - bodySafe);
+        const upSpace = Math.max(0, anchor.y - area.top - bodySafe);
         const y = downSpace < desiredHeight && upSpace > downSpace ? "up" : "down";
         const availableHeight = y === "up" ? upSpace : downSpace;
         return {
@@ -3862,11 +3934,15 @@ resetFlow(false);emRender(0,false);emStartModel();
       }
       put(pop, 'position', 'absolute'); put(pop, 'box-sizing', 'border-box');
       put(pop, 'left', wrap ? '0px' : pixels(left)); put(pop, 'right', 'auto');
-      put(pop, 'top', pixels(wrap ? 44 : top + 44)); put(pop, 'bottom', 'auto');
+      const reading=document.getElementById('emObservation'),readingBottom=reading?.parentElement===stage?reading.getBoundingClientRect().bottom:NaN;
+      const popTop=Math.max(top+44,Number.isFinite(readingBottom)?readingBottom-originY+8:top+44);
+      put(pop, 'top', pixels(wrap ? popTop-top : popTop)); put(pop, 'bottom', 'auto');
       put(pop, 'transform', 'none'); put(pop, 'z-index', '71');
       put(pop, 'width', pixels(Math.max(1, Math.min(340, stage.clientWidth - left - 10))));
       put(pop, 'max-width', 'none');
-      put(pop, 'max-height', pixels(Math.max(48, stage.clientHeight - top - 60)));
+      const viewport=window.visualViewport,bottom=viewport?viewport.offsetTop+viewport.height:innerHeight,available=bottom-originY-popTop-8;
+      if(!Number.isFinite(available)||available<=0)console.warn('[EM hint] no visible popover capacity');
+      put(pop, 'max-height', pixels(Number.isFinite(available)?Math.max(0,available):0));
       put(pop, 'overflow-y', 'auto'); put(pop, 'overflow-wrap', 'anywhere');
       syncExpanded();
     }
@@ -3959,7 +4035,12 @@ resetFlow(false);emRender(0,false);emStartModel();
       }
       restoreMinimum();
       restoreVariables();
-      const headers=[...panels.map(panel=>rect(panel.querySelector('.drawer-header'))),...tools.map(rect)];
+      const v=window.visualViewport,left=v?v.offsetLeft:0,top=v?v.offsetTop:0;
+      const visibleBounds={x:Math.max(bounds.x,left),y:Math.max(bounds.y,top),right:Math.min(bounds.right,left+(v?v.width:innerWidth)),bottom:Math.min(bounds.bottom,top+(v?v.height:innerHeight))};
+      if(!Object.values(visibleBounds).every(Number.isFinite)){console.warn('[EM panel clearance] invalid viewport geometry');return;}
+      const reading=document.getElementById('emObservation'),core=document.getElementById('emScienceScene');
+      const protectedReading=reading?.parentElement===stage&&reading.getClientRects().length?[rect(reading)]:[],protectedCore=matchMedia('(min-width:1024px)').matches&&core?.getClientRects().length?[rect(core)]:[];
+      const headers=[...panels.map(panel=>rect(panel.querySelector('.drawer-header'))),...tools.map(rect),...protectedReading,...protectedCore];
       // Data has deterministic placement priority; control fits around it, not vice versa.
       for(const panel of [...panels].reverse()){
         const node=body(panel);if(!visible(panel)){move(node,0,0);continue;}
@@ -3972,7 +4053,7 @@ resetFlow(false);emRender(0,false);emStartModel();
         const candidates=[];
         for(const x of xs)for(const y of ys){
           const next={...base,x:base.x+x,right:base.right+x,y:base.y+y,bottom:base.bottom+y};
-          if(next.x<bounds.x+4||next.right>bounds.right-4||next.y<bounds.y+4||next.bottom>bounds.bottom-4||obstacles.some(obstacle=>overlap(next,obstacle)))continue;
+          if(next.x<visibleBounds.x+4||next.right>visibleBounds.right-4||next.y<visibleBounds.y+4||next.bottom>visibleBounds.bottom-4||obstacles.some(obstacle=>overlap(next,obstacle)))continue;
           candidates.push({x,y,cost:Math.abs(x)+Math.abs(y)*4});
         }
         candidates.sort((a,b)=>a.cost-b.cost);const next=candidates[0];
@@ -4078,5 +4159,36 @@ html body #app :is(#taskCard,#xn-task,#xnStepCard):has(>#taskHint)>:is(.progress
   html body #app :is(#taskCard,#xn-task,#xnStepCard)>:is(.progress-dots,.xn-dots)>*{width:8px!important;height:8px!important}
 }
 </style>
+<script id="science-em-reading-flow-v1">
+(() => {
+  'use strict';
+  const scheduler=window.__codexScienceUiSchedulerV1;
+  let owner=null,showRegistered=false;
+  const nativeDead=()=>window.__codexPageControllerV1?.getState().destroyed||['controlDock','dataDock'].every(id=>document.getElementById(id)?.inert===true);
+  function removeShow(){if(showRegistered){window.removeEventListener('pageshow',onShow);showRegistered=false;}}
+  function onShow(event){if(nativeDead()){removeShow();return;}if(event.persisted)mount();}
+  function mount(){
+    if(owner)return;if(nativeDead()){removeShow();return;}
+    const abort=new AbortController();let disposed=false,observer=null,frame=0,lastError=null,listenerCount=0;
+    function destroy({resume=false}={}){if(disposed)return;disposed=true;abort.abort();observer?.disconnect();if(frame)scheduler.cancelAnimationFrame(frame);frame=0;if(!resume)removeShow();owner=null;}
+    function flush(){frame=0;if(disposed)return;if(nativeDead()){destroy();return;}try{if(typeof autoPlaying!=='undefined'&&autoPlaying)emPlaceCursor();}catch(error){lastError=error.message;destroy();console.error('[EM readings] cursor projection failed',error);throw error;}}
+    function schedule(){if(!disposed&&!frame)frame=scheduler.requestAnimationFrame(flush);}
+    function listen(target,event,callback,options={}){target.addEventListener(event,callback,{...options,signal:abort.signal});listenerCount++;}
+    try{
+      const stage=document.getElementById('stage'),reading=document.getElementById('emObservation'),core=document.getElementById('emScienceScene'),toolbar=document.querySelector('.science-global-toolbar'),panels=['controlDock','dataDock'].map(id=>document.getElementById(id));
+      if(!scheduler||!stage||!reading||core?.parentElement!==stage||!toolbar||panels.some(panel=>!panel))throw new Error('[EM readings] required native identity missing');
+      observer=new MutationObserver(()=>{if(nativeDead())destroy();else schedule();});panels.forEach(panel=>observer.observe(panel,{attributes:true,attributeFilter:['inert','class','style']}));
+      listen(window,'resize',schedule);listen(document,'scroll',schedule,{capture:true});panels.forEach(panel=>listen(panel,'transitionend',schedule));
+      if(window.visualViewport){listen(window.visualViewport,'resize',schedule);listen(window.visualViewport,'scroll',schedule);}
+      listen(window,'pagehide',event=>destroy({resume:event.persisted&&!nativeDead()}),{once:true});
+      core.before(reading);stage.after(toolbar);
+      owner={destroy,getState:()=>({disposed,ownedFrames:Number(Boolean(frame)),ownedTimeouts:0,ownedObservers:disposed?0:1,ownedListeners:disposed?Number(showRegistered):listenerCount+Number(showRegistered),lastError})};window.__codexScienceStageReadingV1=owner;
+    }catch(error){lastError=error.message;destroy();console.error('[EM readings] mount failed',error);throw error;}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+  if(!nativeDead()){window.addEventListener('pageshow',onShow);showRegistered=true;}
+})();
+
+</script>
 </body>
 </html>

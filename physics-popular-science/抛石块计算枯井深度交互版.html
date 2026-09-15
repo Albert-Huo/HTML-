@@ -3917,5 +3917,144 @@ html body #app :is(#taskCard,#xn-task,#xnStepCard):has(>#taskHint)>:is(.progress
   html body #app :is(#taskCard,#xn-task,#xnStepCard)>:is(.progress-dots,.xn-dots)>*{width:8px!important;height:8px!important}
 }
 </style>
+<!-- science-stage-observation-flow-v1:start -->
+<style id="science-stage-observation-flow-style-v1">
+html body #app #stage[data-science-stage-observation-v1="1"]{overflow:hidden!important}
+html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation{
+  position:absolute!important;top:var(--science-stage-reading-top,100px)!important;right:12px!important;bottom:auto!important;left:var(--science-stage-reading-inline-start,12px)!important;
+  box-sizing:border-box!important;width:auto!important;max-width:none!important;min-width:0!important;
+  height:auto!important;min-height:0!important;max-height:none!important;margin:0!important;padding:7px 9px!important;
+  display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px 12px!important;
+  border:1px solid rgba(163,210,255,.22)!important;border-radius:10px!important;
+  background:rgba(7,15,27,.88)!important;color:#e9f4ff!important;box-shadow:none!important;
+  font-size:11px!important;line-height:1.35!important;overflow:visible!important;pointer-events:none!important;
+  z-index:12!important;backdrop-filter:blur(5px)
+}
+html[data-theme="light"] body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation{
+  background:rgba(244,249,253,.92)!important;color:#18364d!important;border-color:rgba(54,104,145,.24)!important
+}
+html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation:is(p){display:block!important}
+html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation>:is(h1,h2,h3){position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation>:is(p,div,section){min-width:0!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;color:inherit!important;font-size:11px!important;line-height:1.35!important;overflow-wrap:anywhere!important}
+html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation output{display:inline!important;min-width:0!important;margin:0 0 0 3px!important;color:inherit!important;font:inherit!important;font-size:12px!important;font-weight:720!important;line-height:1.35!important;opacity:1!important;overflow-wrap:anywhere!important}
+html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation>.science-reading-long{display:-webkit-box!important;-webkit-box-orient:vertical!important;-webkit-line-clamp:2!important;overflow:hidden!important}
+html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation>.science-reading-detail{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+html body #app #stage[data-science-stage-observation-v1="1"]>[data-science-stage-extra-v1="1"]{position:absolute!important;inset:var(--science-stage-extra-top,0px) 12px auto 12px!important;box-sizing:border-box!important;width:auto!important;max-width:none!important;margin:0!important;z-index:8!important}
+html body #app #stage #hintPop .science-stage-reading-notes{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.16);font-size:11px;line-height:1.45;color:inherit}
+html body #app #stage #hintPop .science-stage-reading-notes strong{display:block;margin-bottom:4px;font-size:12px}
+html body #app #stage #hintPop .science-stage-reading-notes p{margin:4px 0;color:inherit;font:inherit}
+@media(max-width:720px){
+  html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation{left:var(--science-stage-reading-inline-start,10px)!important;right:10px!important;padding:6px 8px!important;gap:4px 8px!important}
+  html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation>:is(p,div,section){font-size:10.5px!important}
+  html body #app #stage[data-science-stage-observation-v1="1"]>.science-stage-observation output{font-size:11.5px!important}
+  html body #app #stage[data-science-stage-observation-v1="1"]>[data-science-stage-extra-v1="1"]{inset-inline:10px!important}
+}
+</style>
+<script type="application/json" id="science-stage-observation-options-v1">{"observation":"#wellObservation","detailThreshold":24,"longOutputThreshold":60,"extraStage":[],"readingInlineStart":null}</script>
+<script id="science-stage-observation-flow-v1">
+(() => {
+  'use strict';
+  const optionsNode=document.getElementById('science-stage-observation-options-v1');
+  const options=optionsNode?JSON.parse(optionsNode.textContent):null;
+  let owner=null,showRegistered=false,bootstrapFrame=0,bootstrapAttempts=0;
+  const MAX_BOOTSTRAP_ATTEMPTS=120;
+  const nativeDead=()=>window.__codexPageControllerV1?.getState().destroyed||['controlDock','dataDock'].every(id=>document.getElementById(id)?.inert===true);
+  function cancelBootstrap(){if(bootstrapFrame)cancelAnimationFrame(bootstrapFrame);bootstrapFrame=0;bootstrapAttempts=0;}
+  function onBootstrapHide(){cancelBootstrap();}
+  function removeShow(){if(showRegistered){window.removeEventListener('pageshow',onShow);showRegistered=false;}}
+  function onShow(event){if(nativeDead()){removeShow();return;}if(event.persisted)mount();}
+  function mount(){
+    if(owner)return;if(nativeDead()){cancelBootstrap();removeShow();return;}
+    const stage=document.getElementById('stage'),observation=document.querySelector(options?.observation||''),toolbar=document.querySelector('.science-global-toolbar'),hud=document.getElementById('scienceHud'),hint=document.getElementById('hintPop'),lamp=document.getElementById('hintLamp');
+    const panels=['controlDock','dataDock'].map(id=>document.getElementById(id));
+    const missing=[!options&&'#science-stage-observation-options-v1',!stage&&'#stage',!observation&&(options?.observation||'observation selector'),!toolbar&&'.science-global-toolbar',!hud&&'#scienceHud',!hint&&'#hintPop',!lamp&&'#hintLamp',...panels.map((panel,index)=>!panel&&'#'+['controlDock','dataDock'][index])].filter(Boolean);
+    if(missing.length){
+      if(bootstrapAttempts>=MAX_BOOTSTRAP_ATTEMPTS){cancelBootstrap();removeShow();window.removeEventListener('pagehide',onBootstrapHide);throw new Error('[stage observation] required native identity missing: '+missing.join(', '));}
+      bootstrapAttempts+=1;if(!bootstrapFrame)bootstrapFrame=requestAnimationFrame(()=>{bootstrapFrame=0;mount();});return;
+    }
+    cancelBootstrap();window.removeEventListener('pagehide',onBootstrapHide);
+    const abort=new AbortController(),saved=new Map(),owned=new Map(),extraStage=(options.extraStage||[]).map(selector=>document.querySelector(selector)).filter(Boolean);
+    let disposed=false,frame=0,lastError=null,baseHeight=stage.getBoundingClientRect().height,rebaseRequested=false,notes=null,detailTexts=[];
+    function remember(property){if(!saved.has(property))saved.set(property,{value:stage.style.getPropertyValue(property),priority:stage.style.getPropertyPriority(property)});}
+    function write(property,value,priority=''){
+      remember(property);if(stage.style.getPropertyValue(property)!==value||stage.style.getPropertyPriority(property)!==priority)stage.style.setProperty(property,value,priority);owned.set(property,{value,priority});
+    }
+    function applyTargetLayout(){if(options.readingInlineStart)write('--science-stage-reading-inline-start',options.readingInlineStart,'important');}
+    function restoreOwnedStyles(){
+      for(const[property,written]of owned){
+        if(stage.style.getPropertyValue(property)!==written.value||stage.style.getPropertyPriority(property)!==written.priority)continue;
+        const original=saved.get(property);if(original?.value)stage.style.setProperty(property,original.value,original.priority);else stage.style.removeProperty(property);
+      }
+      owned.clear();
+    }
+    function detailText(node){return(node.innerText||node.textContent||'').replace(/\s+/g,' ').trim();}
+    function ensureNotes(){
+      if(disposed||!detailTexts.length)return;
+      if(!notes)notes=document.createElement('div');
+      notes.className='science-stage-reading-notes';notes.dataset.scienceStageReadingNotesV1='1';
+      const title=document.createElement('strong');title.textContent='模型与安全说明';notes.replaceChildren(title,...detailTexts.map(text=>{const p=document.createElement('p');p.textContent=text;return p;}));
+      if(!notes.isConnected)hint.append(notes);
+    }
+    function prepareReading(){
+      detailTexts=[];
+      [...observation.children].forEach((node,index)=>{
+        const text=detailText(node),outputs=node.querySelectorAll('output').length,isHeading=/^H[1-6]$/.test(node.tagName);
+        const explicit=(options.detailIndexes||[]).includes(index);
+        if(isHeading||(outputs===0&&text.length>options.detailThreshold)||explicit){
+          node.classList.add('science-reading-detail');if(!isHeading&&text)detailTexts.push(text);
+        }else if(outputs>0&&text.length>options.longOutputThreshold){
+          node.classList.add('science-reading-long');node.title=text;
+        }
+      });
+      notes=hint.querySelector('[data-science-stage-reading-notes-v1="1"]');ensureNotes();
+    }
+    function growthFor(height){return Number.isFinite(options.growth)?options.growth:height<760?72:height<900?40:0;}
+    function bottomReserve(){return Math.max(0,parseFloat(getComputedStyle(stage).getPropertyValue('--science-apparatus-bottom'))||0);}
+    function measure(){
+      frame=0;if(disposed)return;if(nativeDead()){destroy();return;}
+      try{
+        if(rebaseRequested){restoreOwnedStyles();baseHeight=stage.getBoundingClientRect().height;rebaseRequested=false;}
+        applyTargetLayout();
+        const bounds=stage.getBoundingClientRect(),hudBounds=hud.getBoundingClientRect();
+        const baseTop=Math.max(58,Math.ceil(hudBounds.bottom-bounds.top-stage.clientTop+50));
+        const readingHeight=Math.max(1,Math.ceil(observation.getBoundingClientRect().height));
+        write('--science-stage-reading-top',baseTop+'px');
+        if(!options.overlayReading){
+          const gap=10,growth=growthFor(baseHeight);
+          const extraHeight=extraStage.reduce((sum,node)=>sum+Math.ceil(node.getBoundingClientRect().height)+10,0);
+          const added=readingHeight+gap+growth+extraHeight;
+          write('--science-apparatus-top',(baseTop+readingHeight+gap)+'px','important');
+          write('--science-stage-extra-top',(baseHeight+readingHeight+growth-bottomReserve())+'px');
+          write('height',Math.ceil(baseHeight+added)+'px','important');
+          write('min-height',Math.ceil(baseHeight+added)+'px','important');
+        }
+      }catch(error){lastError=error.message;destroy();console.error('[stage observation] layout failed',error);throw error;}
+    }
+    function schedule({rebase=false}={}){if(disposed)return;rebaseRequested=rebaseRequested||rebase;if(!frame)frame=requestAnimationFrame(measure);}
+    function destroy({resume=false}={}){
+      if(disposed)return;disposed=true;abort.abort();sizes.disconnect();terminal.disconnect();if(frame)cancelAnimationFrame(frame);frame=0;restoreOwnedStyles();
+      if(!resume)removeShow();owner=null;
+    }
+    applyTargetLayout();
+    prepareReading();
+    observation.classList.add('science-stage-observation');stage.dataset.scienceStageObservationV1='1';stage.append(observation);
+    for(const node of extraStage){node.dataset.scienceStageExtraV1='1';stage.append(node);}
+    stage.after(toolbar);
+    const sizes=new ResizeObserver(()=>schedule());sizes.observe(observation);sizes.observe(hud);extraStage.forEach(node=>sizes.observe(node));
+    const terminal=new MutationObserver(records=>{if(nativeDead()){destroy();return;}if(records.some(record=>record.target===observation&&record.type==='childList')){prepareReading();schedule();return;}if(records.some(record=>record.target===stage&&record.attributeName==='style'))schedule();});
+    panels.forEach(panel=>terminal.observe(panel,{attributes:true,attributeFilter:['inert']}));terminal.observe(stage,{attributes:true,attributeFilter:['style']});terminal.observe(observation,{childList:true});
+    lamp.addEventListener('click',()=>queueMicrotask(ensureNotes),{signal:abort.signal});
+    window.addEventListener('resize',()=>schedule({rebase:true}),{signal:abort.signal});
+    window.addEventListener('orientationchange',()=>schedule({rebase:true}),{signal:abort.signal});
+    window.addEventListener('pagehide',event=>destroy({resume:event.persisted&&!nativeDead()}),{once:true,signal:abort.signal});
+    owner={destroy,getState:()=>({disposed,ownedFrames:Number(Boolean(frame)),ownedTimeouts:0,ownedObservers:disposed?0:2,ownedListeners:disposed?Number(showRegistered):3+Number(showRegistered),lastError,baseHeight})};
+    window.__codexScienceStageObservationV1=owner;schedule();document.fonts?.ready.then(()=>{if(!disposed)schedule({rebase:true});});
+  }
+  window.addEventListener('pagehide',onBootstrapHide,{once:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+  if(!nativeDead()){window.addEventListener('pageshow',onShow);showRegistered=true;}
+})();
+</script>
+<!-- science-stage-observation-flow-v1:end -->
 </body>
 </html>

@@ -1591,9 +1591,9 @@ html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!i
   </div>
 
   <div class="toolbar">
-    <button id="resetBtn">步骤重置</button>
-    <button id="autoDemoBtn">自动演示</button>
-    <button id="freeBtn">自由模式</button>
+    <button id="codexLegacyResetBtn">步骤重置</button>
+    <button id="codexLegacyAutoBtn">自动演示</button>
+    <button id="codexLegacyFreeBtn">自由模式</button>
   </div>
 
   <div class="toast" id="toast">再试一试</div>
@@ -1601,19 +1601,14 @@ html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!i
   <div class="modal-mask" id="doneMask">
     <div class="modal">
       <h3 id="doneTitle">完成，你真棒！🎉</h3>
-      <p id="doneText">你成功复现了伽利略的比萨斜塔实验！</p>
+      <p id="doneText">你已完成两次下落观察和结论选择。</p>
       <button class="ok" id="okBtn">OK</button>
     </div>
   </div>
 
   <div class="explanation">
-    <h2>实验原理与结论</h2>
-    <p>伽利略通过比萨斜塔自由落体实验发现：在同一个地方，如果只是“松手让物体掉下来”（不往下用力扔），重球和轻球会同时落地。这说明它们变快的快慢几乎是一样的。</p>
-    <ul>
-        <li>本演示中，你可以改变下落高度，观察铁球从平台掉下所用的时间。</li>
-        <li>高度越高，落地所需时间就越长，临近地面时速度也更大（看左侧速度条和速度数字）。</li>
-        <li>无论质量大小，只要从同样的高度自由落体，两个物体就会一起落地。</li>
-    </ul>
+    <h2>实验名：自由落体实验模拟</h2>
+    <p>调节模型高度，释放两球并观察下落、速度和落地情况。完成两次观察后再选择结论；详细操作与模型说明见灯泡。</p>
   </div>
 
 <script>
@@ -1639,9 +1634,9 @@ html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!i
   const taskHintEl = $('taskHint');
   const dots = [ $('dot1'), $('dot2'), $('dot3') ];
 
-  const resetBtn = $('resetBtn');
-  const autoDemoBtn = $('autoDemoBtn');
-  const freeBtn = $('freeBtn');
+  const resetBtn = $('codexLegacyResetBtn');
+  const autoDemoBtn = $('codexLegacyAutoBtn');
+  const freeBtn = $('codexLegacyFreeBtn');
   const toast = $('toast');
   const checkmark = $('checkmark');
   const doneMask = $('doneMask');
@@ -1928,7 +1923,7 @@ html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!i
 
   if(window.__codexPageControllerV1){
     const nativeToolbar=document.querySelector('#app > .toolbar');
-    for(const [kind,id]of [['Reset','resetBtn'],['Auto','autoDemoBtn'],['Free','freeBtn']]){const node=nativeToolbar.querySelector('#'+id);node.id='codexLegacy'+kind+'Btn';}
+    for(const [kind,id]of [['Reset','codexLegacyResetBtn'],['Auto','codexLegacyAutoBtn'],['Free','codexLegacyFreeBtn']]){const node=nativeToolbar.querySelector('#'+id);node.id='codexLegacy'+kind+'Btn';}
     nativeToolbar.hidden=true;nativeToolbar.style.display='none';
     const bridge=document.getElementById('codexDemoBridge'),controller=window.__codexPageControllerV1;
     bridge.querySelector('#resetBtn').addEventListener('click',event=>controller.getState().mode==='auto'?controller.getState().paused?controller.resume(event):controller.pause():controller.reset());
@@ -2623,9 +2618,11 @@ html[data-theme="light"] body #app :is(.explanation,.explain) h2{color:#0e6681!i
     const toolbar=document.querySelector('.codex-global-toolbar')||document.querySelector('.toolbar:not(.codex-legacy-toolbar)');toolbar.classList.add('science-global-toolbar');
     if(config.unbound){const explanation=app.querySelector('.explanation,.explain');if(explanation?.parentElement===app)app.insertBefore(toolbar,explanation);else app.append(toolbar);document.querySelectorAll('.legacy-toolbar,.codex-legacy-toolbar').forEach(node=>{node.hidden=true;node.inert=true;});}
     const theme=document.getElementById('themeToggle');theme.classList.add('theme-toggle');theme.innerHTML=document.getElementById('codex-science-theme-icons').textContent;
-    const sizes=new ResizeObserver(()=>{const h=hud.getBoundingClientRect(),s=stage.getBoundingClientRect();stage.style.setProperty('--science-apparatus-top',Math.ceil(h.bottom-s.top+50)+'px');});sizes.observe(hud);
+    let sizesFrame=0;
+    const measureSizes=()=>{sizesFrame=0;if(destroyed)return;const h=hud.getBoundingClientRect(),s=stage.getBoundingClientRect(),value=Math.ceil(h.bottom-s.top+50)+'px';if(stage.style.getPropertyValue('--science-apparatus-top')!==value)stage.style.setProperty('--science-apparatus-top',value);};
+    const sizes=new ResizeObserver(()=>{if(!sizesFrame)sizesFrame=requestAnimationFrame(measureSizes);});sizes.observe(hud);
     listen(window,'resize',sync);
-    function destroy(){if(destroyed)return;destroyed=true;events.abort();sizes.disconnect();panelsChanged.disconnect();recordsChanged?.disconnect();window.__codexSciencePanelClearance?.destroy();window.__codexDesktopPanels?.destroy?.();window.__codexStageToolsV1?.destroy();recordButton.disabled=true;control.panel.inert=true;data.panel.inert=true;tabs.inert=true;toolbar.inert=true;for(const id of ['hintLamp','audioToggle','themeToggle']){const button=document.getElementById(id);if(button)button.disabled=true;}window.labSoundBus?.hush();}
+    function destroy(){if(destroyed)return;destroyed=true;events.abort();if(sizesFrame)cancelAnimationFrame(sizesFrame);sizesFrame=0;sizes.disconnect();panelsChanged.disconnect();recordsChanged?.disconnect();window.__codexSciencePanelClearance?.destroy();window.__codexDesktopPanels?.destroy?.();window.__codexStageToolsV1?.destroy();recordButton.disabled=true;control.panel.inert=true;data.panel.inert=true;tabs.inert=true;toolbar.inert=true;for(const id of ['hintLamp','audioToggle','themeToggle']){const button=document.getElementById(id);if(button)button.disabled=true;}window.labSoundBus?.hush();}
     window.addEventListener('pagehide',destroy,{once:true});
     window.__codexScienceShell={record,open,syncState,syncPresentation,destroy,getRecords:()=>recordBridge?recordBridge.getRecords():structuredClone(records),getRecordState:()=>recordBridge?recordBridge.getRecordState():({records:structuredClone(records),unseen}),restoreRecordState:value=>{if(destroyed)return;if(recordBridge){recordBridge.restoreRecordState(value);sync();return;}records=structuredClone(value.records);unseen=value.unseen;render();sync();},restoreRecords:value=>{if(destroyed)return;if(recordBridge){recordBridge.restoreRecordState({...recordBridge.getRecordState(),records:value,unseen:0});sync();return;}records=structuredClone(value);unseen=0;render();sync();},clearRecords:()=>{if(destroyed)return;if(recordBridge){recordBridge.clearRecords();sync();return;}records=[];unseen=0;render();sync();}};
     if(config.presentation)syncPresentation(window.__codexPageControllerV1?.getState());
@@ -3951,5 +3948,149 @@ html body #app :is(#taskCard,#xn-task,#xnStepCard):has(>#taskHint)>:is(.progress
   html body #app :is(#taskCard,#xn-task,#xnStepCard)>:is(.progress-dots,.xn-dots)>*{width:8px!important;height:8px!important}
 }
 </style>
+<style id="iron-stage-presentation-style-v1">
+html body #app #stage:is(#stage):is(#stage){--iron-scene-height:540px;height:calc(var(--science-apparatus-top,100px) + var(--iron-scene-height) + 2px + var(--science-apparatus-bottom,12px))!important;min-height:calc(var(--science-apparatus-top,100px) + var(--iron-scene-height) + 2px + var(--science-apparatus-bottom,12px))!important}
+html body #app #stage #canvasWrap{top:var(--science-apparatus-top,100px)!important;height:var(--iron-scene-height)!important}
+html body #app #stage #ironObservation{position:absolute;top:var(--science-apparatus-top,100px);left:14px;right:auto;width:min(276px,calc(100% - 28px));display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:0;padding:4px 0 8px;border:0;border-radius:0;background:rgba(8,14,27,.95);color:#e8f4ff;font-size:13px;line-height:1.45;pointer-events:none;z-index:42;backdrop-filter:blur(4px)}
+html body #app #canvas #speedometer{top:calc(var(--iron-observation-height,160px) + 24px)}
+html body #app #stage #ironObservation .iron-readout-label{display:block;color:#a5b7cb;font-size:11px}
+html body #app #stage #ironObservation :is(output,.label.min){font:inherit!important;color:inherit!important;opacity:1!important;font-weight:650!important}
+html body #app #stage #ironObservation :is(#ironFallLine,#ironModelNote){grid-column:1 / -1;font-size:12px}
+html body #app #stage #ironObservation #ironModelNote{color:#a5b7cb;font-size:11px}
+html[data-theme="light"] body #app #stage #ironObservation{color:#16364d;background:rgba(242,247,252,.96)}
+html[data-theme="light"] body #app #stage #ironObservation :is(.iron-readout-label,#ironModelNote){color:#476176}
+html body #app #canvas .tower{height:calc(100% - 70px)}
+html body #app #canvas .layer1{top:6.6667%}html body #app #canvas .layer2{top:17.7778%}html body #app #canvas .layer3{top:28.8889%}html body #app #canvas .layer4{top:40%}html body #app #canvas .layer5{top:51.1111%}html body #app #canvas .layer6{top:62.2222%}html body #app #canvas .layer7{top:73.3333%}
+html body #app #canvas .window1{top:8.8889%}html body #app #canvas .window2{top:20%}html body #app #canvas .window3{top:31.1111%}html body #app #canvas .window4{top:42.2222%}html body #app #canvas .window5{top:53.3333%}html body #app #canvas .window6{top:64.4444%}
+@media(max-width:720px){
+  html body #app #stage:is(#stage):is(#stage){--iron-scene-height:584px;height:calc(var(--science-apparatus-top,100px) + var(--iron-observation-height,160px) + var(--iron-scene-height) + var(--science-apparatus-bottom,68px))!important;min-height:calc(var(--science-apparatus-top,100px) + var(--iron-observation-height,160px) + var(--iron-scene-height) + var(--science-apparatus-bottom,68px))!important}
+  html body #app #stage #canvasWrap{top:calc(var(--science-apparatus-top,100px) + var(--iron-observation-height,160px))!important}
+  html body #app #stage #ironObservation{right:14px;width:auto;gap:6px 10px;font-size:12px}
+  html body #app #canvas #speedometer{top:40px}
+}
+</style>
+<script id="iron-stage-presentation-v1">
+(() => {
+  'use strict';
+  function mount() {
+    const stage = document.querySelector('#stage');
+    const observation = document.querySelector('#ironObservation');
+    const lamp = stage?.querySelector('#hintLamp');
+    const pop = stage?.querySelector('#hintPop');
+    if (!stage || !observation || !lamp || !pop || window.__codexPageControllerV1?.getState().destroyed) return;
+    // Keep the original outputs in the original record-scanning host.
+    for (const [id, text] of [['heightValue','模型高度（m）'], ['currentSpeedText','当前速度'], ['maxSpeedLabel','理论最大速度']]) {
+      const output = observation.querySelector('#' + id);
+      const label = document.createElement('span');
+      label.className = 'iron-readout-label'; label.textContent = text;
+      output.parentElement.replaceChildren(label, output);
+    }
+    const minimum = observation.querySelector('.label.min');
+    const minimumLabel = document.createElement('span');
+    minimumLabel.className = 'iron-readout-label'; minimumLabel.textContent = '速度条下限';
+    minimum.parentElement.replaceChildren(minimumLabel, minimum);
+    const note = observation.lastElementChild;
+    note.id = 'ironModelNote';
+    note.textContent = '理想模型 · 图形示意；30 m 时两球在地面，无有效下落。';
+    stage.append(observation);
+
+    const events = new AbortController();
+    const scheduler = window.__codexScienceUiSchedulerV1;
+    const quiz = document.getElementById('task3Controls');
+    const dataDock = document.getElementById('dataDock');
+    const dataBody = dataDock.querySelector('.drawer-body');
+    let frame = 0;
+    let releaseFrame = 0;
+    let releaseVersion = 0;
+    let lastQuizVisible = false;
+    let disposed = false;
+    function layout() {
+      scheduler.cancelAnimationFrame(frame);
+      frame = 0;
+      if (disposed) return;
+      if (window.__codexPageControllerV1?.getState().destroyed) { dispose(); return; }
+      const height = Math.ceil(observation.getBoundingClientRect().height);
+      const value = (height + 16) + 'px';
+      if (stage.style.getPropertyValue('--iron-observation-height') !== value) stage.style.setProperty('--iron-observation-height', value);
+      // Follow scrolling without moving the apparatus or its coordinate origin.
+      const style = getComputedStyle(stage);
+      const start = parseFloat(style.getPropertyValue('--science-apparatus-top')) || 100;
+      const bounds = stage.getBoundingClientRect();
+      const ground = document.getElementById('ground').getBoundingClientRect();
+      const limit = Math.max(start, ground.top - bounds.top - stage.clientTop - 36 - height - 8);
+      const top = Math.min(limit, Math.max(start, 8 - bounds.top - stage.clientTop));
+      observation.style.top = top + 'px';
+      const state = window.__codexPageControllerV1.getState();
+      const quizVisible = quiz.offsetHeight > 0 && state.taskIndex === 2 && !state.completed;
+      if (state.mode === 'auto' && quizVisible && !lastQuizVisible) {
+        quiz.scrollIntoView({ block:'center' }); requestLayout();
+      }
+      lastQuizVisible = quizVisible;
+      if (state.mode === 'auto' && !state.paused && state.teachingPhase === '记录确认' && !dataDock.classList.contains('collapsed')) {
+        const dataBounds = dataBody.getBoundingClientRect();
+        if (dataBounds.height > 0 && (dataBounds.top < 8 || dataBounds.bottom > innerHeight - 8)) {
+          dataBody.scrollIntoView({ block:'center' }); requestLayout();
+        }
+      }
+    }
+    const requestLayout = () => { if (!disposed && !frame) frame = scheduler.requestAnimationFrame(layout); };
+    const sizes = new ResizeObserver(requestLayout);
+    sizes.observe(observation);
+    sizes.observe(quiz);
+    const phaseChanges = new MutationObserver(requestLayout);
+    phaseChanges.observe(document.getElementById('statusTag'), { childList:true, subtree:true, characterData:true });
+    function cancelRelease() {
+      releaseVersion++;
+      scheduler.cancelAnimationFrame(releaseFrame); releaseFrame = 0;
+    }
+    function revealDrop() {
+      cancelRelease();
+      const version = releaseVersion;
+      releaseFrame = scheduler.requestAnimationFrame(() => {
+        releaseFrame = 0;
+        const state = window.__codexPageControllerV1.getState();
+        if (disposed || version !== releaseVersion || state.destroyed || state.paused || !document.getElementById('ironFallObservation').textContent.includes('当前状态：下落中')) return;
+        // The experiment has already started; now make room to observe it.
+        window.__codexScienceShell.open('control', false);
+        window.__codexScienceShell.open('data', false);
+        document.getElementById('ironAutoCursor')?.classList.remove('show', 'tap');
+        layout();
+        if (!matchMedia('(max-width:720px)').matches) return;
+        const scene = document.getElementById('canvasWrap').getBoundingClientRect();
+        const bottom = parseFloat(getComputedStyle(stage).getPropertyValue('--science-apparatus-bottom')) || 68;
+        const desired = Math.max((innerHeight - scene.height) / 2, observation.getBoundingClientRect().height - 24);
+        const targetTop = Math.max(8, Math.min(innerHeight - scene.height - bottom, desired));
+        window.scrollBy(0, scene.top - targetTop);
+        layout();
+      });
+    }
+    document.getElementById('dropButton').addEventListener('click', revealDrop, { signal:events.signal });
+    for (const id of ['resetBtn','autoDemoBtn','freeBtn']) document.getElementById(id).addEventListener('click', cancelRelease, { signal:events.signal });
+    function enrichHint() {
+      if (!pop.classList.contains('open')) return;
+      const guidance = document.createElement('p');
+      guidance.textContent = document.querySelector('#taskHint')?.textContent || '调节高度，释放两球并观察。';
+      const model = document.createElement('p');
+      model.textContent = '忽略空气阻力；高度和速度为原模型读数，图形不作为定量测量。原图设为 30 m 时，两球已在地面，不构成有效下落观察。';
+      guidance.style.margin = '0 0 8px'; model.style.margin = '0';
+      pop.replaceChildren(guidance, model);
+    }
+    lamp.addEventListener('click', enrichHint, { signal:events.signal });
+    document.addEventListener('scroll', requestLayout, { capture:true, passive:true, signal:events.signal });
+    window.addEventListener('resize', requestLayout, { signal:events.signal });
+    function dispose() {
+      if (disposed) return;
+      disposed = true;
+      scheduler.cancelAnimationFrame(frame); frame = 0;
+      cancelRelease();
+      sizes.disconnect(); phaseChanges.disconnect(); events.abort();
+    }
+    window.addEventListener('pagehide', dispose, { once:true, signal:events.signal });
+    layout();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+})();
+</script>
 </body>
 </html>
