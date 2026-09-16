@@ -1929,9 +1929,10 @@ updateDots();
       audioState.uiAvailableAt = nowMs + pattern.duration * 1000 + 80;
       window.dispatchEvent(new CustomEvent("lab-ui-sound", { detail:{ kind } }));
       const output = audioCtx.createGain();
-      output.gain.setValueAtTime(0.0001, start);
-      output.gain.linearRampToValueAtTime(pattern.peak, start + 0.018);
-      output.gain.exponentialRampToValueAtTime(0.0001, start + pattern.duration);
+      const volumeScale = 1.8;
+      output.gain.setValueAtTime(0.0001 * volumeScale, start);
+      output.gain.linearRampToValueAtTime(pattern.peak * volumeScale, start + 0.018);
+      output.gain.exponentialRampToValueAtTime(0.0001 * volumeScale, start + pattern.duration);
       output.connect(audio.input);
       audioState.activeGains.add(output.gain);
       pattern.tones.forEach((tone) => {

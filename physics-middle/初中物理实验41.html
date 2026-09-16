@@ -847,10 +847,11 @@
       if(!audio||!audio.ctx||!audio.input)return false;
       const pattern=UI_SOUND_PATTERNS[kind]||UI_SOUND_PATTERNS.hint;
       const ctx=audio.ctx, start=ctx.currentTime+.012, output=ctx.createGain();
+      const volumeScale=1.8;
       window.dispatchEvent(new CustomEvent("lab-ui-sound",{detail:{kind}}));
-      output.gain.setValueAtTime(.0001,start);
-      output.gain.linearRampToValueAtTime(pattern.peak,start+.018);
-      output.gain.exponentialRampToValueAtTime(.0001,start+pattern.duration);
+      output.gain.setValueAtTime(.0001*volumeScale,start);
+      output.gain.linearRampToValueAtTime(pattern.peak*volumeScale,start+.018);
+      output.gain.exponentialRampToValueAtTime(.0001*volumeScale,start+pattern.duration);
       output.connect(audio.input);
       audioState.activeGains.add(output.gain);
       pattern.tones.forEach(tone=>{

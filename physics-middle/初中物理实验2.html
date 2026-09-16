@@ -4619,14 +4619,15 @@
   function tone(frequency, duration, type, gain, delay){
     var ctx = ensureAudio();
     if (!ctx) return;
+    var volumeScale = 1.8;
     var start = ctx.currentTime + (delay || 0);
     var oscillator = ctx.createOscillator();
     var envelope = ctx.createGain();
     oscillator.type = type || "sine";
     oscillator.frequency.setValueAtTime(frequency, start);
-    envelope.gain.setValueAtTime(.0001, start);
-    envelope.gain.exponentialRampToValueAtTime(gain || .035, start + .012);
-    envelope.gain.exponentialRampToValueAtTime(.0001, start + duration);
+    envelope.gain.setValueAtTime(.0001 * volumeScale, start);
+    envelope.gain.exponentialRampToValueAtTime((gain || .035) * volumeScale, start + .012);
+    envelope.gain.exponentialRampToValueAtTime(.0001 * volumeScale, start + duration);
     oscillator.connect(envelope).connect(window.labSoundBus.getInput());
     oscillator.start(start);
     oscillator.stop(start + duration + .03);
