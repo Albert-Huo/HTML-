@@ -2369,7 +2369,6 @@
         <div class="miniBtns">
           <button id="toggleMode">熄灯冷却</button>
           <button id="startBtn" class="primary">开始</button>
-          <button id="recordBtn" class="ghost">记录一次</button>
           <button id="clearRecordsBtn" class="ghost">清空记录</button>
         </div>
       </div>
@@ -2395,7 +2394,7 @@
             </tr>
           </thead>
           <tbody id="recordBody">
-            <tr><td colspan="4" style="opacity:.72;">当前无记录。建议在关键节点点击“记录一次”。</td></tr>
+            <tr><td colspan="4" style="opacity:.72;">海波约40℃后开始自动记录，每模拟分钟记录一次。</td></tr>
           </tbody>
         </table>
         <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
@@ -2434,7 +2433,6 @@
     const Tmin = 20;
     const Tmax = 100;
     const HEAT_TARGET = 60;
-    const COOL_TARGET = 35;
     const SIM_MINUTES_PER_SECOND = 1;
     // Normalized classroom model, not a fitted material-property dataset.
     const THERMAL = { bathCapacity:3, solidCapacity:0.5, liquidCapacity:0.6, latent:16, conductance:0.8, maxPower:18 };
@@ -2522,7 +2520,6 @@
     const startBtn = document.getElementById('startBtn');
     const modePill = document.getElementById('modePill');
     const readPills = document.getElementById('readPills');
-    const recordBtn = document.getElementById('recordBtn');
     const clearRecordsBtn = document.getElementById('clearRecordsBtn');
 
     const tempText = document.getElementById('tempText');
@@ -2861,12 +2858,22 @@
         && (!currentModeRun || p.modeRunId === sim.modeRunId) && Math.abs(p.T - MP) < 2.0);
     }
 
+    function hasCompleteFreezingPlateau() {
+      if (sim.mode !== 'cool' || sim.meltFrac !== 0) return false;
+      const points = plateauPointsFor('freezing');
+      const last = points[points.length - 1];
+      // The first solid sample after this plateau proves freezing has ended.
+      return !!last && sim.data.some(p => p.runId === sim.runId && p.modeRunId === sim.modeRunId
+        && p.mode === 'cool' && p.phase === 'solid' && p.t > last.t);
+    }
+
     function analyzeBoxData(kind = state.currentTask === 2 ? 'freezing' : 'melting') {
       if (!graphMapper || sim.data.length < 5) return { ok: false };
       const { padL, padT, gw, gh, tMin, tMax } = graphMapper;
       const br = getBoxRect();
-      const x1 = clamp(br.x, 0, graphArea.clientWidth);
-      const x2 = clamp(br.x + br.w, 0, graphArea.clientWidth);
+      const edgeTolerance = 8;
+      const x1 = clamp(br.x - edgeTolerance, 0, graphArea.clientWidth);
+      const x2 = clamp(br.x + br.w + edgeTolerance, 0, graphArea.clientWidth);
       const gx1 = clamp(x1 - padL, 0, gw);
       const gx2 = clamp(x2 - padL, 0, gw);
       const tt1 = tMin + gx1 / gw * (tMax - tMin);
@@ -2875,7 +2882,7 @@
       if (seg.length < 3) return { ok: false };
       const plateauPoints = plateauPointsFor(kind).filter(p => p.t >= tt1 && p.t <= tt2);
       const yMP = padT + (Tmax - MP) / (Tmax - Tmin) * gh;
-      const includesMP = yMP >= br.y && yMP <= br.y + br.h;
+      const includesMP = yMP >= br.y - edgeTolerance && yMP <= br.y + br.h + edgeTolerance;
       let timeSpan = 0;
       if (plateauPoints.length > 2) {
         timeSpan = plateauPoints[plateauPoints.length - 1].t - plateauPoints[0].t;
@@ -2891,7 +2898,7 @@
       },
       {
         text: '点击<strong>暂停</strong>，拖动标记框圈出<strong>熔化平台</strong>（48℃附近）',
-        hint: '提示：先暂停，再圈画；框需要覆盖 48℃ 虚线并包含足够平台数据。',
+        hint: '提示：先暂停，再把标记框移到48℃附近的水平曲线上。',
         check: () => {
           if (sim.running || sim.mode !== 'heat') return false;
           const r = analyzeBoxData('melting');
@@ -2900,10 +2907,10 @@
       },
       {
         text: '<strong>熄灯冷却</strong>，观察海波凝固后暂停，圈出<strong>凝固平台</strong>',
-        hint: '熄灯后水浴仍有余热；等待海波完全凝固，再暂停圈出平台。',
+        hint: '平台结束、海波变为固态后即可暂停圈画，无需继续降温。',
         check: () => {
           if (sim.running) return false;
-          if (sim.mode !== 'cool' || sim.meltFrac > 0 || sim.T > COOL_TARGET) return false;
+          if (!hasCompleteFreezingPlateau()) return false;
           const r = analyzeBoxData('freezing');
           return r.ok && r.includesMP && r.validPointCount > 5 && r.timeSpan > 1.0;
         }
@@ -2959,11 +2966,15 @@
         markStepWarning('请先点击“暂停”，再进行圈画分析。');
         return;
       }
+      if (state.currentTask === 2 && !hasCompleteFreezingPlateau()) {
+        markStepWarning(sim.mode !== 'cool' ? '请先熄灯冷却，观察本次凝固平台。' : '凝固平台尚未完整，请继续冷却到海波变为固态后再暂停圈画。');
+        return;
+      }
       if (state.currentTask === 1 || state.currentTask === 2) {
         const r = analyzeBoxData();
-        if (!r.includesMP) markStepWarning('位置不对，框必须覆盖 48℃ 虚线。');
-        else if (r.validPointCount < 3) markStepWarning('框内没有包含足够的平台数据。');
-        else markStepWarning('请圈出“温度基本不变”的平台段。');
+        const kind = state.currentTask === 2 ? '凝固' : '熔化';
+        if (!r.ok || !r.includesMP) markStepWarning('请将标记框移到48℃附近的水平曲线上。');
+        else markStepWarning(`请圈住本次${kind}平台的一段水平曲线，仅圈住虚线或平台端点还不够。`);
       }
     }
 
@@ -2988,10 +2999,14 @@
     }
 
     function tryPassCurrentStep(endGesture = false, silent = false) {
-      if (state.freeMode || state.successCooldown || state.completed) return false;
+      if (state.freeMode || (state.successCooldown && !endGesture) || state.completed) return false;
       const task = tasks[state.currentTask];
       if (!task || !task.check()) {
         showTaskFailHint(endGesture, silent);
+        return false;
+      }
+      if (!ensureCompletionRecords(state.currentTask + 1)) {
+        markStepWarning('缺少本次实验的关键数据，请完成对应观察后再试。');
         return false;
       }
       if (state.warningStep === state.currentTask) state.warningStep = -1;
@@ -3013,41 +3028,12 @@
 
     function renderRecordTable() {
       if (!state.records.length) {
-        recordBody.innerHTML = '<tr><td colspan="4" style="opacity:.72;">当前无记录。建议在关键节点点击“记录一次”。</td></tr>';
+        recordBody.innerHTML = '<tr><td colspan="4" style="opacity:.72;">海波约40℃后开始自动记录，每模拟分钟记录一次。</td></tr>';
         return;
       }
       recordBody.innerHTML = state.records.map((r, i) => (
         `<tr${r.periodic ? ' data-periodic="true"' : ''}><td>${i + 1}</td><td>${r.step}</td><td>${r.temp.toFixed(1)}</td><td>${r.t}</td></tr>`
       )).join('');
-    }
-
-    function addRecord(step = `步骤${state.currentTask + 1}`, note = '') {
-      const recordStep = note ? `${step}(${note})` : step;
-      const stepNo = Number((String(step).match(/步骤(\d+)/) || [])[1]);
-      const kind = stepNo === 3 ? 'freezing' : stepNo === 2 ? 'melting' : null;
-      const points = kind ? plateauPointsFor(kind) : sim.data.filter(p => p.runId === sim.runId);
-      const point = kind ? points[Math.floor(points.length / 2)] : points[points.length - 1];
-      if (!point) {
-        showToast(kind === 'freezing' ? '请先运行本次冷却，获得凝固平台后再记录。' : '请先运行并获得对应的实测数据。');
-        return false;
-      }
-      state.records.push({ step:recordStep, temp:point.T, t:Number(point.t.toFixed(1)), runId:point.runId, modeRunId:point.modeRunId, mode:point.mode, phase:point.phase });
-      if (state.records.length > 80) state.records.shift();
-      if (state.dataCollapsed) state.unseenRecordCount = Math.min(999, state.unseenRecordCount + 1);
-      else state.unseenRecordCount = 0;
-      refreshDataNotice();
-      renderRecordTable();
-      return true;
-    }
-
-    function addRecordWithAssert(step, note) {
-      const stepNo = Number((String(step).match(/步骤(\d+)/) || [])[1]);
-      if (stepNo && hasRecordForStep(stepNo)) return;
-      const before = state.records.length;
-      addRecord(step, note);
-      if (state.records.length <= before) {
-        throw new Error('AUTO_RECORD_NOT_PERSISTED');
-      }
     }
 
     function hasRecordForStep(stepNo) {
@@ -3062,21 +3048,21 @@
       state.records.push({ step:`步骤${stepNo}(${note})`, temp:point.T, t:Number(point.t.toFixed(1)), runId:point.runId, modeRunId:point.modeRunId, mode:point.mode, phase:point.phase });
     }
 
-    function ensureCompletionRecords() {
+    function ensureCompletionRecords(throughStep = 3) {
       const highPoint = sim.data.find(p => p.runId === sim.runId && p.mode === 'heat' && p.T >= HEAT_TARGET);
       const melting = plateauPointsFor('melting', false);
       const freezing = plateauPointsFor('freezing');
       const before = state.records.length;
       appendCompletionRecord(1, '升温达标', highPoint);
-      appendCompletionRecord(2, '熔化平台', melting[Math.floor(melting.length / 2)]);
-      appendCompletionRecord(3, '凝固平台', freezing[Math.floor(freezing.length / 2)]);
+      if (throughStep >= 2) appendCompletionRecord(2, '熔化平台', melting[Math.floor(melting.length / 2)]);
+      if (throughStep >= 3) appendCompletionRecord(3, '凝固平台', freezing[Math.floor(freezing.length / 2)]);
       if (state.records.length > before) {
         if (state.dataCollapsed) state.unseenRecordCount = Math.min(999, state.unseenRecordCount + state.records.length - before);
         else state.unseenRecordCount = 0;
         refreshDataNotice();
         renderRecordTable();
       }
-      return [1, 2, 3].every(hasRecordForStep);
+      return [1, 2, 3].slice(0, throughStep).every(hasRecordForStep);
     }
 
     function showSelectBox(label) {
@@ -3233,15 +3219,6 @@
     });
     startBtn.addEventListener('click', () => {
       toggleRunAction(false);
-    });
-
-    recordBtn.addEventListener('click', () => {
-      if (state.autoPlaying) return;
-      if (!state.freeMode && !state.completed && state.currentTask === 0) {
-        markStepWarning('请先完成步骤1，再记录数据。');
-        return;
-      }
-      if (addRecord(`步骤${state.currentTask + 1}`, phaseText())) showToast('记录成功。');
     });
 
     clearRecordsBtn.addEventListener('click', () => {
@@ -3453,7 +3430,6 @@
       startBtn.disabled = autoLocked;
       toggleModeBtn.disabled = autoLocked;
       powerRange.disabled = autoLocked;
-      recordBtn.disabled = autoLocked;
       clearRecordsBtn.disabled = autoLocked;
       resetBtn.disabled = autoLocked;
       freeBtn.disabled = autoLocked;
@@ -3600,19 +3576,6 @@
         window.codexLabMobileSync?.();
       }
     }
-    async function demoClickPanelButton(el, runId, action = null) {
-      if (!el) {
-        if (action) action(true);
-        return;
-      }
-      const wasDisabled = !!el.disabled;
-      if (wasDisabled) el.disabled = false;
-      try {
-        await demoClickElement(el, runId, action);
-      } finally {
-        if (wasDisabled) el.disabled = true;
-      }
-    }
     function dispatchSelectPointer(type, clientX, clientY, pointerId = 71) {
       const ev = new PointerEvent(type, {
         bubbles: true,
@@ -3703,7 +3666,7 @@
         if (!heated) throw new Error('AUTO_HEAT_TIMEOUT');
         if (state.currentTask === 0 && !tryPassCurrentStep(false, true)) throw new Error('AUTO_STEP1_FAIL');
         if (state.currentTask < 1) throw new Error('AUTO_STEP1_FAIL');
-        await demoClickPanelButton(recordBtn, runId, () => { addRecordWithAssert('步骤1', '升温达标'); });
+        if (!hasRecordForStep(1)) throw new Error('AUTO_RECORD_NOT_PERSISTED');
         await waitAuto(700, runId);
 
         await demoClickElement(startBtn, runId, toggleRunAction);
@@ -3715,14 +3678,14 @@
         await waitAuto(120, runId);
         if (state.currentTask === 1 && !tryPassCurrentStep(true, true)) throw new Error('AUTO_STEP2_FAIL');
         if (state.currentTask < 2) throw new Error('AUTO_STEP2_FAIL');
-        await demoClickPanelButton(recordBtn, runId, () => { addRecordWithAssert('步骤2', '熔化平台'); });
+        if (!hasRecordForStep(2)) throw new Error('AUTO_RECORD_NOT_PERSISTED');
         await waitAuto(680, runId);
 
         await demoClickElement(toggleModeBtn, runId, toggleModeAction);
         await waitAuto(260, runId);
         await demoClickElement(startBtn, runId, toggleRunAction);
         setStatusTag('冷却并观察凝固平台');
-        const cooled = await waitUntilAuto(() => sim.T <= COOL_TARGET && sim.meltFrac === 0, 65000, runId, 120);
+        const cooled = await waitUntilAuto(hasCompleteFreezingPlateau, 65000, runId, 120);
         if (!cooled) throw new Error('AUTO_COOL_TIMEOUT');
         await demoClickElement(startBtn, runId, toggleRunAction);
         showSelectBox('圈出凝固平台');
@@ -3731,10 +3694,9 @@
         await demoDragSelectBoxTo(mp2.x, mp2.y, runId);
         moveSelectBoxTo(mp2.x, mp2.y);
         await waitAuto(120, runId);
-        await demoClickPanelButton(recordBtn, runId, () => { addRecordWithAssert('步骤3', '凝固平台'); });
-        if (state.records.length < 3) throw new Error('AUTO_RECORD_INCOMPLETE');
         if (!state.completed && !tryPassCurrentStep(true, true)) throw new Error('AUTO_STEP3_FAIL');
         if (!state.completed) throw new Error('AUTO_STEP3_FAIL');
+        if (![1, 2, 3].every(hasRecordForStep)) throw new Error('AUTO_RECORD_INCOMPLETE');
         setStatusTag('演示完成');
       } catch (error) {
         if (String(error && error.message) !== 'AUTO_DEMO_CANCELLED') {
