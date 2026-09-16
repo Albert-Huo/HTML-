@@ -2549,6 +2549,32 @@ body #app .toolbar button:disabled{
       overtoneGain:null
     };
 
+    const FORK_AUDIO = Object.freeze({
+      cutoff:0.012,
+      master:0.9,
+      peak:0.07,
+      exponent:1,
+      toneMix:0.86,
+      overtoneMix:0.14
+    });
+
+    function solveForkAudioEnvelope(energy, forceStop = false){
+      const normalized = clamp(forceStop ? 0 : energy, 0, 1);
+      const audible = normalized > FORK_AUDIO.cutoff;
+      if(!audible){
+        return { master:0.0001, tone:0.0001, overtone:0.0001, effectiveTotal:0 };
+      }
+      const envelope = FORK_AUDIO.peak * Math.pow(normalized, FORK_AUDIO.exponent);
+      const tone = envelope * FORK_AUDIO.toneMix;
+      const overtone = envelope * FORK_AUDIO.overtoneMix;
+      return {
+        master:FORK_AUDIO.master,
+        tone,
+        overtone,
+        effectiveTotal:FORK_AUDIO.master * (tone + overtone)
+      };
+    }
+
     const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
 
     // source: Pattern AN contact chain. Shared contact/bounce primitives keep
@@ -2647,10 +2673,10 @@ body #app .toolbar button:disabled{
       const drift = Math.sin(state.forkPhase * 0.8) * 1.8;
       audio.tone.frequency.setTargetAtTime(base + drift, now, 0.02);
       audio.overtone.frequency.setTargetAtTime(base * 2 + drift * 1.4, now, 0.02);
-      const loudness = energy > 0.015 ? 0.048 * Math.pow(energy, 1.35) : 0.0001;
-      audio.master.gain.setTargetAtTime(loudness, now, forceStop ? 0.015 : 0.03);
-      audio.toneGain.gain.setTargetAtTime(loudness * 0.92, now, 0.02);
-      audio.overtoneGain.gain.setTargetAtTime(loudness * 0.18, now, 0.02);
+      const gains = solveForkAudioEnvelope(energy, forceStop);
+      audio.master.gain.setTargetAtTime(gains.master, now, forceStop ? 0.015 : 0.03);
+      audio.toneGain.gain.setTargetAtTime(gains.tone, now, 0.02);
+      audio.overtoneGain.gain.setTargetAtTime(gains.overtone, now, 0.02);
     }
 
     function showToast(msg){
@@ -3316,7 +3342,7 @@ body #app .toolbar button:disabled{
     }
 
     function stopForkVibration(announce = true){
-      if(state.forkEnergy > 0.02){
+      if(state.forkEnergy > FORK_AUDIO.cutoff){
         state.forkEnergy = 0;
         state.waterLatched = false;
         state.ballLatched = false;
