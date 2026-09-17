@@ -263,8 +263,9 @@
       left:50%;
       bottom:62px;
       width:300px;
-      height:330px;
-      transform:translateX(-50%);
+      height:340px;
+      transform:translateX(-50%) scale(var(--rig-scale,1));
+      transform-origin:center bottom;
     }
     .jar-glass{
       position:absolute;
@@ -284,9 +285,9 @@
       content:"";
       position:absolute;
       left:50%;
-      top:-58px;
+      top:-38px;
       width:54px;
-      height:72px;
+      height:48px;
       transform:translateX(-50%);
       border-radius:30px 30px 18px 18px;
       background:linear-gradient(180deg, rgba(196,244,255,.78), rgba(80,190,224,.36));
@@ -350,11 +351,16 @@
     .alarm{
       position:absolute;
       left:50%;
-      bottom:78px;
+      bottom:74px;
       width:116px;
       height:142px;
       transform:translateX(-50%);
     }
+    .alarm{ cursor:pointer; }
+    .alarm:focus-visible{ outline:3px solid #82d8ff; outline-offset:6px; border-radius:12px; }
+    .alarm-foot{ position:absolute; bottom:-12px; width:12px; height:22px; border-radius:4px; background:linear-gradient(90deg,#916024,#e7b555); }
+    .alarm-foot.left{ left:24px; transform:rotate(16deg); }
+    .alarm-foot.right{ right:24px; transform:rotate(-16deg); }
     .alarm-body{
       position:absolute;
       left:10px;
@@ -1357,6 +1363,19 @@ body #app .toolbar button:disabled{
   }
 </style>
 
+<style id="exp34-apparatus-fit">
+  #stage #apparatus{ top:var(--apparatus-top,112px) !important; }
+  #stage .bell-jar{ left:calc(50% - var(--rig-offset,24px)); bottom:76px; }
+  #stage .apparatus-title{ pointer-events:none; }
+  #stage .bench{ height:12px; bottom:68px; border-radius:50%; background:radial-gradient(ellipse,#59616a,transparent 70%); border:0; }
+  #stage .vacuum-meter{ left:50%; right:auto; top:auto; bottom:2px; transform:translateX(-50%); width:min(320px,calc(100% - 16px)); display:grid; grid-template-columns:64px 1fr; gap:6px 10px; align-items:center; padding:9px 12px; pointer-events:none; }
+  #stage .meter-title{ margin:0; }
+  #stage .meter-text{ grid-column:1/-1; margin:0; }
+  #stage .meter-bar{ height:8px; }
+  #stage #clearBtn{ min-height:36px; margin-bottom:8px; }
+  @media(max-width:720px){ #app #stage{ height:560px !important; min-height:560px !important; } }
+</style>
+
 </head>
 <body>
 <script id="codex-lab-sound-bus" data-native-audio="false">
@@ -1589,7 +1608,7 @@ body #app .toolbar button:disabled{
       <div id="taskText"></div>
       <div id="taskHint"></div>
     </div>
-    <div class="dots" id="dots"></div>
+    <div class="dots progress-dots" id="dots"></div>
   </section>
 
   <main class="lab-wrap" id="stage">
@@ -1606,7 +1625,7 @@ body #app .toolbar button:disabled{
       </div>
     </div>
 
-    <section class="apparatus" id="apparatus">
+    <section class="apparatus lab-area" id="apparatus">
       <div class="apparatus-title">真空罩中的闹钟</div>
       <div class="bell-jar">
         <div class="sound-wave w1" id="wave1"></div>
@@ -1615,7 +1634,8 @@ body #app .toolbar button:disabled{
         <div class="jar-glass">
           <div class="air-particles" id="airParticles"></div>
         </div>
-        <div class="alarm ringing" id="alarm">
+        <div class="alarm" id="alarm" role="button" tabindex="0" aria-label="开启闹钟" aria-pressed="false">
+          <div class="alarm-foot left"></div><div class="alarm-foot right"></div>
           <div class="alarm-handle"></div>
           <div class="alarm-bell left"></div>
           <div class="alarm-bell right"></div>
@@ -1632,7 +1652,7 @@ body #app .toolbar button:disabled{
       <div class="vacuum-meter">
         <div class="meter-title">罩内空气</div>
         <div class="meter-bar"><div class="meter-fill" id="airFill"></div></div>
-        <div class="meter-text" id="meterText">空气充足，传出声明显</div>
+        <div class="meter-text" id="meterText">空气充足，闹钟关闭</div>
       </div>
       <div class="bench"></div>
     </section>
@@ -1645,14 +1665,14 @@ body #app .toolbar button:disabled{
       <div class="dock-body drawer-body" id="controlBody">
         <div class="panel-actions">
           <button class="main" id="recordBtn">记录本次现象</button>
-          <button class="sub" id="bellToggleBtn">关闭闹钟</button>
+          <button class="sub" id="bellToggleBtn">开启闹钟</button>
           <button class="sub" id="pumpOutBtn">抽出空气</button>
           <button class="sub" id="pumpInBtn">放入空气</button>
           <button class="sub" id="analyzeBtn">分析结论</button>
         </div>
         <div class="readout">
           <div class="pill" id="airPill">空气量：100%</div>
-          <div class="pill" id="soundPill">传出声：明显</div>
+          <div class="pill" id="soundPill">传出声：已关闭</div>
         </div>
         <div class="analysis" id="analysisText" hidden></div>
       </div>
@@ -1662,11 +1682,11 @@ body #app .toolbar button:disabled{
       <div class="dock-head drawer-header" id="dataHead" data-drag-handle>
         <div class="dock-title drawer-title">数据面板 <span class="notice hidden" id="dataNotice">0</span></div>
         <div class="record-tools drawer-actions">
-          <button class="icon-btn" id="clearBtn">清空</button>
           <button class="icon-btn" id="dataToggleBtn">展开</button>
         </div>
       </div>
       <div class="dock-body collapsed drawer-body" id="dataBody">
+        <button class="icon-btn" id="clearBtn">清空记录</button>
         <table>
           <thead><tr><th>条件</th><th>空气量</th><th>闹钟与传出声</th></tr></thead>
           <tbody id="recordBody"></tbody>
@@ -1676,6 +1696,10 @@ body #app .toolbar button:disabled{
       </div>
     </section>
 
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock"><span class="tab-label">实验面板<span class="mobile-badge" aria-hidden="true">0</span></span></button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock"><span class="tab-label">数据面板<span class="mobile-badge" aria-hidden="true">0</span></span></button>
+    </div>
     <div class="toast" id="toast"></div>
     <div class="checkmark" id="checkmark"></div>
     <div class="demo-cursor" id="demoCursor"></div>
@@ -1751,7 +1775,7 @@ body #app .toolbar button:disabled{
     const tasks = [
       {
         text:'让闹钟在空气充足的玻璃罩中响铃，记录传出声明显。',
-        hint:'提示：若需要听声，先点击页面或按钮；此时罩内有空气，闹铃声能传到罩外。',
+        hint:'提示：点击罩内闹钟或“开启闹钟”，再观察、记录传出声。',
         check:(s)=>s.records.some(r=>r.kind === 'full-air')
       },
       {
@@ -1782,7 +1806,7 @@ body #app .toolbar button:disabled{
       records:[],
       unseenRecordCount:0,
       airLevel:100,
-      bellOn:true,
+      bellOn:false,
       analysisOk:false,
       controlCollapsed:false,
       dataCollapsed:true,
@@ -1810,7 +1834,7 @@ body #app .toolbar button:disabled{
     };
     /* codex-physics-mode-source:pauseable-sleep-34:end */
     const isNarrowStage = ()=>labWrap.getBoundingClientRect().width < 720;
-    const shouldStartControlCollapsed = ()=>isNarrowStage();
+    const shouldStartControlCollapsed = ()=>true;
 
     function initAirParticles(){
       if(!airParticles || airParticles.children.length) return;
@@ -1896,18 +1920,22 @@ body #app .toolbar button:disabled{
         const master = ctx.createGain();
         const osc = ctx.createOscillator();
         const tickGain = ctx.createGain();
-        osc.type = 'square';
+        const pulse = ctx.createOscillator();
+        const pulseDepth = ctx.createGain();
+        const pulseGain = ctx.createGain();
+        osc.type = 'triangle';
         osc.frequency.value = 880;
-        tickGain.gain.value = 0.0001;
-        master.gain.value = 0.14;
-        osc.connect(tickGain);
+        pulse.frequency.value = 12;
+        pulseDepth.gain.value = 0.28;
+        pulseGain.gain.value = 0.72;
+        tickGain.gain.value = 0;
+        master.gain.value = 0;
+        pulse.connect(pulseDepth); pulseDepth.connect(pulseGain.gain);
+        osc.connect(pulseGain); pulseGain.connect(tickGain);
         tickGain.connect(master);
         master.connect(window.labSoundBus.getInput());
-        osc.start();
-        audioState.ctx = ctx;
-        audioState.master = master;
-        audioState.osc = osc;
-        audioState.tickGain = tickGain;
+        osc.start(); pulse.start();
+        Object.assign(audioState, { ctx, master, osc, tickGain, pulse, pulseDepth, pulseGain });
       }
       return audioState;
     }
@@ -1917,10 +1945,16 @@ body #app .toolbar button:disabled{
       if(!a) return;
       const now = a.ctx.currentTime;
       const level = forceStop ? 0 : soundLevel();
-      const output = forceStop ? 0.0001 : 0.14;
-      const gain = level > .012 ? 0.55 * Math.pow(level, 1.08) : 0.00001;
-      a.master.gain.setTargetAtTime(output, now, forceStop ? 0.012 : 0.055);
-      a.tickGain.gain.setTargetAtTime(gain, now, forceStop ? 0.012 : 0.035);
+      const output = level > .012 ? 0.07 : 0;
+      const gain = output ? 0.55 * Math.pow(level, 1.08) : 0;
+      if(a.targetOutput === output && a.targetGain === gain) return;
+      // Short ramps avoid clicks and reach exact silence without restarting each frame.
+      for(const [param, target] of [[a.master.gain, output], [a.tickGain.gain, gain]]){
+        param.cancelScheduledValues(now);
+        param.setValueAtTime(param.value, now);
+        param.linearRampToValueAtTime(target, now + 0.045);
+      }
+      a.targetOutput = output; a.targetGain = gain;
     }
 
     function trackTimeout(fn, ms){
@@ -1955,6 +1989,7 @@ body #app .toolbar button:disabled{
 
     function setStatus(text){ statusTag.textContent = `状态：${text}`; }
     function currentStatus(){
+      if(!state.bellOn) return state.currentTask === 0 ? '待开启闹钟' : '闹钟已关闭';
       if(state.currentTask === 0) return '空气充足待记录';
       if(state.currentTask === 1) return '正在抽气';
       if(state.currentTask === 2) return '接近真空';
@@ -1970,7 +2005,8 @@ body #app .toolbar button:disabled{
       autoDemoBtn.disabled = !state.autoPlaying && state.freeMode;
       resetBtn.disabled = state.autoPlaying;
       freeBtn.disabled = state.autoPlaying;
-      bellToggleBtn.disabled = state.autoPlaying;
+      for(const button of [bellToggleBtn, recordBtn, pumpOutBtn, pumpInBtn, analyzeBtn, clearBtn]) button.disabled = state.autoPlaying;
+      alarm.setAttribute('aria-disabled', String(state.autoPlaying));
       freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
     }
     function setStep(idx){
@@ -2003,6 +2039,8 @@ body #app .toolbar button:disabled{
       soundPill.textContent = `传出声：${soundLabel(level)}`;
       bellToggleBtn.textContent = state.bellOn ? '关闭闹钟' : '开启闹钟';
       alarm.classList.toggle('ringing', state.bellOn);
+      alarm.setAttribute('aria-pressed', String(state.bellOn));
+      alarm.setAttribute('aria-label', state.bellOn ? '关闭闹钟' : '开启闹钟');
       renderAirParticles();
       syncAudio(false, false);
     }
@@ -2061,7 +2099,13 @@ body #app .toolbar button:disabled{
       analysisText.textContent = '';
       renderRecords();
       updateBadge();
-      if(announce) showToast('已清空记录');
+      if(announce){
+        clearTimers();
+        state.completed = false; state.successCooldown = false; state.warningStep = -1;
+        doneMask.style.display = 'none';
+        setStep(0); updateMode();
+        showToast('记录已清空，请重新从空气充足时开始记录。');
+      }
     }
 
     function analyzeConclusion(advance = true){
@@ -2117,6 +2161,7 @@ body #app .toolbar button:disabled{
       state.completed = true;
       state.autoPlaying = false;
       state.currentTask = tasks.length - 1;
+      setBellOn(false, false);
       prepareCompletionView();
       setStatus('挑战完成');
       updateMode();
@@ -2125,9 +2170,12 @@ body #app .toolbar button:disabled{
     }
 
     function prepareCompletionView(){
-      setControlCollapsed(true);
-      setDataCollapsed(false);
+      setDataCollapsed(true);
+      setControlCollapsed(false);
       initDockPositions(false);
+      requestAnimationFrame(()=>{
+        if(state.completed) controlBody.scrollTop = controlBody.scrollHeight;
+      });
     }
 
     function setBellOn(on, announce = true){
@@ -2135,18 +2183,19 @@ body #app .toolbar button:disabled{
       if(state.bellOn){
         ensureAudio();
         syncAudio(false, true);
-        if(announce) showToast(state.airLevel <= 8 ? '闹钟已开启并在振动，但接近真空时传不出声' : '闹钟已开启，可听到传出声');
+        if(announce) showToast(soundLevel() <= .012 ? '闹钟已开启并在振动，但罩外几乎听不到' : '闹钟已开启，可观察传出声的变化');
       }else{
         syncAudio(true, false);
         if(announce) showToast('闹钟已关闭');
       }
+      if(!state.autoPlaying && !state.completed) setStatus(state.freeMode ? '自由探索' : currentStatus());
       render();
     }
 
     function pump(delta, announce = true){
       state.airLevel = clamp(state.airLevel + delta, 0, 100);
       if(state.bellOn) ensureAudio();
-      if(announce) showToast(delta < 0 ? '正在抽出空气：闹钟仍振动，传出声变弱' : '空气逐渐进入玻璃罩，传出声恢复');
+      if(announce) showToast(!state.bellOn ? '空气量已调整；开启闹钟后可比较传出声。' : delta < 0 ? '正在抽出空气：闹钟仍振动，传出声变弱' : '空气逐渐进入玻璃罩，传出声恢复');
       render();
     }
     function setAirLevel(v){
@@ -2171,7 +2220,7 @@ body #app .toolbar button:disabled{
       state.warningStep = -1;
       state.successCooldown = false;
       state.airLevel = 100;
-      state.bellOn = true;
+      state.bellOn = false;
       state.analysisOk = false;
       doneMask.style.display = 'none';
       clearData(false);
@@ -2209,9 +2258,22 @@ body #app .toolbar button:disabled{
       updateMode();
       setStatus('演示模式中');
       const alive = ()=>state.autoPlaying && state.autoRunId === runId;
-      const click = async(el)=>{ await moveCursorTo(el, 260); if(!alive()) return; el.click(); await sleep(520); };
+      const click = async(el)=>{
+        if(!alive()) return;
+        setControlCollapsed(false);
+        await sleep(180);
+        await moveCursorTo(el, 260);
+        if(!alive()) return;
+        el.disabled = false;
+        try { el.click(); } finally { el.disabled = state.autoPlaying; }
+        await sleep(520);
+        if(isNarrowStage() && !state.completed) setControlCollapsed(true);
+      };
       try{
         const autoRecord = async(kind)=>{ const before = state.records.length; await click(recordBtn); if(state.records.length <= before || !state.records.some(record=>record.kind === kind)) throw new Error('AUTO_RECORD_NOT_PERSISTED:' + kind); };
+        await click(bellToggleBtn);
+        if(!alive()) return;
+        if(!state.bellOn) throw new Error('AUTO_ALARM_NOT_STARTED');
         await /* codex-physics-mode-source:pace-34-observePrimary */ sleep(0, 'observePrimary');
         await autoRecord('full-air');
         if(!alive()) return;
@@ -2245,15 +2307,18 @@ body #app .toolbar button:disabled{
 
     function setControlCollapsed(on){
       state.controlCollapsed = !!on;
+      controlDock.classList.toggle('collapsed', state.controlCollapsed);
       controlBody.classList.toggle('collapsed', state.controlCollapsed);
       controlToggleBtn.textContent = state.controlCollapsed ? '展开' : '收起';
       if(isNarrowStage() && !state.controlCollapsed && !state.dataCollapsed){
         setDataCollapsed(true);
       }
       if(isNarrowStage()) initDockPositions(true);
+      window.dispatchEvent(new Event('exp35:panel-state-changed'));
     }
     function setDataCollapsed(on){
       state.dataCollapsed = !!on;
+      dataDock.classList.toggle('collapsed', state.dataCollapsed);
       dataBody.classList.toggle('collapsed', state.dataCollapsed);
       dataToggleBtn.textContent = state.dataCollapsed ? '展开' : '收起';
       if(!state.dataCollapsed){ state.unseenRecordCount = 0; updateBadge(); }
@@ -2261,6 +2326,7 @@ body #app .toolbar button:disabled{
         setControlCollapsed(true);
       }
       if(isNarrowStage()) initDockPositions(true);
+      window.dispatchEvent(new Event('exp35:panel-state-changed'));
     }
     function setDockPos(el, x, y){
       const area = labWrap.getBoundingClientRect();
@@ -2310,12 +2376,11 @@ body #app .toolbar button:disabled{
     }
 
     function bindEvents(){
-      document.addEventListener('pointerdown', ()=>{
-        if(state.bellOn){
-          ensureAudio();
-          syncAudio(false, false);
-        }
-      }, {passive:true});
+      const operateClock = ()=>{ if(!state.autoPlaying) setBellOn(!state.bellOn, true); };
+      alarm.addEventListener('click', operateClock);
+      alarm.addEventListener('keydown', event=>{
+        if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); operateClock(); }
+      });
       hintLampBtn.addEventListener('click', ()=>hintWrap.classList.toggle('open'));
       recordBtn.addEventListener('click', addRecord);
       bellToggleBtn.addEventListener('click', ()=>setBellOn(!state.bellOn, true));
@@ -2682,8 +2747,8 @@ body #app .toolbar button:disabled{
   function fitCompletionDrawers(){
     if (!stage || !controlDock || !dataDock || !updateDoneState()) return;
     if (completionOpened || userPanelOverride) return;
-    setPanelCollapsed(controlDock, controlBody, controlToggle, true);
-    setPanelCollapsed(dataDock, dataBody, dataToggle, false);
+    setPanelCollapsed(dataDock, dataBody, dataToggle, true);
+    setPanelCollapsed(controlDock, controlBody, controlToggle, false);
     var sw = stage.clientWidth;
     var controlW = controlDock.offsetWidth || 160;
     var dataW = dataDock.offsetWidth || 260;
@@ -2820,6 +2885,7 @@ body #app .toolbar button:disabled{
     const body = which === 'control' ? controlBody : dataBody;
     const toggle = which === 'control' ? controlToggle : dataToggle;
     dock.classList.toggle('collapsed', !open);
+    if(window.state) window.state[which === 'control' ? 'controlCollapsed' : 'dataCollapsed'] = !open;
     if (body) body.classList.toggle('collapsed', !open);
     if (toggle && /^(展开|收起)$/.test((toggle.textContent || '').trim())) toggle.textContent = open ? '收起' : '展开';
     if (which === 'data' && open) clearDataNotice();
@@ -2902,7 +2968,7 @@ body #app .toolbar button:disabled{
     dataTab?.setAttribute('aria-expanded', String(dataOpen));
     syncBadge();
   }
-  function setInitialMobileState(){ if (isMobile()) { forceClassState('data', false); forceClassState('control', true); } syncMobileShell(); }
+  function setInitialMobileState(){ if (isMobile()) { forceClassState('data', false); forceClassState('control', false); } syncMobileShell(); }
   experimentTab?.addEventListener('click', () => clickToOpen('control'));
   dataTab?.addEventListener('click', () => clickToOpen('data'));
   controlClose?.addEventListener('click', () => { forceClassState('control', false); syncMobileShell(); });
@@ -4156,6 +4222,39 @@ body #app .toolbar button:disabled{
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
   else mount();
   window.addEventListener('pageshow', event => { if (event.persisted) mount(); });
+})();
+</script>
+<script id="exp34-apparatus-layout">
+(() => {
+  const stage = document.getElementById('stage');
+  const apparatus = document.getElementById('apparatus');
+  const hud = stage.querySelector('.hud');
+  let frame = 0;
+  function fit(){
+    frame = 0;
+    const s = stage.getBoundingClientRect();
+    const toolBottom = Math.max(hud.getBoundingClientRect().bottom + 44,
+      document.getElementById('hintLamp').getBoundingClientRect().bottom,
+      document.getElementById('audioToggle')?.getBoundingClientRect().bottom || 0);
+    stage.style.setProperty('--apparatus-top', `${Math.ceil(toolBottom - s.top + 10)}px`);
+    const scale = Math.max(0.1, Math.min(1, (apparatus.clientWidth - 24) / 350, (apparatus.clientHeight - 104) / 340));
+    apparatus.style.setProperty('--rig-scale', scale.toFixed(4));
+    apparatus.style.setProperty('--rig-offset', `${24 * scale}px`);
+  }
+  const requestFit = ()=>{ if(!frame) frame = requestAnimationFrame(fit); };
+  const observer = new ResizeObserver(requestFit);
+  observer.observe(stage); observer.observe(hud); observer.observe(apparatus);
+  window.addEventListener('resize', requestFit);
+  window.addEventListener('orientationchange', requestFit);
+  window.addEventListener('pagehide', ()=>{ observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener('resize', requestFit); window.removeEventListener('orientationchange', requestFit); });
+  window.addEventListener('pageshow', event=>{
+    if(!event.persisted) return;
+    frame = 0;
+    observer.observe(stage); observer.observe(hud); observer.observe(apparatus);
+    window.addEventListener('resize', requestFit); window.addEventListener('orientationchange', requestFit);
+    requestFit();
+  });
+  requestFit();
 })();
 </script>
 </body>
