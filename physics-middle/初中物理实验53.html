@@ -836,10 +836,11 @@ body #app .toolbar button:disabled{
         <div class="analysis" id="analysisText">拉动粗绳，记录筒面温度变化后分析。</div>
       </div></section>
       <section class="dock drawer data collapsed" id="dataDock"><div class="dock-header" data-drag-handle><span class="dockTitle">数据面板 <span class="badge" id="dataNotice">0</span></span><button class="iconBtn" id="dataToggleBtn" type="button">展开</button></div><div class="dock-body"><table class="record"><thead><tr><th>观察</th><th>本轮初始</th><th>截至记录最高</th><th>累计升温</th></tr></thead><tbody id="recordBody"></tbody></table><div class="empty" id="emptyRecords">暂无记录。</div></div></section>
+      <div class="mobile-tabs" role="group" aria-label="实验数据面板切换"><button class="mobile-tab" id="experimentTab" type="button" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" aria-hidden="true">0</span></span></button><button class="mobile-tab" id="dataTab" type="button" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" aria-hidden="true">0</span></span></button></div>
       <div class="toast" id="toast">提示</div><div class="checkmark" id="checkmark"></div><div class="demo-cursor" id="demoCursor"></div><div class="modal-mask" id="doneMask"><div class="modal"><h3>实验完成</h3><p>拉绳克服摩擦做功，绳和金属筒等的内能增加；筒面升温说明机械能转化为内能。</p><button class="ok" id="okBtn" type="button">OK</button></div></div>
     </main>
     <div class="toolbar"><button class="sub" id="resetBtn" type="button">步骤重置</button><button class="sub" id="autoDemoBtn" type="button">自动演示</button><button class="sub" id="freeBtn" type="button">自由模式</button></div>
-    <section class="explanation"><h2>实验名：观察机械能转化为内能</h2><p><b>器材与操作：</b>金属筒固定在支架上，粗绳绕过筒面，两端是可拖动绳柄。左右往复拉动任一绳柄，绳子在筒面滑动摩擦；观察筒上的测温贴由冷色变暖色，并比较摩擦前后的示意温度。</p><p><b>结论：</b>人拉绳克服摩擦做功，机械能转化为绳、金属筒等的内能，金属筒温度升高。此装置和温度读数用于模拟摩擦生热过程。</p></section>
+    <section class="explanation"><h2>实验名：观察机械能转化为内能</h2><p><b>器材与操作：</b>金属筒固定在支架上，一根粗绳从左绳柄向上，贴着筒体上半部绕向右绳柄。左右往复拉动任一绳柄，绳子在筒面滑动摩擦；观察筒上的测温贴由冷色变暖色，并比较摩擦前后的示意温度。</p><p><b>结论：</b>人拉绳克服摩擦做功，机械能转化为绳、金属筒等的内能，金属筒温度升高。此装置和温度读数用于模拟摩擦生热过程。</p></section>
   </div>
 <script>
   (() => {
@@ -854,7 +855,7 @@ body #app .toolbar button:disabled{
     const recordBtn=$("#recordBtn"),retryTrialBtn=$("#retryTrialBtn"),analyzeBtn=$("#analyzeBtn"),analysisText=$("#analysisText"),recordBody=$("#recordBody"),emptyRecords=$("#emptyRecords"),dataNotice=$("#dataNotice");
     const resetBtn=$("#resetBtn"),autoDemoBtn=$("#autoDemoBtn"),freeBtn=$("#freeBtn"),toast=$("#toast"),checkmark=$("#checkmark"),doneMask=$("#doneMask"),okBtn=$("#okBtn"),demoCursor=$("#demoCursor");
     const tasks=[
-      {text:"拖动绳柄，让绳子在固定金属筒上往复摩擦",hint:"抓住左侧或右侧绳柄，左右往复拖动；看筒面测温贴变暖。",detail:"粗绳绕在固定金属筒的中段。拖动任一绳柄，让绳子在筒面来回滑动；短抖动或越界空拖不会算作有效摩擦。"},
+      {text:"拖动绳柄，让绳子在固定金属筒上往复摩擦",hint:"抓住左侧或右侧绳柄，左右往复拖动；看筒面测温贴变暖。",detail:"一根粗绳从左绳柄向上，贴着筒体上半部绕向右绳柄。拖动任一绳柄，让绳子在筒面来回滑动；短抖动或越界空拖不会算作有效摩擦。"},
       {text:"观察并记录金属筒温度升高",hint:"比较本轮初始 22.0 ℃ 和截至目前的最高示意温度，再点“记录温度变化”。",detail:"测温贴颜色和上方读数都是模拟显示，用来观察升温趋势；停止后会缓慢冷却，记录保留本轮最高温度。"},
       {text:"说明拉绳做功后能量去了哪里",hint:"打开实验面板，点击“分析能量转化”。",detail:"人拉绳克服摩擦做功，绳和金属筒等的内能增加，金属筒温度升高。"}
     ];
@@ -899,7 +900,7 @@ body #app .toolbar button:disabled{
       const offsetBounds={min:Math.max(-58,(hitSize/2-baseLeftX)/s),max:Math.min(58,(state.width-hitSize/2-baseRightX)/s)};
       const visibleOffset=clamp(state.ropeOffset,offsetBounds.min,offsetBounds.max)*s;
       const leftCenter={x:baseLeftX+visibleOffset,y:cy+79*s},rightCenter={x:baseRightX+visibleOffset,y:cy+79*s};
-      return {mobile,s,x,y,hitSize,offsetBounds,apparatus:{x:cx-225*s,y:cy-110*s,width:450*s,height:215*s},cylinder:{x:cx-115*s,y:cy-52*s,width:230*s,height:104*s},ropeContact:{x:cx-22*s,y:cy-66*s,width:44*s,height:132*s},leftCenter,rightCenter,thermometer:{x:cx+48*s,y:cy-20*s,width:60*s,height:40*s},readout:{x:mobile?12:110,y:12,width:mobile?state.width-24:Math.min(550,state.width*.58),height:mobile?66:62},bench:{x:cx-218*s,y:cy+135*s,width:436*s,height:27*s}};
+      return {mobile,s,x,y,hitSize,offsetBounds,apparatus:{x:cx-225*s,y:cy-110*s,width:450*s,height:215*s},cylinder:{x:cx-115*s,y:cy-52*s,width:230*s,height:104*s},ropeContact:{x:cx-35*s,y:cy-51*s,width:70*s,height:57*s},leftCenter,rightCenter,thermometer:{x:cx+48*s,y:cy-20*s,width:60*s,height:40*s},readout:{x:mobile?12:110,y:12,width:mobile?state.width-24:Math.min(550,state.width*.58),height:mobile?66:62},bench:{x:cx-218*s,y:cy+135*s,width:436*s,height:27*s}};
     }
     function box(center,size=48){return{x:center.x-size/2,y:center.y-size/2,width:size,height:size};}
     function apparatusGeometry(){const g=layout();return{apparatus:{...g.apparatus},cylinder:{...g.cylinder},ropeContact:{...g.ropeContact},leftHandle:box(g.leftCenter,g.hitSize),rightHandle:box(g.rightCenter,g.hitSize),thermometer:{...g.thermometer},readout:{...g.readout}};}
@@ -1019,11 +1020,10 @@ body #app .toolbar button:disabled{
     }
     function drawRopeSystem(g){
       const s=g.s,cx=g.cylinder.x+g.cylinder.width/2,cy=g.cylinder.y+g.cylinder.height/2,active=Boolean(state.drag);
-      ctx.save();ctx.strokeStyle="#9f784d";ctx.lineWidth=9*s;ctx.beginPath();ctx.ellipse(cx,cy,23*s,61*s,0,Math.PI,Math.PI*2);ctx.stroke();ctx.restore();
       drawMetalCylinder(g);
-      ctx.save();ctx.strokeStyle=active?"#f7d097":"#d5ad77";ctx.lineWidth=9*s;ctx.lineCap="round";ctx.beginPath();ctx.ellipse(cx,cy,23*s,61*s,0,0,Math.PI);ctx.stroke();ctx.setLineDash([4*s,7*s]);ctx.lineDashOffset=-state.frictionDistance*140;ctx.strokeStyle="#815d39";ctx.lineWidth=2*s;ctx.stroke();ctx.restore();
-      strokeLine([[cx-23*s,cy],[g.leftCenter.x,g.leftCenter.y]],active?"#f7d097":"#d5ad77",8*s);
-      strokeLine([[cx+23*s,cy],[g.rightCenter.x,g.rightCenter.y]],active?"#f7d097":"#d5ad77",8*s);
+      ctx.save();ctx.strokeStyle="rgba(15,31,40,.48)";ctx.lineWidth=14*s;ctx.lineCap="round";ctx.beginPath();ctx.ellipse(cx,cy,31*s,44*s,0,Math.PI,Math.PI*2);ctx.stroke();ctx.restore();
+      ctx.save();ctx.lineCap="round";ctx.lineJoin="round";ctx.beginPath();ctx.moveTo(g.leftCenter.x,g.leftCenter.y);ctx.lineTo(cx-31*s,cy);ctx.ellipse(cx,cy,31*s,44*s,0,Math.PI,Math.PI*2);ctx.lineTo(g.rightCenter.x,g.rightCenter.y);ctx.strokeStyle=active?"#f7d097":"#e1b77f";ctx.lineWidth=9*s;ctx.stroke();
+      ctx.setLineDash([3*s,8*s]);ctx.lineDashOffset=-state.ropeOffset*s;ctx.strokeStyle="rgba(111,69,37,.72)";ctx.lineWidth=2*s;ctx.stroke();ctx.restore();
       [g.leftCenter,g.rightCenter].forEach(point=>{ctx.save();ctx.shadowColor="rgba(255,210,146,.32)";ctx.shadowBlur=active?13*s:4*s;fillRound(point.x-20*s,point.y-12*s,40*s,24*s,8*s,"#a66e3b");ctx.restore();ctx.strokeStyle="#e8c597";ctx.lineWidth=2*s;roundRect(point.x-20*s,point.y-12*s,40*s,24*s,8*s);ctx.stroke();strokeLine([[point.x-9*s,point.y-8*s],[point.x-9*s,point.y+8*s]],"#6b4428",2*s);strokeLine([[point.x+9*s,point.y-8*s],[point.x+9*s,point.y+8*s]],"#6b4428",2*s);});
     }
     function drawThermometer(g){
@@ -1038,7 +1038,8 @@ body #app .toolbar button:disabled{
       fillRound(g.bench.x,g.bench.y,g.bench.width,g.bench.height,8*s,"#765139");ctx.fillStyle="rgba(255,255,255,.1)";ctx.fillRect(g.bench.x,g.bench.y+6*s,g.bench.width,2*s);
       for(const side of [-1,1]){const px=cx+side*127*s;fillRound(px-18*s,g.bench.y-6*s,36*s,12*s,4*s,"#485761");strokeLine([[px,g.bench.y-6*s],[px,cy]],"#7e929d",7*s);strokeLine([[px,cy],[cx+side*119*s,cy]],"#a7bbc5",7*s);}
       drawRopeSystem(g);drawThermometer(g);
-      label("固定金属筒 · 绳绕筒面",cx-20*s,cy-91*s,13*s,"#eaf4fa");
+      label("固定金属筒",cx-20*s,cy-91*s,13*s,"#eaf4fa");
+      label("左柄 → 绳贴筒面 → 右柄",cx,cy+68*s,11*s,"#f1ce9e");
       label("左绳柄",g.leftCenter.x,g.leftCenter.y+26*s,11*s,"#f7ddba");label("右绳柄",g.rightCenter.x,g.rightCenter.y+26*s,11*s,"#f7ddba");
       label("← 拖动任一绳柄，左右往复 →",cx,cy+119*s,12*s,"#8fe7bd");
     }
@@ -1285,14 +1286,18 @@ body #app .toolbar button:disabled{
     }
     function ensureTabs(){
       if (tabsEl) return;
-      tabsEl = document.createElement("div");
-      tabsEl.className = "mobile-tabs";
-      tabsEl.setAttribute("role", "group");
-      tabsEl.setAttribute("aria-label", "实验数据面板切换");
-      const exp = makeTab("experimentTab", "实验面板");
-      const data = makeTab("dataTab", "数据面板");
-      tabsEl.append(exp, data);
-      stage.appendChild(tabsEl);
+      tabsEl = stage.querySelector(".mobile-tabs");
+      if (!tabsEl) {
+        tabsEl = document.createElement("div");
+        tabsEl.className = "mobile-tabs";
+        tabsEl.setAttribute("role", "group");
+        tabsEl.setAttribute("aria-label", "实验数据面板切换");
+        stage.appendChild(tabsEl);
+      }
+      const exp = tabsEl.querySelector("#experimentTab") || makeTab("experimentTab", "实验面板");
+      const data = tabsEl.querySelector("#dataTab") || makeTab("dataTab", "数据面板");
+      if (!exp.isConnected) tabsEl.appendChild(exp);
+      if (!data.isConnected) tabsEl.appendChild(data);
       exp.addEventListener("click", () => setMobilePanel(controlDock.classList.contains("collapsed") ? "control" : null));
       data.addEventListener("click", () => setMobilePanel(dataDock.classList.contains("collapsed") ? "data" : null));
       ensureClose(controlDock);
