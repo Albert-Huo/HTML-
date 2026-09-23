@@ -1197,7 +1197,7 @@ body #app .toolbar button:disabled{
 
     <main id="stage" aria-label="测量滑轮组机械效率互动实验台">
       <div class="hud">
-        <span class="mode-strip" id="modeTag">模式：闯关模式 · 关卡 1/5</span>
+        <span class="tag mode-strip" id="modeTag">模式：闯关模式 · 关卡 1/5</span>
         <span class="tag" id="statusTag">状态：待操作</span>
       </div>
       <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button>
@@ -1328,6 +1328,8 @@ body #app .toolbar button:disabled{
     const TARGET_H = 0.10;
     const SUPPORT_SEGMENTS = 3;
     const SPRING_SCALE_MAX_N = 5;
+    const ROPE_CONNECTOR_Y = 138;
+    const GAUGE_BOTTOM_CLEARANCE = 48;
     const TASKS = [
       {
         text: "称量并安装第一组钩码",
@@ -1733,6 +1735,7 @@ body #app .toolbar button:disabled{
     }
     function resizeCanvas() {
       const rect = labArea.getBoundingClientRect();
+      const pullProgress = state.maxPullPx ? clamp(state.pullPx / state.maxPullPx, 0, 1) : 0;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.max(1, Math.round(rect.width * dpr));
       canvas.height = Math.max(1, Math.round(rect.height * dpr));
@@ -1741,7 +1744,8 @@ body #app .toolbar button:disabled{
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       state.width = rect.width;
       state.height = rect.height;
-      state.maxPullPx = clamp(rect.height * .28, 118, 168);
+      state.maxPullPx = Math.min(clamp(rect.height * .28, 118, 168), Math.max(70, rect.height - GAUGE_BOTTOM_CLEARANCE - ROPE_CONNECTOR_Y - 244 * .52));
+      state.pullPx = state.maxPullPx * pullProgress;
       draw();
     }
     function geometry() {
@@ -1749,17 +1753,21 @@ body #app .toolbar button:disabled{
       const h = state.height;
       const compact = w < 600;
       const rigX = compact ? w * .47 : w * .48;
-      const fixedY = compact ? 108 : 92;
-      const movingBaseY = compact ? h * .46 : h * .61;
+      const fixedY = 90;
+      const fixedLarge = { x: rigX + (compact ? 47 : 52), y: fixedY, r: compact ? 25 : 27 };
+      const fixedSmall = { x: rigX - (compact ? 41 : 44), y: fixedY, r: 19 };
+      const movingRadius = compact ? 22 : 25;
+      const housingLeft = fixedSmall.x - fixedSmall.r - 9;
+      const housingRight = fixedLarge.x + fixedLarge.r + 9;
+      const housingBottom = fixedY + fixedLarge.r + 9;
+      const movingBaseY = Math.max(h * (compact ? .50 : .55), housingBottom + movingRadius + 10 + state.maxPullPx / SUPPORT_SEGMENTS);
       const lift = state.pullPx / SUPPORT_SEGMENTS;
       const movingY = movingBaseY - lift;
-      const ropeX = compact ? w * .72 : w * .69;
-      const fixedLarge = { x: rigX, y: fixedY, r: compact ? 27 : 30 };
-      const fixedSmall = { x: rigX, y: fixedY + (compact ? 62 : 70), r: compact ? 19 : 21 };
-      const movingPulley = { x: rigX, y: movingY, r: compact ? 29 : 32 };
-      const movingAxleAnchor = { x: movingPulley.x, y: movingPulley.y };
-      const connector = { x: ropeX, y: fixedLarge.y + fixedLarge.r + (compact ? 44 : 54) };
-      const gaugeScale = compact ? .74 : .82;
+      const ropeX = fixedLarge.x + fixedLarge.r;
+      const movingPulley = { x: rigX, y: movingY, r: movingRadius };
+      const movingAxleAnchor = { x: rigX - (compact ? 40 : 44), y: movingY };
+      const connector = { x: ropeX, y: ROPE_CONNECTOR_Y };
+      const gaugeScale = clamp((h - GAUGE_BOTTOM_CLEARANCE - connector.y - state.maxPullPx) / 244, .52, compact ? .75 : .82);
       const gaugeHookOffset = 244 * gaugeScale;
       const scaleTop = connector.y + state.pullPx;
       const parkedX = compact ? w * .83 : w * .84;
@@ -1768,9 +1776,9 @@ body #app .toolbar button:disabled{
       const scaleY = state.scaleConnected ? scaleTop : (state.scaleGhost ? state.scaleGhost.y : parkedTop);
       const scaleHook = { x: scaleX, y: scaleY + gaugeHookOffset };
       const tray = { x: compact ? w * .16 : w * .14, y: compact ? h * .48 : h * .75 };
-      const blockHook = { x: movingPulley.x, y: movingY + movingPulley.r + 24 };
-      const weight = state.dragWeight || (state.weightLocation === "tray" ? tray : (state.weightLocation === "scale" ? { x: scaleHook.x, y: scaleHook.y + 28 } : { x: blockHook.x, y: blockHook.y + 31 }));
-      return { w, h, compact, rigX, fixedY, movingY, ropeX, fixedLarge, fixedSmall, movingPulley, movingAxleAnchor, connector, gaugeScale, gaugeHookOffset, scaleX, scaleY, scaleHook, tray, blockHook, weight };
+      const blockHook = { x: movingPulley.x, y: movingY + movingPulley.r + 20 };
+      const weight = state.dragWeight || (state.weightLocation === "tray" ? tray : (state.weightLocation === "scale" ? { x: scaleHook.x, y: scaleHook.y + 28 } : { x: blockHook.x, y: blockHook.y + 27 }));
+      return { w, h, compact, rigX, fixedY, movingY, housingLeft, housingRight, housingBottom, ropeX, fixedLarge, fixedSmall, movingPulley, movingAxleAnchor, connector, gaugeScale, gaugeHookOffset, scaleX, scaleY, scaleHook, tray, blockHook, weight };
     }
 
     function roundedRect(x, y, w, h, r) {
@@ -1801,28 +1809,11 @@ body #app .toolbar button:disabled{
       ctx.beginPath(); ctx.arc(x, y, 6, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
-    function circleTangentPoint(circle, point) {
-      const dx = point.x - circle.x;
-      const dy = point.y - circle.y;
-      const distanceSquared = dx * dx + dy * dy;
-      const radiusSquared = circle.r * circle.r;
-      if (distanceSquared <= radiusSquared) return { x: circle.x + circle.r, y: circle.y };
-      const baseX = circle.x + radiusSquared * dx / distanceSquared;
-      const baseY = circle.y + radiusSquared * dy / distanceSquared;
-      const factor = circle.r * Math.sqrt(distanceSquared - radiusSquared) / distanceSquared;
-      const tangentA = { x: baseX - factor * dy, y: baseY + factor * dx };
-      const tangentB = { x: baseX + factor * dy, y: baseY - factor * dx };
-      return tangentA.y < tangentB.y ? tangentA : tangentB;
-    }
     function drawRope(g) {
       const fixedLarge = g.fixedLarge;
       const fixedSmall = g.fixedSmall;
       const moving = g.movingPulley;
       const ropeEndY = state.scaleConnected ? g.scaleY : g.connector.y;
-      const ropeEnd = { x: g.ropeX, y: ropeEndY };
-      const largeExitTangent = circleTangentPoint(fixedLarge, ropeEnd);
-      let largeExitAngle = Math.atan2(largeExitTangent.y - fixedLarge.y, largeExitTangent.x - fixedLarge.x);
-      if (largeExitAngle < Math.PI) largeExitAngle += Math.PI * 2;
       ctx.save();
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
@@ -1832,40 +1823,24 @@ body #app .toolbar button:disabled{
       ctx.moveTo(g.movingAxleAnchor.x, g.movingAxleAnchor.y);
       ctx.lineTo(fixedSmall.x - fixedSmall.r, fixedSmall.y);
       ctx.arc(fixedSmall.x, fixedSmall.y, fixedSmall.r, Math.PI, Math.PI * 2);
-      ctx.lineTo(moving.x + moving.r, moving.y);
-      ctx.arc(moving.x, moving.y, moving.r, 0, Math.PI);
+      ctx.lineTo(moving.x - moving.r, moving.y);
+      ctx.arc(moving.x, moving.y, moving.r, Math.PI, 0, true);
       ctx.lineTo(fixedLarge.x - fixedLarge.r, fixedLarge.y);
-      ctx.arc(fixedLarge.x, fixedLarge.y, fixedLarge.r, Math.PI, largeExitAngle);
-      ctx.lineTo(ropeEnd.x, ropeEnd.y);
+      ctx.arc(fixedLarge.x, fixedLarge.y, fixedLarge.r, Math.PI, Math.PI * 2);
+      ctx.lineTo(g.ropeX, ropeEndY);
       ctx.stroke();
       ctx.restore();
     }
     function drawAxleAnchorRope(g) {
       const anchor = g.movingAxleAnchor;
-      const target = { x: g.fixedSmall.x - g.fixedSmall.r, y: g.fixedSmall.y };
-      const dx = target.x - anchor.x;
-      const dy = target.y - anchor.y;
-      const length = Math.hypot(dx, dy) || 1;
-      const visibleLength = g.movingPulley.r + 6;
-      const edge = {
-        x: anchor.x + dx / length * visibleLength,
-        y: anchor.y + dy / length * visibleLength
-      };
       ctx.save();
       ctx.lineCap = "round";
-      ctx.strokeStyle = "rgba(17,20,22,.72)";
-      ctx.lineWidth = 8;
-      ctx.beginPath(); ctx.moveTo(anchor.x, anchor.y); ctx.lineTo(edge.x, edge.y); ctx.stroke();
-      ctx.strokeStyle = "#d6bd88";
-      ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(anchor.x, anchor.y); ctx.lineTo(edge.x, edge.y); ctx.stroke();
+      ctx.strokeStyle = "#89928d";
+      ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(anchor.x, anchor.y); ctx.lineTo(g.movingPulley.x, g.movingPulley.y); ctx.stroke();
       ctx.fillStyle = "#f4c867";
-      ctx.beginPath(); ctx.arc(anchor.x, anchor.y, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(anchor.x, anchor.y, 6, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = "#6f5328"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = "#f1d48f";
-      ctx.font = "700 10px PingFang SC, sans-serif";
-      ctx.textAlign = "right";
-      ctx.fillText("绳端固定在轴心", anchor.x - 12, anchor.y + 23);
       ctx.restore();
     }
     function drawForceReadout(x, y, value, compact) {
@@ -1873,18 +1848,18 @@ body #app .toolbar button:disabled{
       const height = compact ? 27 : 30;
       ctx.save();
       ctx.fillStyle = "rgba(8,14,17,.92)";
-      roundedRect(x - width - 23, y + 92, width, height, 7); ctx.fill();
+      roundedRect(x + 18, y + 92, width, height, 7); ctx.fill();
       ctx.strokeStyle = "rgba(99,215,173,.78)";
       ctx.lineWidth = 1.5; ctx.stroke();
       ctx.fillStyle = "#effff8";
       ctx.font = "700 " + (compact ? 12 : 13) + "px Menlo, monospace";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("F = " + value.toFixed(2) + " N", x - width / 2 - 23, y + 92 + height / 2);
+      ctx.fillText("F = " + value.toFixed(2) + " N", x + 18 + width / 2, y + 92 + height / 2);
       ctx.strokeStyle = "rgba(99,215,173,.68)";
       ctx.beginPath();
-      ctx.moveTo(x - 23, y + 92 + height / 2);
-      ctx.lineTo(x - 8, y + 108);
+      ctx.moveTo(x + 18, y + 92 + height / 2);
+      ctx.lineTo(x + 8, y + 108);
       ctx.stroke();
       ctx.restore();
     }
@@ -1932,7 +1907,13 @@ body #app .toolbar button:disabled{
       ctx.font = "700 " + Math.max(11, 13 * s) + "px Menlo, monospace";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(value.toFixed(2) + " N", x, y + 51 * s);
+      if (state.scaleConnected) {
+        ctx.save();
+        ctx.translate(x, y + 51 * s);
+        ctx.rotate(Math.PI);
+        ctx.fillText(value.toFixed(2) + " N", 0, 0);
+        ctx.restore();
+      } else ctx.fillText(value.toFixed(2) + " N", x, y + 51 * s);
 
       ctx.fillStyle = "#eef5f7";
       roundedRect(x - 32 * s, y + 68 * s, 64 * s, 120 * s, 7 * s); ctx.fill();
@@ -1964,12 +1945,18 @@ body #app .toolbar button:disabled{
         ctx.lineTo(x + 29 * s, yy);
         ctx.stroke();
       }
-      ctx.font = "700 " + Math.max(9, 9.5 * s) + "px Arial";
-      ctx.textAlign = "right";
+      ctx.font = "700 " + Math.max(10, 10.5 * s) + "px Arial";
+      ctx.textAlign = state.scaleConnected ? "left" : "right";
       ctx.textBaseline = "middle";
       majorValues.forEach((mark, index) => {
         const yy = scaleStart + scaleLength * index / (majorValues.length - 1);
-        ctx.fillText(mark.toFixed(0), x - 10 * s, yy);
+        if (state.scaleConnected) {
+          ctx.save();
+          ctx.translate(x - 10 * s, yy);
+          ctx.rotate(Math.PI);
+          ctx.fillText(mark.toFixed(0), 0, 0);
+          ctx.restore();
+        } else ctx.fillText(mark.toFixed(0), x - 10 * s, yy);
       });
       ctx.fillStyle = "#d73d4d";
       roundedRect(x - 28 * s, pointerY - 2.5 * s, 58 * s, 5 * s, 2 * s); ctx.fill();
@@ -1985,7 +1972,7 @@ body #app .toolbar button:disabled{
       ctx.lineWidth = 4 * s;
       drawScaleBottomHook(x, y, s);
       ctx.restore();
-      if (!g.compact) drawForceReadout(x, y, value, g.compact);
+      if (!g.compact && state.scaleConnected) drawForceReadout(x, y, value, g.compact);
     }
     function drawWeightHanger(x, topY, bottomY) {
       ctx.save();
@@ -2043,9 +2030,9 @@ body #app .toolbar button:disabled{
       }
       ctx.shadowBlur = 0;
       ctx.fillStyle = "#f7eee1";
-      ctx.font = "700 11px PingFang SC, sans-serif";
+      ctx.font = "700 12px PingFang SC, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("钩码 " + currentLoad().toFixed(1) + " N", x, stackBottom + 38);
+      ctx.fillText("钩码 " + currentLoad().toFixed(1) + " N", x, Math.min(stackBottom + 35, g.h - 42));
       ctx.restore();
     }
     function drawRulers(g) {
@@ -2061,7 +2048,7 @@ body #app .toolbar button:disabled{
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (major ? 14 : 8), y); ctx.stroke();
       }
       ctx.fillStyle = "#93a19e";
-      ctx.font = "11px Menlo, monospace";
+      ctx.font = "12px Menlo, monospace";
       ctx.fillText("h", x - 10, y0 - 8);
       ctx.restore();
     }
@@ -2094,15 +2081,16 @@ body #app .toolbar button:disabled{
       ctx.stroke();
 
       ctx.fillStyle = "#2b3233";
-      roundedRect(g.rigX - 57, g.fixedY - 38, 116, 143, 12); ctx.fill();
+      const housingTop = g.fixedLarge.y - g.fixedLarge.r - 11;
+      roundedRect(g.housingLeft, housingTop, g.housingRight - g.housingLeft, g.housingBottom - housingTop, 11); ctx.fill();
       ctx.strokeStyle = "#8c9693"; ctx.lineWidth = 2; ctx.stroke();
       ctx.strokeStyle = "#71807d";
       ctx.lineWidth = 5;
       ctx.beginPath();
-      ctx.moveTo(g.fixedLarge.x, 47);
-      ctx.lineTo(g.fixedLarge.x, g.fixedLarge.y - g.fixedLarge.r);
-      ctx.moveTo(g.fixedLarge.x, g.fixedLarge.y + g.fixedLarge.r);
-      ctx.lineTo(g.fixedSmall.x, g.fixedSmall.y - g.fixedSmall.r);
+      ctx.moveTo(g.rigX, 47);
+      ctx.lineTo(g.rigX, housingTop);
+      ctx.moveTo(g.fixedSmall.x, g.fixedY);
+      ctx.lineTo(g.fixedLarge.x, g.fixedY);
       ctx.stroke();
 
       drawRope(g);
@@ -2116,39 +2104,21 @@ body #app .toolbar button:disabled{
       ctx.fillStyle = state.scaleConnected ? "#63d7ad" : "#e4b85b";
       const ropeEndY = state.scaleConnected ? g.scaleY : g.connector.y;
       ctx.beginPath(); ctx.arc(g.ropeX, ropeEndY, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#e4b85b";
-      ctx.font = "700 11px PingFang SC, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(state.scaleConnected ? "已连接" : "绳端接头", g.ropeX, ropeEndY - 13);
 
       drawRulers(g);
       drawScale(g);
       drawWeights(g);
 
-      ctx.fillStyle = "#9eaaa6";
-      ctx.font = "12px PingFang SC, sans-serif";
-      ctx.textAlign = "center";
-      const weightCaptionY = g.weight.y + (Math.round(currentLoad()) - 1) * 16 + 60;
-      if (state.weightLocation === "tray" && !state.dragWeight) {
-        const lines = g.compact
-          ? (state.freeMode ? ["拖到测力计", "或动滑轮挂钩"] : ["钩码托盘", "拖到测力计挂钩"])
-          : [state.freeMode ? "拖到测力计或动滑轮挂钩" : "钩码托盘｜拖到测力计挂钩"];
-        const halfWidth = Math.max(...lines.map((line)=>ctx.measureText(line).width)) / 2;
-        const captionX = clamp(g.tray.x, halfWidth + 8, g.w - halfWidth - 8);
-        const captionY = Math.min(weightCaptionY, g.h - 12 - (lines.length - 1) * 16);
-        lines.forEach((line, index)=>ctx.fillText(line, captionX, captionY + index * 16));
-      }
-      if (state.weightLocation === "scale") ctx.fillText(state.freeMode ? "可拖到动滑轮或放回托盘" : "已称得 G｜拖到动滑轮挂钩", g.weight.x, weightCaptionY);
-      if (state.weightLocation === "block" && !state.scaleConnected) ctx.fillText("翻转测力计，将挂钩接入黄色绳端", g.scaleX, g.scaleY - 16);
-      if (state.scaleConnected && !state.pullComplete) ctx.fillText("握住下方拉环，缓慢向下拉", g.scaleX, Math.min(g.h - 12, g.scaleHook.y + 28));
-
+      const metricsX = g.compact ? 12 : Math.max(100, g.rigX - 290);
       ctx.textAlign = "left";
       ctx.fillStyle = "rgba(228,184,91,.9)";
       ctx.font = "700 12px Menlo, monospace";
-      ctx.fillText("s = " + liveS().toFixed(2) + " m", 58, 25);
-      ctx.fillText("h = " + liveH().toFixed(2) + " m", 58, 44);
+      ctx.fillText("s " + liveS().toFixed(2) + " m · h " + liveH().toFixed(2) + " m", metricsX, 24);
       ctx.fillStyle = state.tooFast ? "#ef6a61" : (state.pullComplete ? "#63d7ad" : "#aebbb7");
-      ctx.fillText(state.pullComplete ? "匀速判定：稳定" : (state.tooFast ? "匀速判定：过快" : "匀速判定：待测"), 58, 63);
+      ctx.font = "700 12px PingFang SC, sans-serif";
+      ctx.textAlign = "right";
+      const stageReadout = state.tooFast ? "拉动过快" : (g.compact && state.scaleConnected ? "F " + forceReading().toFixed(2) + " N" : (state.pullComplete ? "匀速稳定" : "待拉动"));
+      ctx.fillText(stageReadout, g.compact ? g.w - 12 : metricsX + 205, 24);
     }
 
     function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
