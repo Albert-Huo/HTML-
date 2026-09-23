@@ -798,16 +798,16 @@ body #app .toolbar button:disabled{
   function ensureSheetClose(dock){const button=document.createElement("button");button.className="sheet-close";button.type="button";button.innerHTML = '<svg class="sheet-close-icon" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg>';button.title="收起";button.setAttribute("aria-label","收起");button.addEventListener("click",()=>setMobilePanel(null));dock.querySelector(".dock-body").appendChild(button);}
   function fitDrawers(){if(matchMedia("(max-width:720px)").matches)return;const sw=stage.clientWidth;[controlDock,dataDock].forEach((dock,index)=>{if(!dock.dataset.moved){dock.style.left=Math.max(12,sw-(dock.offsetWidth||330)-12)+"px";dock.style.top=(58+index*54)+"px";}});}
   function bindDrawer(dock){const handle=dock.querySelector("[data-drag-handle]");handle.addEventListener("pointerdown",event=>{if(event.target.closest("button"))return;const rect=dock.getBoundingClientRect(),stageRect=stage.getBoundingClientRect();state.drawerDrag={dock,dx:event.clientX-rect.left,dy:event.clientY-rect.top,stageRect};dock.dataset.moved="1";try{handle.setPointerCapture(event.pointerId);}catch(error){console.warn("capture drawer pointer failed",error);}});handle.addEventListener("pointermove",event=>{const drag=state.drawerDrag;if(!drag||drag.dock!==dock)return;dock.style.left=clamp(event.clientX-drag.stageRect.left-drag.dx,4,stage.clientWidth-dock.offsetWidth-4)+"px";dock.style.top=clamp(event.clientY-drag.stageRect.top-drag.dy,4,stage.clientHeight-dock.offsetHeight-4)+"px";});const finish=()=>{state.drawerDrag=null;};handle.addEventListener("pointerup",finish);handle.addEventListener("pointercancel",finish);}
-  function layout(){const w=state.width,h=state.height,compact=w<560,s=compact?Math.min(w/760,h/620):Math.min(w/900,h/500);const tableY=compact?h*.54:h-74*s;const stand={x:w*(compact?.22:.12),y:tableY-(compact?230:250)*s};const tube={cx:w*(compact?.52:.38),cy:tableY-(compact?200:205)*s,length:(compact?310:300)*s,height:72*s,angle:-.19};const lampX=tube.cx-tube.length*(compact?.2:.26);const lamp={x:lampX,y:tableY-66*s};const wick={x:lamp.x,y:tableY-118*s};const defaultIgniter={x:w*(compact?.79:.55),y:tableY-60*s};const igniter=state.igniterPosition||defaultIgniter;const reading=compact?{x:8,y:8,w:w-16,h:42}:{x:w*.41,y:20*s,w:205*s,h:76*s};const safetyShield={x:compact?w*.9:w*.69,y:Math.max(compact?52:12,tube.cy-95*s),w:compact?34*s:42*s,h:compact?180*s:250*s};return{s,compact,tableY,stand,tube,lamp,wick,igniter,defaultIgniter,reading,safetyShield};}
-  function stopperPose(g=layout()){const s=g.s,tube=g.tube,localCenter=tube.length*.43+19*s+state.stopperOffset*s,start={x:tube.cx+localCenter*Math.cos(tube.angle),y:tube.cy+localCenter*Math.sin(tube.angle),angle:tube.angle};if(!state.stopperPopped)return start;const impactAt=.44,landAt=1.25,impact={x:g.safetyShield.x-20*s,y:start.y-12*s},land={x:impact.x-18*s,y:g.tableY-20*s};if(state.stopperFlightTime<impactAt){const t=clamp(state.stopperFlightTime,0,impactAt),gravity=240*s,launchVy=(impact.y-start.y-.5*gravity*impactAt*impactAt)/impactAt;return{x:start.x+(impact.x-start.x)*t/impactAt,y:start.y+launchVy*t+.5*gravity*t*t,angle:tube.angle+t*3};}const q=clamp((state.stopperFlightTime-impactAt)/(landAt-impactAt),0,1),landFraction=.72;const y=q<landFraction?impact.y+(land.y-impact.y)*(q/landFraction)**2:land.y-Math.sin((q-landFraction)/(1-landFraction)*Math.PI)*11*s;return{x:impact.x+(land.x-impact.x)*q,y,angle:tube.angle+1.32+q*3.4};}
+  function layout(){const w=state.width,h=state.height,compact=w<560,s=compact?Math.min(w/650,h/560):Math.min(w/900,h/500);const tableY=compact?h*.6:h-74*s;const stand={x:w*(compact?.22:.12),y:tableY-(compact?230:250)*s};const tube={cx:w*(compact?.52:.38),cy:tableY-(compact?186:191)*s,length:(compact?310:300)*s,height:44*s,angle:-.19};const lampX=tube.cx-tube.length*.4;const lamp={x:lampX,y:tableY-66*s};const wick={x:lamp.x,y:tableY-108*s};const defaultIgniter={x:w*(compact?.79:.55),y:tableY-60*s};const igniter=state.igniterPosition||defaultIgniter;const reading=compact?{x:8,y:8,w:w-16,h:42}:{x:w*.41,y:20*s,w:205*s,h:76*s};const safetyShield={x:compact?w*.9:w*.69,y:Math.max(compact?52:12,tube.cy-95*s),w:compact?34*s:42*s,h:compact?180*s:250*s};return{s,compact,tableY,stand,tube,lamp,wick,igniter,defaultIgniter,reading,safetyShield};}
+  function stopperPose(g=layout()){const s=g.s,tube=g.tube,localCenter=tube.length*.5+2*s+state.stopperOffset*s,start={x:tube.cx+localCenter*Math.cos(tube.angle),y:tube.cy+localCenter*Math.sin(tube.angle),angle:tube.angle};if(!state.stopperPopped)return start;const impactAt=.44,landAt=1.25,impact={x:g.safetyShield.x-20*s,y:start.y-12*s},land={x:impact.x-18*s,y:g.tableY-20*s};if(state.stopperFlightTime<impactAt){const t=clamp(state.stopperFlightTime,0,impactAt),gravity=240*s,launchVy=(impact.y-start.y-.5*gravity*impactAt*impactAt)/impactAt;return{x:start.x+(impact.x-start.x)*t/impactAt,y:start.y+launchVy*t+.5*gravity*t*t,angle:tube.angle+t*3};}const q=clamp((state.stopperFlightTime-impactAt)/(landAt-impactAt),0,1),landFraction=.72;const y=q<landFraction?impact.y+(land.y-impact.y)*(q/landFraction)**2:land.y-Math.sin((q-landFraction)/(1-landFraction)*Math.PI)*11*s;return{x:impact.x+(land.x-impact.x)*q,y,angle:tube.angle+1.32+q*3.4};}
   function igniterTip(center,g=layout()){const reach=40*g.s,angle=-.18;return{x:center.x-Math.cos(angle)*reach,y:center.y-Math.sin(angle)*reach};}
   function igniterCenterForTip(tip,g=layout()){const reach=40*g.s,angle=-.18;return{x:tip.x+Math.cos(angle)*reach,y:tip.y+Math.sin(angle)*reach};}
-  function apparatusGeometry(){const g=layout(),s=g.s,stopperCenter=stopperPose(g),stopperSize=Math.max(24,56*s),tip=igniterTip(g.igniter,g),igniterHitSize=Math.max(44,100*s);return{apparatus:{x:Math.max(0,g.stand.x-70*s),y:Math.max(0,g.tube.cy-120*s),width:Math.min(state.width,g.safetyShield.x+g.safetyShield.w-g.stand.x+70*s),height:g.tableY-g.tube.cy+190*s},igniter:{x:g.igniter.x-igniterHitSize/2,y:g.igniter.y-Math.max(22,30*s),width:igniterHitSize,height:Math.max(44,60*s)},igniterTip:{x:tip.x-8*s,y:tip.y-8*s,width:16*s,height:16*s},wick:{x:g.wick.x-24*s,y:g.wick.y-24*s,width:Math.max(44,48*s),height:Math.max(44,48*s)},lamp:{x:g.lamp.x-38*s,y:g.lamp.y-18*s,width:76*s,height:78*s},testTube:{x:g.tube.cx-g.tube.length*.52,y:g.tube.cy-72*s,width:g.tube.length*1.05,height:144*s},stopper:{x:stopperCenter.x-stopperSize/2,y:stopperCenter.y-stopperSize/2,width:stopperSize,height:stopperSize},reading:{x:g.reading.x,y:g.reading.y,width:g.reading.w,height:g.reading.h},safetyShield:{x:g.safetyShield.x,y:g.safetyShield.y,width:g.safetyShield.w,height:g.safetyShield.h}};}
+  function apparatusGeometry(){const g=layout(),s=g.s,stopperCenter=stopperPose(g),stopperSize=Math.max(24,50*s),tip=igniterTip(g.igniter,g),igniterHitSize=Math.max(44,100*s);return{apparatus:{x:Math.max(0,g.stand.x-70*s),y:Math.max(0,g.tube.cy-120*s),width:Math.min(state.width,g.safetyShield.x+g.safetyShield.w-g.stand.x+70*s),height:g.tableY-g.tube.cy+190*s},igniter:{x:g.igniter.x-igniterHitSize/2,y:g.igniter.y-Math.max(22,30*s),width:igniterHitSize,height:Math.max(44,60*s)},igniterTip:{x:tip.x-8*s,y:tip.y-8*s,width:16*s,height:16*s},wick:{x:g.wick.x-24*s,y:g.wick.y-24*s,width:Math.max(44,48*s),height:Math.max(44,48*s)},lamp:{x:g.lamp.x-46*s,y:g.lamp.y-34*s,width:92*s,height:96*s},testTube:{x:g.tube.cx-g.tube.length*.52,y:g.tube.cy-44*s,width:g.tube.length*1.08,height:88*s},stopper:{x:stopperCenter.x-stopperSize/2,y:stopperCenter.y-stopperSize/2,width:stopperSize,height:stopperSize},reading:{x:g.reading.x,y:g.reading.y,width:g.reading.w,height:g.reading.h},safetyShield:{x:g.safetyShield.x,y:g.safetyShield.y,width:g.safetyShield.w,height:g.safetyShield.h}};}
   function syncIgniterLayer(){const box=apparatusGeometry().igniter;igniterHit.style.left=box.x+"px";igniterHit.style.top=box.y+"px";igniterHit.style.width=box.width+"px";igniterHit.style.height=box.height+"px";}
   function pointFromEvent(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}function inside(point,box){return point.x>=box.x&&point.x<=box.x+box.width&&point.y>=box.y&&point.y<=box.y+box.height;}
   function beginIgniterDrag(pointerId,point){const center=state.igniterPosition||layout().defaultIgniter;state.igniterDrag={pointerId,atWick:false,dx:center.x-point.x,dy:center.y-point.y};state.ignitionHold=0;state.wickHoldStartedAt=0;ensurePhysicsLoop();syncIgniterLayer();}
   function moveIgniterDrag(point){if(!state.igniterDrag)return false;const wasAtWick=state.igniterDrag.atWick;state.igniterPosition={x:clamp(point.x+state.igniterDrag.dx,20,state.width-20),y:clamp(point.y+state.igniterDrag.dy,20,state.height-20)};const atWick=inside(igniterTip(state.igniterPosition),apparatusGeometry().wick);state.igniterDrag.atWick=atWick;if(atWick&&!wasAtWick){state.wickHoldStartedAt=performance.now();state.ignitionHold=0;}else if(!atWick){state.wickHoldStartedAt=0;state.ignitionHold=0;}syncIgniterLayer();return true;}
-  function finishIgniterDrag(){state.igniterDrag=null;state.wickHoldStartedAt=0;if(!state.ignited){state.ignitionHold=0;stopPhysics(true);}return true;}
+  function finishIgniterDrag(){state.igniterDrag=null;state.wickHoldStartedAt=0;if(!state.ignited){state.ignitionHold=0;stopPhysics(true);}else{state.igniterPosition={...layout().defaultIgniter};syncIgniterLayer();draw();}return true;}
   function observationSnapshot(key){return{key,stage:key,waterTemperature:round(state.waterTemperature),vaporAmount:round(state.vaporAmount),pressure:round(state.pressure),stopperPopped:state.stopperPopped,trembled:state.evidence.trembled};}
   function captureMilestone(key){if(!state.milestones[key])state.milestones[key]=observationSnapshot(key);return state.milestones[key];}
   function igniteLamp(){if(state.ignited)return false;state.ignited=true;state.settled=false;state.heatInput=1;state.ignitionHold=Math.max(state.ignitionHold,.48);captureMilestone("ignited");ensurePhysicsLoop();updateStatus();return true;}
@@ -834,55 +834,153 @@ body #app .toolbar button:disabled{
     drawRound(x-68*s,tableY-10*s,136*s,18*s,7*s,base,"#b8c6cf");ctx.shadowBlur=0;
     ctx.strokeStyle="#8094a2";ctx.lineWidth=9*s;ctx.beginPath();ctx.moveTo(x,tableY-8*s);ctx.lineTo(x,g.stand.y);ctx.stroke();
     ctx.strokeStyle="rgba(235,246,252,.62)";ctx.lineWidth=2*s;ctx.beginPath();ctx.moveTo(x-2*s,tableY-12*s);ctx.lineTo(x-2*s,g.stand.y+4*s);ctx.stroke();
-    const clampY=g.tube.cy+12*s;drawRound(x-8*s,clampY-13*s,22*s,26*s,6*s,"#4b5963","#aebcc5");
-    ctx.strokeStyle="#8fa1ad";ctx.lineWidth=6*s;ctx.beginPath();ctx.moveTo(x+12*s,clampY);ctx.lineTo(g.tube.cx-g.tube.length*.34,clampY);ctx.stroke();
+    const clampLocal=-g.tube.length*.03,clampX=g.tube.cx+clampLocal*Math.cos(g.tube.angle);
+    const tubeTop=g.tube.cy+clampLocal*Math.sin(g.tube.angle)-g.tube.height*.5*Math.cos(g.tube.angle);
+    const armY=tubeTop-18*s;
+    drawRound(x-8*s,armY-13*s,22*s,26*s,6*s,"#4b5963","#aebcc5");
+    ctx.strokeStyle="#8fa1ad";ctx.lineWidth=6*s;ctx.beginPath();ctx.moveTo(x+12*s,armY);ctx.lineTo(clampX,armY);ctx.lineTo(clampX,tubeTop-3*s);ctx.stroke();
     ctx.restore();
   }
+  function drawTubeClamp(g,s){
+    const tube=g.tube,clampX=-tube.length*.03;
+    ctx.save();ctx.translate(tube.cx,tube.cy);ctx.rotate(tube.angle);
+    ctx.strokeStyle="#aab9c0";ctx.lineWidth=Math.max(1.5,2.3*s);
+    ctx.beginPath();ctx.ellipse(clampX,0,7*s,tube.height*.5+4*s,0,0,Math.PI*2);ctx.stroke();
+    for(const side of [-1,1])drawRound(clampX-10*s,side*(tube.height*.5+1*s)-2*s,20*s,5*s,2*s,"#4b555a","#aebdc3");
+    ctx.restore();
+  }
+  function traceTube(L,H,inset=0){
+    const radius=H/2-inset,leftCenter=-L/2+H/2,right=L/2-inset;
+    ctx.beginPath();ctx.moveTo(right,-radius);ctx.lineTo(leftCenter,-radius);
+    ctx.arc(leftCenter,0,radius,-Math.PI/2,Math.PI/2,true);
+    ctx.lineTo(right,radius);ctx.closePath();
+  }
   function drawVapor(g,s){
-    if(state.vaporAmount<=.02)return;
-    const alpha=Math.min(.72,.16+state.vaporAmount*.42);
-    ctx.save();ctx.strokeStyle="rgba(224,245,252,"+alpha+")";ctx.lineWidth=Math.max(1.2,2.2*s);ctx.lineCap="round";
-    const phase=guidedPhysicsPaused()?0:performance.now()/600;
-    for(let i=0;i<5;i++){const x=(-52+i*34+Math.sin(phase+i)*5)*s,y=(-8+Math.sin(phase+i*1.7)*7)*s,drift=(10+state.vaporAmount*8)*s;ctx.beginPath();ctx.moveTo(x,y+8*s);ctx.bezierCurveTo(x-drift,y+2*s,x+drift,y-7*s,x+4*s,y-16*s);ctx.stroke();}
+    if(state.vaporAmount<=.08)return;
+    const L=g.tube.length,H=g.tube.height,alpha=Math.min(.22,state.vaporAmount*.16);
+    ctx.save();
+    for(let i=0;i<7;i++){
+      const x=(-L*.25+i*L*.085),y=(-H*.29+(i%3)*2*s);
+      const mist=ctx.createRadialGradient(x,y,0,x,y,11*s);
+      mist.addColorStop(0,"rgba(218,239,246,"+alpha+")");
+      mist.addColorStop(1,"rgba(218,239,246,0)");
+      ctx.fillStyle=mist;ctx.beginPath();ctx.arc(x,y,11*s,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="rgba(231,249,253,"+(alpha*.9)+")";
+      ctx.beginPath();ctx.ellipse(x+3*s,-H*.35,Math.max(.8,1.2*s),Math.max(1,2*s),0,0,Math.PI*2);ctx.fill();
+    }
     ctx.restore();
   }
   function drawCorkShape(H,s){
-    const cork=ctx.createLinearGradient(-20*s,-H*.34,20*s,H*.34);cork.addColorStop(0,"#8f4f34");cork.addColorStop(.48,"#c17a50");cork.addColorStop(1,"#6f3d2c");ctx.fillStyle=cork;ctx.strokeStyle="#e0a17b";ctx.lineWidth=2*s;ctx.beginPath();ctx.moveTo(-19*s,-H*.31);ctx.lineTo(15*s,-H*.24);ctx.lineTo(19*s,H*.24);ctx.lineTo(-19*s,H*.31);ctx.closePath();ctx.fill();ctx.stroke();
-    ctx.strokeStyle="rgba(255,221,194,.46)";ctx.lineWidth=1.5*s;for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(i*8*s-3*s,-H*.2);ctx.lineTo(i*8*s+1*s,H*.18);ctx.stroke();}
+    const rubber=ctx.createLinearGradient(-20*s,-H*.4,20*s,H*.4);
+    rubber.addColorStop(0,"#4a3e37");rubber.addColorStop(.55,"#91715c");rubber.addColorStop(1,"#4f4039");
+    ctx.fillStyle=rubber;ctx.strokeStyle="#b1947d";ctx.lineWidth=Math.max(1,1.5*s);
+    ctx.beginPath();ctx.moveTo(-20*s,-H*.27);ctx.lineTo(17*s,-H*.48);
+    ctx.quadraticCurveTo(21*s,-H*.48,21*s,-H*.38);ctx.lineTo(21*s,H*.38);
+    ctx.quadraticCurveTo(21*s,H*.48,17*s,H*.48);ctx.lineTo(-20*s,H*.27);
+    ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.strokeStyle="rgba(24,23,22,.48)";ctx.lineWidth=Math.max(1,1.3*s);
+    ctx.beginPath();ctx.moveTo(10*s,-H*.43);ctx.lineTo(10*s,H*.43);ctx.stroke();
+    ctx.fillStyle="rgba(208,178,150,.21)";ctx.beginPath();ctx.ellipse(19*s,0,3*s,H*.38,0,0,Math.PI*2);ctx.fill();
   }
   function drawTestTube(g,s){
-    const tube=g.tube,L=tube.length,H=tube.height;
+    const tube=g.tube,L=tube.length,H=tube.height,mouth=L/2;
     ctx.save();ctx.translate(tube.cx,tube.cy);ctx.rotate(tube.angle);
-    ctx.shadowColor="rgba(0,0,0,.42)";ctx.shadowBlur=12*s;ctx.shadowOffsetY=7*s;
-    drawRound(-L/2,-H/2,L,H,H/2,"rgba(7,22,32,.94)",null);ctx.shadowBlur=0;
-    const glass=ctx.createLinearGradient(0,-H/2,0,H/2);glass.addColorStop(0,"rgba(222,246,255,.32)");glass.addColorStop(.18,"rgba(105,190,225,.12)");glass.addColorStop(.72,"rgba(55,126,164,.16)");glass.addColorStop(1,"rgba(226,248,255,.38)");
-    drawRound(-L/2,-H/2,L,H,H/2,glass,"rgba(218,243,253,.92)");
-    ctx.save();ctx.beginPath();ctx.roundRect(-L/2+6*s,-H/2+6*s,L-12*s,H-12*s,(H-12*s)/2);ctx.clip();
-    ctx.save();ctx.rotate(-tube.angle);const waterSurfaceY=20*s;
-    const water=ctx.createLinearGradient(0,waterSurfaceY,0,H*.7);water.addColorStop(0,"rgba(95,205,244,.62)");water.addColorStop(1,"rgba(35,126,194,.86)");ctx.fillStyle=water;ctx.fillRect(-L,waterSurfaceY,L*2,H);
-    ctx.strokeStyle="rgba(190,239,255,.9)";ctx.lineWidth=1.5*s;ctx.beginPath();ctx.moveTo(-L,waterSurfaceY);ctx.lineTo(L,waterSurfaceY);ctx.stroke();
-    if(state.vaporAmount>.08){const phase=guidedPhysicsPaused()?0:performance.now()/700;ctx.fillStyle="rgba(226,248,255,.55)";for(let i=0;i<7;i++){const x=(-L*.43+i*L*.075),rise=(phase*(8+i%3)+i*7)%(24*s),y=waterSurfaceY+(28*s-rise);ctx.beginPath();ctx.arc(x,y,(1.3+i%3*.6)*s,0,Math.PI*2);ctx.fill();}}
+    ctx.shadowColor="rgba(0,0,0,.28)";ctx.shadowBlur=10*s;ctx.shadowOffsetY=5*s;
+    traceTube(L,H);ctx.fillStyle="rgba(83,151,179,.08)";ctx.fill();ctx.shadowBlur=0;
+    const glass=ctx.createLinearGradient(0,-H/2,0,H/2);
+    glass.addColorStop(0,"rgba(232,249,255,.32)");glass.addColorStop(.18,"rgba(143,206,227,.07)");
+    glass.addColorStop(.72,"rgba(79,159,191,.04)");glass.addColorStop(1,"rgba(230,249,255,.34)");
+    traceTube(L,H);ctx.fillStyle=glass;ctx.fill();ctx.strokeStyle="rgba(222,246,252,.82)";ctx.lineWidth=Math.max(1.2,2*s);ctx.stroke();
+    ctx.save();traceTube(L,H,3*s);ctx.clip();
+    ctx.save();ctx.rotate(-tube.angle);
+    const waterSurfaceY=35*s,water=ctx.createLinearGradient(0,waterSurfaceY,0,waterSurfaceY+18*s);
+    water.addColorStop(0,"rgba(112,202,225,.56)");water.addColorStop(1,"rgba(46,145,184,.72)");
+    ctx.fillStyle=water;ctx.fillRect(-L,waterSurfaceY,L*2,H);
+    ctx.strokeStyle="rgba(209,246,252,.7)";ctx.lineWidth=Math.max(.8,1.2*s);
+    ctx.beginPath();ctx.moveTo(-L,waterSurfaceY);ctx.lineTo(L,waterSurfaceY);ctx.stroke();
+    if(state.vaporAmount>.16){
+      const phase=guidedPhysicsPaused()?0:performance.now()/850;
+      for(let i=0;i<5;i++){
+        const x=(-L*.45+i*L*.024),rise=(phase*(3+i%2)+i*2)%(9*s),y=waterSurfaceY+9*s-rise;
+        ctx.fillStyle="rgba(228,250,252,"+(Math.min(.46,state.vaporAmount*.4))+")";
+        ctx.beginPath();ctx.arc(x,y,Math.max(.7,(.8+i%2*.4)*s),0,Math.PI*2);ctx.fill();
+      }
+    }
+    ctx.restore();drawVapor(g,s);ctx.restore();
+    ctx.strokeStyle="rgba(245,253,255,.63)";ctx.lineWidth=Math.max(1,1.5*s);
+    ctx.beginPath();ctx.moveTo(-L*.43,-H*.35);ctx.lineTo(mouth-5*s,-H*.35);ctx.stroke();
+    ctx.strokeStyle="rgba(153,211,232,.52)";ctx.beginPath();ctx.moveTo(-L*.42,H*.35);ctx.lineTo(mouth-5*s,H*.35);ctx.stroke();
+    ctx.fillStyle="rgba(197,233,244,.12)";ctx.beginPath();ctx.ellipse(mouth,0,4*s,H*.49,0,0,Math.PI*2);ctx.fill();
+    ctx.strokeStyle="rgba(234,249,255,.8)";ctx.lineWidth=Math.max(1,1.7*s);ctx.stroke();
+    if(!state.stopperPopped){
+      ctx.save();ctx.translate(mouth+2*s+state.stopperOffset*s,0);drawCorkShape(H,s);ctx.restore();
+      ctx.strokeStyle="rgba(231,248,253,.75)";ctx.beginPath();
+      ctx.ellipse(mouth,0,4*s,H*.49,0,0,Math.PI);ctx.stroke();
+    }
     ctx.restore();
-    drawVapor(g,s);ctx.restore();
-    ctx.strokeStyle="rgba(255,255,255,.7)";ctx.lineWidth=2*s;ctx.beginPath();ctx.moveTo(-L*.39,-H*.31);ctx.quadraticCurveTo(-L*.08,-H*.43,L*.28,-H*.27);ctx.stroke();
-    ctx.fillStyle="rgba(230,250,255,.12)";ctx.beginPath();ctx.ellipse(L*.48,0,8*s,H*.42,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(220,246,255,.84)";ctx.stroke();
-    if(!state.stopperPopped){ctx.save();ctx.translate(L*.43+19*s+state.stopperOffset*s,0);drawCorkShape(H,s);ctx.restore();}
-    ctx.restore();
-    if(state.stopperPopped){const mouthX=tube.cx+L*.5*Math.cos(tube.angle),mouthY=tube.cy+L*.5*Math.sin(tube.angle),phase=performance.now()/650;ctx.save();ctx.strokeStyle="rgba(225,245,251,.58)";ctx.lineWidth=Math.max(1,2*s);ctx.lineCap="round";for(let i=0;i<3;i++){const shift=Math.sin(phase+i*1.8)*5*s;ctx.beginPath();ctx.moveTo(mouthX,mouthY+(i-1)*7*s);ctx.bezierCurveTo(mouthX+18*s,mouthY+shift+(i-1)*9*s,mouthX+38*s,mouthY-16*s+shift,mouthX+58*s,mouthY-25*s+(i-1)*8*s);ctx.stroke();}ctx.restore();const pose=stopperPose(g);ctx.save();ctx.translate(pose.x,pose.y);ctx.rotate(pose.angle);drawCorkShape(H,s);ctx.restore();}
+    if(state.stopperPopped){
+      const mouthX=tube.cx+mouth*Math.cos(tube.angle),mouthY=tube.cy+mouth*Math.sin(tube.angle);
+      const strength=state.ignited?.22+.78*Math.max(0,1-state.stopperFlightTime/1.25):0;
+      if(strength>0){
+        const phase=guidedPhysicsPaused()?0:performance.now()/1100;
+        ctx.save();for(let i=0;i<8;i++){
+          const distance=(8+i*10+phase*5)*s,cx=mouthX+distance*Math.cos(tube.angle),cy=mouthY+distance*Math.sin(tube.angle)+Math.sin(phase+i*1.7)*4*s,radius=(10+i*2.6)*s;
+          const plume=ctx.createRadialGradient(cx,cy,0,cx,cy,radius);
+          plume.addColorStop(0,"rgba(222,241,246,"+(strength*(.1-i*.007))+")");
+          plume.addColorStop(1,"rgba(222,241,246,0)");
+          ctx.fillStyle=plume;ctx.beginPath();ctx.arc(cx,cy,radius,0,Math.PI*2);ctx.fill();
+        }ctx.restore();
+      }
+      const pose=stopperPose(g);ctx.save();ctx.translate(pose.x,pose.y);ctx.rotate(pose.angle);drawCorkShape(H,s);ctx.restore();
+    }
   }
   function drawAlcoholLamp(g,s){
-    const x=g.lamp.x,baseY=g.lamp.y+54*s;
-    ctx.save();ctx.shadowColor="rgba(0,0,0,.38)";ctx.shadowBlur=10*s;ctx.shadowOffsetY=5*s;
-    const glass=ctx.createLinearGradient(x-42*s,0,x+42*s,0);glass.addColorStop(0,"rgba(130,185,205,.5)");glass.addColorStop(.45,"rgba(225,246,251,.3)");glass.addColorStop(1,"rgba(72,128,153,.52)");
-    drawRound(x-42*s,g.lamp.y+4*s,84*s,58*s,22*s,glass,"rgba(218,241,248,.86)");ctx.shadowBlur=0;
-    ctx.fillStyle="rgba(76,154,189,.42)";ctx.beginPath();ctx.roundRect(x-34*s,g.lamp.y+36*s,68*s,18*s,9*s);ctx.fill();
-    drawRound(x-20*s,g.lamp.y-15*s,40*s,25*s,7*s,"#616e76","#c2cdd3");drawRound(x-10*s,g.lamp.y-34*s,20*s,23*s,5*s,"#283239","#8c9aa2");
-    ctx.strokeStyle="#d7c39a";ctx.lineWidth=5*s;ctx.beginPath();ctx.moveTo(x,g.lamp.y-32*s);ctx.lineTo(g.wick.x,g.wick.y+5*s);ctx.stroke();
-    if(state.ignited){const flameTime=guidedPhysicsPaused()?0:performance.now()/1000,sway=(Math.sin(flameTime*13)+Math.sin(flameTime*21)*.45)*5*s,height=(36+Math.sin(flameTime*17)*3)*s,glowX=g.wick.x+sway*.18;const glow=ctx.createRadialGradient(glowX,g.wick.y,2*s,glowX,g.wick.y,40*s);glow.addColorStop(0,"rgba(255,244,146,.9)");glow.addColorStop(.5,"rgba(255,145,47,.34)");glow.addColorStop(1,"rgba(255,82,25,0)");ctx.fillStyle=glow;ctx.beginPath();ctx.arc(glowX,g.wick.y,40*s,0,Math.PI*2);ctx.fill();ctx.fillStyle="#ff8a32";ctx.beginPath();ctx.moveTo(g.wick.x,g.wick.y+8*s);ctx.quadraticCurveTo(g.wick.x-17*s,g.wick.y-12*s,g.wick.x+sway,g.wick.y-height);ctx.quadraticCurveTo(g.wick.x+18*s,g.wick.y-12*s,g.wick.x,g.wick.y+8*s);ctx.fill();ctx.fillStyle="#fff3a2";ctx.beginPath();ctx.ellipse(g.wick.x+sway*.25,g.wick.y-8*s,7*s,15*s+Math.sin(flameTime*19)*2*s,.08*Math.sin(flameTime*11),0,Math.PI*2);ctx.fill();}
-    ctx.fillStyle="rgba(255,255,255,.16)";ctx.beginPath();ctx.ellipse(x-18*s,g.lamp.y+24*s,8*s,20*s,-.25,0,Math.PI*2);ctx.fill();ctx.restore();
+    const x=g.lamp.x,y=g.lamp.y;
+    ctx.save();ctx.shadowColor="rgba(0,0,0,.3)";ctx.shadowBlur=10*s;ctx.shadowOffsetY=5*s;
+    ctx.beginPath();ctx.moveTo(x-17*s,y+3*s);
+    ctx.bezierCurveTo(x-34*s,y+8*s,x-45*s,y+18*s,x-45*s,y+39*s);
+    ctx.quadraticCurveTo(x-45*s,y+61*s,x-31*s,y+62*s);
+    ctx.lineTo(x+31*s,y+62*s);ctx.quadraticCurveTo(x+45*s,y+61*s,x+45*s,y+39*s);
+    ctx.bezierCurveTo(x+45*s,y+18*s,x+34*s,y+8*s,x+17*s,y+3*s);ctx.closePath();
+    const vessel=ctx.createLinearGradient(x-45*s,0,x+45*s,0);
+    vessel.addColorStop(0,"rgba(120,181,198,.48)");vessel.addColorStop(.27,"rgba(211,239,246,.16)");
+    vessel.addColorStop(.68,"rgba(197,230,239,.08)");vessel.addColorStop(1,"rgba(115,177,195,.42)");
+    ctx.fillStyle=vessel;ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle="rgba(207,239,246,.77)";ctx.lineWidth=Math.max(1,1.6*s);ctx.stroke();
+    ctx.save();ctx.clip();
+    const fuel=ctx.createLinearGradient(0,y+40*s,0,y+65*s);
+    fuel.addColorStop(0,"rgba(177,213,219,.1)");fuel.addColorStop(1,"rgba(130,194,207,.22)");
+    ctx.fillStyle=fuel;ctx.fillRect(x-45*s,y+40*s,90*s,25*s);
+    ctx.strokeStyle="rgba(220,245,248,.42)";ctx.lineWidth=Math.max(.8,s);
+    ctx.beginPath();ctx.moveTo(x-42*s,y+40*s);ctx.lineTo(x+42*s,y+40*s);ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle="rgba(255,255,255,.35)";ctx.lineWidth=Math.max(1,2*s);
+    ctx.beginPath();ctx.moveTo(x-30*s,y+20*s);ctx.quadraticCurveTo(x-39*s,y+37*s,x-34*s,y+51*s);ctx.stroke();
+    drawRound(x-18*s,y-13*s,36*s,21*s,5*s,"#67737a","#c9d3d5");
+    drawRound(x-9*s,y-34*s,18*s,23*s,4*s,"#363d40","#aebfc1");
+    ctx.strokeStyle="#24272a";ctx.lineWidth=Math.max(1.5,3*s);ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(x,y-31*s);ctx.lineTo(g.wick.x,g.wick.y+4*s);ctx.stroke();
+    if(state.ignited){
+      const time=guidedPhysicsPaused()?0:performance.now()/1000;
+      const tubeBottom=g.tube.cy+(g.wick.x-g.tube.cx)*Math.tan(g.tube.angle)+g.tube.height/(2*Math.cos(g.tube.angle));
+      const sway=(Math.sin(time*11)+Math.sin(time*17)*.35)*3*s,height=Math.max(14*s,g.wick.y-tubeBottom+.8*s-(1+Math.sin(time*13))*.35*s),tipX=g.wick.x+sway;
+      const glow=ctx.createRadialGradient(g.wick.x,g.wick.y-8*s,2*s,g.wick.x,g.wick.y-8*s,37*s);
+      glow.addColorStop(0,"rgba(255,218,135,.38)");glow.addColorStop(1,"rgba(255,154,61,0)");
+      ctx.fillStyle=glow;ctx.beginPath();ctx.arc(g.wick.x,g.wick.y-8*s,37*s,0,Math.PI*2);ctx.fill();
+      const outer=ctx.createLinearGradient(0,g.wick.y-height,0,g.wick.y+6*s);
+      outer.addColorStop(0,"rgba(255,238,170,.92)");outer.addColorStop(.62,"rgba(255,179,75,.76)");outer.addColorStop(1,"rgba(112,186,235,.78)");
+      ctx.fillStyle=outer;ctx.beginPath();ctx.moveTo(g.wick.x,g.wick.y+5*s);
+      ctx.bezierCurveTo(g.wick.x-13*s,g.wick.y-6*s,tipX-4*s,g.wick.y-height*.57,tipX,g.wick.y-height);
+      ctx.bezierCurveTo(tipX+5*s,g.wick.y-height*.58,g.wick.x+12*s,g.wick.y-4*s,g.wick.x,g.wick.y+5*s);ctx.fill();
+      ctx.fillStyle="rgba(255,244,193,.84)";ctx.beginPath();ctx.arc(tipX,g.wick.y-height,Math.max(1.25,1.3*s),0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="rgba(109,201,251,.79)";ctx.beginPath();ctx.moveTo(g.wick.x,g.wick.y+4*s);
+      ctx.quadraticCurveTo(g.wick.x-6*s,g.wick.y-7*s,g.wick.x+sway*.2,g.wick.y-17*s);
+      ctx.quadraticCurveTo(g.wick.x+6*s,g.wick.y-6*s,g.wick.x,g.wick.y+4*s);ctx.fill();
+      ctx.fillStyle="rgba(255,249,215,.78)";ctx.beginPath();ctx.ellipse(g.wick.x+sway*.18,g.wick.y-11*s,3*s,6*s,0,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
   }
   function drawIgniter(g,s){ctx.save();ctx.translate(g.igniter.x,g.igniter.y);ctx.rotate(-.18);ctx.shadowColor="rgba(0,0,0,.35)";ctx.shadowBlur=6*s;drawRound(-40*s,-9*s,80*s,18*s,6*s,"#d7c6a2","#fff0ce");ctx.shadowBlur=0;ctx.fillStyle="#e85f50";ctx.beginPath();ctx.arc(-40*s,0,9*s,0,Math.PI*2);ctx.fill();ctx.fillStyle="#343c42";ctx.fillRect(32*s,-3*s,16*s,6*s);ctx.restore();}
-  function drawRealisticApparatus(g,s){drawIronStand(g,s);drawAlcoholLamp(g,s);drawTestTube(g,s);drawIgniter(g,s);}
+  function drawRealisticApparatus(g,s){drawIronStand(g,s);drawAlcoholLamp(g,s);drawTestTube(g,s);drawTubeClamp(g,s);drawIgniter(g,s);}
   function drawSafetyShield(g,s){const shield=g.safetyShield;ctx.save();const pane=ctx.createLinearGradient(shield.x,0,shield.x+shield.w,0);pane.addColorStop(0,"rgba(154,222,242,.08)");pane.addColorStop(.5,"rgba(222,249,255,.18)");pane.addColorStop(1,"rgba(107,190,222,.08)");ctx.fillStyle=pane;ctx.strokeStyle="rgba(180,232,250,.72)";ctx.lineWidth=Math.max(1.5,2*s);ctx.beginPath();ctx.roundRect(shield.x,shield.y,shield.w,shield.h,6*s);ctx.fill();ctx.stroke();ctx.strokeStyle="rgba(180,232,250,.55)";ctx.beginPath();ctx.moveTo(shield.x+shield.w/2,shield.y+shield.h);ctx.lineTo(shield.x+shield.w/2,g.tableY);ctx.stroke();drawRound(shield.x-8*s,g.tableY-5*s,shield.w+16*s,10*s,4*s,"#52636d","#9fb1bc");ctx.fillStyle="#bfeafa";ctx.font="700 "+Math.max(9,11*s)+"px Arial";ctx.textAlign="center";ctx.fillText("防护挡板",shield.x+shield.w/2,g.compact?shield.y+shield.h+12*s:Math.max(10,shield.y-8*s));ctx.restore();}
   function draw(){
     if(!state.width||!state.height)return;
@@ -941,7 +1039,7 @@ body #app .toolbar button:disabled{
   async function runAutoDemo(){if(state.autoPlaying)return{accepted:false,code:"AUTO_ALREADY_RUNNING"};resetScene({quiet:true});state.autoPlaying=true;state.autoCancel=false;state.autoLastError=null;autoDemoBtn.textContent="退出演示模式";resetBtn.disabled=true;freeBtn.disabled=true;setModeLabel();setDrawerCollapsed(controlDock,false);setDrawerCollapsed(dataDock,true);let completedNaturally=false;try{if(!(await simulateIgnitionGesture(true)))throw new Error("AUTO_IGNITION_FAILED");if(!(await /* codex-physics-mode-source:pace-52-actionMotion */ wait(0,"actionMotion")))throw new Error("AUTO_CANCELLED");if(!(await /* codex-physics-mode-source:pace-52-observePrimary */ wait(0,"observePrimary")))throw new Error("AUTO_CANCELLED");await autoRecord("ignited");if(!(await waitForHeatingRecord()))throw new Error(state.autoCancel?"AUTO_CANCELLED":state.stopperPopped?"AUTO_HEATING_WINDOW_MISSED":"AUTO_HEATING_TIMEOUT");await autoRecord("heating");if(!(await waitForPop()))throw new Error(state.autoCancel?"AUTO_CANCELLED":"AUTO_POP_TIMEOUT");if(!(await waitForLanding()))throw new Error(state.autoCancel?"AUTO_CANCELLED":"AUTO_LANDING_TIMEOUT");await autoRecord("popped");if(!(await /* codex-physics-mode-source:pace-52-analysisLead */ wait(720,"analysisLead")))throw new Error("AUTO_CANCELLED");if(!analyzeConclusion())throw new Error("AUTO_ANALYSIS_FAILED");if(!(await waitForSettle()))throw new Error(state.autoCancel?"AUTO_CANCELLED":"AUTO_SETTLE_INTERRUPTED");completedNaturally=true;doneMask.style.display="none";return{completed:true};}catch(error){state.autoLastError=String(error.message||error);if(state.autoLastError==="AUTO_CANCELLED")return{cancelled:true,code:"AUTO_CANCELLED"};console.error("实验52自动演示失败",error);throw error;}finally{clearWaits();state.igniterDrag=null;state.wickHoldStartedAt=0;if(!completedNaturally)stopPhysics(true);state.autoPlaying=false;state.autoCancel=false;autoDemoBtn.textContent="演示模式";resetBtn.disabled=false;freeBtn.disabled=false;demoCursor.style.opacity="0";setModeLabel();updateStatus();}}
   function cancelAutoDemo(){if(!state.autoPlaying)return{accepted:false,code:"AUTO_NOT_RUNNING"};state.autoCancel=true;state.autoLastError="AUTO_CANCELLED";clearWaits();return{accepted:true,cancelled:true,code:"AUTO_CANCELLED"};}
   function externalReset(){if(state.autoPlaying)cancelAutoDemo();resetScene({quiet:true});return true;}
-  async function performTestAction(action){if(!action||typeof action.type!=="string")throw new Error("INVALID_TEST_ACTION");if(["touch-wick-without-igniter","click-test-tube","click-lamp","blank-click"].includes(action.type))return false;if(action.type==="ignite-lamp")return simulateIgnitionGesture(false);if(action.type==="wait-for-heating")return wait(Number(action.durationMs)||1000);if(action.type==="wait-for-stopper-pop")return waitForPop();if(action.type==="wait-for-settle")return waitForSettle();if(action.type==="record-observation")return recordObservation({quiet:true});if(action.type==="analyze-conclusion")return analyzeConclusion();if(action.type==="set-mode")return setFreeMode(action.mode==="free",{quiet:true});throw new Error("UNKNOWN_TEST_ACTION:"+action.type);}
+  async function performTestAction(action){if(!action||typeof action.type!=="string")throw new Error("INVALID_TEST_ACTION");if(["touch-wick-without-igniter","click-test-tube","click-lamp","blank-click"].includes(action.type))return false;if(action.type==="ignite-lamp")return simulateIgnitionGesture(false);if(action.type==="wait-for-heating")return wait(Number(action.durationMs)||1000);if(action.type==="wait-for-stopper-pop")return waitForPop();if(action.type==="wait-for-settle")return waitForSettle();if(action.type==="record-observation")return recordObservation({quiet:true});if(action.type==="analyze-conclusion")return analyzeConclusion();if(action.type==="set-mode"){const free=action.mode==="free";if(state.freeMode!==free)freeBtn.click();return state.freeMode===free;}throw new Error("UNKNOWN_TEST_ACTION:"+action.type);}
   function getSnapshot(){return{schemaVersion:1,experimentId:52,mode:state.freeMode?"free":"guided",currentTask:state.currentTask,completed:state.completed,analysisDone:state.analysisDone,physics:{ignited:state.ignited,heatInput:round(state.heatInput),waterTemperature:round(state.waterTemperature),vaporAmount:round(state.vaporAmount),pressure:round(state.pressure),stopperOffset:round(state.stopperOffset),stopperPopped:state.stopperPopped,stopperPopCount:state.stopperPopCount,stopperFlightTime:round(state.stopperFlightTime),stopperImpact:state.stopperImpact,stopperLanded:state.stopperLanded,elapsedHeating:round(state.elapsedHeating),ignitionHold:round(state.ignitionHold),settled:state.settled,evidence:{...state.evidence}},evidence:{...state.evidence},milestones:Object.keys(state.milestones),records:state.records.map(record=>({...record})),auto:{playing:state.autoPlaying,lastError:state.autoLastError},resources:{rafActive:Boolean(state.rafId),timerCount:state.timers.size+state.uiTimers.size+(state.resizeTimer?1:0)},geometry:apparatusGeometry()};}
   function initEvents(){igniterHit.addEventListener("pointerdown",onIgniterDown);igniterHit.addEventListener("pointermove",onIgniterMove);igniterHit.addEventListener("pointerup",onIgniterUp);igniterHit.addEventListener("pointercancel",onIgniterUp);recordBtn.addEventListener("click",()=>recordObservation());analyzeBtn.addEventListener("click",analyzeConclusion);resetBtn.addEventListener("click",()=>{if(state.autoPlaying)return;const free=state.freeMode;resetScene({quiet:true,keepMode:true});setFreeMode(free,{quiet:true});showToast("已重置");});autoDemoBtn.addEventListener("click",()=>state.autoPlaying?cancelAutoDemo():runAutoDemo());freeBtn.addEventListener("click",()=>setFreeMode(!state.freeMode));controlToggleBtn.addEventListener("click",()=>setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed")));dataToggleBtn.addEventListener("click",()=>setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed")));experimentTab.addEventListener("click",()=>setMobilePanel(controlDock.classList.contains("collapsed")?"control":null));dataTab.addEventListener("click",()=>setMobilePanel(dataDock.classList.contains("collapsed")?"data":null));hintLamp.addEventListener("click",()=>{hintPop.classList.toggle("open");scheduleResize();});okBtn.addEventListener("click",()=>{doneMask.style.display="none";});bindDrawer(controlDock);bindDrawer(dataDock);window.addEventListener("resize",scheduleResize,{passive:true});}
   function init(){initDots();ensureSheetClose(controlDock);ensureSheetClose(dataDock);initEvents();if(typeof ResizeObserver!=="undefined"){let hudHeight=hud.offsetHeight;new ResizeObserver(()=>{const nextHeight=hud.offsetHeight;if(nextHeight!==hudHeight){hudHeight=nextHeight;scheduleResize();}}).observe(hud);}resizeCanvas();setDrawerCollapsed(controlDock,true);setDrawerCollapsed(dataDock,true);resetScene({quiet:true});if(matchMedia("(max-width:720px)").matches)setMobilePanel(null);const publicState={};Object.defineProperties(publicState,{autoPlaying:{enumerable:true,get:()=>state.autoPlaying},freeMode:{enumerable:true,get:()=>state.freeMode},completed:{enumerable:true,get:()=>state.completed},unseenRecords:{enumerable:true,get:()=>state.unseenRecords,set:value=>{if(value===0){state.unseenRecords=0;updateBadge();}}}});Object.defineProperty(window,"state",{value:Object.freeze(publicState),writable:false,configurable:false});Object.defineProperty(window,"__labTestApi",{value:Object.freeze({getSnapshot,reset:externalReset,runAutoDemo,cancelAutoDemo,performTestAction}),writable:false,configurable:false});}
@@ -1018,28 +1116,7 @@ body #app .toolbar button:disabled{
         },
         setFreeMode:(on) => setFreeMode(on, { quiet:true }),
         captureFreeEntry:() => captureModeWorld(() => state),
-        restoreFreeEntry:(snapshot) => restoreModeWorld(snapshot, {
-          getState:() => state,
-          reset:() => { setFreeMode(false, { quiet:true }); resetScene({ keepMode:false, quiet:true }); },
-
-          refresh:() => {
-          if(typeof updateModeHud === "function") updateModeHud();
-          if(typeof updateControlsState === "function") updateControlsState();
-          if(typeof syncModeTag === "function") syncModeTag();
-          if(typeof syncInteractiveButtons === "function") syncInteractiveButtons();
-          if(typeof updateMode === "function") updateMode();
-          if(typeof setModeLabel === "function") setModeLabel();
-          if(typeof renderRecords === "function") renderRecords();
-          if(typeof updateBadge === "function") updateBadge();
-          if(typeof updateObservationChip === "function") updateObservationChip();
-          if(typeof renderFork === "function") renderFork();
-          if(typeof renderStriker === "function") renderStriker();
-          if(typeof scheduleChart === "function") scheduleChart();
-          if(typeof scheduleDraw === "function") scheduleDraw();
-          if(typeof updateReadoutUI === "function") updateReadoutUI();
-          if(typeof render === "function") render();
-          if(typeof draw === "function") draw(); },
-        }),
+        restoreFreeEntry:() => { resetScene({ keepMode:true, quiet:true }); setFreeMode(true, { quiet:true }); },
         pauseApparatus() {
           codexModePausedAnimations = document.getElementById("demoCursor")?.getAnimations({ subtree:true }) || [];
           codexModePausedAnimations.forEach((animation) => animation.pause());
