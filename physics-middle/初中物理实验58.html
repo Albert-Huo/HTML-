@@ -218,6 +218,7 @@
       .dock.mobile-sheet.collapsed { display:none; }
       .dock.mobile-sheet .controls, .dock.mobile-sheet .analysis, .dock.mobile-sheet .data-scroll, .dock.mobile-sheet .empty { grid-column:1; }
       .dock.mobile-sheet .analysis { display:none; }
+      .dock.mobile-sheet .analysis.ok { display:block; font-size:14px; }
       .sheet-close { grid-column:2; grid-row:1; display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border:1px solid rgba(255,255,255,.14); border-radius:50%; color:#e3f0ff; background:rgba(255,255,255,.055); }
       table.record { min-width:0; }
       table.record thead { display:none; }
@@ -928,7 +929,7 @@ body #app .toolbar button:disabled{
         <div class="dock-header" data-drag-handle><span class="dock-title">实验面板</span><button class="icon-btn" id="controlToggleBtn" type="button">展开</button></div>
         <div class="dock-body">
           <div class="controls"><button class="main" id="recordBtn" type="button">记录本次</button><button class="sub" id="analyzeBtn" type="button">分析结论</button></div>
-          <div class="analysis" id="analysisText">完成三组控制变量实验后比较吸收的热量。</div>
+          <div class="analysis" id="analysisText" role="status" aria-live="polite">完成三组控制变量实验后比较吸收的热量。</div>
           <button class="sheet-close" id="controlSheetCloseBtn" type="button" aria-label="收起实验面板"><svg class="sheet-close-icon" viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1"/></svg></button>
         </div>
       </section>
@@ -943,7 +944,7 @@ body #app .toolbar button:disabled{
       </section>
 
       <div class="toast" id="toast">提示</div><div class="checkmark" id="checkmark"></div><div class="demo-cursor" id="demoCursor"></div>
-      <div class="modal-mask" id="doneMask"><div class="modal"><h3>实验完成</h3><p>同种物质升高相同温度，质量越大，吸收热量越多；同种物质质量相同，温升越大，吸收热量越多；质量和温升相同时，不同物质吸收热量不同。</p><button class="ok" id="okBtn" type="button">OK</button></div></div>
+      <div class="modal-mask" id="doneMask"><div class="modal"><h3>实验完成</h3><p>结论已保存在实验面板，关闭提示后可以查看。</p><button class="ok" id="okBtn" type="button">查看结论</button></div></div>
     </main>
 
     <div class="toolbar"><button class="sub" id="resetBtn" type="button">重置关卡</button><button class="sub" id="autoDemoBtn" type="button">演示模式</button><button class="sub" id="freeBtn" type="button">自由模式</button></div>
@@ -1136,7 +1137,7 @@ body #app .toolbar button:disabled{
       if (collection.some((record) => record.key === key)) { if (!opts.auto) showToast("本组已经记录"); return false; }
       collection.push(makeRecord()); state.unseenRecords += 1; renderRecords(); updateBadge(); showCheck();
       if (!opts.auto) showToast("“" + currentTrial().short + "对比”已记录");
-      if (state.freeMode) { resetHeatingState(); return true; }
+      if (state.freeMode) { state.analysisDone = false; analysisText.className = "analysis"; analysisText.textContent = "自由切换质量、温升和物质对比，至少记录两组。"; resetHeatingState(); return true; }
       if (state.trialIndex < TRIALS.length - 1) { setTrial(state.trialIndex + 1, { quiet:true }); if(state.mobile&&!state.autoPlaying)setDrawerCollapsed(controlDock,true,{quiet:true}); }
       else { resetHeatingState(); setStepUI(3); setDrawerCollapsed(controlDock, false, { quiet:true }); }
       return true;
@@ -1147,9 +1148,10 @@ body #app .toolbar button:disabled{
         if (!opts.auto) warn(state.freeMode ? "自由模式至少记录两组对比" : "请先完成并记录三组对比"); return false;
       }
       state.analysisDone = true; analysisText.classList.add("ok");
-      analysisText.textContent = "质量越大或温升越大，物体吸收热量越多；质量和温升相同时，不同物质吸热不同。";
+      analysisText.textContent = "实验结论：" + (state.freeMode ? collection.map((record) => record.finding) : TRIALS.map((trial) => trial.finding)).join(" ");
       showCheck();
-      if (!state.freeMode) { state.completed = true; updateDots(); updateStatus(); doneMask.style.display = "flex"; setDrawerCollapsed(controlDock, false, { quiet:true }); setDrawerCollapsed(dataDock, true, { quiet:true }); }
+      setDrawerCollapsed(controlDock, false, { quiet:true });
+      if (!state.freeMode) { state.completed = true; updateDots(); updateStatus(); doneMask.style.display = "flex"; setDrawerCollapsed(dataDock, true, { quiet:true }); }
       if (!opts.auto) showToast("已得到实验结论");
       return true;
     }
