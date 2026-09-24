@@ -159,7 +159,7 @@
     @media(max-width:720px){
       body{padding:8px}#spectrum{height:20px;margin-bottom:10px}
       .task-card{grid-template-columns:1fr;gap:7px}.task-step{width:max-content}.progress-dots{justify-content:flex-start}
-      #stage{height:720px}.lab-area{inset:96px 8px 62px}
+      #stage{height:clamp(860px,calc(235vw + 120px),1320px)}.lab-area{inset:96px 8px 62px}
       .hud{right:8px;max-width:calc(100% - 16px);flex-wrap:wrap;padding:6px 7px}
       .hint-lamp{top:58px}.hint-pop{top:58px}
       .dock{
@@ -176,6 +176,9 @@
       .record td{display:grid;grid-template-columns:70px 1fr;gap:8px;border:0;padding:3px 0}
       .record td::before{content:attr(data-label);color:#8eb7c5;font-weight:900}
     }
+    @media(min-width:535px) and (max-width:900px){#stage{height:calc(148.5vw + 135px)}}
+    @media(min-width:721px) and (max-width:900px){.lab-area{inset:96px 8px 62px}}
+    @media(max-width:360px){.lab-area{inset:110px 8px 62px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
   </style>
   <style id="codex-theme-pilot-style">
@@ -1218,17 +1221,33 @@ body #app .toolbar button:disabled{
       const radius=Math.min(r,w/2,h/2);ctx.beginPath();ctx.roundRect(x,y,w,h,radius)
     }
     function label(text,x,y,color="#eaf5fa",size=12,align="center",weight=800){
-      ctx.fillStyle=color;ctx.font=`${weight} ${size}px system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif`;
+      const fontSize=state.layout?.mobile?Math.max(size,state.layout.compact?16:15):size;
+      ctx.fillStyle=color;ctx.font=`${weight} ${fontSize}px system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif`;
       ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(text,x,y)
     }
     function getLayout(){
-      const mobile=state.width<560,logical=mobile?{w:640,h:950}:{w:900,h:500};
+      const mobile=window.matchMedia("(max-width:900px)").matches,compact=mobile&&window.innerWidth<535,logical=compact?{w:400,h:940}:mobile?{w:640,h:950}:{w:900,h:500};
       let layout;
-      if(mobile){
+      if(compact){
         layout={
-          mobile,logical,board:{x:20,y:18,w:600,h:914},returnY:590,
-          source:{x:36,y:280,w:150,h:155},
-          powerL:{x:186,y:310},powerN:{x:186,y:380},powerPE:{x:186,y:425},
+          mobile,compact,logical,board:{x:8,y:8,w:384,h:924},returnY:690,
+          source:{x:25,y:93,w:125,h:160},
+          powerL:{x:150,y:140},powerN:{x:150,y:195},powerPE:{x:150,y:235},
+          protector:{x:205,y:93,w:140,h:154},protectorLIn:{x:205,y:140},protectorLOut:{x:345,y:140},protectorNIn:{x:205,y:205},protectorNOut:{x:345,y:205},
+          switchBox:{x:205,y:310,w:140,h:68},switchIn:{x:205,y:344},switchOut:{x:345,y:344},
+          lamp:{cx:280,cy:435,l:{x:225,y:470},r:{x:335,y:470}},lampL:{x:225,y:470},lampN:{x:335,y:470},
+          loads:[{x:22,y:591,w:165,h:96,index:2},{x:213,y:591,w:165,h:96,index:3}],
+          loadBus:{x1:22,x2:378,lY:545,nY:563,dropL:194,dropN:206},
+          socket:{x:22,y:730,w:170,h:130},socketPE:{x:107,y:775},socketN:{x:72,y:823},socketL:{x:142,y:823},
+          plug:{x:188,y:764,w:64,h:72},
+          appliance:{x:250,y:730,w:135,h:130},shellPE:{x:250,y:775},
+          faultButton:{x:205,y:871,w:180,h:54}
+        }
+      }else if(mobile){
+        layout={
+          mobile,compact,logical,board:{x:20,y:18,w:600,h:914},returnY:590,
+          source:{x:36,y:225,w:150,h:155},
+          powerL:{x:186,y:270},powerN:{x:186,y:325},powerPE:{x:186,y:370},
           protector:{x:215,y:82,w:130,h:142},protectorLIn:{x:215,y:120},protectorLOut:{x:345,y:120},protectorNIn:{x:215,y:186},protectorNOut:{x:345,y:186},
           switchBox:{x:390,y:88,w:120,h:64},switchIn:{x:390,y:120},switchOut:{x:510,y:120},
           lamp:{cx:540,cy:285,l:{x:485,y:317},r:{x:595,y:317}},lampL:{x:485,y:317},lampN:{x:595,y:317},
@@ -1241,7 +1260,7 @@ body #app .toolbar button:disabled{
         }
       }else{
         layout={
-          mobile,logical,board:{x:18,y:18,w:864,h:464},returnY:400,
+          mobile,compact,logical,board:{x:18,y:18,w:864,h:464},returnY:400,
           source:{x:42,y:210,w:165,h:150},
           powerL:{x:207,y:238},powerN:{x:207,y:305},powerPE:{x:207,y:350},
           protector:{x:260,y:82,w:140,h:138},protectorLIn:{x:260,y:119},protectorLOut:{x:400,y:119},protectorNIn:{x:260,y:184},protectorNOut:{x:400,y:184},
@@ -1267,12 +1286,12 @@ body #app .toolbar button:disabled{
     }
     function routeFor(key,l){
       const mobile=l.mobile;
-      if(key==="supplyL")return mobile?[l.powerL,{x:198,y:l.powerL.y},{x:198,y:l.protectorLIn.y},l.protectorLIn]:[l.powerL,{x:225,y:l.powerL.y},{x:225,y:l.protectorLIn.y},l.protectorLIn];
-      if(key==="supplyN")return mobile?[l.powerN,{x:210,y:l.powerN.y},{x:210,y:l.protectorNIn.y},l.protectorNIn]:[l.powerN,{x:245,y:l.powerN.y},{x:245,y:l.protectorNIn.y},l.protectorNIn];
-      if(key==="protectL")return[l.protectorLOut,l.switchIn];
-      if(key==="switch")return[l.switchOut,{x:l.lampL.x-28,y:l.switchOut.y},{x:l.lampL.x-28,y:l.lampL.y},l.lampL];
-      if(key==="returnN")return mobile?[l.lampN,{x:l.board.x+l.board.w-10,y:l.lampN.y},{x:l.board.x+l.board.w-10,y:246},{x:l.protectorNOut.x+28,y:246},{x:l.protectorNOut.x+28,y:l.protectorNOut.y},l.protectorNOut]:[l.lampN,{x:840,y:l.lampN.y},{x:840,y:226},{x:l.protectorNOut.x+30,y:226},{x:l.protectorNOut.x+30,y:l.protectorNOut.y},l.protectorNOut];
-      if(key==="pe")return mobile?[l.powerPE,{x:230,y:l.powerPE.y},{x:230,y:l.socketPE.y},l.socketPE]:[l.powerPE,{x:265,y:l.powerPE.y},{x:265,y:l.socketPE.y},l.socketPE];
+      if(key==="supplyL")return l.compact?[l.powerL,{x:178,y:l.powerL.y},l.protectorLIn]:mobile?[l.powerL,{x:198,y:l.powerL.y},{x:198,y:l.protectorLIn.y},l.protectorLIn]:[l.powerL,{x:225,y:l.powerL.y},{x:225,y:l.protectorLIn.y},l.protectorLIn];
+      if(key==="supplyN")return l.compact?[l.powerN,{x:181,y:l.powerN.y},{x:181,y:l.protectorNIn.y},l.protectorNIn]:mobile?[l.powerN,{x:210,y:l.powerN.y},{x:210,y:l.protectorNIn.y},l.protectorNIn]:[l.powerN,{x:245,y:l.powerN.y},{x:245,y:l.protectorNIn.y},l.protectorNIn];
+      if(key==="protectL")return l.compact?[l.protectorLOut,{x:365,y:l.protectorLOut.y},{x:365,y:275},{x:185,y:275},{x:185,y:l.switchIn.y},l.switchIn]:[l.protectorLOut,l.switchIn];
+      if(key==="switch")return l.compact?[l.switchOut,{x:355,y:l.switchOut.y},{x:355,y:400},{x:l.lampL.x,y:400},l.lampL]:[l.switchOut,{x:l.lampL.x-28,y:l.switchOut.y},{x:l.lampL.x-28,y:l.lampL.y},l.lampL];
+      if(key==="returnN")return l.compact?[l.lampN,{x:384,y:l.lampN.y},{x:384,y:l.protectorNOut.y},l.protectorNOut]:mobile?[l.lampN,{x:l.board.x+l.board.w-10,y:l.lampN.y},{x:l.board.x+l.board.w-10,y:246},{x:l.protectorNOut.x+28,y:246},{x:l.protectorNOut.x+28,y:l.protectorNOut.y},l.protectorNOut]:[l.lampN,{x:840,y:l.lampN.y},{x:840,y:226},{x:l.protectorNOut.x+30,y:226},{x:l.protectorNOut.x+30,y:l.protectorNOut.y},l.protectorNOut];
+      if(key==="pe")return l.compact?[l.powerPE,{x:162,y:l.powerPE.y},{x:162,y:265},{x:16,y:265},{x:16,y:711},{x:l.socketPE.x,y:711},l.socketPE]:mobile?[l.powerPE,{x:200,y:l.powerPE.y},{x:200,y:392},{x:150,y:392},{x:150,y:650},{x:l.socketPE.x,y:650},l.socketPE]:[l.powerPE,{x:265,y:l.powerPE.y},{x:265,y:l.socketPE.y},l.socketPE];
       return[]
     }
     function drawCable(points,color="#5bbcff",width=5,dashed=false){
@@ -1308,16 +1327,19 @@ body #app .toolbar button:disabled{
     function drawBoard(l){
       const b=l.board,g=ctx.createLinearGradient(0,b.y,0,b.y+b.h);g.addColorStop(0,"#123746");g.addColorStop(1,"#102b37");
       ctx.fillStyle=g;roundedRect(b.x,b.y,b.w,b.h,18);ctx.fill();ctx.strokeStyle="#2e6b82";ctx.lineWidth=2;ctx.stroke();
-      ctx.fillStyle="rgba(255,209,102,.11)";roundedRect(b.x+12,b.y+12,b.w-24,32,8);ctx.fill();
-      label("隔离低压学生电源模型 · 故障状态为程序模拟 · 严禁接入家庭市电",b.x+b.w/2,b.y+28,"#ffe2a0",l.mobile?11:12);
-      ctx.fillStyle="#71442e";roundedRect(b.x+12,b.y+b.h-20,b.w-24,14,7);ctx.fill()
+      ctx.fillStyle="rgba(255,209,102,.11)";roundedRect(b.x+12,b.y+12,b.w-24,l.compact?46:32,8);ctx.fill();
+      if(l.compact){
+        label("隔离低压模型 · 严禁接入家庭市电",b.x+b.w/2,b.y+28,"#ffe2a0",15);
+        label("故障状态仅由程序模拟",b.x+b.w/2,b.y+46,"#ffe2a0",15)
+      }else label("隔离低压学生电源模型 · 故障状态为程序模拟 · 严禁接入家庭市电",b.x+b.w/2,b.y+28,"#ffe2a0",12);
+      if(!l.mobile){ctx.fillStyle="#71442e";roundedRect(b.x+12,b.y+b.h-20,b.w-24,14,7);ctx.fill()}
     }
     function drawSource(l){
       const b=l.source,g=ctx.createLinearGradient(b.x,b.y,b.x,b.y+b.h);g.addColorStop(0,"#7f909c");g.addColorStop(1,"#46535e");
       ctx.fillStyle=g;roundedRect(b.x,b.y,b.w,b.h,12);ctx.fill();ctx.strokeStyle="#bacbd5";ctx.lineWidth=2;ctx.stroke();
       ctx.fillStyle="#293741";roundedRect(b.x+18,b.y+38,b.w-36,55,7);ctx.fill();
       label("隔离低压电源",b.x+b.w/2,b.y+18,"#e9f5fb",13);
-      label("仅作 L / N / PE 模拟",b.x+b.w/2,b.y+66,"#9fd8ef",11);
+      label(l.mobile?"低压模型":"仅作 L / N / PE 模拟",b.x+b.w/2,b.y+(l.mobile?77:66),"#9fd8ef",11);
       drawTerminal("powerL",l.powerL,"#ff6178");drawTerminal("powerN",l.powerN,"#5bbcff");drawTerminal("powerPE",l.powerPE,"#75d784");
       label("L 相线",l.powerL.x-16,l.powerL.y,"#ff93a3",11,"right");
       label("N 中性线",l.powerN.x-16,l.powerN.y,"#8bd6ff",11,"right");
@@ -1337,7 +1359,7 @@ body #app .toolbar button:disabled{
         roundedRect(b.x+b.w/2+8,b.y+18,b.w/2-20,10,4);ctx.fill();
         ctx.strokeStyle="#e3475d";ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(b.x+b.w/2-7,b.y+23);ctx.lineTo(b.x+b.w/2+8,b.y+10);ctx.stroke()
       }else{roundedRect(b.x+12,b.y+18,b.w-24,10,4);ctx.fill()}
-      label(trip?`${tripName} · 保护器动作`:"漏电 / 过流保护器",b.x+b.w/2,b.y-13,trip?"#ff8fa1":"#dff4fb",12);
+      label(trip?(l.mobile?`${tripName} · 已切断`:`${tripName} · 保护器动作`):"漏电 / 过流保护器",b.x+b.w/2,b.y-13,trip?"#ff8fa1":"#dff4fb",12);
       label(trip?"跳闸":"合闸",b.x+b.w/2,b.y+66,"#fff",12);
       label(trip?"已切断故障回路":"模拟复位",b.x+b.w/2,b.y+b.h-12,trip?"#c42e46":"#52636b",9);
       drawTerminal("protectorLIn",l.protectorLIn,"#ff6178");drawTerminal("protectorLOut",l.protectorLOut,"#ff6178");
@@ -1352,7 +1374,7 @@ body #app .toolbar button:disabled{
       ctx.lineTo(state.switchClosed?l.switchOut.x-8:l.switchOut.x-16,state.switchClosed?l.switchOut.y:l.switchOut.y-31);ctx.stroke();
       drawTerminal("switchIn",l.switchIn,"#ff6178");drawTerminal("switchOut",l.switchOut,"#ff6178");
       label(`开关 S：${state.switchClosed?"闭合":"断开"}`,b.x+b.w/2,b.y-13,state.switchClosed?"#6df0b1":"#e8f2f6",12);
-      label("串接在相线 L",b.x+b.w/2,b.y+b.h+14,"#ff93a3",10)
+      if(!l.compact)label("串接在相线 L",b.x+b.w/2,b.y+b.h+14,"#ff93a3",10)
     }
     function drawLamp(l){
       const b=l.lamp,on=circuitPowered();
@@ -1381,7 +1403,7 @@ body #app .toolbar button:disabled{
       const bus=l.loadBus;
       drawStraightCable([l.protectorLOut,{x:l.protectorLOut.x+18,y:bus.lY},{x:bus.x1,y:bus.lY},{x:bus.x2,y:bus.lY}],"#ff6178",3);
       drawStraightCable([l.protectorNOut,{x:l.protectorNOut.x+30,y:bus.nY},{x:bus.x1,y:bus.nY},{x:bus.x2,y:bus.nY}],"#5bbcff",3);
-      label("并联负载母线 L / N",(bus.x1+bus.x2)/2,bus.lY-16,"#dff4fb",10);
+      label(l.mobile?"L / N 并联母线":"并联负载母线 L / N",(bus.x1+bus.x2)/2,bus.lY-16,"#dff4fb",10);
       label("L",bus.x1-10,bus.lY,"#ff93a3",9,"right");
       label("N",bus.x1-10,bus.nY,"#8bd6ff",9,"right");
       l.loads.forEach(load=>{
@@ -1401,7 +1423,9 @@ body #app .toolbar button:disabled{
       ctx.fillStyle="#263943";ctx.beginPath();ctx.ellipse(l.socketN.x,l.socketN.y,6,12,-.35,0,Math.PI*2);ctx.fill();
       ctx.beginPath();ctx.ellipse(l.socketL.x,l.socketL.y,6,12,.35,0,Math.PI*2);ctx.fill();
       ctx.beginPath();ctx.ellipse(l.socketPE.x,l.socketPE.y,7,13,0,0,Math.PI*2);ctx.fill();
-      label("N 左零",l.socketN.x,l.socketN.y+25,"#367aa1",10);label("L 右火",l.socketL.x,l.socketL.y+25,"#b83e52",10);label("PE 上接地",l.socketPE.x,l.socketPE.y-24,pe?"#338f5b":"#53656e",10);
+      label(l.mobile?"左 N":"N 左零",l.socketN.x,l.socketN.y+25,"#367aa1",10);label(l.mobile?"右 L":"L 右火",l.socketL.x,l.socketL.y+25,"#b83e52",10);
+      if(l.compact)label("PE",s.x+24,l.socketPE.y,pe?"#338f5b":"#53656e",10,"left");
+      else label(l.mobile?"上 PE":"PE 上接地",l.socketPE.x,l.mobile?l.socketPE.y+25:l.socketPE.y-24,pe?"#338f5b":"#53656e",10);
       drawTerminal("socketPE",l.socketPE,pe?"#75d784":"#a9bbc2")
     }
     function drawThreePinPlug(l){
@@ -1416,8 +1440,8 @@ body #app .toolbar button:disabled{
       ctx.fillStyle="#5bbcff";roundedRect(p.x+p.w-13,p.y+29,6,12,3);ctx.fill();
       ctx.fillStyle="#75d784";roundedRect(p.x+p.w-13,p.y+46,6,12,3);ctx.fill();
       drawCable([{x:p.x+p.w-5,y:centerY},{x:l.appliance.x-12,y:centerY},{x:l.appliance.x,y:l.appliance.y+l.appliance.h/2}],"#26343b",12);
-      label("三脚插头",p.x+p.w/2,p.y+14,"#dcebf2",9);
-      label("已插入 · 三芯线",p.x+p.w/2,p.y+p.h-13,"#b9d1db",8);
+      label(l.compact?"插头":"三脚插头",p.x+p.w/2,p.y+14,"#dcebf2",9);
+      if(!l.compact)label(l.mobile?"已插入":"已插入 · 三芯线",p.x+p.w/2,p.y+p.h-13,"#b9d1db",8);
       ctx.restore()
     }
     function drawAppliance(l){
@@ -1425,7 +1449,7 @@ body #app .toolbar button:disabled{
       ctx.fillStyle=danger?"#7b3540":state.leakageFault?"#6c593e":"#687983";roundedRect(a.x,a.y,a.w,a.h,14);ctx.fill();ctx.strokeStyle="#c2d1d8";ctx.lineWidth=2;ctx.stroke();
       ctx.fillStyle="#263740";roundedRect(a.x+22,a.y+28,a.w-44,a.h-54,10);ctx.fill();
       label("金属外壳用电器",a.x+a.w/2,a.y+17,"#e7f2f7",12);
-      label(danger?"外壳危险（未接 PE）":state.leakageFault?"内部 L 线碰壳":"外壳经插头连接 PE",a.x+a.w/2,a.y+a.h-16,danger?"#ff9cac":state.leakageFault?"#ffe091":"#aeeec7",10);
+      label(danger?(l.mobile?"未接 PE · 外壳危险":"外壳危险（未接 PE）"):state.leakageFault?"内部 L 线碰壳":state.peConnected?"外壳已接 PE":"电源 PE 尚未接入",a.x+a.w/2,a.y+a.h-16,danger?"#ff9cac":state.leakageFault?"#ffe091":state.peConnected?"#aeeec7":"#ffe091",10);
       if(state.leakageFault){
         ctx.strokeStyle="#ffd166";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(a.x+a.w*.36,a.y+43);ctx.lineTo(a.x+a.w*.52,a.y+62);ctx.lineTo(a.x+a.w*.43,a.y+84);ctx.lineTo(a.x+a.w*.62,a.y+99);ctx.stroke();
         label(danger?"外壳带电危险":"故障仍需排除",a.x+a.w/2,a.y+a.h/2+8,danger?"#ff9bab":"#ffe091",11)
@@ -1478,7 +1502,7 @@ body #app .toolbar button:disabled{
       return{x:(event.clientX-rect.left-t.ox)/t.scale,y:(event.clientY-rect.top-t.oy)/t.scale}
     }
     function nearestTerminal(point){
-      const terminals=terminalMap(state.layout);let best=null,bestDistance=28;
+      const terminals=terminalMap(state.layout);let best=null,bestDistance=Math.max(28,22/state.drawTransform.scale);
       Object.entries(terminals).forEach(([id,p])=>{const distance=Math.hypot(point.x-p.x,point.y-p.y);if(distance<bestDistance){best=id;bestDistance=distance}});
       return best
     }
@@ -1682,44 +1706,6 @@ body #app .toolbar button:disabled{
       let codexModePauseStarted = 0;
       let codexModePausedAnimations = [];
 
-      const MODE_VOLATILE = new Set(["autoPlaying", "autoPaused", "autoCancel", "autoRunId", "demoRunId", "freeMode", "freeStartState", "timers", "rafId", "drawerDrag"]);
-      const cloneModeValue = (value) => {
-        if (value === undefined) return undefined;
-        if (typeof structuredClone === "function") {
-          try { return structuredClone(value); }
-          catch(error) { if(error?.name !== "DataCloneError") throw error; }
-        }
-        const serialized = JSON.stringify(value);
-        return serialized === undefined ? undefined : JSON.parse(serialized);
-      };
-      function captureModeWorld(getState, getExtra = () => null) {
-        const source = getState();
-        const savedState = Object.fromEntries(Object.entries(source)
-          .filter(([key, value]) => !MODE_VOLATILE.has(key) && typeof value !== "function" && !value?.nodeType)
-          .map(([key, value]) => [key, cloneModeValue(value)]));
-        const forms = [...document.querySelectorAll("input,select,textarea")].map((element) => ({
-          id:element.id,
-          name:element.name,
-          value:element.value,
-          checked:Boolean(element.checked),
-          type:element.type,
-        })).filter(({ id, name }) => id || name);
-        return { state:savedState, forms, extra:cloneModeValue(getExtra()) };
-      }
-      function restoreModeWorld(snapshot, { getState, reset, refresh, restoreExtra = () => {} }) {
-        reset();
-        Object.assign(getState(), cloneModeValue(snapshot.state), { freeMode:true, autoPlaying:false, autoPaused:false });
-        for (const item of snapshot.forms) {
-          const element = item.id
-            ? document.getElementById(item.id)
-            : document.querySelector(`[name="${CSS.escape(item.name)}"]`);
-          if (!element) continue;
-          element.value = item.value;
-          if (item.type === "checkbox" || item.type === "radio") element.checked = item.checked;
-        }
-        restoreExtra(cloneModeValue(snapshot.extra));
-        refresh();
-      }
       const modeIdleLabel = (modeState) => {
         if (modeState.completed) return "闯关模式 · 已通关";
         const text = document.querySelector("#taskStep,.task-step")?.textContent || "";
@@ -1752,31 +1738,9 @@ body #app .toolbar button:disabled{
           resetGuided();
         },
         setFreeMode:(on) => { if(Boolean(on) !== state.freeMode) toggleFreeMode(); },
-        captureFreeEntry:() => captureModeWorld(() => state),
-        restoreFreeEntry:(snapshot) => restoreModeWorld(snapshot, {
-          getState:() => state,
-          reset:() => { resetGuided(); },
-
-          refresh:() => {
-          if(typeof updateModeHud === "function") updateModeHud();
-          if(typeof updateControlsState === "function") updateControlsState();
-          if(typeof syncModeTag === "function") syncModeTag();
-          if(typeof syncInteractiveButtons === "function") syncInteractiveButtons();
-          if(typeof updateMode === "function") updateMode();
-          if(typeof setModeLabel === "function") setModeLabel();
-          if(typeof renderRecords === "function") renderRecords();
-          if(typeof updateBadge === "function") updateBadge();
-          if(typeof updateObservationChip === "function") updateObservationChip();
-          if(typeof renderFork === "function") renderFork();
-          if(typeof renderStriker === "function") renderStriker();
-          if(typeof scheduleChart === "function") scheduleChart();
-          if(typeof scheduleDraw === "function") scheduleDraw();
-          if(typeof updateReadoutUI === "function") updateReadoutUI();
-          if(typeof render === "function") render();
-          if(typeof draw === "function") draw();
-          if(typeof updateUI === "function") updateUI();
-          if(typeof updateTaskUI === "function") updateTaskUI(); },
-        }),
+        // Guided progress stays in state.guidedSnapshot; reset only the free scene.
+        captureFreeEntry:() => ({}),
+        restoreFreeEntry:() => resetCurrentMode(),
         pauseApparatus() {
           codexModePausedAnimations = document.getElementById("demoCursor")?.getAnimations({ subtree:true }) || [];
           codexModePausedAnimations.forEach((animation) => animation.pause());
