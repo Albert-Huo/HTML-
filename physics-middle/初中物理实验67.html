@@ -159,7 +159,7 @@
     @media(max-width:720px){
       body{padding:8px}#spectrum{height:20px;margin-bottom:10px}
       .task-card{grid-template-columns:1fr;gap:7px}.task-step{width:max-content}.progress-dots{justify-content:flex-start}
-      #stage{height:clamp(860px,calc(235vw + 120px),1320px)}.lab-area{inset:96px 8px 62px}
+      #stage{height:clamp(755px,calc(180vw + 180px),1150px)}.lab-area{inset:96px 8px 62px}
       .hud{right:8px;max-width:calc(100% - 16px);flex-wrap:wrap;padding:6px 7px}
       .hint-lamp{top:58px}.hint-pop{top:58px}
       .dock{
@@ -176,8 +176,8 @@
       .record td{display:grid;grid-template-columns:70px 1fr;gap:8px;border:0;padding:3px 0}
       .record td::before{content:attr(data-label);color:#8eb7c5;font-weight:900}
     }
-    @media(min-width:535px) and (max-width:900px){#stage{height:calc(148.5vw + 135px)}}
-    @media(min-width:721px) and (max-width:900px){.lab-area{inset:96px 8px 62px}}
+    @media(min-width:535px) and (max-width:720px){#stage{height:calc(125vw + 118px)}}
+    @media(min-width:721px) and (max-width:900px){#stage{height:calc(60vw + 210px)}.lab-area{inset:96px 8px 62px}}
     @media(max-width:360px){.lab-area{inset:110px 8px 62px}}
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
   </style>
@@ -1221,42 +1221,57 @@ body #app .toolbar button:disabled{
       const radius=Math.min(r,w/2,h/2);ctx.beginPath();ctx.roundRect(x,y,w,h,radius)
     }
     function label(text,x,y,color="#eaf5fa",size=12,align="center",weight=800){
-      const fontSize=state.layout?.mobile?Math.max(size,state.layout.compact?16:15):size;
+      const fontSize=state.layout?.mobile?Math.max(size,state.layout.compact?14:13):size;
       ctx.fillStyle=color;ctx.font=`${weight} ${fontSize}px system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif`;
       ctx.textAlign=align;ctx.textBaseline="middle";ctx.fillText(text,x,y)
     }
     function getLayout(){
-      const mobile=window.matchMedia("(max-width:900px)").matches,compact=mobile&&window.innerWidth<535,logical=compact?{w:400,h:940}:mobile?{w:640,h:950}:{w:900,h:500};
+      const mobile=window.matchMedia("(max-width:900px)").matches,compact=mobile&&window.innerWidth<535,wide=mobile&&window.innerWidth>720,logical=compact?{w:400,h:810}:wide?{w:720,h:520}:mobile?{w:640,h:790}:{w:900,h:500};
       let layout;
       if(compact){
         layout={
-          mobile,compact,logical,board:{x:8,y:8,w:384,h:924},returnY:690,
-          source:{x:25,y:93,w:125,h:160},
-          powerL:{x:150,y:140},powerN:{x:150,y:195},powerPE:{x:150,y:235},
-          protector:{x:205,y:93,w:140,h:154},protectorLIn:{x:205,y:140},protectorLOut:{x:345,y:140},protectorNIn:{x:205,y:205},protectorNOut:{x:345,y:205},
-          switchBox:{x:205,y:310,w:140,h:68},switchIn:{x:205,y:344},switchOut:{x:345,y:344},
-          lamp:{cx:280,cy:435,l:{x:225,y:470},r:{x:335,y:470}},lampL:{x:225,y:470},lampN:{x:335,y:470},
-          loads:[{x:22,y:591,w:165,h:96,index:2},{x:213,y:591,w:165,h:96,index:3}],
-          loadBus:{x1:22,x2:378,lY:545,nY:563,dropL:194,dropN:206},
-          socket:{x:22,y:730,w:170,h:130},socketPE:{x:107,y:775},socketN:{x:72,y:823},socketL:{x:142,y:823},
-          plug:{x:188,y:764,w:64,h:72},
-          appliance:{x:250,y:730,w:135,h:130},shellPE:{x:250,y:775},
-          faultButton:{x:205,y:871,w:180,h:54}
+          mobile,compact,logical,board:{x:8,y:8,w:384,h:794},returnY:590,
+          source:{x:25,y:75,w:125,h:150},
+          powerL:{x:150,y:130},powerN:{x:150,y:170},powerPE:{x:150,y:215},
+          protector:{x:205,y:92,w:140,h:145},protectorLIn:{x:205,y:130},protectorLOut:{x:345,y:130},protectorNIn:{x:205,y:195},protectorNOut:{x:345,y:195},
+          switchBox:{x:210,y:250,w:125,h:56},switchIn:{x:210,y:278},switchOut:{x:335,y:278},
+          lamp:{cx:280,cy:375,l:{x:230,y:410},r:{x:330,y:410}},lampL:{x:230,y:410},lampN:{x:330,y:410},
+          loads:[{x:22,y:495,w:165,h:82,index:2},{x:213,y:495,w:165,h:82,index:3}],
+          loadBus:{x1:35,x2:378,lY:455,nY:471,dropL:194,dropN:206},
+          socket:{x:22,y:610,w:170,h:118},socketPE:{x:107,y:648},socketN:{x:72,y:691},socketL:{x:142,y:691},
+          plug:{x:188,y:643,w:64,h:68},
+          appliance:{x:250,y:610,w:135,h:118},shellPE:{x:250,y:648},
+          faultButton:{x:205,y:743,w:180,h:46}
+        }
+      }else if(wide){
+        layout={
+          mobile,compact,wide,logical,board:{x:12,y:12,w:696,h:500},returnY:390,
+          source:{x:24,y:205,w:145,h:145},
+          powerL:{x:169,y:235},powerN:{x:169,y:290},powerPE:{x:169,y:337},
+          protector:{x:210,y:75,w:125,h:130},protectorLIn:{x:210,y:110},protectorLOut:{x:335,y:110},protectorNIn:{x:210,y:175},protectorNOut:{x:335,y:175},
+          switchBox:{x:395,y:83,w:120,h:58},switchIn:{x:395,y:112},switchOut:{x:515,y:112},
+          lamp:{cx:620,cy:165,l:{x:570,y:205},r:{x:670,y:205}},lampL:{x:570,y:205},lampN:{x:670,y:205},
+          loads:[{x:225,y:290,w:140,h:80,index:2},{x:405,y:290,w:140,h:80,index:3}],
+          loadBus:{x1:215,x2:555,lY:250,nY:265,dropL:378,dropN:390},
+          socket:{x:205,y:390,w:175,h:110},socketPE:{x:292,y:420},socketN:{x:260,y:463},socketL:{x:325,y:463},
+          plug:{x:370,y:410,w:70,h:70},
+          appliance:{x:445,y:390,w:155,h:110},shellPE:{x:445,y:420},
+          faultButton:{x:555,y:310,w:145,h:55}
         }
       }else if(mobile){
         layout={
-          mobile,compact,logical,board:{x:20,y:18,w:600,h:914},returnY:590,
-          source:{x:36,y:225,w:150,h:155},
-          powerL:{x:186,y:270},powerN:{x:186,y:325},powerPE:{x:186,y:370},
+          mobile,compact,logical,board:{x:20,y:18,w:600,h:754},returnY:500,
+          source:{x:28,y:170,w:130,h:155},
+          powerL:{x:158,y:215},powerN:{x:158,y:270},powerPE:{x:158,y:315},
           protector:{x:215,y:82,w:130,h:142},protectorLIn:{x:215,y:120},protectorLOut:{x:345,y:120},protectorNIn:{x:215,y:186},protectorNOut:{x:345,y:186},
-          switchBox:{x:390,y:88,w:120,h:64},switchIn:{x:390,y:120},switchOut:{x:510,y:120},
-          lamp:{cx:540,cy:285,l:{x:485,y:317},r:{x:595,y:317}},lampL:{x:485,y:317},lampN:{x:595,y:317},
-          loads:[{x:175,y:450,w:145,h:96,index:2},{x:350,y:450,w:145,h:96,index:3}],
-          loadBus:{x1:160,x2:510,lY:425,nY:438,dropL:332,dropN:340},
-          socket:{x:145,y:675,w:180,h:170},socketPE:{x:235,y:706},socketN:{x:203,y:763},socketL:{x:267,y:763},
-          plug:{x:316,y:724,w:70,h:72},
-          appliance:{x:390,y:690,w:170,h:150},shellPE:{x:390,y:715},
-          faultButton:{x:390,y:852,w:170,h:54}
+          switchBox:{x:390,y:88,w:120,h:58},switchIn:{x:390,y:117},switchOut:{x:510,y:117},
+          lamp:{cx:540,cy:235,l:{x:490,y:272},r:{x:590,y:272}},lampL:{x:490,y:272},lampN:{x:590,y:272},
+          loads:[{x:175,y:400,w:145,h:84,index:2},{x:350,y:400,w:145,h:84,index:3}],
+          loadBus:{x1:175,x2:510,lY:355,nY:371,dropL:332,dropN:340},
+          socket:{x:145,y:535,w:180,h:135},socketPE:{x:235,y:565},socketN:{x:203,y:615},socketL:{x:267,y:615},
+          plug:{x:316,y:575,w:70,h:70},
+          appliance:{x:390,y:535,w:170,h:135},shellPE:{x:390,y:565},
+          faultButton:{x:390,y:690,w:170,h:55}
         }
       }else{
         layout={
@@ -1286,12 +1301,12 @@ body #app .toolbar button:disabled{
     }
     function routeFor(key,l){
       const mobile=l.mobile;
-      if(key==="supplyL")return l.compact?[l.powerL,{x:178,y:l.powerL.y},l.protectorLIn]:mobile?[l.powerL,{x:198,y:l.powerL.y},{x:198,y:l.protectorLIn.y},l.protectorLIn]:[l.powerL,{x:225,y:l.powerL.y},{x:225,y:l.protectorLIn.y},l.protectorLIn];
-      if(key==="supplyN")return l.compact?[l.powerN,{x:181,y:l.powerN.y},{x:181,y:l.protectorNIn.y},l.protectorNIn]:mobile?[l.powerN,{x:210,y:l.powerN.y},{x:210,y:l.protectorNIn.y},l.protectorNIn]:[l.powerN,{x:245,y:l.powerN.y},{x:245,y:l.protectorNIn.y},l.protectorNIn];
-      if(key==="protectL")return l.compact?[l.protectorLOut,{x:365,y:l.protectorLOut.y},{x:365,y:275},{x:185,y:275},{x:185,y:l.switchIn.y},l.switchIn]:[l.protectorLOut,l.switchIn];
-      if(key==="switch")return l.compact?[l.switchOut,{x:355,y:l.switchOut.y},{x:355,y:400},{x:l.lampL.x,y:400},l.lampL]:[l.switchOut,{x:l.lampL.x-28,y:l.switchOut.y},{x:l.lampL.x-28,y:l.lampL.y},l.lampL];
-      if(key==="returnN")return l.compact?[l.lampN,{x:384,y:l.lampN.y},{x:384,y:l.protectorNOut.y},l.protectorNOut]:mobile?[l.lampN,{x:l.board.x+l.board.w-10,y:l.lampN.y},{x:l.board.x+l.board.w-10,y:246},{x:l.protectorNOut.x+28,y:246},{x:l.protectorNOut.x+28,y:l.protectorNOut.y},l.protectorNOut]:[l.lampN,{x:840,y:l.lampN.y},{x:840,y:226},{x:l.protectorNOut.x+30,y:226},{x:l.protectorNOut.x+30,y:l.protectorNOut.y},l.protectorNOut];
-      if(key==="pe")return l.compact?[l.powerPE,{x:162,y:l.powerPE.y},{x:162,y:265},{x:16,y:265},{x:16,y:711},{x:l.socketPE.x,y:711},l.socketPE]:mobile?[l.powerPE,{x:200,y:l.powerPE.y},{x:200,y:392},{x:150,y:392},{x:150,y:650},{x:l.socketPE.x,y:650},l.socketPE]:[l.powerPE,{x:265,y:l.powerPE.y},{x:265,y:l.socketPE.y},l.socketPE];
+      if(key==="supplyL")return l.compact?[l.powerL,{x:178,y:l.powerL.y},l.protectorLIn]:l.wide?[l.powerL,{x:185,y:l.powerL.y},{x:185,y:l.protectorLIn.y},l.protectorLIn]:mobile?[l.powerL,{x:188,y:l.powerL.y},{x:188,y:l.protectorLIn.y},l.protectorLIn]:[l.powerL,{x:225,y:l.powerL.y},{x:225,y:l.protectorLIn.y},l.protectorLIn];
+      if(key==="supplyN")return l.compact?[l.powerN,{x:181,y:l.powerN.y},{x:181,y:l.protectorNIn.y},l.protectorNIn]:l.wide?[l.powerN,{x:196,y:l.powerN.y},{x:196,y:l.protectorNIn.y},l.protectorNIn]:mobile?[l.powerN,{x:200,y:l.powerN.y},{x:200,y:l.protectorNIn.y},l.protectorNIn]:[l.powerN,{x:245,y:l.powerN.y},{x:245,y:l.protectorNIn.y},l.protectorNIn];
+      if(key==="protectL")return l.compact?[l.protectorLOut,{x:365,y:l.protectorLOut.y},{x:365,y:242},{x:190,y:242},{x:190,y:l.switchIn.y},l.switchIn]:[l.protectorLOut,l.switchIn];
+      if(key==="switch")return l.compact?[l.switchOut,{x:350,y:l.switchOut.y},{x:350,y:315},{x:l.lampL.x,y:315},l.lampL]:l.wide?[l.switchOut,{x:535,y:l.switchOut.y},{x:535,y:155},{x:555,y:155},l.lampL]:mobile?[l.switchOut,{x:530,y:l.switchOut.y},{x:530,y:160},{x:465,y:160},{x:465,y:l.lampL.y},l.lampL]:[l.switchOut,{x:l.lampL.x-28,y:l.switchOut.y},{x:l.lampL.x-28,y:l.lampL.y},l.lampL];
+      if(key==="returnN")return l.compact?[l.lampN,{x:375,y:l.lampN.y},{x:375,y:l.protectorNOut.y},l.protectorNOut]:l.wide?[l.lampN,{x:688,y:l.lampN.y},{x:688,y:232},{x:365,y:232},{x:365,y:l.protectorNOut.y},l.protectorNOut]:mobile?[l.lampN,{x:610,y:l.lampN.y},{x:610,y:315},{x:375,y:315},{x:375,y:l.protectorNOut.y},l.protectorNOut]:[l.lampN,{x:840,y:l.lampN.y},{x:840,y:226},{x:l.protectorNOut.x+30,y:226},{x:l.protectorNOut.x+30,y:l.protectorNOut.y},l.protectorNOut];
+      if(key==="pe")return l.compact?[l.powerPE,{x:162,y:l.powerPE.y},{x:162,y:238},{x:16,y:238},{x:16,y:590},{x:l.socketPE.x,y:590},l.socketPE]:l.wide?[l.powerPE,{x:185,y:l.powerPE.y},{x:185,y:382},{x:l.socketPE.x,y:382},l.socketPE]:mobile?[l.powerPE,{x:170,y:l.powerPE.y},{x:170,y:338},{x:150,y:338},{x:150,y:515},{x:l.socketPE.x,y:515},l.socketPE]:[l.powerPE,{x:265,y:l.powerPE.y},{x:265,y:l.socketPE.y},l.socketPE];
       return[]
     }
     function drawCable(points,color="#5bbcff",width=5,dashed=false){
@@ -1331,7 +1346,7 @@ body #app .toolbar button:disabled{
       if(l.compact){
         label("隔离低压模型 · 严禁接入家庭市电",b.x+b.w/2,b.y+28,"#ffe2a0",15);
         label("故障状态仅由程序模拟",b.x+b.w/2,b.y+46,"#ffe2a0",15)
-      }else label("隔离低压学生电源模型 · 故障状态为程序模拟 · 严禁接入家庭市电",b.x+b.w/2,b.y+28,"#ffe2a0",12);
+      }else label("隔离低压模型 · 故障模拟 · 禁接市电",b.x+b.w/2+(l.mobile?0:-30),b.y+28,"#ffe2a0",12);
       if(!l.mobile){ctx.fillStyle="#71442e";roundedRect(b.x+12,b.y+b.h-20,b.w-24,14,7);ctx.fill()}
     }
     function drawSource(l){
@@ -1339,7 +1354,7 @@ body #app .toolbar button:disabled{
       ctx.fillStyle=g;roundedRect(b.x,b.y,b.w,b.h,12);ctx.fill();ctx.strokeStyle="#bacbd5";ctx.lineWidth=2;ctx.stroke();
       ctx.fillStyle="#293741";roundedRect(b.x+18,b.y+38,b.w-36,55,7);ctx.fill();
       label("隔离低压电源",b.x+b.w/2,b.y+18,"#e9f5fb",13);
-      label(l.mobile?"低压模型":"仅作 L / N / PE 模拟",b.x+b.w/2,b.y+(l.mobile?77:66),"#9fd8ef",11);
+      label(l.mobile?"低压模型":"仅作 L / N / PE 模拟",b.x+b.w/2,b.y+(l.wide?60:l.mobile?77:66),"#9fd8ef",11);
       drawTerminal("powerL",l.powerL,"#ff6178");drawTerminal("powerN",l.powerN,"#5bbcff");drawTerminal("powerPE",l.powerPE,"#75d784");
       label("L 相线",l.powerL.x-16,l.powerL.y,"#ff93a3",11,"right");
       label("N 中性线",l.powerN.x-16,l.powerN.y,"#8bd6ff",11,"right");
@@ -1373,42 +1388,44 @@ body #app .toolbar button:disabled{
       ctx.strokeStyle="#eff5f7";ctx.lineWidth=6;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(l.switchIn.x+8,l.switchIn.y);
       ctx.lineTo(state.switchClosed?l.switchOut.x-8:l.switchOut.x-16,state.switchClosed?l.switchOut.y:l.switchOut.y-31);ctx.stroke();
       drawTerminal("switchIn",l.switchIn,"#ff6178");drawTerminal("switchOut",l.switchOut,"#ff6178");
-      label(`开关 S：${state.switchClosed?"闭合":"断开"}`,b.x+b.w/2,b.y-13,state.switchClosed?"#6df0b1":"#e8f2f6",12);
+      label(`开关 S：${state.switchClosed?"闭合":"断开"}`,l.compact?110:b.x+b.w/2+(l.mobile?0:-35),l.compact?l.switchIn.y:b.y-13,state.switchClosed?"#6df0b1":"#e8f2f6",12);
       if(!l.compact)label("串接在相线 L",b.x+b.w/2,b.y+b.h+14,"#ff93a3",10)
     }
     function drawLamp(l){
-      const b=l.lamp,on=circuitPowered();
+      const b=l.lamp,on=circuitPowered(),radius=l.compact?32:l.mobile?36:42,glowRadius=radius+30,filamentScale=radius/42;
       ctx.save();
       if(on){
-        const glow=ctx.createRadialGradient(b.cx,b.cy-16,3,b.cx,b.cy-16,70);glow.addColorStop(0,"rgba(255,246,180,.86)");glow.addColorStop(1,"rgba(255,215,70,0)");
-        ctx.fillStyle=glow;ctx.beginPath();ctx.arc(b.cx,b.cy-16,72,0,Math.PI*2);ctx.fill()
+        const glow=ctx.createRadialGradient(b.cx,b.cy-18,3,b.cx,b.cy-18,glowRadius);glow.addColorStop(0,"rgba(255,246,180,.86)");glow.addColorStop(1,"rgba(255,215,70,0)");
+        ctx.fillStyle=glow;ctx.beginPath();ctx.arc(b.cx,b.cy-18,glowRadius,0,Math.PI*2);ctx.fill()
       }
       ctx.fillStyle=on?"rgba(255,246,185,.32)":"rgba(168,196,210,.12)";ctx.strokeStyle="#dcebf3";ctx.lineWidth=3;
-      ctx.beginPath();ctx.arc(b.cx,b.cy-18,42,0,Math.PI*2);ctx.fill();ctx.stroke();
-      ctx.strokeStyle="#f4a62a";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(b.cx-11,b.cy+9);ctx.lineTo(b.cx-5,b.cy-31);ctx.lineTo(b.cx+2,b.cy-4);ctx.lineTo(b.cx+10,b.cy-30);ctx.stroke();
-      ctx.fillStyle="#7d8b95";roundedRect(b.cx-24,b.cy+19,48,27,5);ctx.fill();ctx.strokeStyle="#cdd9df";ctx.stroke();
+      ctx.beginPath();ctx.arc(b.cx,b.cy-18,radius,0,Math.PI*2);ctx.fill();ctx.stroke();
+      ctx.strokeStyle="#f4a62a";ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(b.cx-11*filamentScale,b.cy-18+27*filamentScale);ctx.lineTo(b.cx-5*filamentScale,b.cy-18-13*filamentScale);ctx.lineTo(b.cx+2*filamentScale,b.cy-18+14*filamentScale);ctx.lineTo(b.cx+10*filamentScale,b.cy-18-12*filamentScale);ctx.stroke();
+      const baseW=l.compact?40:l.mobile?44:48,baseH=l.compact?21:l.mobile?24:27,baseY=l.compact?b.cy+12:l.mobile?b.cy+16:b.cy+19;
+      ctx.fillStyle="#7d8b95";roundedRect(b.cx-baseW/2,baseY,baseW,baseH,5);ctx.fill();ctx.strokeStyle="#cdd9df";ctx.stroke();
       ctx.fillStyle="#49555e";roundedRect(b.l.x,b.l.y-10,b.r.x-b.l.x,20,9);ctx.fill();
       drawTerminal("lampL",b.l,"#ff6178");drawTerminal("lampN",b.r,"#5bbcff");
-      label("小灯泡（用电器）",b.cx,b.cy+65,on?"#fff0a7":"#dce8ed",12);ctx.restore()
+      label("小灯泡（用电器）",b.cx,b.cy+(l.compact?54:l.mobile?58:65),on?"#fff0a7":"#dce8ed",12);ctx.restore()
     }
     function drawLoadCard(load,l){
       const inserted=state.loadCount>=load.index;
       ctx.fillStyle=inserted?"rgba(255,209,102,.17)":"rgba(6,20,28,.8)";ctx.strokeStyle=inserted?"#ffd166":"rgba(255,255,255,.26)";ctx.lineWidth=2;
       roundedRect(load.x,load.y,load.w,load.h,12);ctx.fill();ctx.stroke();
-      ctx.fillStyle=inserted?"#d58b43":"#53646d";roundedRect(load.x+22,load.y+28,load.w-44,35,8);ctx.fill();
-      ctx.strokeStyle="#dce9ef";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(load.x+40,load.y+28);ctx.lineTo(load.x+40,load.y+12);ctx.moveTo(load.x+load.w-40,load.y+28);ctx.lineTo(load.x+load.w-40,load.y+12);ctx.stroke();
-      label(inserted?`负载 ${load.index}：已接入`:`点击接入负载 ${load.index}`,load.x+load.w/2,load.y+78,inserted?"#ffe29a":"#b9cbd4",11);
+      const faceY=l.mobile?22:28,pinY=l.mobile?10:12;
+      ctx.fillStyle=inserted?"#d58b43":"#53646d";roundedRect(load.x+22,load.y+faceY,load.w-44,l.mobile?30:35,8);ctx.fill();
+      ctx.strokeStyle="#dce9ef";ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(load.x+40,load.y+faceY);ctx.lineTo(load.x+40,load.y+pinY);ctx.moveTo(load.x+load.w-40,load.y+faceY);ctx.lineTo(load.x+load.w-40,load.y+pinY);ctx.stroke();
+      label(inserted?`负载 ${load.index}：已接入`:`点击接入负载 ${load.index}`,load.x+load.w/2,load.y+(l.mobile?load.h-15:78),inserted?"#ffe29a":"#b9cbd4",11);
     }
     function drawParallelLoadBus(l){
       const bus=l.loadBus;
       drawStraightCable([l.protectorLOut,{x:l.protectorLOut.x+18,y:bus.lY},{x:bus.x1,y:bus.lY},{x:bus.x2,y:bus.lY}],"#ff6178",3);
       drawStraightCable([l.protectorNOut,{x:l.protectorNOut.x+30,y:bus.nY},{x:bus.x1,y:bus.nY},{x:bus.x2,y:bus.nY}],"#5bbcff",3);
-      label(l.mobile?"L / N 并联母线":"并联负载母线 L / N",(bus.x1+bus.x2)/2,bus.lY-16,"#dff4fb",10);
+      if(!l.compact&&!l.wide)label(l.mobile?"L / N 并联母线":"并联负载母线 L / N",l.mobile?bus.x1+110:(bus.x1+bus.x2)/2,bus.lY-16,"#dff4fb",10);
       label("L",bus.x1-10,bus.lY,"#ff93a3",9,"right");
       label("N",bus.x1-10,bus.nY,"#8bd6ff",9,"right");
       l.loads.forEach(load=>{
         if(state.loadCount<load.index)return;
-        const lPin={x:load.x+40,y:load.y+12},nPin={x:load.x+load.w-40,y:load.y+12};
+        const pinY=load.y+(l.mobile?10:12),lPin={x:load.x+40,y:pinY},nPin={x:load.x+load.w-40,y:pinY};
         drawStraightCable([{x:lPin.x,y:bus.lY},lPin],"#ff6178",3);
         drawStraightCable([{x:nPin.x,y:bus.nY},nPin],"#5bbcff",3)
       });
@@ -1462,8 +1479,8 @@ body #app .toolbar button:disabled{
       label(active?"内部碰壳已触发":"模拟内部火线碰壳",b.x+b.w/2,b.y+b.h/2-7,active?"#ffd0d7":"#ffe091",l.mobile?11:10);
       label("低压程序模拟",b.x+b.w/2,b.y+b.h/2+12,"#a9bec8",9);
       ctx.save();ctx.strokeStyle="#ffd166";ctx.lineWidth=2;ctx.setLineDash([5,5]);ctx.beginPath();
-      const start=l.mobile?{x:b.x+b.w/2,y:b.y}:{x:b.x,y:b.y+b.h/2};
-      const end=l.mobile?{x:l.appliance.x+l.appliance.w/2,y:l.appliance.y+l.appliance.h}:{x:l.appliance.x+l.appliance.w,y:l.appliance.y+l.appliance.h/2};
+      const start=l.wide?{x:b.x+25,y:b.y+b.h}:l.mobile?{x:b.x+b.w/2,y:b.y}:{x:b.x,y:b.y+b.h/2};
+      const end=l.wide?{x:b.x+25,y:l.appliance.y}:l.mobile?{x:l.appliance.x+l.appliance.w/2,y:l.appliance.y+l.appliance.h}:{x:l.appliance.x+l.appliance.w,y:l.appliance.y+l.appliance.h/2};
       ctx.moveTo(start.x,start.y);ctx.lineTo(end.x,end.y);ctx.stroke();ctx.restore()
     }
     function drawWires(l){
