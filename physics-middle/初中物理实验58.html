@@ -669,7 +669,7 @@ body #app .toolbar button:disabled{
     #stage #audioToggle{ left:52px !important; right:auto !important; }
     #stage .hint-lamp-wrap .hint-pop{ left:0 !important; right:auto !important; }
     #stage .free-trial-switcher{ top:96px !important; }
-    #stage .lab-area{ top:144px !important; }
+    #stage .lab-area{ top:124px !important; }
   }
 </style>
 <style id="codex-mobile-hud-tool-row-v1">
@@ -976,7 +976,7 @@ body #app .toolbar button:disabled{
     const START_TEMP = 20;
     const MATERIALS = {
       water: { name:"水", c:4.2, colorTop:"rgba(91,188,255,.34)", colorBottom:"rgba(29,108,176,.64)" },
-      oil: { name:"食用油", c:2.1, colorTop:"rgba(255,196,92,.28)", colorBottom:"rgba(194,117,28,.58)" }
+      oil: { name:"食用油", c:1.97, colorTop:"rgba(255,196,92,.28)", colorBottom:"rgba(194,117,28,.58)" }
     };
     const TRIALS = [
       {
@@ -1137,7 +1137,7 @@ body #app .toolbar button:disabled{
       collection.push(makeRecord()); state.unseenRecords += 1; renderRecords(); updateBadge(); showCheck();
       if (!opts.auto) showToast("“" + currentTrial().short + "对比”已记录");
       if (state.freeMode) { resetHeatingState(); return true; }
-      if (state.trialIndex < TRIALS.length - 1) { setTrial(state.trialIndex + 1, { quiet:true }); }
+      if (state.trialIndex < TRIALS.length - 1) { setTrial(state.trialIndex + 1, { quiet:true }); if(state.mobile&&!state.autoPlaying)setDrawerCollapsed(controlDock,true,{quiet:true}); }
       else { resetHeatingState(); setStepUI(3); setDrawerCollapsed(controlDock, false, { quiet:true }); }
       return true;
     }
@@ -1175,16 +1175,18 @@ body #app .toolbar button:disabled{
       ctx.textAlign = opts.align || "center"; ctx.textBaseline = "middle"; ctx.fillText(text,x,y); ctx.restore();
     }
     function geometry() {
-      const w = state.width, h = state.height, compact = w < 600, s = clamp(w / 900, compact ? .55 : .78, 1);
+      const w = state.width, h = state.height, compact = w < 600;
+      const s = compact ? clamp(w / 450, .66, .8) : clamp(w / 850, .95, 1.12);
       return {
         w,h,compact,s,
         benchY:h-34,
-        leftX:w*(compact?.27:.29),
-        rightX:w*(compact?.73:.71),
-        unitY:h*(compact?.42:.43),
-        cardY:h-(compact?174:160),
+        leftX:w*.27,
+        rightX:w*.73,
+        unitY:compact?h*.4-12:h*.38,
+        cardY:h-(compact?201:180),
         powerX:w*.5,
-        powerY:h-(compact?72:68)
+        powerY:h-(compact?102:78),
+        powerWidth:compact?Math.min(158,w*.53):210
       };
     }
     function drawBackground(g) {
@@ -1196,85 +1198,81 @@ body #app .toolbar button:disabled{
       });
       ctx.strokeStyle="rgba(143,184,207,.055)";ctx.lineWidth=1;
       for(let x=30;x<g.w;x+=48){ctx.beginPath();ctx.moveTo(x,g.benchY-62);ctx.lineTo(x,g.benchY);ctx.stroke();}
+      const shelfY=g.unitY+86*g.s,shelf=ctx.createLinearGradient(0,shelfY,0,shelfY+12);shelf.addColorStop(0,"#61717b");shelf.addColorStop(1,"#253139");ctx.fillStyle=shelf;roundedRect(9,shelfY,g.w-18,12,4);ctx.fill();
+      ctx.fillStyle="#27333b";ctx.fillRect(15,shelfY+11,7,g.benchY-shelfY-11);ctx.fillRect(g.w-22,shelfY+11,7,g.benchY-shelfY-11);
+      ctx.strokeStyle="rgba(194,220,230,.45)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(12,shelfY+1);ctx.lineTo(g.w-12,shelfY+1);ctx.stroke();
       const bench=ctx.createLinearGradient(0,g.benchY,0,g.h);bench.addColorStop(0,"#5e4433");bench.addColorStop(.16,"#352820");bench.addColorStop(1,"#171414");ctx.fillStyle=bench;ctx.fillRect(0,g.benchY,g.w,g.h-g.benchY);
       ctx.strokeStyle="#b7804d";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,g.benchY);ctx.lineTo(g.w,g.benchY);ctx.stroke();
     }
     function drawLaboratoryThermometer(x,y,temp,target,s) {
-      const top=y-108*s,bottom=y+29*s,tone=temp>=target-.05?"#63d7ad":"#ffd166";ctx.save();
+      const top=y-108*s,bottom=y+29*s,tubeHalf=Math.max(5,6*s),tone=temp>=target-.05?"#63d7ad":"#ffd166";ctx.save();
       ctx.shadowColor="rgba(0,0,0,.42)";ctx.shadowBlur=7*s;
-      const glass=ctx.createLinearGradient(x-7*s,0,x+7*s,0);glass.addColorStop(0,"rgba(160,190,205,.72)");glass.addColorStop(.34,"rgba(245,252,255,.96)");glass.addColorStop(.68,"rgba(214,235,244,.82)");glass.addColorStop(1,"rgba(116,151,170,.72)");
-      ctx.fillStyle=glass;roundedRect(x-6*s,top,12*s,bottom-top,6*s);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle="rgba(211,237,248,.92)";ctx.lineWidth=1.2*s;ctx.stroke();
+      const glass=ctx.createLinearGradient(x-tubeHalf,0,x+tubeHalf,0);glass.addColorStop(0,"rgba(160,190,205,.72)");glass.addColorStop(.34,"rgba(245,252,255,.96)");glass.addColorStop(.68,"rgba(214,235,244,.82)");glass.addColorStop(1,"rgba(116,151,170,.72)");
+      ctx.fillStyle=glass;roundedRect(x-tubeHalf,top,tubeHalf*2,bottom-top,tubeHalf);ctx.fill();ctx.shadowBlur=0;ctx.strokeStyle="rgba(211,237,248,.92)";ctx.lineWidth=1.2;ctx.stroke();
       const ratio=clamp((temp-10)/40,0,1),column=(25+ratio*87)*s;
-      ctx.fillStyle="#d83b45";roundedRect(x-1.65*s,bottom-column,3.3*s,column,1.7*s);ctx.fill();
-      const bulb=ctx.createRadialGradient(x-2*s,bottom+7*s,1*s,x,bottom+8*s,9*s);bulb.addColorStop(0,"#ff7a75");bulb.addColorStop(.45,"#dd3c46");bulb.addColorStop(1,"#8f1f2c");ctx.fillStyle=bulb;ctx.beginPath();ctx.arc(x,bottom+8*s,9*s,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(255,205,205,.72)";ctx.lineWidth=1*s;ctx.stroke();
+      ctx.fillStyle="#d83b45";roundedRect(x-1.8,bottom-column,3.6,column,1.8);ctx.fill();
+      const bulbRadius=Math.max(6,9*s),bulb=ctx.createRadialGradient(x-2,bottom+6*s,1,x,bottom+8*s,bulbRadius);bulb.addColorStop(0,"#ff7a75");bulb.addColorStop(.45,"#dd3c46");bulb.addColorStop(1,"#8f1f2c");ctx.fillStyle=bulb;ctx.beginPath();ctx.arc(x,bottom+8*s,bulbRadius,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(255,205,205,.72)";ctx.lineWidth=1;ctx.stroke();
       ctx.strokeStyle="rgba(226,242,248,.78)";ctx.lineWidth=1;
-      for(let i=0;i<=10;i++){const yy=top+13*s+i*9.3*s;ctx.beginPath();ctx.moveTo(x+6*s,yy);ctx.lineTo(x+(i%5===0?15:11)*s,yy);ctx.stroke();}
-      ctx.fillStyle="rgba(4,12,18,.86)";roundedRect(x-30*s,top-26*s,60*s,20*s,6*s);ctx.fill();ctx.strokeStyle=tone;ctx.lineWidth=1*s;ctx.stroke();
-      label(temp.toFixed(1)+" ℃",x,top-16*s,{size:10*s,color:tone,weight:900});ctx.restore();
+      for(let i=0;i<=10;i++){const yy=top+13*s+i*9.3*s;ctx.beginPath();ctx.moveTo(x+tubeHalf,yy);ctx.lineTo(x+tubeHalf+(i%5===0?10:6),yy);ctx.stroke();}
+      const tagWidth=state.width<600?68:76;ctx.fillStyle="rgba(4,12,18,.93)";roundedRect(x-tagWidth/2,top-33,tagWidth,25,6);ctx.fill();ctx.strokeStyle=tone;ctx.lineWidth=1.3;ctx.stroke();
+      label(temp.toFixed(1)+" ℃",x,top-20,{size:14,color:tone,weight:900});ctx.restore();
     }
-    function drawHeaterBase(x,y,on,s) {
-      ctx.save();ctx.shadowColor="rgba(0,0,0,.5)";ctx.shadowBlur=9*s;
-      const base=ctx.createLinearGradient(0,y,0,y+38*s);base.addColorStop(0,"#65737d");base.addColorStop(.32,"#35424b");base.addColorStop(1,"#202930");ctx.fillStyle=base;roundedRect(x-78*s,y,156*s,38*s,8*s);ctx.fill();ctx.shadowBlur=0;
-      ctx.fillStyle="#182126";roundedRect(x-65*s,y+7*s,130*s,20*s,10*s);ctx.fill();ctx.strokeStyle=on?"#ff795a":"#74493f";ctx.lineWidth=3.2*s;ctx.lineCap="round";ctx.beginPath();
-      for(let i=0;i<11;i++){const xx=x-51*s+i*10.2*s,yy=y+17*s+Math.sin(i*Math.PI*.76)*4*s;if(i===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);}ctx.stroke();
-      ctx.fillStyle=on?"#43d99c":"#63717a";ctx.beginPath();ctx.arc(x-62*s,y+31*s,3*s,0,Math.PI*2);ctx.fill();
-      label("50 W",x+43*s,y+31*s,{size:8.5*s,color:"#dbeaf2",weight:900});ctx.restore();
+    function drawImmersionHeater(x,y,s,on,finished) {
+      const top=y-88*s,left=x-38*s,right=x-12*s,curveY=y+45*s,radius=13*s;
+      ctx.save();ctx.lineCap="round";ctx.lineJoin="round";
+      if(on&&!finished){ctx.shadowColor="rgba(255,140,75,.6)";ctx.shadowBlur=14*s;ctx.strokeStyle="rgba(255,155,88,.32)";ctx.lineWidth=11*s;ctx.beginPath();ctx.moveTo(left,y+16*s);ctx.lineTo(left,curveY);ctx.arc(x-25*s,curveY,radius,Math.PI,0,true);ctx.lineTo(right,y+16*s);ctx.stroke();ctx.shadowBlur=0;}
+      const metal=ctx.createLinearGradient(left,0,right,0);metal.addColorStop(0,"#899ba5");metal.addColorStop(.44,"#f0f5f4");metal.addColorStop(1,"#647883");ctx.strokeStyle=metal;ctx.lineWidth=Math.max(4,6*s);
+      ctx.beginPath();ctx.moveTo(left,top+6*s);ctx.lineTo(left,curveY);ctx.arc(x-25*s,curveY,radius,Math.PI,0,true);ctx.lineTo(right,top+6*s);ctx.stroke();
+      ctx.fillStyle="#44515b";roundedRect(x-46*s,top-7*s,43*s,14*s,4*s);ctx.fill();ctx.strokeStyle="#a9b8ba";ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle="#bc8e61";ctx.beginPath();ctx.arc(x-25*s,top-2*s,3*s,0,Math.PI*2);ctx.fill();ctx.restore();
     }
     function drawGlassBeaker(x,y,sample,temp,finished,on,s) {
       const material=MATERIALS[sample.material],target=START_TEMP+sample.rise,w=150*s,h=168*s,top=y-88*s,bottom=y+80*s;ctx.save();
       ctx.shadowColor="rgba(0,0,0,.46)";ctx.shadowBlur=12*s;ctx.fillStyle="rgba(172,214,232,.055)";
       ctx.beginPath();ctx.moveTo(x-w/2,top);ctx.lineTo(x-w/2+9*s,bottom-7*s);ctx.quadraticCurveTo(x-w/2+12*s,bottom+5*s,x,bottom+6*s);ctx.quadraticCurveTo(x+w/2-12*s,bottom+5*s,x+w/2-9*s,bottom-7*s);ctx.lineTo(x+w/2,top);ctx.closePath();ctx.fill();ctx.shadowBlur=0;
-      const fillRatio=sample.mass===200?.76:.53,liquidHeight=h*fillRatio,liquidTop=bottom-liquidHeight;
+      const fillRatio=sample.mass===200?.86:sample.material==="oil"?.49:.45,liquidHeight=h*fillRatio,liquidTop=bottom-liquidHeight;
       const liquid=ctx.createLinearGradient(0,liquidTop,0,bottom);liquid.addColorStop(0,material.colorTop);liquid.addColorStop(.22,sample.material==="water"?"rgba(64,154,211,.48)":"rgba(226,155,55,.42)");liquid.addColorStop(1,material.colorBottom);ctx.fillStyle=liquid;
       ctx.beginPath();ctx.moveTo(x-w/2+9*s,liquidTop);ctx.lineTo(x+w/2-9*s,liquidTop);ctx.lineTo(x+w/2-15*s,bottom-5*s);ctx.quadraticCurveTo(x,bottom+2*s,x-w/2+15*s,bottom-5*s);ctx.closePath();ctx.fill();
       ctx.fillStyle="rgba(225,247,255,.18)";ctx.beginPath();ctx.ellipse(x,liquidTop,w/2-9*s,6*s,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle="rgba(185,226,243,.42)";ctx.lineWidth=1*s;ctx.stroke();
+      drawImmersionHeater(x,y,s,on,finished);
+      if(on&&!finished){ctx.strokeStyle="rgba(224,244,247,.18)";ctx.lineWidth=1.5*s;for(let i=0;i<2;i++){const xx=x-(27+i*13)*s,shift=Math.sin(state.virtualTime*.12+i)*5*s;ctx.beginPath();ctx.moveTo(xx,y+42*s);ctx.bezierCurveTo(xx+shift,y+27*s,xx-6*s,y+18*s,xx+shift,liquidTop+8*s);ctx.stroke();}}
       const shine=ctx.createLinearGradient(x-w/2,0,x+w/2,0);shine.addColorStop(0,"rgba(255,255,255,.3)");shine.addColorStop(.16,"rgba(255,255,255,.04)");shine.addColorStop(.72,"rgba(255,255,255,0)");shine.addColorStop(1,"rgba(255,255,255,.19)");ctx.fillStyle=shine;
       ctx.beginPath();ctx.moveTo(x-w/2+4*s,top+7*s);ctx.lineTo(x-w/2+13*s,bottom-10*s);ctx.quadraticCurveTo(x,bottom+2*s,x+w/2-13*s,bottom-10*s);ctx.lineTo(x+w/2-4*s,top+7*s);ctx.closePath();ctx.fill();
       ctx.strokeStyle="rgba(220,241,250,.82)";ctx.lineWidth=2.4*s;ctx.beginPath();ctx.moveTo(x-w/2,top);ctx.lineTo(x-w/2+9*s,bottom-7*s);ctx.quadraticCurveTo(x-w/2+12*s,bottom+5*s,x,bottom+6*s);ctx.quadraticCurveTo(x+w/2-12*s,bottom+5*s,x+w/2-9*s,bottom-7*s);ctx.lineTo(x+w/2,top);ctx.stroke();
       ctx.strokeStyle="rgba(232,247,252,.72)";ctx.lineWidth=2*s;ctx.beginPath();ctx.ellipse(x,top,w/2,8*s,0,0,Math.PI*2);ctx.stroke();
       ctx.beginPath();ctx.moveTo(x+w/2-4*s,top-1*s);ctx.quadraticCurveTo(x+w/2+9*s,top+2*s,x+w/2+15*s,top-5*s);ctx.stroke();
       for(let i=1;i<=5;i++){const yy=bottom-i*25*s;ctx.strokeStyle=i%2?"rgba(222,242,249,.42)":"rgba(222,242,249,.62)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+w/2-21*s,yy);ctx.lineTo(x+w/2-(i%2?7:3)*s,yy);ctx.stroke();}
-      if(on&&!finished){for(let i=0;i<5;i++){const bx=x-39*s+i*19*s,by=bottom-(15+(i%3)*19)*s;ctx.fillStyle="rgba(231,248,255,.32)";ctx.beginPath();ctx.arc(bx,by,(2+i%2)*s,0,Math.PI*2);ctx.fill();}}
       drawLaboratoryThermometer(x+37*s,y-10*s,temp,target,s);
       ctx.fillStyle="#34414a";roundedRect(x+23*s,top-4*s,28*s,8*s,3*s);ctx.fill();
-      if(on&&!finished){ctx.strokeStyle="rgba(255,198,122,.31)";ctx.lineWidth=1.6*s;for(let i=0;i<3;i++){const ox=(i-1)*22*s;ctx.beginPath();ctx.moveTo(x+ox,top-9*s);ctx.bezierCurveTo(x+ox-8*s,top-19*s,x+ox+9*s,top-28*s,x+ox,top-39*s);ctx.stroke();}}
       ctx.restore();
     }
     function drawSpecimenCard(x,y,sample,finished,s,side,compact,index) {
-      const material=MATERIALS[sample.material],u=compact?1:s,w=(compact?156:204)*u,h=68*u,accent=finished?"#63d7ad":"#5bbcff";
-      const condition=sample.mass+" g  ·  ΔT "+sample.rise+" ℃",timerX=x+w/2-42*u;ctx.save();
-      ctx.fillStyle="rgba(7,16,23,.9)";roundedRect(x-w/2,y,w,h,10*u);ctx.fill();ctx.strokeStyle="rgba(126,180,210,.28)";ctx.lineWidth=1*u;ctx.stroke();
-      ctx.fillStyle=accent;roundedRect(x-w/2,y,4*u,h,2*u);ctx.fill();
-      ctx.fillStyle="rgba(255,255,255,.055)";roundedRect(x-w/2+9*u,y+8*u,24*u,19*u,6*u);ctx.fill();label(side,x-w/2+21*u,y+17.5*u,{size:(compact?9:10)*u,color:"#fff",weight:900});
-      label(material.name,x-w/2+39*u,y+17.5*u,{size:(compact?11:12)*u,color:"#f3f8fb",weight:900,align:"left"});
-      label(condition,x-w/2+12*u,y+45*u,{size:(compact?8.2:10.5)*u,color:"#b8cada",weight:700,align:"left"});
-      ctx.strokeStyle="rgba(126,180,210,.22)";ctx.lineWidth=1*u;ctx.beginPath();ctx.moveTo(timerX-37*u,y+9*u);ctx.lineTo(timerX-37*u,y+h-9*u);ctx.stroke();
-      label(side+" 计时",timerX,y+18*u,{size:(compact?8:8.5)*u,color:"#8fb6cf",weight:800});
-      label(channelTime(index).toFixed(0)+" s",timerX,y+44*u,{size:(compact?12:13)*u,color:finished?"#63d7ad":state.heating?"#ffd166":"#dcecf5",weight:900});
+      const material=MATERIALS[sample.material],w=compact?Math.min(156,(state.width-20)/2-6):Math.min(218,204*s),h=compact?60:68,accent=finished?"#63d7ad":"#5bbcff",left=x-w/2;ctx.save();
+      ctx.fillStyle="rgba(7,16,23,.9)";roundedRect(left,y,w,h,10);ctx.fill();ctx.strokeStyle="rgba(126,180,210,.28)";ctx.lineWidth=1;ctx.stroke();
+      ctx.fillStyle=accent;roundedRect(left,y,4,h,2);ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,.08)";roundedRect(left+9,y+10,22,21,5);ctx.fill();label(side,left+20,y+20,{size:12,color:"#fff",weight:900});
+      label(material.name+" "+sample.mass+" g",left+37,y+20,{size:compact?12:14,color:"#f3f8fb",weight:900,align:"left"});
+      ctx.strokeStyle="rgba(126,180,210,.22)";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(left+10,y+36);ctx.lineTo(left+w-10,y+36);ctx.stroke();
+      label(compact?"目标 "+(START_TEMP+sample.rise)+" ℃":"升温 "+sample.rise+" ℃ · 目标 "+(START_TEMP+sample.rise)+" ℃",left+10,y+49,{size:12,color:"#c8dce8",weight:800,align:"left"});
+      label(channelTime(index).toFixed(0)+" s",left+w-9,y+49,{size:compact?15:17,color:finished?"#63d7ad":state.heating?"#ffd166":"#f2f8fc",weight:900,align:"right"});
       ctx.restore();
     }
     function drawBeakerUnit(x,y,sample,temp,finished,on,g,side,index) {
-      drawHeaterBase(x,y+86*g.s,on&&!finished,g.s);
       drawGlassBeaker(x,y,sample,temp,finished,on,g.s);
       drawSpecimenCard(x,g.cardY,sample,finished,g.s,side,g.compact,index);
     }
     function drawPowerBox(g) {
-      const x=g.powerX,y=g.powerY,s=g.s,on=state.heating,done=trialComplete(),active=[on&&!state.finished[0],on&&!state.finished[1]];ctx.save();
-      ctx.lineWidth=3.4*s;ctx.lineCap="round";
-      [
-        {start:x-58*s,end:g.leftX+62*s,active:active[0],finished:state.finished[0]},
-        {start:x+58*s,end:g.rightX-62*s,active:active[1],finished:state.finished[1]}
-      ].forEach((wire)=>{
-        ctx.strokeStyle=wire.active?"#45d4b1":wire.finished?"#3c9e83":"#637886";ctx.beginPath();ctx.moveTo(wire.start,y-4*s);
-        ctx.bezierCurveTo(wire.start+(wire.start<x?-68:68)*s,y-3*s,wire.end,y-42*s,wire.end,g.unitY+105*s);ctx.stroke();
-        ctx.fillStyle=wire.active?"#62e3bc":wire.finished?"#63d7ad":"#82949f";ctx.beginPath();ctx.arc(wire.start,y-4*s,4*s,0,Math.PI*2);ctx.fill();
+      const x=g.powerX,y=g.powerY,w=g.powerWidth,on=state.heating,done=trialComplete();ctx.save();
+      [g.leftX,g.rightX].forEach((unitX,index)=>{
+        const start=x+(index===0?-1:1)*(w/2-14),end=unitX-25*g.s,side=unitX-82*g.s,ey=g.unitY-90*g.s,cupBottom=g.unitY+86*g.s;
+        ctx.lineCap="round";ctx.strokeStyle="#25313a";ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(start,y-18);ctx.bezierCurveTo(start,y-64,side,cupBottom+40,side,cupBottom);ctx.lineTo(side,ey+12);ctx.quadraticCurveTo(side,ey,end,ey);ctx.stroke();
+        ctx.strokeStyle=on&&!state.finished[index]?"#64cbb5":"#80939b";ctx.lineWidth=2;ctx.stroke();
       });
-      const shell=ctx.createLinearGradient(0,y-32*s,0,y+31*s);shell.addColorStop(0,"#52616b");shell.addColorStop(.2,"#303b43");shell.addColorStop(1,"#1c252b");ctx.fillStyle=shell;roundedRect(x-88*s,y-31*s,176*s,62*s,11*s);ctx.fill();ctx.strokeStyle="rgba(220,239,248,.32)";ctx.lineWidth=1.4*s;ctx.stroke();
-      label("双路电源",x-48*s,y-17*s,{size:8.5*s,color:"#b9ccda",weight:900});
-      label("A / B 独立停止",x+37*s,y-17*s,{size:8*s,color:"#b9ccda",weight:900});
-      ctx.fillStyle=on?"#2fcf9a":"#11191e";roundedRect(x-35*s,y-10*s,70*s,34*s,17*s);ctx.fill();
-      ctx.beginPath();ctx.arc(x+(on?17:-17)*s,y+7*s,12*s,0,Math.PI*2);ctx.fillStyle="#e8f1f4";ctx.fill();
-      label(done?"计时完成":on&&(state.finished[0]||state.finished[1])?"单路继续加热":on?"双路加热中":"点击开关",x,y+43*s,{size:10.5*s,color:done||on?"#63d7ad":"#ffd166",weight:900});ctx.restore();
+      const shell=ctx.createLinearGradient(0,y-36,0,y+36);shell.addColorStop(0,"#52616b");shell.addColorStop(.2,"#303b43");shell.addColorStop(1,"#1c252b");ctx.fillStyle=shell;roundedRect(x-w/2,y-36,w,72,11);ctx.fill();ctx.strokeStyle="rgba(220,239,248,.4)";ctx.lineWidth=1.4;ctx.stroke();
+      label("双路电源 · 各 50 W",x,y-23,{size:g.compact?12:14,color:"#e5f0f4",weight:900});
+      ctx.fillStyle=on?"#2fcf9a":"#11191e";roundedRect(x-35,y-10,70,30,16);ctx.fill();
+      ctx.beginPath();ctx.arc(x+(on?17:-17),y+5,11,0,Math.PI*2);ctx.fillStyle="#e8f1f4";ctx.fill();
+      label(done?"两路已停表":on&&(state.finished[0]||state.finished[1])?"另一杯继续加热":on?"两路加热中":"点击开关 · 达标停表",x,y+28,{size:12,color:done||on?"#63d7ad":"#ffd166",weight:900});ctx.restore();
     }
     function draw() {
       if(!state.width||!state.height)return;const g=geometry(),trial=currentTrial();ctx.clearRect(0,0,g.w,g.h);drawBackground(g);drawPowerBox(g);
@@ -1285,7 +1283,7 @@ body #app .toolbar button:disabled{
       const rect=labArea.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.max(1,Math.round(rect.width*dpr));canvas.height=Math.max(1,Math.round(rect.height*dpr));canvas.style.width=rect.width+"px";canvas.style.height=rect.height+"px";ctx.setTransform(dpr,0,0,dpr,0,0);state.width=rect.width;state.height=rect.height;state.mobile=window.matchMedia("(max-width:720px)").matches;fitDrawers();draw();
     }
     function pointerPoint(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
-    function switchHit(point){const g=geometry();return Math.abs(point.x-g.powerX)<105*g.s&&Math.abs(point.y-g.powerY)<52*g.s;}
+    function switchHit(point){const g=geometry();return Math.abs(point.x-g.powerX)<g.powerWidth/2&&Math.abs(point.y-g.powerY)<36;}
     function onPointerDown(event){if(state.autoPlaying||state.completed)return;const point=pointerPoint(event);if(switchHit(point)){event.preventDefault();state.heating?pauseHeating():startHeating();}}
 
     function setDrawerCollapsed(drawer,collapsed,options){const opts=options||{};drawer.classList.toggle("collapsed",collapsed);(drawer===controlDock?controlToggleBtn:dataToggleBtn).textContent=collapsed?"展开":"收起";if(drawer===dataDock&&!collapsed){state.unseenRecords=0;updateBadge();}if(!opts.quiet)fitDrawers();updateMobileTabs();}
