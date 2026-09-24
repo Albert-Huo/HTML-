@@ -131,7 +131,7 @@
       .mobile-badge{position:absolute;top:-7px;right:14px;display:none;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ff3b30;color:#fff;font-size:11px}
       .mobile-badge.show{display:grid}
       .dock{width:calc(100% - 24px)}
-      .dock.mobile-sheet{bottom:56px;border-color:rgba(91,188,255,.32);border-radius:12px 12px 0 0;background:linear-gradient(180deg,rgba(22,44,64,.97),rgba(9,21,33,.97));touch-action:auto}
+      .dock.mobile-sheet{left:12px!important;right:12px!important;top:auto!important;bottom:56px!important;width:calc(100% - 24px)!important;border-color:rgba(91,188,255,.32);border-radius:12px 12px 0 0;background:linear-gradient(180deg,rgba(22,44,64,.97),rgba(9,21,33,.97));touch-action:auto}
       .dock.mobile-sheet .dock-header{display:none}
       .dock.mobile-sheet .dock-body{display:grid;max-height:190px;padding:8px;overflow:auto}
       .dock.mobile-sheet.collapsed{display:none}
@@ -1036,7 +1036,7 @@ body #app .toolbar button:disabled{
           const x=10+i*(w+gap),active=i===index,done=!state.freeMode&&(i<state.currentTask||state.completed);
           ctx.fillStyle=active?"rgba(91,188,255,.15)":"rgba(255,255,255,.04)";roundRect(x,y,w,h,7);ctx.fill();
           ctx.fillStyle=done?"#39d8ad":active?stroke.color:"#52616d";ctx.beginPath();ctx.arc(x+9,y+h/2,4,0,Math.PI*2);ctx.fill();
-          label(stroke.name,x+17,y+h/2,{size:8,color:active?"#eef8ff":"#9eb0bd",weight:900,align:"left"});
+          label(stroke.name,x+17,y+h/2,{size:11,color:active?"#eef8ff":"#b4c5d0",weight:900,align:"left"});
         });
         ctx.restore();return;
       }
@@ -1045,7 +1045,7 @@ body #app .toolbar button:disabled{
         const yy=y+i*rowH,active=i===index,done=!state.freeMode&&(i<state.currentTask||state.completed);
         ctx.fillStyle=active?"rgba(91,188,255,.14)":"rgba(255,255,255,.035)";roundRect(x,yy,w,rowH-6*g.s,8*g.s);ctx.fill();
         ctx.fillStyle=done?"#39d8ad":active?stroke.color:"#52616d";ctx.beginPath();ctx.arc(x+13*g.s,yy+16*g.s,5*g.s,0,Math.PI*2);ctx.fill();
-        label(stroke.name,x+25*g.s,yy+16*g.s,{size:(g.compact?9:11)*g.s,color:active?"#eef8ff":"#9eb0bd",weight:900,align:"left"});
+        label(stroke.name,x+25*g.s,yy+16*g.s,{size:13,color:active?"#eef8ff":"#b4c5d0",weight:900,align:"left"});
       });
       ctx.restore();
     }
@@ -1057,13 +1057,13 @@ body #app .toolbar button:disabled{
       const lift=(open?13:0)*s;ctx.save();ctx.strokeStyle="#c7d2da";ctx.lineWidth=5*s;ctx.beginPath();ctx.moveTo(x,headY-33*s-lift);ctx.lineTo(x,headY+8*s-lift);ctx.stroke();
       const metal=ctx.createLinearGradient(x-22*s,0,x+22*s,0);metal.addColorStop(0,"#66737d");metal.addColorStop(.5,"#e5edf0");metal.addColorStop(1,"#56626b");ctx.fillStyle=metal;ctx.beginPath();ctx.ellipse(x,headY+10*s-lift,22*s,6*s,0,0,Math.PI*2);ctx.fill();
       ctx.strokeStyle=open?color:"#47535c";ctx.lineWidth=3*s;ctx.beginPath();ctx.moveTo(x-26*s,headY+17*s);ctx.lineTo(x+26*s,headY+17*s);ctx.stroke();
-      label(labelText,x,headY-49*s,{size:9*s,color:open?color:"#8c9ba5",weight:900});ctx.restore();
+      label(labelText,x,headY-49*s,{size:state.mobile?10.5:13,color:open?color:"#b9c8d1",weight:900});ctx.restore();
     }
     function drawSparkPlug(x,headY,active,s){
       ctx.save();ctx.fillStyle="#dbe5ea";roundRect(x-8*s,headY-43*s,16*s,44*s,5*s);ctx.fill();ctx.strokeStyle="#65737d";ctx.lineWidth=2*s;for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(x-10*s,headY-34*s+i*8*s);ctx.lineTo(x+10*s,headY-34*s+i*8*s);ctx.stroke();}
       line([[x,headY],[x,headY+13*s]],"#dbe5ea",2*s);
       if(active){ctx.shadowColor="#ffe76a";ctx.shadowBlur=18*s;ctx.strokeStyle="#ffe76a";ctx.lineWidth=3*s;ctx.beginPath();ctx.moveTo(x,headY+14*s);ctx.lineTo(x-7*s,headY+24*s);ctx.lineTo(x+7*s,headY+29*s);ctx.lineTo(x,headY+39*s);ctx.stroke();}
-      label("火花塞",x,headY-57*s,{size:9*s,color:active?"#ffe76a":"#8c9ba5",weight:900});ctx.restore();
+      label("火花塞",x,headY-(state.mobile?76:57)*s,{size:state.mobile?10.5:13,color:active?"#ffe76a":"#b9c8d1",weight:900});ctx.restore();
     }
     function drawGas(g,index,progress,pistonY,isSparkActive){
       const stroke=STROKES[index],left=g.cx-g.cylinderW/2+10*g.s,right=g.cx+g.cylinderW/2-10*g.s,top=g.headY+20*g.s,bottom=pistonY-8*g.s;
@@ -1096,7 +1096,7 @@ body #app .toolbar button:disabled{
       ctx.fillStyle="#cbd5da";ctx.beginPath();ctx.arc(x,y,13*s,0,Math.PI*2);ctx.fill();ctx.fillStyle="#27343d";ctx.beginPath();ctx.arc(x,y,5*s,0,Math.PI*2);ctx.fill();
       const handleA=angle+.25,hx=x+Math.cos(handleA)*r*.76,hy=y+Math.sin(handleA)*r*.76;line([[hx,hy],[hx+24*s,hy-18*s]],"#cbd5da",5*s);ctx.fillStyle="#f2b553";ctx.beginPath();ctx.arc(hx+28*s,hy-21*s,9*s,0,Math.PI*2);ctx.fill();
       const u=g.compact?1:s,displayDegrees=state.freeMode?Math.round(((state.crankDegrees%720)+720)%720):Math.round(state.crankDegrees);
-      label("拖动飞轮 · "+displayDegrees+"° / 720°",x,y+r+(g.compact?18:24)*u,{size:(g.compact?9:11)*u,color:"#ffd166",weight:900});ctx.restore();
+      label((g.compact?"飞轮：":"拖动飞轮 · ")+displayDegrees+"° / 720°",x,y-r-(g.compact?14:18)*u,{size:g.compact?12:13,color:"#ffd166",weight:900});ctx.restore();
     }
     function drawEngine(g){
       const normalized=((state.crankDegrees%720)+720)%720,index=strokeIndexForDegrees(state.crankDegrees),strokeProgress=(normalized%180)/180;
@@ -1114,11 +1114,11 @@ body #app .toolbar button:disabled{
       const intakeX=g.cx-55*g.s,exhaustX=g.cx+55*g.s,intakeOpen=!summary&&index===0,exhaustOpen=!summary&&index===3;
       if(intakeOpen){
         drawCurvedArrow(intakeX-105*g.s,g.headY-18*g.s,intakeX-56*g.s,g.headY-18*g.s,intakeX,g.headY+2*g.s,intakeX,g.headY+38*g.s,"#55d8be",3*g.s);
-        label("混合气进入",intakeX-74*g.s,g.headY-35*g.s,{size:9*g.s,color:"#55d8be",weight:900});
+        label("混合气进入",intakeX-74*g.s,g.headY-35*g.s,{size:g.compact?10:12,color:"#55d8be",weight:900});
       }
       if(exhaustOpen){
         drawCurvedArrow(exhaustX,g.headY+38*g.s,exhaustX,g.headY+2*g.s,exhaustX+56*g.s,g.headY-18*g.s,exhaustX+105*g.s,g.headY-18*g.s,"#b9c2c8",3*g.s);
-        label("废气排出",exhaustX+74*g.s,g.headY-35*g.s,{size:9*g.s,color:"#c6ced3",weight:900});
+        label("废气排出",exhaustX+74*g.s,g.headY-35*g.s,{size:g.compact?10:12,color:"#c6ced3",weight:900});
       }
       drawValve(intakeX,g.headY,intakeOpen,"#55d8be",g.s,"进气门");drawValve(exhaustX,g.headY,exhaustOpen,"#ff8a66",g.s,"排气门");
       drawSparkPlug(g.cx,g.headY,isSparkActive,g.s);
@@ -1131,10 +1131,10 @@ body #app .toolbar button:disabled{
       drawFlywheel(g,crankAngle);
       const u=g.compact?1:g.s,cardX=g.compact?g.w*.5:g.w*.72,cardY=g.compact?g.headY+g.cylinderH+240*g.s:g.headY+40*g.s,cardW=(g.compact?220:210)*u,cardH=(g.compact?66:92)*u,stroke=STROKES[index];
       ctx.save();ctx.fillStyle="rgba(7,16,23,.88)";roundRect(cardX-cardW/2,cardY-cardH/2,cardW,cardH,12*u);ctx.fill();ctx.strokeStyle=summary?"#39d8ad":stroke.color;ctx.lineWidth=1.4*u;ctx.stroke();
-      label(summary?"完整工作循环":stroke.name,cardX,cardY-(g.compact?17:25)*u,{size:(g.compact?13:15)*u,color:summary?"#39d8ad":stroke.color,weight:900});
-      label(summary?"四冲程 · 飞轮转两圈 · 活塞往复两次":stroke.gas,cardX,cardY+(g.compact?7:2)*u,{size:(g.compact?9:10)*u,color:"#e7f3fa",weight:800});
-      if(g.compact)label(summary?"只有做功冲程对外做功":"当前："+stroke.energy,cardX,cardY+24*u,{size:8*u,color:"#a9c2d3",weight:700});
-      else label(summary?"只有做功冲程对外做功 1 次":stroke.energy,cardX,cardY+28*u,{size:9*u,color:"#a9c2d3",weight:700});
+      label(summary?"完整工作循环":stroke.name,cardX,cardY-(g.compact?17:25)*u,{size:g.compact?14:16,color:summary?"#39d8ad":stroke.color,weight:900});
+      label(summary?"飞轮转两圈 · 活塞往复两次":stroke.gas,cardX,cardY+(g.compact?7:2)*u,{size:12,color:"#e7f3fa",weight:800});
+      if(g.compact)label(summary?"只有做功冲程对外做功":"当前："+stroke.energy,cardX,cardY+24*u,{size:12,color:"#b8d0df",weight:700});
+      else label(summary?"只有做功冲程对外做功 1 次":stroke.energy,cardX,cardY+28*u,{size:11,color:"#b8d0df",weight:700});
       ctx.restore();
     }
     function draw(){if(!state.width||!state.height)return;const g=geometry();ctx.clearRect(0,0,g.w,g.h);drawBackground(g);drawEngine(g);}
@@ -1173,7 +1173,12 @@ body #app .toolbar button:disabled{
     }
     function fitDrawers(){
       const sw=stage.clientWidth;[controlDock,dataDock].forEach((drawer)=>drawer.classList.toggle("mobile-sheet",state.mobile));
-      if(state.mobile)return;
+      if(state.mobile){
+        if(!controlDock.classList.contains("collapsed")&&!dataDock.classList.contains("collapsed")){
+          setDrawerCollapsed(dataDock,true,{quiet:true});updateBadge();
+        }
+        return;
+      }
       if(!controlDock.dataset.moved){controlDock.style.left=Math.max(10,sw-controlDock.offsetWidth-10)+"px";controlDock.style.top="58px";}
       if(!dataDock.dataset.moved){dataDock.style.left=Math.max(10,sw-dataDock.offsetWidth-10)+"px";dataDock.style.top=(controlDock.offsetTop+controlDock.offsetHeight+8)+"px";}
     }
