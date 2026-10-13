@@ -1095,7 +1095,7 @@ function setDrawerCollapsed(drawer, collapsed) {
     async function autoAnalyze(){await clickPanelButton(analyzeBtn);return analyzeConclusion();}
     async function demoGesture(i){ const g=staticGeom(benchArea(state.width,state.height)), s=g.s; moveCursorTo(g.rodHome.x,g.rodHome.y); clickCursor(); await sleep(260); if(i===0){ for(let k=0;k<=12;k++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); const t=k/12, swing=Math.sin(t*Math.PI*5); state.rodOffsetX=(g.fur.x+g.fur.w*.55+38*s*swing)-g.rodHome.x; state.rodOffsetY=(g.fur.y+g.fur.h*.42)-g.rodHome.y; state.rubProgress=clamp(t,0,1); state.chargeLevel=state.rubProgress; moveCursorTo(g.rodHome.x+state.rodOffsetX,g.rodHome.y+state.rodOffsetY); draw(); await sleep(440); } commitStatic(0); } else if(i===1){ for(let k=0;k<=10;k++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); const t=k/10; state.rodOffsetX=(g.fur.x+g.fur.w*.55+(g.paper.x-g.fur.x-g.fur.w*.55)*t)-g.rodHome.x; state.rodOffsetY=(g.fur.y+g.fur.h*.42+(g.paper.y-36*s-g.fur.y-g.fur.h*.42)*t)-g.rodHome.y; state.paperLift=clamp(t,0,1); if(state.paperLift>.82) state.paperAttracted=true; moveCursorTo(g.rodHome.x+state.rodOffsetX,g.rodHome.y+state.rodOffsetY); draw(); await sleep(440); } state.paperAttracted=true; commitStatic(1); } else if(i===2){ for(let k=0;k<=10;k++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); const t=k/10; state.rodOffsetX=(g.paper.x+(g.elect.x-g.paper.x)*t)-g.rodHome.x; state.rodOffsetY=(g.paper.y-36*s+(g.elect.y-94*s-g.paper.y+36*s)*t)-g.rodHome.y; state.paperLift=state.paperAttracted?Math.max(.78,1-t*.22):clamp(1-t*.45,0,1); state.leafOpen=clamp(t,0,1); state.contactGlow=t; moveCursorTo(g.rodHome.x+state.rodOffsetX,g.rodHome.y+state.rodOffsetY); draw(); await sleep(320); } commitStatic(2); } else { const ball={x:g.elect.x,y:g.elect.y-93*s}; for(let k=0;k<=10;k++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); const t=k/10; state.groundClipX=(ball.x-g.groundHome.x)*t; state.groundClipY=(ball.y-g.groundHome.y)*t; state.leafOpen=1-t; state.paperLift=state.paperAttracted?Math.max(.78,state.paperLift):state.paperLift; state.contactGlow=t; moveCursorTo(g.groundHome.x+state.groundClipX,g.groundHome.y+state.groundClipY); draw(); await sleep(320); } state.grounding=true; state.leafOpen=0; if(state.paperAttracted) state.paperLift=Math.max(.78,state.paperLift); commitStatic(3); } clickCursor(); await sleep(1500); }
     async function autoRecord(key){ const before=state.records.length; await clickPanelButton(recordBtn); const ok=recordObservation({auto:true}); await sleep(700); if(!ok || !hasRecord(key) || state.records.length<=before) throw new Error("AUTO_RECORD_NOT_PERSISTED:"+key); }
-    async function runAutoDemo(){ if(state.autoPlaying){state.autoCancel=true;return;} stage.scrollIntoView({ block:"start", behavior:"smooth" }); await sleep(220); fitDrawers(); state.autoPlaying=true; state.autoCancel=false; autoDemoBtn.textContent="退出演示"; freeBtn.disabled=true; setDrawerCollapsed(controlDock,false); setDrawerCollapsed(dataDock,true); setModeLabel(); resetScene({keepMode:false,quiet:true}); state.autoPlaying=true; autoDemoBtn.textContent="退出演示"; setDrawerCollapsed(controlDock,false); setModeLabel(); try{ for(let i=0;i<SPEC.scenarios.length;i++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); setStepUI(i); updateStatus("演示中"); await demoGesture(i); await autoRecord(SPEC.scenarios[i].key); await sleep(1200); } setStepUI(SPEC.scenarios.length); await sleep(1500); setDrawerCollapsed(dataDock,false); await sleep(1500); await autoAnalyze(); state.demoCompleted=true; state.autoPlaying=false; autoDemoBtn.textContent="演示模式"; freeBtn.disabled=false; setModeLabel(); updateStatus(); await sleep(1200); } catch(err){ if(String(err.message||err)!=="AUTO_CANCELLED") showToast("演示中断："+(err.message||err)); else showToast("已退出演示"); } finally{ state.autoPlaying=false; state.autoCancel=false; autoDemoBtn.textContent="演示模式"; freeBtn.disabled=false; demoCursor.style.opacity="0"; setModeLabel(); updateStatus(); draw(); } }
+    async function runAutoDemo(){ const ownedModeRun = codexModeController?.currentRunId(); if(state.autoPlaying){state.autoCancel=true;return;} stage.scrollIntoView({ block:"start", behavior:"smooth" }); await sleep(220); fitDrawers(); state.autoPlaying=true; state.autoCancel=false; autoDemoBtn.textContent="退出演示"; freeBtn.disabled=true; setDrawerCollapsed(controlDock,false); setDrawerCollapsed(dataDock,true); setModeLabel(); resetScene({keepMode:false,quiet:true}); state.autoPlaying=true; autoDemoBtn.textContent="退出演示"; setDrawerCollapsed(controlDock,false); setModeLabel(); try{ for(let i=0;i<SPEC.scenarios.length;i++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); setStepUI(i); updateStatus("演示中"); await demoGesture(i); await autoRecord(SPEC.scenarios[i].key); await sleep(1200); } setStepUI(SPEC.scenarios.length); await sleep(1500); setDrawerCollapsed(dataDock,false); await sleep(1500); await autoAnalyze(); state.demoCompleted=true; state.autoPlaying=false; autoDemoBtn.textContent="演示模式"; freeBtn.disabled=false; setModeLabel(); updateStatus(); await sleep(1200); } catch(err){if (ownedModeRun !== codexModeController?.currentRunId()) return {cancelled:true}; if(String(err.message||err)!=="AUTO_CANCELLED") showToast("演示中断："+(err.message||err)); else showToast("已退出演示"); } finally{if (ownedModeRun !== codexModeController?.currentRunId()) return {cancelled:true}; state.autoPlaying=false; state.autoCancel=false; autoDemoBtn.textContent="演示模式"; freeBtn.disabled=false; demoCursor.style.opacity="0"; setModeLabel(); updateStatus(); draw(); } }
     function resetScene(opts){ clearTimers(); state.completed=false; state.demoCompleted=false; state.autoCancel=false; state.stepWarning=false; state.successCooldown=false; state.scenarioIndex=0; state.operationCount=0; state.records=[]; state.unseenRecords=0; state.analysisDone=false; state.phase=0; state.drag=false; state.dragTarget=null; state.dragStart=null; state.dragCommitted=false; state.dragOrigin=null; state.rodOffsetX=0; state.rodOffsetY=0; state.chargeLevel=0; state.rubProgress=0; state.paperLift=0; state.paperAttracted=false; state.leafOpen=0; state.grounding=false; state.groundClipX=0; state.groundClipY=0; state.contactGlow=0; state.lastRubX=null; if(!opts || !opts.keepMode) state.freeMode=false; doneMask.style.display="none"; analysisText.classList.remove("ok"); analysisText.textContent=""; renderRecords(); updateBadge(); setModeLabel(); setStepUI(0); if(!opts || !opts.quiet) showToast("已重置"); }
     function setFreeMode(on){ state.freeMode=!!on; freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式"; autoDemoBtn.disabled=state.freeMode; setModeLabel(); showToast(state.freeMode?"自由操作已开启":"已回到闯关模式"); draw(); }
     function bindCanvasPagePan(){ if(canvas.dataset.pagePanBound) return; canvas.dataset.pagePanBound="1"; let pan=null; const isTouch=e=>!e.pointerType||e.pointerType==="touch"; const isDragging=()=>!!(state&&(state.drag||state.dragTarget||state.draggingId||state.drawerDrag)); canvas.addEventListener("pointerdown",e=>{ if(!isTouch(e)) return; pan={id:e.pointerId,y:e.clientY,scrollY:window.scrollY}; },true); canvas.addEventListener("pointermove",e=>{ if(!pan||e.pointerId!==pan.id||isDragging()) return; const dy=pan.y-e.clientY; if(Math.abs(dy)>3){ window.scrollTo(0,pan.scrollY+dy); e.preventDefault(); } },true); ["pointerup","pointercancel","lostpointercapture"].forEach(type=>canvas.addEventListener(type,e=>{ if(!pan||e.pointerId===pan.id||type==="lostpointercapture") pan=null; },true)); }
@@ -1162,8 +1162,11 @@ function setDrawerCollapsed(drawer, collapsed) {
         bindController(controller) { codexModeController = controller; },
 
         startDemo:() => {
+          const ownedModeRun = codexModeController.currentRunId();
           codexModeRunActive = true;
-          return Promise.resolve(runAutoDemo()).finally(() => { codexModeRunActive = false; });
+          return Promise.resolve(runAutoDemo()).finally(() => {
+            if (ownedModeRun === codexModeController.currentRunId()) codexModeRunActive = false;
+          });
         },
         cancelDemo() {
           state.autoCancel = true;
@@ -2569,6 +2572,86 @@ function setDrawerCollapsed(drawer, collapsed) {
   window.addEventListener('pageshow', event => { if (event.persisted) mountTaskEntry(); });
 })();
 
+</script>
+<script data-demo-lifecycle="p02">
+/* P0-2: arbitrate user actions and cancel demos when their experiment leaves view. */
+(() => {
+  'use strict';
+  const channel = 'xingnian-experiment-activity';
+  let parentActive = true;
+  let lastSequence = 0;
+  let cancelling = false;
+  let feedbackTimer = 0;
+  const parentOrigins = new Set(['https://lab.xingnian.net.cn', 'https://albert-huo.github.io']);
+  if (['http:', 'https:'].includes(location.protocol)) parentOrigins.add(location.origin);
+  if (document.referrer) {
+    try {
+      const referrer = new URL(document.referrer);
+      const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+      if (['http:', 'https:'].includes(referrer.protocol) && ['http:', 'https:'].includes(location.protocol) && loopback.has(referrer.hostname) && loopback.has(location.hostname)) {
+        parentOrigins.add(referrer.origin);
+      }
+    }
+    catch (error) { console.warn('[demo-lifecycle] invalid parent referrer', error); }
+  }
+  function stateOf() {
+    if (window.state && typeof window.state === 'object') return window.state;
+    if (window.labState && typeof window.labState === 'object') return window.labState;
+    return typeof state === 'object' ? state : null;
+  }
+  function playing() { return Boolean(stateOf()?.autoPlaying); }
+  function active() { return parentActive && !document.hidden; }
+  function cancelDemo() {
+    if (!playing()) { window.labSoundBus?.hush(); return; }
+    const button = document.getElementById('autoDemoBtn');
+    if (!button) { console.error('[demo-lifecycle] missing exit control'); return; }
+    cancelling = true;
+    try { button.click(); }
+    finally { cancelling = false; window.labSoundBus?.hush(); }
+  }
+  function explainLock() {
+    const text = '演示中，请先退出演示再手动操作。';
+    if (typeof window.showToast === 'function') { window.showToast(text); return; }
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    clearTimeout(feedbackTimer);
+    toast.textContent = text;
+    toast.classList.add('show');
+    feedbackTimer = setTimeout(() => {
+      if (toast.textContent === text) toast.classList.remove('show');
+    }, 1400);
+  }
+  function permitted(element) {
+    return Boolean(element.closest('#resetBtn,#autoDemoBtn,#freeBtn,#themeToggle,#audioToggle,#hintLamp,#hintLampBtn,#helpBtn,.hint-lamp,.hint-lamp-wrap,#hintPop,#hintPopup,.hint-pop,#okBtn,#doneOk,#closeDoneBtn,#experimentTab,#dataTab,#mobileControlTab,#mobileDataTab,#controlToggleBtn,#dataToggleBtn,#controlSheetCloseBtn,#dataSheetCloseBtn,.drawer-header,.dock-head,.dockHead,.drawer-head,[data-sheet],.mobile-tab,.tab-btn,.sheet-close,.mobile-sheet-close'));
+  }
+  function guard(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (!active() && !cancelling && target.closest('#autoDemoBtn')) {
+      event.preventDefault(); event.stopImmediatePropagation(); return;
+    }
+    if (!event.isTrusted || !playing() || permitted(target)) return;
+    if (event.type === 'keydown' && ['Tab', 'Shift', 'Escape'].includes(event.key)) return;
+    const core = target.closest('input,select,textarea,button,[role="button"]') ||
+      (event.type === 'pointerdown' && target.closest('#stage') &&
+       !target.closest('#controlDock,#controlDrawer,#dataDock,#dataDrawer'));
+    if (!core) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (event.type === 'click') explainLock();
+  }
+  for (const type of ['click', 'pointerdown', 'keydown', 'beforeinput']) window.addEventListener(type, guard, true);
+  window.addEventListener('message', event => {
+    const data = event.data;
+    if (window.parent === window || event.source !== window.parent || !parentOrigins.has(event.origin) ||
+        !data || data.channel !== channel || typeof data.active !== 'boolean' ||
+        !Number.isSafeInteger(data.sequence) || data.sequence <= lastSequence) return;
+    lastSequence = data.sequence;
+    parentActive = data.active;
+    if (!active()) cancelDemo();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancelDemo(); });
+  window.addEventListener('pagehide', () => { clearTimeout(feedbackTimer); cancelDemo(); });
+})();
 </script>
 </body>
 </html>

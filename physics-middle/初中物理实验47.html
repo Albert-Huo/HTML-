@@ -975,7 +975,7 @@ body #app .toolbar button:disabled{
     function moveCursorTo(x,y){const sr=stage.getBoundingClientRect(), lr=labArea.getBoundingClientRect();demoCursor.style.opacity="1";demoCursor.style.transform="translate("+(lr.left-sr.left+x-10)+"px,"+(lr.top-sr.top+y-10)+"px)";}
     async function demoGesture(i){ const g=solenoidGeom(benchArea(state.width,state.height)); const targets=[g.sw,g.core,g.battery], keys=["powerOn","ironCore","reverse"], start={x:state.width*.18,y:state.height*.52}, end=targets[i]; for(let k=0;k<=8;k++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); const t=k/8; moveCursorTo(start.x+(end.x-start.x)*t,start.y+(end.y-start.y)*t+Math.sin(t*Math.PI)*28*g.s); state.phase=t; draw(); await sleep(150); } demoCursor.classList.remove("click"); void demoCursor.offsetWidth; demoCursor.classList.add("click"); applySolenoidState(keys[i],true); await sleep(1150); }
     async function autoRecord(key){ const before=state.records.length; const ok=recordObservation({auto:true}); await sleep(520); if(!ok || !hasRecord(key) || state.records.length<=before) throw new Error("AUTO_RECORD_NOT_PERSISTED:"+key); }
-    async function runAutoDemo(){ if(state.autoPlaying){state.autoCancel=true;return;} state.autoPlaying=true; state.autoCancel=false; autoDemoBtn.textContent="退出自动演示"; freeBtn.disabled=true; setDrawerCollapsed(controlDock,false); setDrawerCollapsed(dataDock,true); setModeLabel(); resetScene({keepMode:false,quiet:true}); state.autoPlaying=true; autoDemoBtn.textContent="退出自动演示"; setDrawerCollapsed(controlDock,false); setModeLabel(); try{ for(let i=0;i<SPEC.scenarios.length;i++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); setStepUI(i); updateStatus("自动演示"); await demoGesture(i); await autoRecord(SPEC.scenarios[i].key); await sleep(900); } setStepUI(SPEC.scenarios.length); await sleep(700); setDrawerCollapsed(dataDock,false); await sleep(700); analyzeConclusion(); await sleep(900); } catch(err){ if(String(err.message||err)!=="AUTO_CANCELLED") showToast("自动演示中断："+(err.message||err)); else showToast("已退出自动演示"); } finally{ state.autoPlaying=false; state.autoCancel=false; autoDemoBtn.textContent="自动演示"; freeBtn.disabled=false; demoCursor.style.opacity="0"; setModeLabel(); updateStatus(); draw(); } }
+    async function runAutoDemo(){ const ownedModeRun = codexModeController?.currentRunId(); if(state.autoPlaying){state.autoCancel=true;return;} state.autoPlaying=true; state.autoCancel=false; autoDemoBtn.textContent="退出自动演示"; freeBtn.disabled=true; setDrawerCollapsed(controlDock,false); setDrawerCollapsed(dataDock,true); setModeLabel(); resetScene({keepMode:false,quiet:true}); state.autoPlaying=true; autoDemoBtn.textContent="退出自动演示"; setDrawerCollapsed(controlDock,false); setModeLabel(); try{ for(let i=0;i<SPEC.scenarios.length;i++){ if(state.autoCancel) throw new Error("AUTO_CANCELLED"); setStepUI(i); updateStatus("自动演示"); await demoGesture(i); await autoRecord(SPEC.scenarios[i].key); await sleep(900); } setStepUI(SPEC.scenarios.length); await sleep(700); setDrawerCollapsed(dataDock,false); await sleep(700); analyzeConclusion(); await sleep(900); } catch(err){if (ownedModeRun !== codexModeController?.currentRunId()) return {cancelled:true}; if(String(err.message||err)!=="AUTO_CANCELLED") showToast("自动演示中断："+(err.message||err)); else showToast("已退出自动演示"); } finally{if (ownedModeRun !== codexModeController?.currentRunId()) return {cancelled:true}; state.autoPlaying=false; state.autoCancel=false; autoDemoBtn.textContent="自动演示"; freeBtn.disabled=false; demoCursor.style.opacity="0"; setModeLabel(); updateStatus(); draw(); } }
     function resetScene(opts){ clearTimers(); state.completed=false; state.autoCancel=false; state.stepWarning=false; state.successCooldown=false; state.scenarioIndex=0; state.operationCount=0; state.records=[]; state.unseenRecords=0; state.analysisDone=false; state.phase=0; state.drag=false; state.switchClosed=false; state.ironCoreInserted=false; state.currentReversed=false; if(!opts || !opts.keepMode) state.freeMode=false; doneMask.style.display="none"; analysisText.classList.remove("ok"); analysisText.textContent="完成三次记录后分析。"; renderRecords(); updateBadge(); setModeLabel(); setStepUI(0); if(!opts || !opts.quiet) showToast("已重置"); }
     function setFreeMode(on, opts){ if(!on && state.freeMode){ resetScene({keepMode:false,quiet:true}); } else state.freeMode=!!on; freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式"; autoDemoBtn.disabled=state.freeMode; setModeLabel(); updateStatus(); if(!opts || !opts.quiet) showToast(state.freeMode?"自由操作已开启":"已回到引导模式"); draw(); }
     function initEvents(){ canvas.addEventListener("pointerdown",onPointerDown); canvas.addEventListener("pointermove",onPointerMove); canvas.addEventListener("pointerup",onPointerUp); canvas.addEventListener("pointercancel",onPointerUp); recordBtn.addEventListener("click",() => recordObservation()); analyzeBtn.addEventListener("click",analyzeConclusion); resetBtn.addEventListener("click",() => { const free=state.freeMode; resetScene({keepMode:true,quiet:true}); state.freeMode=free; setFreeMode(free,{quiet:true}); showToast("已重置"); }); autoDemoBtn.addEventListener("click",runAutoDemo); freeBtn.addEventListener("click",() => setFreeMode(!state.freeMode)); controlToggleBtn.addEventListener("click",() => setDrawerCollapsed(controlDock,!controlDock.classList.contains("collapsed"))); dataToggleBtn.addEventListener("click",() => setDrawerCollapsed(dataDock,!dataDock.classList.contains("collapsed"))); hintLamp.addEventListener("click",() => hintPop.classList.toggle("open")); okBtn.addEventListener("click",() => { doneMask.style.display="none"; }); bindDrawer(controlDock); bindDrawer(dataDock); window.addEventListener("resize",() => { clearTimeout(resizeCanvas.t); resizeCanvas.t=setTimeout(resizeCanvas,120); }); }
@@ -1041,8 +1041,11 @@ body #app .toolbar button:disabled{
         bindController(controller) { codexModeController = controller; },
 
         startDemo:() => {
+          const ownedModeRun = codexModeController.currentRunId();
           codexModeRunActive = true;
-          return Promise.resolve(runAutoDemo()).finally(() => { codexModeRunActive = false; });
+          return Promise.resolve(runAutoDemo()).finally(() => {
+            if (ownedModeRun === codexModeController.currentRunId()) codexModeRunActive = false;
+          });
         },
         cancelDemo() {
           state.autoCancel = true;
@@ -2479,6 +2482,86 @@ body #app .toolbar button:disabled{
   window.addEventListener('pageshow', event => { if (event.persisted) mountTaskEntry(); });
 })();
 
+</script>
+<script data-demo-lifecycle="p02">
+/* P0-2: arbitrate user actions and cancel demos when their experiment leaves view. */
+(() => {
+  'use strict';
+  const channel = 'xingnian-experiment-activity';
+  let parentActive = true;
+  let lastSequence = 0;
+  let cancelling = false;
+  let feedbackTimer = 0;
+  const parentOrigins = new Set(['https://lab.xingnian.net.cn', 'https://albert-huo.github.io']);
+  if (['http:', 'https:'].includes(location.protocol)) parentOrigins.add(location.origin);
+  if (document.referrer) {
+    try {
+      const referrer = new URL(document.referrer);
+      const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+      if (['http:', 'https:'].includes(referrer.protocol) && ['http:', 'https:'].includes(location.protocol) && loopback.has(referrer.hostname) && loopback.has(location.hostname)) {
+        parentOrigins.add(referrer.origin);
+      }
+    }
+    catch (error) { console.warn('[demo-lifecycle] invalid parent referrer', error); }
+  }
+  function stateOf() {
+    if (window.state && typeof window.state === 'object') return window.state;
+    if (window.labState && typeof window.labState === 'object') return window.labState;
+    return typeof state === 'object' ? state : null;
+  }
+  function playing() { return Boolean(stateOf()?.autoPlaying); }
+  function active() { return parentActive && !document.hidden; }
+  function cancelDemo() {
+    if (!playing()) { window.labSoundBus?.hush(); return; }
+    const button = document.getElementById('autoDemoBtn');
+    if (!button) { console.error('[demo-lifecycle] missing exit control'); return; }
+    cancelling = true;
+    try { button.click(); }
+    finally { cancelling = false; window.labSoundBus?.hush(); }
+  }
+  function explainLock() {
+    const text = '演示中，请先退出演示再手动操作。';
+    if (typeof window.showToast === 'function') { window.showToast(text); return; }
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    clearTimeout(feedbackTimer);
+    toast.textContent = text;
+    toast.classList.add('show');
+    feedbackTimer = setTimeout(() => {
+      if (toast.textContent === text) toast.classList.remove('show');
+    }, 1400);
+  }
+  function permitted(element) {
+    return Boolean(element.closest('#resetBtn,#autoDemoBtn,#freeBtn,#themeToggle,#audioToggle,#hintLamp,#hintLampBtn,#helpBtn,.hint-lamp,.hint-lamp-wrap,#hintPop,#hintPopup,.hint-pop,#okBtn,#doneOk,#closeDoneBtn,#experimentTab,#dataTab,#mobileControlTab,#mobileDataTab,#controlToggleBtn,#dataToggleBtn,#controlSheetCloseBtn,#dataSheetCloseBtn,.drawer-header,.dock-head,.dockHead,.drawer-head,[data-sheet],.mobile-tab,.tab-btn,.sheet-close,.mobile-sheet-close'));
+  }
+  function guard(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (!active() && !cancelling && target.closest('#autoDemoBtn')) {
+      event.preventDefault(); event.stopImmediatePropagation(); return;
+    }
+    if (!event.isTrusted || !playing() || permitted(target)) return;
+    if (event.type === 'keydown' && ['Tab', 'Shift', 'Escape'].includes(event.key)) return;
+    const core = target.closest('input,select,textarea,button,[role="button"]') ||
+      (event.type === 'pointerdown' && target.closest('#stage') &&
+       !target.closest('#controlDock,#controlDrawer,#dataDock,#dataDrawer'));
+    if (!core) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (event.type === 'click') explainLock();
+  }
+  for (const type of ['click', 'pointerdown', 'keydown', 'beforeinput']) window.addEventListener(type, guard, true);
+  window.addEventListener('message', event => {
+    const data = event.data;
+    if (window.parent === window || event.source !== window.parent || !parentOrigins.has(event.origin) ||
+        !data || data.channel !== channel || typeof data.active !== 'boolean' ||
+        !Number.isSafeInteger(data.sequence) || data.sequence <= lastSequence) return;
+    lastSequence = data.sequence;
+    parentActive = data.active;
+    if (!active()) cancelDemo();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancelDemo(); });
+  window.addEventListener('pagehide', () => { clearTimeout(feedbackTimer); cancelDemo(); });
+})();
 </script>
 </body>
 </html>

@@ -2097,14 +2097,14 @@
       }
     }
 
-    async function moveDemoCursorTo(x, y, ms=260){
+    async function moveDemoCursorTo(x, y, ms=260, waiter=sleep){
       demoCursorEl.style.transitionDuration = `${ms}ms`;
       demoCursorEl.style.left = `${round(x, 1)}px`;
       demoCursorEl.style.top = `${round(y, 1)}px`;
-      await sleep(ms);
+      await waiter(ms);
     }
 
-    async function pulseDemoCursor(ms=170){
+    async function pulseDemoCursor(ms=170, waiter=sleep){
       demoCursorEl.classList.add('clicking');
       const x = Number.parseFloat(demoCursorEl.style.left || '0');
       const y = Number.parseFloat(demoCursorEl.style.top || '0');
@@ -2113,7 +2113,7 @@
       demoCursorPulseEl.classList.remove('active');
       void demoCursorPulseEl.offsetWidth;
       demoCursorPulseEl.classList.add('active');
-      await sleep(ms);
+      await waiter(ms);
       demoCursorEl.classList.remove('clicking');
     }
 
@@ -2980,17 +2980,29 @@
       stageEl.addEventListener('lostpointercapture', finish);
     }
 
-    async function animateDropperToBeaker(key, duration=900, showCursor=false){
+    async function animateDropperToBeaker(key, duration=900, showCursor=false, guardRunId=null){
       const info = getBeakerInfo(key);
       const sx = state.dropper.x;
       const sy = state.dropper.y;
       const stage = stageEl.getBoundingClientRect();
       const tx = clamp((info.left + info.right)/2 - state.dropper.w*0.5, 8, stage.width - state.dropper.w - 8);
       const ty = clamp(info.waterTop - state.dropper.h - 6, 8, stage.height - 80 - state.dropper.h);
-      const t0 = performance.now();
-      return new Promise((resolve)=>{
+      let lastFrame = performance.now();
+      let activeElapsed = 0;
+      return new Promise((resolve,reject)=>{
         function step(now){
-          const p = clamp((now-t0)/duration,0,1);
+          if(guardRunId !== null && (!state.autoPlaying || guardRunId !== state.autoRunId)){
+            reject(new Error('auto-demo-cancelled'));
+            return;
+          }
+          const delta = Math.max(0, now-lastFrame);
+          lastFrame = now;
+          if(state.autoPlaying && state.autoPaused){
+            requestAnimationFrame(step);
+            return;
+          }
+          activeElapsed += delta;
+          const p = clamp(activeElapsed/duration,0,1);
           const e = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2)/2;
           const nx = sx + (tx-sx)*e;
           const ny = sy + (ty-sy)*e;
@@ -3067,9 +3079,9 @@
         };
         const clickEl = async (el, ms=260)=>{
           const p = centerOf(el);
-          await moveDemoCursorTo(p.x, p.y, ms);
+          await moveDemoCursorTo(p.x, p.y, ms, pause);
           ensureActive();
-          await pulseDemoCursor();
+          await pulseDemoCursor(170, pause);
           ensureActive();
         };
 
@@ -3087,7 +3099,7 @@
         await pause(900);
         await clickEl(beakerCold, 280);
         setSelectedBeaker('cold');
-        await animateDropperToBeaker('cold', 980, true);
+        await animateDropperToBeaker('cold', 980, true, runId);
         ensureActive();
         await pause(780);
         await clickEl(dropperBulb, 260);
@@ -3115,7 +3127,7 @@
         await pause(900);
         await clickEl(beakerHot, 280);
         setSelectedBeaker('hot');
-        await animateDropperToBeaker('hot', 1040, true);
+        await animateDropperToBeaker('hot', 1040, true, runId);
         ensureActive();
         await pause(760);
         await clickEl(dropperBulb, 260);
@@ -4848,6 +4860,86 @@
   window.addEventListener('pageshow', event => { if (event.persisted) mountTaskEntry(); });
 })();
 
+</script>
+<script data-demo-lifecycle="p02">
+/* P0-2: arbitrate user actions and cancel demos when their experiment leaves view. */
+(() => {
+  'use strict';
+  const channel = 'xingnian-experiment-activity';
+  let parentActive = true;
+  let lastSequence = 0;
+  let cancelling = false;
+  let feedbackTimer = 0;
+  const parentOrigins = new Set(['https://lab.xingnian.net.cn', 'https://albert-huo.github.io']);
+  if (['http:', 'https:'].includes(location.protocol)) parentOrigins.add(location.origin);
+  if (document.referrer) {
+    try {
+      const referrer = new URL(document.referrer);
+      const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+      if (['http:', 'https:'].includes(referrer.protocol) && ['http:', 'https:'].includes(location.protocol) && loopback.has(referrer.hostname) && loopback.has(location.hostname)) {
+        parentOrigins.add(referrer.origin);
+      }
+    }
+    catch (error) { console.warn('[demo-lifecycle] invalid parent referrer', error); }
+  }
+  function stateOf() {
+    if (window.state && typeof window.state === 'object') return window.state;
+    if (window.labState && typeof window.labState === 'object') return window.labState;
+    return typeof state === 'object' ? state : null;
+  }
+  function playing() { return Boolean(stateOf()?.autoPlaying); }
+  function active() { return parentActive && !document.hidden; }
+  function cancelDemo() {
+    if (!playing()) { window.labSoundBus?.hush(); return; }
+    const button = document.getElementById('autoDemoBtn');
+    if (!button) { console.error('[demo-lifecycle] missing exit control'); return; }
+    cancelling = true;
+    try { button.click(); }
+    finally { cancelling = false; window.labSoundBus?.hush(); }
+  }
+  function explainLock() {
+    const text = '演示中，请先退出演示再手动操作。';
+    if (typeof window.showToast === 'function') { window.showToast(text); return; }
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    clearTimeout(feedbackTimer);
+    toast.textContent = text;
+    toast.classList.add('show');
+    feedbackTimer = setTimeout(() => {
+      if (toast.textContent === text) toast.classList.remove('show');
+    }, 1400);
+  }
+  function permitted(element) {
+    return Boolean(element.closest('#resetBtn,#autoDemoBtn,#freeBtn,#themeToggle,#audioToggle,#hintLamp,#hintLampBtn,#helpBtn,.hint-lamp,.hint-lamp-wrap,#hintPop,#hintPopup,.hint-pop,#okBtn,#doneOk,#closeDoneBtn,#experimentTab,#dataTab,#mobileControlTab,#mobileDataTab,#controlToggleBtn,#dataToggleBtn,#controlSheetCloseBtn,#dataSheetCloseBtn,.drawer-header,.dock-head,.dockHead,.drawer-head,[data-sheet],.mobile-tab,.tab-btn,.sheet-close,.mobile-sheet-close'));
+  }
+  function guard(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (!active() && !cancelling && target.closest('#autoDemoBtn')) {
+      event.preventDefault(); event.stopImmediatePropagation(); return;
+    }
+    if (!event.isTrusted || !playing() || permitted(target)) return;
+    if (event.type === 'keydown' && ['Tab', 'Shift', 'Escape'].includes(event.key)) return;
+    const core = target.closest('input,select,textarea,button,[role="button"]') ||
+      (event.type === 'pointerdown' && target.closest('#stage') &&
+       !target.closest('#controlDock,#controlDrawer,#dataDock,#dataDrawer'));
+    if (!core) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (event.type === 'click') explainLock();
+  }
+  for (const type of ['click', 'pointerdown', 'keydown', 'beforeinput']) window.addEventListener(type, guard, true);
+  window.addEventListener('message', event => {
+    const data = event.data;
+    if (window.parent === window || event.source !== window.parent || !parentOrigins.has(event.origin) ||
+        !data || data.channel !== channel || typeof data.active !== 'boolean' ||
+        !Number.isSafeInteger(data.sequence) || data.sequence <= lastSequence) return;
+    lastSequence = data.sequence;
+    parentActive = data.active;
+    if (!active()) cancelDemo();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancelDemo(); });
+  window.addEventListener('pagehide', () => { clearTimeout(feedbackTimer); cancelDemo(); });
+})();
 </script>
 </body>
 </html>

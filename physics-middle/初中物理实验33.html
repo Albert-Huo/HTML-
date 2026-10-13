@@ -3022,10 +3022,14 @@ body #app .toolbar button:disabled{
         }
         function step(now){
           if(guardRunId !== null && (!state.autoPlaying || guardRunId !== state.autoRunId)){
-            finish(false);
+            resolve(false);
             return;
           }
-          const p = clamp((now - t0) / duration, 0, 1);
+          if(state.autoPlaying && state.autoPaused){
+            state.strikerAnimRaf = requestAnimationFrame(step);
+            return;
+          }
+          const p = clamp((codexModeNow() - t0) / duration, 0, 1);
           state.strikerAngle = start + (target - start) * easeOut(p);
           renderStriker();
           if(p < 1) state.strikerAnimRaf = requestAnimationFrame(step);
@@ -3035,7 +3039,7 @@ body #app .toolbar button:disabled{
       });
     }
 
-    function animateStrikerRelease(pullRatio, announce = true){
+    function animateStrikerRelease(pullRatio, announce = true, guardRunId = null){
       cancelStrikerAnimation();
       const impact = clamp(pullRatio, 0, 1);
       const shouldStrike = impact > STRIKER.releaseEpsilon;
@@ -3064,7 +3068,15 @@ body #app .toolbar button:disabled{
           settle(value);
         }
         function step(now){
-          const p = clamp((now - t0) / duration, 0, 1);
+          if(guardRunId !== null && (!state.autoPlaying || guardRunId !== state.autoRunId)){
+            settle(false);
+            return;
+          }
+          if(state.autoPlaying && state.autoPaused){
+            state.strikerAnimRaf = requestAnimationFrame(step);
+            return;
+          }
+          const p = clamp((codexModeNow() - t0) / duration, 0, 1);
           let angle = 0;
           if(shouldStrike){
             if(p < 0.58){
@@ -3105,7 +3117,7 @@ body #app .toolbar button:disabled{
       if(!pulled) return false;
       if(guardRunId !== null && (!state.autoPlaying || guardRunId !== state.autoRunId)) return false;
       state.deferNextImpact = deferImpact;
-      return animateStrikerRelease(pullRatio, announce);
+      return animateStrikerRelease(pullRatio, announce, guardRunId);
     }
 
     function triggerSplash(announce = true){
@@ -3578,7 +3590,11 @@ body #app .toolbar button:disabled{
             resolve();
             return;
           }
-          const p = clamp((now - t0) / duration, 0, 1);
+          if(state.autoPlaying && state.autoPaused){
+            requestAnimationFrame(step);
+            return;
+          }
+          const p = clamp((codexModeNow() - t0) / duration, 0, 1);
           const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
           demoCursor.style.left = `${sx + (x - sx) * e}px`;
           demoCursor.style.top = `${sy + (y - sy) * e}px`;
@@ -3613,7 +3629,11 @@ body #app .toolbar button:disabled{
             resolve();
             return;
           }
-          const p = clamp((now - t0) / duration, 0, 1);
+          if(state.autoPlaying && state.autoPaused){
+            requestAnimationFrame(step);
+            return;
+          }
+          const p = clamp((codexModeNow() - t0) / duration, 0, 1);
           const e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
           const nx = sx + (x - sx) * e;
           const ny = sy + (y - sy) * e;
@@ -3685,13 +3705,16 @@ body #app .toolbar button:disabled{
         setStepUI(0);
         await pause(420);
         await moveDemoCursorToElement(strikerBtn, 420, runId);
+        ensureActive();
         pulseDemoCursor();
         const primaryContact = await runHammerCycle(1, false, runId, true);
+        ensureActive();
         if(!primaryContact) throw new Error('AUTO_HAMMER_CONTACT_NOT_REACHED');
         strikeFork(1, false);
         await /* codex-physics-mode-source:pace-33-observePrimary */ pause(620, 'observePrimary');
         const before1 = state.records.length;
         await moveDemoCursorToElement(recordBtn, 380, runId);
+        ensureActive();
         pulseDemoCursor();
         addRecord();
         await pause(320);
@@ -3701,10 +3724,13 @@ body #app .toolbar button:disabled{
 
         setStepUI(1);
         await moveDemoCursorToElement(strikerBtn, 380, runId);
+        ensureActive();
         pulseDemoCursor();
         await runHammerCycle(1, false, runId);
+        ensureActive();
         await pause(280);
         await animateForkTo(getWaterTarget().x, getWaterTarget().y, 760, runId);
+        ensureActive();
         await pause(260);
         evaluateContacts(false);
         if(state.pendingObservation !== 'water-splash'){
@@ -3714,6 +3740,7 @@ body #app .toolbar button:disabled{
         await /* codex-physics-mode-source:pace-33-observePrimary */ pause(220, 'observePrimary');
         const before2 = state.records.length;
         await moveDemoCursorToElement(recordBtn, 380, runId);
+        ensureActive();
         pulseDemoCursor();
         addRecord();
         await pause(320);
@@ -3723,10 +3750,13 @@ body #app .toolbar button:disabled{
 
         setStepUI(2);
         await moveDemoCursorToElement(strikerBtn, 380, runId);
+        ensureActive();
         pulseDemoCursor();
         await runHammerCycle(1, false, runId);
+        ensureActive();
         await pause(280);
         await animateForkTo(getBallTarget().x, getBallTarget().y, 760, runId);
+        ensureActive();
         evaluateContacts(false);
         if(state.pendingObservation !== 'ball-bounce'){
           throw new Error('AUTO_BALL_CONTACT_NOT_REACHED');
@@ -3734,6 +3764,7 @@ body #app .toolbar button:disabled{
         await /* codex-physics-mode-source:pace-33-observePrimary */ pause(220, 'observePrimary');
         const before3 = state.records.length;
         await moveDemoCursorToElement(recordBtn, 380, runId);
+        ensureActive();
         pulseDemoCursor();
         addRecord();
         await pause(320);
@@ -3743,10 +3774,12 @@ body #app .toolbar button:disabled{
 
         setStepUI(3);
         await moveDemoCursorToElement(analyzeBtn, 380, runId);
+        ensureActive();
         pulseDemoCursor();
         analyzeConclusion(false);
         recalcProgress();
       }catch(err){
+        if(runId !== state.autoRunId || !state.autoPlaying) return;
         if(err && err.message !== 'auto-demo-cancelled'){
           console.error('[autoDemo] failed:', err);
           showToast('演示模式失败，请重试');
@@ -5876,6 +5909,86 @@ body #app .toolbar button:disabled{
   window.addEventListener('pageshow', event => { if (event.persisted) mountTaskEntry(); });
 })();
 
+</script>
+<script data-demo-lifecycle="p02">
+/* P0-2: arbitrate user actions and cancel demos when their experiment leaves view. */
+(() => {
+  'use strict';
+  const channel = 'xingnian-experiment-activity';
+  let parentActive = true;
+  let lastSequence = 0;
+  let cancelling = false;
+  let feedbackTimer = 0;
+  const parentOrigins = new Set(['https://lab.xingnian.net.cn', 'https://albert-huo.github.io']);
+  if (['http:', 'https:'].includes(location.protocol)) parentOrigins.add(location.origin);
+  if (document.referrer) {
+    try {
+      const referrer = new URL(document.referrer);
+      const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+      if (['http:', 'https:'].includes(referrer.protocol) && ['http:', 'https:'].includes(location.protocol) && loopback.has(referrer.hostname) && loopback.has(location.hostname)) {
+        parentOrigins.add(referrer.origin);
+      }
+    }
+    catch (error) { console.warn('[demo-lifecycle] invalid parent referrer', error); }
+  }
+  function stateOf() {
+    if (window.state && typeof window.state === 'object') return window.state;
+    if (window.labState && typeof window.labState === 'object') return window.labState;
+    return typeof state === 'object' ? state : null;
+  }
+  function playing() { return Boolean(stateOf()?.autoPlaying); }
+  function active() { return parentActive && !document.hidden; }
+  function cancelDemo() {
+    if (!playing()) { window.labSoundBus?.hush(); return; }
+    const button = document.getElementById('autoDemoBtn');
+    if (!button) { console.error('[demo-lifecycle] missing exit control'); return; }
+    cancelling = true;
+    try { button.click(); }
+    finally { cancelling = false; window.labSoundBus?.hush(); }
+  }
+  function explainLock() {
+    const text = '演示中，请先退出演示再手动操作。';
+    if (typeof window.showToast === 'function') { window.showToast(text); return; }
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    clearTimeout(feedbackTimer);
+    toast.textContent = text;
+    toast.classList.add('show');
+    feedbackTimer = setTimeout(() => {
+      if (toast.textContent === text) toast.classList.remove('show');
+    }, 1400);
+  }
+  function permitted(element) {
+    return Boolean(element.closest('#resetBtn,#autoDemoBtn,#freeBtn,#themeToggle,#audioToggle,#hintLamp,#hintLampBtn,#helpBtn,.hint-lamp,.hint-lamp-wrap,#hintPop,#hintPopup,.hint-pop,#okBtn,#doneOk,#closeDoneBtn,#experimentTab,#dataTab,#mobileControlTab,#mobileDataTab,#controlToggleBtn,#dataToggleBtn,#controlSheetCloseBtn,#dataSheetCloseBtn,.drawer-header,.dock-head,.dockHead,.drawer-head,[data-sheet],.mobile-tab,.tab-btn,.sheet-close,.mobile-sheet-close'));
+  }
+  function guard(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (!active() && !cancelling && target.closest('#autoDemoBtn')) {
+      event.preventDefault(); event.stopImmediatePropagation(); return;
+    }
+    if (!event.isTrusted || !playing() || permitted(target)) return;
+    if (event.type === 'keydown' && ['Tab', 'Shift', 'Escape'].includes(event.key)) return;
+    const core = target.closest('input,select,textarea,button,[role="button"]') ||
+      (event.type === 'pointerdown' && target.closest('#stage') &&
+       !target.closest('#controlDock,#controlDrawer,#dataDock,#dataDrawer'));
+    if (!core) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (event.type === 'click') explainLock();
+  }
+  for (const type of ['click', 'pointerdown', 'keydown', 'beforeinput']) window.addEventListener(type, guard, true);
+  window.addEventListener('message', event => {
+    const data = event.data;
+    if (window.parent === window || event.source !== window.parent || !parentOrigins.has(event.origin) ||
+        !data || data.channel !== channel || typeof data.active !== 'boolean' ||
+        !Number.isSafeInteger(data.sequence) || data.sequence <= lastSequence) return;
+    lastSequence = data.sequence;
+    parentActive = data.active;
+    if (!active()) cancelDemo();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancelDemo(); });
+  window.addEventListener('pagehide', () => { clearTimeout(feedbackTimer); cancelDemo(); });
+})();
 </script>
 </body>
 </html>

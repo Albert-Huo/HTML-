@@ -1058,7 +1058,7 @@ body #app .toolbar button:disabled{
   function resetScene(options={}){cancelResizeTimer();clearWaits();clearUiTimers();stopPopSound();toast.classList.remove("show");checkmark.classList.remove("active");hintLamp.classList.remove("flash");stopPhysics(false);state.igniterDrag=null;state.wickHoldStartedAt=0;resizeCanvas();state.completed=false;state.analysisDone=false;state.currentTask=0;state.stepWarning=false;state.records=[];state.milestones={};state.unseenRecords=0;state.ignited=false;state.heatInput=0;state.waterTemperature=22;state.vaporAmount=0;state.pressure=1;state.stopperOffset=0;state.stopperPopped=false;state.stopperPopCount=0;state.stopperFlightTime=0;state.stopperImpact=false;state.stopperLanded=false;state.popArmedAt=0;state.elapsedHeating=0;state.settled=false;state.ignitionHold=0;state.evidence={heated:false,vaporSeen:false,pressureBuilt:false,trembled:false,popped:false,vented:false};state.autoLastError=null;state.igniterPosition=null;state.igniterPosition={...layout().defaultIgniter};if(!options.keepMode)state.freeMode=false;doneMask.style.display="none";analysisText.classList.remove("ok");analysisText.textContent="完成三次记录后分析。";renderRecords();updateBadge();setModeLabel();setStepUI(0);syncIgniterLayer();draw();if(!options.quiet)showToast("已重置");return true;}
   function setFreeMode(enabled,options={}){if(!enabled&&state.freeMode)resetScene({quiet:true});state.freeMode=Boolean(enabled);freeBtn.textContent=state.freeMode?"退出自由模式":"自由模式";autoDemoBtn.disabled=state.freeMode;setModeLabel();updateStatus();if(!options.quiet)showToast(state.freeMode?"自由探索已开启":"已回到引导模式");return true;}
   async function autoRecord(key){const before=state.records.length;if(!recordObservation({quiet:true})||state.records.length!==before+1||!hasRecord(key))throw new Error("AUTO_RECORD_NOT_PERSISTED:"+key);if(!(await /* codex-physics-mode-source:pace-52-recordConfirm */ wait(0,"recordConfirm")))throw new Error("AUTO_CANCELLED");if(!(await /* codex-physics-mode-source:pace-52-stepTransition */ wait(0,"stepTransition")))throw new Error("AUTO_CANCELLED");}
-  async function runAutoDemo(){if(state.autoPlaying)return{accepted:false,code:"AUTO_ALREADY_RUNNING"};resetScene({quiet:true});state.autoPlaying=true;state.autoCancel=false;state.autoLastError=null;autoDemoBtn.textContent="退出演示模式";resetBtn.disabled=true;freeBtn.disabled=true;setModeLabel();setDrawerCollapsed(controlDock,false);setDrawerCollapsed(dataDock,true);let completedNaturally=false;try{if(!(await simulateIgnitionGesture(true)))throw new Error("AUTO_IGNITION_FAILED");if(!(await /* codex-physics-mode-source:pace-52-actionMotion */ wait(0,"actionMotion")))throw new Error("AUTO_CANCELLED");if(!(await /* codex-physics-mode-source:pace-52-observePrimary */ wait(0,"observePrimary")))throw new Error("AUTO_CANCELLED");await autoRecord("ignited");if(!(await waitForHeatingRecord()))throw new Error(state.autoCancel?"AUTO_CANCELLED":state.stopperPopped?"AUTO_HEATING_WINDOW_MISSED":"AUTO_HEATING_TIMEOUT");await autoRecord("heating");if(!(await waitForPop()))throw new Error(state.autoCancel?"AUTO_CANCELLED":"AUTO_POP_TIMEOUT");if(!(await waitForLanding()))throw new Error(state.autoCancel?"AUTO_CANCELLED":"AUTO_LANDING_TIMEOUT");await autoRecord("popped");if(!(await /* codex-physics-mode-source:pace-52-analysisLead */ wait(720,"analysisLead")))throw new Error("AUTO_CANCELLED");if(!analyzeConclusion())throw new Error("AUTO_ANALYSIS_FAILED");if(!(await waitForSettle()))throw new Error(state.autoCancel?"AUTO_CANCELLED":"AUTO_SETTLE_INTERRUPTED");completedNaturally=true;doneMask.style.display="none";return{completed:true};}catch(error){state.autoLastError=String(error.message||error);if(state.autoLastError==="AUTO_CANCELLED")return{cancelled:true,code:"AUTO_CANCELLED"};console.error("实验52自动演示失败",error);throw error;}finally{clearWaits();state.igniterDrag=null;state.wickHoldStartedAt=0;if(!completedNaturally)stopPhysics(true);state.autoPlaying=false;state.autoCancel=false;autoDemoBtn.textContent="演示模式";resetBtn.disabled=false;freeBtn.disabled=false;demoCursor.style.opacity="0";setModeLabel();updateStatus();}}
+  async function runAutoDemo(){ const ownedModeRun = codexModeController?.currentRunId();if(state.autoPlaying)return{accepted:false,code:"AUTO_ALREADY_RUNNING"};resetScene({quiet:true});state.autoPlaying=true;state.autoCancel=false;state.autoLastError=null;autoDemoBtn.textContent="退出演示模式";resetBtn.disabled=true;freeBtn.disabled=true;setModeLabel();setDrawerCollapsed(controlDock,false);setDrawerCollapsed(dataDock,true);let completedNaturally=false;try{if(!(await simulateIgnitionGesture(true)))throw new Error("AUTO_IGNITION_FAILED");if(!(await /* codex-physics-mode-source:pace-52-actionMotion */ wait(0,"actionMotion")))throw new Error("AUTO_CANCELLED");if(!(await /* codex-physics-mode-source:pace-52-observePrimary */ wait(0,"observePrimary")))throw new Error("AUTO_CANCELLED");await autoRecord("ignited");if(!(await waitForHeatingRecord()))throw new Error(state.autoCancel?"AUTO_CANCELLED":state.stopperPopped?"AUTO_HEATING_WINDOW_MISSED":"AUTO_HEATING_TIMEOUT");await autoRecord("heating");if(!(await waitForPop()))throw new Error(state.autoCancel?"AUTO_CANCELLED":"AUTO_POP_TIMEOUT");if(!(await waitForLanding()))throw new Error(state.autoCancel?"AUTO_CANCELLED":"AUTO_LANDING_TIMEOUT");await autoRecord("popped");if(!(await /* codex-physics-mode-source:pace-52-analysisLead */ wait(720,"analysisLead")))throw new Error("AUTO_CANCELLED");if(!analyzeConclusion())throw new Error("AUTO_ANALYSIS_FAILED");if(!(await waitForSettle()))throw new Error(state.autoCancel?"AUTO_CANCELLED":"AUTO_SETTLE_INTERRUPTED");completedNaturally=true;doneMask.style.display="none";return{completed:true};}catch(error){if (ownedModeRun !== codexModeController?.currentRunId()) return {cancelled:true};state.autoLastError=String(error.message||error);if(state.autoLastError==="AUTO_CANCELLED")return{cancelled:true,code:"AUTO_CANCELLED"};console.error("实验52自动演示失败",error);throw error;}finally{if (ownedModeRun !== codexModeController?.currentRunId()) return {cancelled:true};clearWaits();state.igniterDrag=null;state.wickHoldStartedAt=0;if(!completedNaturally)stopPhysics(true);state.autoPlaying=false;state.autoCancel=false;autoDemoBtn.textContent="演示模式";resetBtn.disabled=false;freeBtn.disabled=false;demoCursor.style.opacity="0";setModeLabel();updateStatus();}}
   function cancelAutoDemo(){if(!state.autoPlaying)return{accepted:false,code:"AUTO_NOT_RUNNING"};state.autoCancel=true;state.autoLastError="AUTO_CANCELLED";clearWaits();return{accepted:true,cancelled:true,code:"AUTO_CANCELLED"};}
   function externalReset(){if(state.autoPlaying)cancelAutoDemo();resetScene({quiet:true});return true;}
   async function performTestAction(action){if(!action||typeof action.type!=="string")throw new Error("INVALID_TEST_ACTION");if(["touch-wick-without-igniter","click-test-tube","click-lamp","blank-click"].includes(action.type))return false;if(action.type==="ignite-lamp")return simulateIgnitionGesture(false);if(action.type==="wait-for-heating")return wait(Number(action.durationMs)||1000);if(action.type==="wait-for-stopper-pop")return waitForPop();if(action.type==="wait-for-settle")return waitForSettle();if(action.type==="record-observation")return recordObservation({quiet:true});if(action.type==="analyze-conclusion")return analyzeConclusion();if(action.type==="set-mode"){const free=action.mode==="free";if(state.freeMode!==free)freeBtn.click();return state.freeMode===free;}throw new Error("UNKNOWN_TEST_ACTION:"+action.type);}
@@ -2512,6 +2512,86 @@ body #app .toolbar button:disabled{
   window.addEventListener('pageshow', event => { if (event.persisted) mountTaskEntry(); });
 })();
 
+</script>
+<script data-demo-lifecycle="p02">
+/* P0-2: arbitrate user actions and cancel demos when their experiment leaves view. */
+(() => {
+  'use strict';
+  const channel = 'xingnian-experiment-activity';
+  let parentActive = true;
+  let lastSequence = 0;
+  let cancelling = false;
+  let feedbackTimer = 0;
+  const parentOrigins = new Set(['https://lab.xingnian.net.cn', 'https://albert-huo.github.io']);
+  if (['http:', 'https:'].includes(location.protocol)) parentOrigins.add(location.origin);
+  if (document.referrer) {
+    try {
+      const referrer = new URL(document.referrer);
+      const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+      if (['http:', 'https:'].includes(referrer.protocol) && ['http:', 'https:'].includes(location.protocol) && loopback.has(referrer.hostname) && loopback.has(location.hostname)) {
+        parentOrigins.add(referrer.origin);
+      }
+    }
+    catch (error) { console.warn('[demo-lifecycle] invalid parent referrer', error); }
+  }
+  function stateOf() {
+    if (window.state && typeof window.state === 'object') return window.state;
+    if (window.labState && typeof window.labState === 'object') return window.labState;
+    return typeof state === 'object' ? state : null;
+  }
+  function playing() { return Boolean(stateOf()?.autoPlaying); }
+  function active() { return parentActive && !document.hidden; }
+  function cancelDemo() {
+    if (!playing()) { window.labSoundBus?.hush(); return; }
+    const button = document.getElementById('autoDemoBtn');
+    if (!button) { console.error('[demo-lifecycle] missing exit control'); return; }
+    cancelling = true;
+    try { button.click(); }
+    finally { cancelling = false; window.labSoundBus?.hush(); }
+  }
+  function explainLock() {
+    const text = '演示中，请先退出演示再手动操作。';
+    if (typeof window.showToast === 'function') { window.showToast(text); return; }
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    clearTimeout(feedbackTimer);
+    toast.textContent = text;
+    toast.classList.add('show');
+    feedbackTimer = setTimeout(() => {
+      if (toast.textContent === text) toast.classList.remove('show');
+    }, 1400);
+  }
+  function permitted(element) {
+    return Boolean(element.closest('#resetBtn,#autoDemoBtn,#freeBtn,#themeToggle,#audioToggle,#hintLamp,#hintLampBtn,#helpBtn,.hint-lamp,.hint-lamp-wrap,#hintPop,#hintPopup,.hint-pop,#okBtn,#doneOk,#closeDoneBtn,#experimentTab,#dataTab,#mobileControlTab,#mobileDataTab,#controlToggleBtn,#dataToggleBtn,#controlSheetCloseBtn,#dataSheetCloseBtn,.drawer-header,.dock-head,.dockHead,.drawer-head,[data-sheet],.mobile-tab,.tab-btn,.sheet-close,.mobile-sheet-close'));
+  }
+  function guard(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (!active() && !cancelling && target.closest('#autoDemoBtn')) {
+      event.preventDefault(); event.stopImmediatePropagation(); return;
+    }
+    if (!event.isTrusted || !playing() || permitted(target)) return;
+    if (event.type === 'keydown' && ['Tab', 'Shift', 'Escape'].includes(event.key)) return;
+    const core = target.closest('input,select,textarea,button,[role="button"]') ||
+      (event.type === 'pointerdown' && target.closest('#stage') &&
+       !target.closest('#controlDock,#controlDrawer,#dataDock,#dataDrawer'));
+    if (!core) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (event.type === 'click') explainLock();
+  }
+  for (const type of ['click', 'pointerdown', 'keydown', 'beforeinput']) window.addEventListener(type, guard, true);
+  window.addEventListener('message', event => {
+    const data = event.data;
+    if (window.parent === window || event.source !== window.parent || !parentOrigins.has(event.origin) ||
+        !data || data.channel !== channel || typeof data.active !== 'boolean' ||
+        !Number.isSafeInteger(data.sequence) || data.sequence <= lastSequence) return;
+    lastSequence = data.sequence;
+    parentActive = data.active;
+    if (!active()) cancelDemo();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancelDemo(); });
+  window.addEventListener('pagehide', () => { clearTimeout(feedbackTimer); cancelDemo(); });
+})();
 </script>
 </body>
 </html>

@@ -1801,17 +1801,17 @@
       }
     }
 
-    async function moveDemoCursorToStage(x, y, ms=520){
-      if(!demoCursorEl){ await sleep(ms); return; }
+    async function moveDemoCursorToStage(x, y, ms=520, waiter=sleep){
+      if(!demoCursorEl){ await waiter(ms); return; }
       const dur = Math.max(120, Math.round(ms));
       demoCursorEl.style.transitionDuration = `${dur}ms`;
       demoCursorEl.style.left = `${round(x, 1)}px`;
       demoCursorEl.style.top = `${round(y, 1)}px`;
-      await sleep(dur + 60);
+      await waiter(dur + 60);
     }
 
-    async function clickDemoCursor(ms=260){
-      if(!demoCursorEl || !demoCursorPulseEl){ await sleep(ms); return; }
+    async function clickDemoCursor(ms=260, waiter=sleep){
+      if(!demoCursorEl || !demoCursorPulseEl){ await waiter(ms); return; }
       demoCursorEl.classList.add('clicking');
       const x = Number.parseFloat(demoCursorEl.style.left || '0');
       const y = Number.parseFloat(demoCursorEl.style.top || '0');
@@ -1820,16 +1820,16 @@
       demoCursorPulseEl.classList.remove('active');
       void demoCursorPulseEl.offsetWidth;
       demoCursorPulseEl.classList.add('active');
-      await sleep(ms);
+      await waiter(ms);
       demoCursorEl.classList.remove('clicking');
     }
 
-    async function dragDemoCursorPath(points, segmentMs=520, onMove=null){
+    async function dragDemoCursorPath(points, segmentMs=520, onMove=null, waiter=sleep){
       if(!demoCursorEl || !Array.isArray(points) || !points.length) return;
       demoCursorEl.classList.add('dragging');
-      await moveDemoCursorToStage(points[0].x, points[0].y, Math.max(180, segmentMs));
+      await moveDemoCursorToStage(points[0].x, points[0].y, Math.max(180, segmentMs), waiter);
       if(typeof onMove === 'function') onMove(points[0], 0);
-      await clickDemoCursor(160);
+      await clickDemoCursor(160, waiter);
       for(let i=1;i<points.length;i++){
         const from = points[i-1];
         const to = points[i];
@@ -1843,21 +1843,21 @@
           demoCursorEl.style.left = `${round(x, 1)}px`;
           demoCursorEl.style.top = `${round(y, 1)}px`;
           if(typeof onMove === 'function') onMove({x, y}, i);
-          await sleep(Math.max(14, Math.round(dur / steps)));
+          await waiter(Math.max(14, Math.round(dur / steps)));
         }
       }
       demoCursorEl.classList.remove('dragging');
-      await clickDemoCursor(140);
+      await clickDemoCursor(140, waiter);
     }
 
     function getActionButtonById(actionId){
       return actionBtns.querySelector(`[data-action-id="${actionId}"]`);
     }
 
-    async function clickElementWithCursor(el, moveMs=620){
+    async function clickElementWithCursor(el, moveMs=620, waiter=sleep){
       const p = getElementStageCenter(el);
-      if(p) await moveDemoCursorToStage(p.x, p.y, moveMs);
-      await clickDemoCursor();
+      if(p) await moveDemoCursorToStage(p.x, p.y, moveMs, waiter);
+      await clickDemoCursor(260, waiter);
     }
 
     function makeInitialApparatus(){
@@ -4075,28 +4075,33 @@
         await wait(ms);
       };
       const demoLab15Scrape = async ()=>{
-        const g = getLab15Layout();
-        const pts = [];
-        for(const zone of [g.scrubZoneA, g.scrubZoneB]){
-          for(let pass=0;pass<6;pass++){
-            const ratioY = pass % 2 === 0 ? 0.16 : 0.88;
-            const ratioX = pass % 2 === 0 ? 0.45 : 0.55;
-            pts.push(scenePointToStage(zone.x + zone.w * ratioX, zone.y + zone.h * ratioY));
+        for(let attempt=0;attempt<3;attempt++){
+          ensure();
+          if(state.apparatus.scraped) return;
+          const g = getLab15Layout();
+          const pts = [];
+          for(const zone of [g.scrubZoneA, g.scrubZoneB]){
+            for(let pass=0;pass<6;pass++){
+              const ratioY = pass % 2 === 0 ? 0.16 : 0.88;
+              const ratioX = pass % 2 === 0 ? 0.45 : 0.55;
+              pts.push(scenePointToStage(zone.x + zone.w * ratioX, zone.y + zone.h * ratioY));
+            }
           }
+          await dragDemoCursorPath(pts, 240, (pt)=>applyLab15ToolAtStagePoint(pt.x, pt.y), wait);
         }
-        await dragDemoCursorPath(pts, 240, (pt)=>applyLab15ToolAtStagePoint(pt.x, pt.y));
+        if(!state.apparatus.scraped) throw new Error('AUTO_SCRAPE_NOT_READY');
       };
       const demoLab15ClampDrag = async ()=>{
         const g = getLab15Layout();
         const start = scenePointToStage(g.clampTrackX + g.clampTrackW - 2, g.clampHandleY);
         const end = scenePointToStage(g.clampTrackX + 4, g.clampHandleY);
-        await dragDemoCursorPath([start, end], 920, (pt)=>applyLab15ClampAtStagePoint(pt.x, pt.y));
+        await dragDemoCursorPath([start, end], 920, (pt)=>applyLab15ClampAtStagePoint(pt.x, pt.y), wait);
       };
       const demoLab15ReleaseClamp = async ()=>{
         const g = getLab15Layout();
         const start = scenePointToStage(g.clampTrackX + 4, g.clampHandleY);
         const end = scenePointToStage(g.clampTrackX + g.clampTrackW - 2, g.clampHandleY);
-        await dragDemoCursorPath([start, end], 720, (pt)=>applyLab15ClampAtStagePoint(pt.x, pt.y));
+        await dragDemoCursorPath([start, end], 720, (pt)=>applyLab15ClampAtStagePoint(pt.x, pt.y), wait);
       };
       const demoLab15MeterPull = async (forceN)=>{
         const g = getLab15Layout();
@@ -4109,7 +4114,7 @@
         lab15Pointer.startPullN = 0;
         lab15Pointer.didMove = false;
         lab15Pointer.meterRecorded = false;
-        await dragDemoCursorPath([start, end], 920, (pt)=>applyLab15MeterAtStagePoint(pt.x, pt.y));
+        await dragDemoCursorPath([start, end], 920, (pt)=>applyLab15MeterAtStagePoint(pt.x, pt.y), wait);
         if(!lab15Pointer.meterRecorded) performAction('pullTest', false);
         const finalPullN = state.apparatus.pullN;
         const separated = state.apparatus.separated;
@@ -4221,7 +4226,7 @@
         }
 
         await doStep(3, LAB_ID === 15 ? '步骤4：结论小测' : '步骤4：分析结论', 1200);
-        if(LAB_ID !== 15) await clickElementWithCursor(analyzeBtn, 760);
+        if(LAB_ID !== 15) await clickElementWithCursor(analyzeBtn, 760, wait);
         analyzeConclusion(false);
         recalcProgress();
         if(state.awaitingQuiz) answerConclusionQuiz('attraction', true);
@@ -5787,6 +5792,86 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
   else mount();
   window.addEventListener('pageshow', event => { if (event.persisted) mount(); });
+})();
+</script>
+<script data-demo-lifecycle="p02">
+/* P0-2: arbitrate user actions and cancel demos when their experiment leaves view. */
+(() => {
+  'use strict';
+  const channel = 'xingnian-experiment-activity';
+  let parentActive = true;
+  let lastSequence = 0;
+  let cancelling = false;
+  let feedbackTimer = 0;
+  const parentOrigins = new Set(['https://lab.xingnian.net.cn', 'https://albert-huo.github.io']);
+  if (['http:', 'https:'].includes(location.protocol)) parentOrigins.add(location.origin);
+  if (document.referrer) {
+    try {
+      const referrer = new URL(document.referrer);
+      const loopback = new Set(['localhost', '127.0.0.1', '[::1]']);
+      if (['http:', 'https:'].includes(referrer.protocol) && ['http:', 'https:'].includes(location.protocol) && loopback.has(referrer.hostname) && loopback.has(location.hostname)) {
+        parentOrigins.add(referrer.origin);
+      }
+    }
+    catch (error) { console.warn('[demo-lifecycle] invalid parent referrer', error); }
+  }
+  function stateOf() {
+    if (window.state && typeof window.state === 'object') return window.state;
+    if (window.labState && typeof window.labState === 'object') return window.labState;
+    return typeof state === 'object' ? state : null;
+  }
+  function playing() { return Boolean(stateOf()?.autoPlaying); }
+  function active() { return parentActive && !document.hidden; }
+  function cancelDemo() {
+    if (!playing()) { window.labSoundBus?.hush(); return; }
+    const button = document.getElementById('autoDemoBtn');
+    if (!button) { console.error('[demo-lifecycle] missing exit control'); return; }
+    cancelling = true;
+    try { button.click(); }
+    finally { cancelling = false; window.labSoundBus?.hush(); }
+  }
+  function explainLock() {
+    const text = '演示中，请先退出演示再手动操作。';
+    if (typeof window.showToast === 'function') { window.showToast(text); return; }
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    clearTimeout(feedbackTimer);
+    toast.textContent = text;
+    toast.classList.add('show');
+    feedbackTimer = setTimeout(() => {
+      if (toast.textContent === text) toast.classList.remove('show');
+    }, 1400);
+  }
+  function permitted(element) {
+    return Boolean(element.closest('#resetBtn,#autoDemoBtn,#freeBtn,#themeToggle,#audioToggle,#hintLamp,#hintLampBtn,#helpBtn,.hint-lamp,.hint-lamp-wrap,#hintPop,#hintPopup,.hint-pop,#okBtn,#doneOk,#closeDoneBtn,#experimentTab,#dataTab,#mobileControlTab,#mobileDataTab,#controlToggleBtn,#dataToggleBtn,#controlSheetCloseBtn,#dataSheetCloseBtn,.drawer-header,.dock-head,.dockHead,.drawer-head,[data-sheet],.mobile-tab,.tab-btn,.sheet-close,.mobile-sheet-close'));
+  }
+  function guard(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    if (!active() && !cancelling && target.closest('#autoDemoBtn')) {
+      event.preventDefault(); event.stopImmediatePropagation(); return;
+    }
+    if (!event.isTrusted || !playing() || permitted(target)) return;
+    if (event.type === 'keydown' && ['Tab', 'Shift', 'Escape'].includes(event.key)) return;
+    const core = target.closest('input,select,textarea,button,[role="button"]') ||
+      (event.type === 'pointerdown' && target.closest('#stage') &&
+       !target.closest('#controlDock,#controlDrawer,#dataDock,#dataDrawer'));
+    if (!core) return;
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (event.type === 'click') explainLock();
+  }
+  for (const type of ['click', 'pointerdown', 'keydown', 'beforeinput']) window.addEventListener(type, guard, true);
+  window.addEventListener('message', event => {
+    const data = event.data;
+    if (window.parent === window || event.source !== window.parent || !parentOrigins.has(event.origin) ||
+        !data || data.channel !== channel || typeof data.active !== 'boolean' ||
+        !Number.isSafeInteger(data.sequence) || data.sequence <= lastSequence) return;
+    lastSequence = data.sequence;
+    parentActive = data.active;
+    if (!active()) cancelDemo();
+  });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancelDemo(); });
+  window.addEventListener('pagehide', () => { clearTimeout(feedbackTimer); cancelDemo(); });
 })();
 </script>
 </body>
