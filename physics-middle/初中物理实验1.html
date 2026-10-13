@@ -2790,8 +2790,8 @@
     const steps = [
       { text: '先确认温度计的<b>量程、分度值</b>和<b>平视液柱顶端</b>的读数规则，再把玻璃泡浸入液体。', hint: '提示：先点击“确认读数规范”，再将玻璃泡完全浸入且不碰杯壁、杯底。' },
       { text: '观察读数变化；示数<b>接近稳定</b>后，点击<b>确认观察</b>。', hint: '提示：示数稳定后“确认观察”才会亮起，点击后进入记录。' },
-      { text: '分别测<b>冷水/室温/热水</b>，每测一次点击<b>记录一次</b>。', hint: '提示：至少记录 3 次（每杯一次）。' },
-      { text: '挑战：让至少 <b>2 次</b>记录的误差 ≤ <b>0.8℃</b>，即可通关！', hint: '提示：读数没稳定就记录，误差通常会更大。' }
+      { text: '分别测<b>冷水/室温/热水</b>，每测一次点击<b>记录一次</b>。', hint: '提示：每杯都要等待示数稳定后记录，重复同一杯不能代替其他杯。' },
+      { text: '三杯稳定记录齐全后，让至少 <b>2 次</b>记录的误差 ≤ <b>0.8℃</b>，即可通关！', hint: '提示：需要补测时，请重新浸入对应水杯，待示数稳定后记录。' }
     ];
 
     const taskStep = $('#taskStep');
@@ -2830,6 +2830,7 @@
       taskStep.textContent = `关卡 ${i + 1} / ${steps.length}`;
       taskText.innerHTML = steps[i].text;
       taskHint.textContent = steps[i].hint;
+      if (i === 2) refreshTeachingHint();
       dots.forEach((d, idx) => {
         const isDone = idx < i || (state.completed && idx === last);
         const isActive = idx === i && !state.completed;
@@ -3448,14 +3449,42 @@
         )
         .join('');
     }
+    const requiredWaterKinds = ['cold', 'room', 'hot'];
+    const waterKindNames = { cold: '冷水杯', room: '室温杯', hot: '热水杯' };
+    function isMeasurementStable() {
+      return state.placementStatus === 'valid' && !!state.immersedKind &&
+        state.step2ObserveSec >= STABILITY_OBSERVE_SEC && state.stableCounter > 0.9 &&
+        Math.abs(state.Tread - state.Ttarget) < 0.35;
+    }
+    function teachingRecords() {
+      return state.records.filter(r => r.guided && r.stable && r.valid &&
+        requiredWaterKinds.includes(r.kind) && Number.isFinite(r.read) && Number.isFinite(r.target));
+    }
+    function missingWaterKinds() {
+      const measured = new Set(teachingRecords().map(r => r.kind));
+      return requiredWaterKinds.filter(kind => !measured.has(kind));
+    }
+    function hasRequiredTeachingRecords() {
+      return missingWaterKinds().length === 0;
+    }
+    function refreshTeachingHint() {
+      if (state.freeMode || state.currentTask !== 2) return;
+      const missing = missingWaterKinds();
+      taskHint.textContent = missing.length ?
+        `提示：还需稳定测量并记录${missing.map(kind => waterKindNames[kind]).join('、')}。重复同一杯不能代替其他杯。` : steps[2].hint;
+    }
     function updateStats() {
       const good = state.records.filter((r) => Math.abs(r.read - r.target) <= 0.8).length;
       statN.textContent = `${state.records.length}`;
       statGood.textContent = `${good}`;
-      if (!state.freeMode && state.currentTask === 2 && state.records.length >= 3) {
+      refreshTeachingHint();
+      const requiredRecords = hasRequiredTeachingRecords();
+      const goodTeachingRecords = teachingRecords().filter(r => Math.abs(r.read - r.target) <= 0.8).length;
+      if (!state.freeMode && state.currentTask === 2 && requiredRecords) {
         passCurrentStep();
       }
-      if (!state.completed && state.records.length >= 3 && good >= 2) {
+      if (!state.freeMode && !state.completed && state.currentTask === 3 &&
+          state.readingRuleConfirmed && requiredRecords && goodTeachingRecords >= 2) {
         state.completed = true;
         if (state.autoPlaying) state.demoCompleted = true;
         state.warningStep = -1;
@@ -3472,7 +3501,8 @@
       }
     }
     function addRecord() {
-      const rec = { obj: currentObjName(), read: state.Tread, target: currentTarget() };
+      const rec = { obj: currentObjName(), kind: state.immersedKind, read: state.Tread, target: currentTarget(),
+        guided: !state.freeMode, stable: isMeasurementStable(), valid: state.placementStatus === 'valid' };
       state.records.push(rec);
       if (state.dataCollapsed) state.unseenRecordCount += 1;
       refreshDataNotice();
@@ -3495,14 +3525,16 @@
         markStepWarning('请先完成当前步骤，再进行数据记录。');
         return false;
       }
+      if (!state.freeMode && !isMeasurementStable()) {
+        if (!fromAuto) markStepWarning('请保持玻璃泡正确浸入当前水杯，待示数稳定后再记录。');
+        return false;
+      }
       addRecord();
       if (!fromAuto) showToast(state.currentTask === 2 ? '记录成功，再测另一杯做比较。' : '记录成功。');
       return true;
     }
     function hasRequiredAutoRecords() {
-      if (state.records.length < 3) return false;
-      const objs = new Set(state.records.map((r) => r.obj));
-      return objs.has('冷水杯') && objs.has('室温杯') && objs.has('热水杯');
+      return hasRequiredTeachingRecords();
     }
 
     recordBtn.addEventListener('click', () => {
@@ -3525,7 +3557,7 @@
     function confirmObservation(fromAuto = false) {
       if (state.freeMode || state.currentTask !== 1) return false;
       detectImmersion(false);
-      if (!state.immersedKind || !state.observationReady) {
+      if (!state.immersedKind || !state.observationReady || !isMeasurementStable()) {
         if (!fromAuto) markStepWarning('请继续观察，待示数稳定后再确认。');
         return false;
       }
@@ -3578,7 +3610,7 @@
           state.pillsTick = 0;
           renderPills();
         }
-        if (!state.freeMode && state.currentTask === 1 && state.immersedKind) {
+        if (!state.freeMode && state.currentTask >= 1 && state.immersedKind) {
           state.step2ObserveSec += dt;
           if (Math.abs(state.Ttarget - state.Tread) < 0.35) {
             state.stableCounter += dt;
@@ -3586,7 +3618,7 @@
               state.stableCounter > 0.9 &&
               state.step2ObserveSec >= STABILITY_OBSERVE_SEC
             ) {
-              if (!state.observationReady) {
+              if (state.currentTask === 1 && !state.observationReady) {
                 state.observationReady = true;
                 syncObservationAction();
                 setStatusTag('示数已稳定，请确认观察');
@@ -3610,7 +3642,10 @@
     function resetAll(opts = {}) {
       const { preserveAuto = false, showResetToast = true } = opts;
       clearTrackedTimers();
-      if (!preserveAuto) state.autoPlaying = false;
+      if (!preserveAuto) {
+        state.demoRunId += 1;
+        state.autoPlaying = false;
+      }
       state.completed = false; state.demoCompleted = false;
       state.warningStep = -1;
       state.stableCounter = 0;
@@ -3793,7 +3828,7 @@
     async function waitUntilStable(runId, timeoutMs = 9000) {
       let elapsed = 0;
       while (elapsed < timeoutMs) {
-        if (Math.abs(state.Ttarget - state.Tread) < 0.35) return;
+        if (isMeasurementStable()) return;
         await waitAuto(180, runId);
         elapsed += 180;
       }
@@ -3846,7 +3881,6 @@
         await waitUntilStable(runId, 11000);
         detectImmersion();
         if (state.placementStatus !== 'valid' || state.immersedKind !== kind) continue;
-        state.Tread = targetTempByKind(kind);
         let ok = false;
         await demoClickPanelButton(recordBtn, runId, () => { ok = tryRecord(true); });
         if (ok) return true;
@@ -3907,9 +3941,12 @@
         }
         await waitAuto(420, runId);
         let observationConfirmed = false;
-        await demoClickPanelButton(confirmObservationBtn, runId, () => {
-          observationConfirmed = confirmObservation(true);
-        });
+        for (let attempt = 0; attempt < 3 && !observationConfirmed; attempt++) {
+          if (!(await waitForObservationReady(runId))) break;
+          await demoClickPanelButton(confirmObservationBtn, runId, () => {
+            observationConfirmed = confirmObservation(true);
+          });
+        }
         if (!observationConfirmed || state.currentTask !== 2) {
           throw new Error('AUTO_OBSERVATION_CONFIRM_FAILED');
         }
@@ -3925,10 +3962,9 @@
           }
           await waitAuto(900, runId);
         }
-        if (!hasRequiredAutoRecords()) throw new Error('AUTO_RECORD_INCOMPLETE');
+        if (!hasRequiredAutoRecords() || !state.completed) throw new Error('AUTO_RECORD_INCOMPLETE');
         if (state.currentTask === 2) passCurrentStep();
         await waitAuto(850, runId);
-        doneMask.style.display = 'flex';
         setStatusTag('演示完成');
       } catch (error) {
         if (String(error && error.message) !== 'AUTO_DEMO_CANCELLED') {
@@ -4660,6 +4696,7 @@
       labState.autoPaused = false;
     } else {
       labState.freeMode = false;
+      restoreWorld(freeEntrySnapshot, false);
       freeEntrySnapshot = null;
     }
     try {
