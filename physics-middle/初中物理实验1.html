@@ -1561,10 +1561,6 @@
       grid-column:2 !important;
       grid-row:1 !important;
     }
-    #stage #controlDock.mobile-sheet #controlBody > .sheet-close,
-    #stage #dataDock.mobile-sheet #dataBody > .sheet-close{
-      display:none !important;
-    }
     #stage #controlDock.mobile-sheet #controlBody,
     #stage #controlDock.mobile-sheet #panelBody,
     #stage #controlDock.mobile-sheet .panelBody,
@@ -2190,6 +2186,13 @@
     }
   </style>
 <style id="codex-mobile-task-card-compact-v1">
+  .task-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:6px;}
+  .task-action{min-height:44px;padding:8px 12px;border:1px solid rgba(61,220,151,.45);border-radius:8px;background:#2e7d32;color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;}
+  .task-action:disabled{opacity:.6;cursor:wait;}
+  .task-action:focus-visible{outline:2px solid #9bd3ff;outline-offset:2px;}
+  .task-action-status{font-size:12px;line-height:1.4;color:#67dfa9;}
+  .task-action[hidden],.task-action-status[hidden]{display:none;}
+  :root[data-theme="light"] .task-action-status{color:#17633b;}
 @media (max-width:720px){
   body #app#app .task-card{grid-template-columns:minmax(0,1fr) auto!important;gap:4px 8px!important;padding:8px 10px!important;border-radius:10px!important;align-items:center!important}
   body #app#app .task-card .task-step{position:absolute!important;width:1px!important;min-width:1px!important;max-width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
@@ -2462,6 +2465,10 @@
     <div class="task-text">
       <div id="taskText">把<b>温度计</b>拖到任意一个烧杯里，让“玻璃泡”浸入液体。</div>
       <div class="task-hint" id="taskHint">提示：不要让温度计碰到杯壁/杯底；看示数先等它稳定。</div>
+      <div class="task-actions">
+        <button class="task-action" id="taskActionBtn" type="button">确认读数规范</button>
+        <span class="task-action-status" id="taskActionStatus" role="status" hidden></span>
+      </div>
     </div>
     <div class="progress-dots">
       <span class="dot active" id="dot1"></span>
@@ -2790,15 +2797,32 @@
     const taskStep = $('#taskStep');
     const taskText = $('#taskText');
     const taskHint = $('#taskHint');
+    const taskActionBtn = $('#taskActionBtn');
+    const taskActionStatus = $('#taskActionStatus');
     const confirmObservationBtn = $('#confirmObservationBtn');
     const dots = [$('#dot1'), $('#dot2'), $('#dot3'), $('#dot4')];
 
+    function syncTaskAction() {
+      const firstConfirmed = state.currentTask === 0 && state.readingRuleConfirmed;
+      const waiting = state.currentTask === 1 && !state.observationReady;
+      const label = state.currentTask === 0 ? '确认读数规范' : state.currentTask === 1 ? (waiting ? '等待示数稳定' : '确认观察') : '记录一次';
+      taskActionBtn.hidden = state.freeMode || state.autoPlaying || state.completed || firstConfirmed;
+      taskActionBtn.disabled = state.autoPlaying || waiting;
+      if (taskActionBtn.textContent !== label) taskActionBtn.textContent = label;
+      taskActionStatus.hidden = !firstConfirmed || state.freeMode || state.autoPlaying || state.completed;
+      const status = firstConfirmed ? '读数规范已确认，请将玻璃泡浸入液体。' : '';
+      if (taskActionStatus.textContent !== status) taskActionStatus.textContent = status;
+      const ruleLabel = state.readingRuleConfirmed ? '读数规范已确认' : '确认读数规范';
+      if (readingRuleBtn.textContent !== ruleLabel) readingRuleBtn.textContent = ruleLabel;
+      readingRuleBtn.classList.toggle('primary', state.readingRuleConfirmed);
+    }
     function syncObservationAction() {
       const visible = !state.freeMode && !state.completed && state.currentTask === 1;
       confirmObservationBtn.hidden = !visible;
       confirmObservationBtn.textContent = state.observationReady ? '确认观察' : '等待示数稳定';
       confirmObservationBtn.disabled = state.autoPlaying || !state.observationReady;
       confirmObservationBtn.classList.toggle('primary', state.observationReady);
+      syncTaskAction();
     }
     function renderStepUI() {
       const i = state.currentTask;
@@ -3401,6 +3425,7 @@
       return state.immersedKind ? targetTempByKind(state.immersedKind) : 25;
     }
     function renderPills() {
+      syncTaskAction();
       const target = currentTarget();
       const err = Math.abs(state.Tread - target);
       const stable = state.immersedKind ? (Math.abs(state.Tread - target) < 0.35 ? '接近稳定' : '变化中') : '未测量';
@@ -3491,6 +3516,11 @@
       renderPills();
       if (!state.freeMode && state.currentTask === 0 && state.immersedKind) passCurrentStep();
       showToast('已确认：已检查量程和分度值，读数时视线与液柱顶端齐平。');
+    });
+    taskActionBtn.addEventListener('click', () => {
+      if (state.autoPlaying || state.freeMode || state.completed) return;
+      const action = state.currentTask === 0 ? readingRuleBtn : state.currentTask === 1 ? confirmObservationBtn : recordBtn;
+      if (!action.disabled) action.click();
     });
     function confirmObservation(fromAuto = false) {
       if (state.freeMode || state.currentTask !== 1) return false;
@@ -3586,6 +3616,7 @@
       state.stableCounter = 0;
       state.step2ObserveSec = 0;
       state.observationReady = false;
+      state.readingRuleConfirmed = false;
       state.records = [];
       state.unseenRecordCount = 0;
       state.immersedKind = null;
