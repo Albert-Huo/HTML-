@@ -1277,7 +1277,8 @@ body #app .toolbar button:disabled{
       </svg>
     </div>
     <div class="demoCursorPulse" id="demoCursorPulse" aria-hidden="true"></div>
-  </div>
+  <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换"><button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button><button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button></div>
+    </div>
 
   <div class="toolbar">
     <button class="sub" id="resetBtn">重置关卡</button>
@@ -7147,6 +7148,101 @@ body #app .toolbar button:disabled{
   else mount();
   window.addEventListener('pageshow', event => { if (event.persisted) mount(); });
 })();
+</script>
+<script data-task-entry="p01">
+/* P0-1: keep task actions discoverable while reusing the original gated controls. */
+(() => {
+  const firstActions = [{"id": "", "label": "打开同一侧孔"}, {"id": "analyzeBtn", "label": "分析结论"}];
+  function mountTaskEntry() {
+    const card = document.querySelector('#taskCard,.task-card');
+    const panel = document.querySelector('#controlDock,#controlDrawer');
+    if (!card || !panel || document.getElementById('taskEntryActions')) return;
+    const style = document.createElement('style');
+    style.textContent = '#taskEntryActions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center}#taskEntryActions[hidden]{display:none}#taskEntryActions button{min-height:44px;max-width:100%;padding:8px 12px;border:1px solid rgba(100,220,210,.5);border-radius:9px;background:#21613f;color:#f5fff9;font:inherit;font-size:12px;cursor:pointer}#taskEntryActions button:disabled{opacity:.55;cursor:default}#taskEntryActions .entry-locate{background:transparent;color:inherit}#taskEntryStatus{flex-basis:100%;font-size:12px;line-height:1.45;opacity:.85}#taskEntryStatus:empty{display:none}.task-entry-highlight{outline:2px solid #64dcd2;outline-offset:2px}';
+    document.head.appendChild(style);
+    const row = document.createElement('div');
+    row.id = 'taskEntryActions'; row.setAttribute('role', 'group'); row.setAttribute('aria-label', '当前任务操作');
+    const status = document.createElement('div');
+    status.id = 'taskEntryStatus'; status.setAttribute('role', 'status');
+    const proxies = firstActions.map(({id,label}) => {
+      const proxy = document.createElement('button');
+      proxy.type = 'button'; proxy.dataset.entryTarget = id || label;
+      const source = () => id ? document.getElementById(id) : [...panel.querySelectorAll('button')].find(button => button.textContent.trim() === label);
+      proxy.addEventListener('click', () => {
+        const button = source();
+        if (button && !button.disabled && !button.hidden) button.click();
+        sync();
+      });
+      row.appendChild(proxy); return {proxy,source};
+    });
+    const locate = document.createElement('button');
+    locate.type = 'button'; locate.className = 'entry-locate'; locate.id = 'taskEntryLocate';
+    locate.textContent = '打开实验面板'; locate.setAttribute('aria-controls', panel.id);
+    let highlightTimer = 0;
+    const shown = element => {
+      if (!element) return false;
+      const rect = element.getBoundingClientRect(), css = getComputedStyle(element);
+      return rect.width > 0 && rect.height > 1 && css.display !== 'none' && css.visibility !== 'hidden';
+    };
+    locate.addEventListener('click', () => {
+      const body = panel.querySelector('[data-codex-panel-body],.drawer-body,.dock-body,#controlBody');
+      if (!shown(body)) {
+        const mobile = matchMedia('(max-width:720px)').matches;
+        const toggle = mobile
+          ? document.querySelector('#experimentTab,#mobileControlTab,[data-sheet="controls"]')
+          : document.querySelector('#controlToggleBtn,[data-drawer="controlDrawer"]');
+        toggle?.click();
+      }
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (!shown(body)) { status.textContent = '请点击实验面板标签展开操作区。'; return; }
+        panel.scrollIntoView({block:'center',behavior:'auto'});
+        panel.tabIndex = -1; panel.focus({preventScroll:true});
+        panel.classList.add('task-entry-highlight');
+        clearTimeout(highlightTimer);
+        highlightTimer = setTimeout(() => panel.classList.remove('task-entry-highlight'), 1200);
+        status.textContent = '实验面板已定位；完成设置后可收起，继续操作器材。';
+      }));
+    });
+    row.append(locate,status); card.appendChild(row);
+    const taskStep = document.querySelector('#taskStep,#stepNo');
+    const taskText = document.querySelector('#taskText,#taskTitle');
+    const taskHint = document.querySelector('#taskHint');
+    const mode = document.querySelector('#modeTag,#modeChip');
+    let scheduled = false;
+    function sync() {
+      scheduled = false;
+      const modeText = mode?.textContent || '';
+      row.hidden = /自由|演示|已通关/.test(modeText);
+      const step = (taskStep?.textContent || '').match(/(?:关卡|步骤)\s*(\d+)\s*\/\s*(\d+)/);
+      const first = !!step && Number(step[1]) === 1;
+      const analysis = !!step && Number(step[1]) === Number(step[2]);
+      let waiting = false;
+      for (const {proxy,source} of proxies) {
+        const button = source();
+        const isAnalysis = /分析/.test(button?.textContent || '');
+        proxy.hidden = !button || button.hidden || getComputedStyle(button).display === 'none' || (isAnalysis ? !analysis : !first && analysis && !/确认/.test(button.textContent));
+        if (!button) continue;
+        proxy.disabled = button.disabled;
+        waiting ||= !proxy.hidden && proxy.disabled;
+        const label = button.textContent.trim().replace(/\s+/g, ' ');
+        if (proxy.textContent !== label) proxy.textContent = label;
+      }
+      const nextStatus = waiting ? '先按上方任务操作器材，再确认或记录。' : '';
+      if (status.textContent !== nextStatus) status.textContent = nextStatus;
+    }
+    const observer = new MutationObserver(() => {
+      if (!scheduled) { scheduled = true; queueMicrotask(sync); }
+    });
+    for (const element of [taskStep,taskText,taskHint,mode,...proxies.map(x => x.source())].filter(Boolean))
+      observer.observe(element,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden','style']});
+    sync();
+    window.addEventListener('pagehide', () => { observer.disconnect(); clearTimeout(highlightTimer); panel.classList.remove('task-entry-highlight'); row.remove(); style.remove(); }, {once:true});
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',mountTaskEntry,{once:true});
+  else mountTaskEntry();
+  window.addEventListener('pageshow', event => { if (event.persisted) mountTaskEntry(); });
+})();
+
 </script>
 </body>
 </html>
