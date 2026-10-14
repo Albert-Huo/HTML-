@@ -5949,6 +5949,64 @@ body #app .toolbar button:disabled{
     }
 
     init();
+    /* classroom-canvas-pan:start */
+    {
+      const panCanvas = scene;
+      const blankAt = (p) => { const g=getLab24Layout(),ap=state.apparatus,v=getLab24VisibleScene(); if(state.freeMode&&(rectContainsPoint(g.freeBallChip,p.x,p.y)||rectContainsPoint(g.freeCartChip,p.x,p.y)))return false; if(v==='ball')return !(Math.hypot(p.x-g.springHandle.x,p.y-(g.springHandle.y+ap.springCompression))<=g.springHandle.r || ap.ballState!=='ready'&&rectContainsPoint(g.resetBallChip,p.x,p.y)); if(v==='cart')return !(rectContainsPoint(g.brakeChip,p.x,p.y)||rectContainsPoint(g.startChip,p.x,p.y)); return false; };
+      const pointAt = e => scenePointFromEvent(e);
+      const hasApparatusOwner = () => lab24Pointer.id !== null;
+      const gestureEpoch = () => JSON.stringify([typeof codexModeController === "undefined" ? state.autoRunId : codexModeController?.currentRunId(),state.freeMode,state.autoPlaying,state.currentTask,state.task,state.scenarioIndex,state.stepIndex,panCanvas.width,panCanvas.height,panCanvas.clientWidth,panCanvas.clientHeight,state.drawTransform?.scale,state.drawTransform?.ox,state.drawTransform?.oy]);
+      let contact = null;
+      const stop = e => { e.preventDefault(); e.stopImmediatePropagation(); };
+      const ownsTouch = e => e.pointerType === "touch";
+      panCanvas.addEventListener("pointerdown", e => {
+        if (!ownsTouch(e) || e.target !== panCanvas) return;
+        if (e.isPrimary === false || contact || hasApparatusOwner()) { stop(e); return; }
+        const point = pointAt(e);
+        if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || !panCanvas.clientWidth || !panCanvas.clientHeight) return;
+        contact = { id:e.pointerId, point, x:e.clientX, y:e.clientY, top:window.scrollY, blank:blankAt(point), epoch:gestureEpoch(), max:0, panning:false, invalid:false, selection:state.selectedTerminal };
+        if (!contact.blank) return; // 器材命中保留原处理，整次接触不会转为滚页。
+        stop(e);
+        try { panCanvas.setPointerCapture(e.pointerId); }
+        catch (error) { console.warn("空白画布滚页无法捕获指针", error); }
+      }, true);
+      panCanvas.addEventListener("pointermove", e => {
+        if (!ownsTouch(e)) return;
+        if (e.isPrimary === false || contact && e.pointerId !== contact.id) { stop(e); return; }
+        if (!contact || e.pointerId !== contact.id || !contact.blank) return;
+        stop(e);
+        const dy = contact.y - e.clientY;
+        contact.max = Math.max(contact.max, Math.hypot(e.clientX-contact.x,dy));
+        contact.invalid ||= contact.epoch !== gestureEpoch();
+        if (!contact.invalid && (contact.panning || Math.abs(dy) > 6)) {
+          contact.panning = true;
+          window.scrollTo(0,contact.top+dy);
+        }
+      }, true);
+      const end = e => {
+        if (!ownsTouch(e)) return;
+        if (e.isPrimary === false || contact && e.pointerId !== contact.id) { stop(e); return; }
+        if (!contact || e.pointerId !== contact.id) return;
+        if (!contact.blank) {
+          if (e.type !== "lostpointercapture") contact = null;
+          return;
+        }
+        stop(e);
+        const ended = contact;
+        contact = null;
+        ended.max = Math.max(ended.max,Math.hypot(e.clientX-ended.x,e.clientY-ended.y));
+        if (e.type === "pointerup" && !ended.panning && ended.max <= 6 && !ended.invalid && ended.epoch === gestureEpoch() && blankAt(ended.point)) {
+          // 空白轻点不触发器材操作。
+        }
+        if (panCanvas.hasPointerCapture(e.pointerId)) panCanvas.releasePointerCapture(e.pointerId);
+      };
+      ["pointerup","pointercancel","lostpointercapture"].forEach(type => panCanvas.addEventListener(type,end,true));
+      ["pointerup","pointercancel"].forEach(type => window.addEventListener(type,e => {
+        if (ownsTouch(e) && contact && e.pointerId === contact.id && e.target !== panCanvas) contact = null;
+      },true));
+    }
+    /* classroom-canvas-pan:end */
+
     /* codex-physics-mode-adapter:start */
     {
       let codexModePauseStarted = 0;

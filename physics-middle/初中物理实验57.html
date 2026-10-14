@@ -2286,20 +2286,21 @@ body #app .toolbar button:disabled{
     }
 
     function pointerDown(event) {
-      if (state.autoPlaying || state.completed) return;
+      if (state.autoPlaying || state.completed || state.drag || event.isPrimary === false) return;
       const point = pointerPoint(event);
       const g = geometry();
       if (hitWeight(point, g) && !state.pullPx) {
-        state.drag = { type: "weight", previous: state.weightLocation };
+        state.drag = { type: "weight", previous: state.weightLocation, pointerId: event.pointerId };
         state.dragWeight = point;
         canvas.setPointerCapture(event.pointerId);
         draw();
         return;
       }
       scaleDrag(event, "start");
+      if (state.drag) state.drag.pointerId = event.pointerId;
     }
     function pointerMove(event) {
-      if (!state.drag) return;
+      if (!state.drag || state.drag.pointerId !== event.pointerId) return;
       if (state.drag.type === "weight") {
         state.dragWeight = pointerPoint(event);
         draw();
@@ -2308,7 +2309,7 @@ body #app .toolbar button:disabled{
       scaleDrag(event, "move");
     }
     function pointerUp(event) {
-      if (!state.drag) return;
+      if (!state.drag || state.drag.pointerId !== event.pointerId) return;
       if (state.drag.type === "weight") {
         const point = pointerPoint(event);
         const previous = state.drag.previous;
@@ -2334,6 +2335,16 @@ body #app .toolbar button:disabled{
         return;
       }
       scaleDrag(event, "end");
+    }
+
+    function pointerCancel(event) {
+      if (!state.drag || state.drag.pointerId !== event.pointerId) return;
+      state.drag = null;
+      state.dragWeight = null;
+      state.scaleGhost = null;
+      draw();
+      if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId);
+      event.preventDefault();
     }
 
     function changeFreeLoad(delta) {
@@ -2533,7 +2544,8 @@ body #app .toolbar button:disabled{
       canvas.addEventListener("pointerdown", pointerDown);
       canvas.addEventListener("pointermove", pointerMove);
       canvas.addEventListener("pointerup", pointerUp);
-      canvas.addEventListener("pointercancel", pointerUp);
+      canvas.addEventListener("pointercancel", pointerCancel);
+      canvas.addEventListener("lostpointercapture", pointerCancel);
       hintLamp.addEventListener("click", () => hintPop.classList.toggle("open"));
       controlToggleBtn.addEventListener("click", () => setDrawerCollapsed(controlDock, !controlDock.classList.contains("collapsed")));
       dataToggleBtn.addEventListener("click", () => setDrawerCollapsed(dataDock, !dataDock.classList.contains("collapsed")));
@@ -2569,6 +2581,64 @@ body #app .toolbar button:disabled{
       });
     }
     init();
+    /* classroom-canvas-pan:start */
+    {
+      const panCanvas = canvas;
+      const blankAt = (p) => { const g=geometry(); return !hitWeight(p,g)&&!hitScale(p,g); };
+      const pointAt = e => pointerPoint(e);
+      const hasApparatusOwner = () => !!state.drag;
+      const gestureEpoch = () => JSON.stringify([typeof codexModeController === "undefined" ? state.autoRunId : codexModeController?.currentRunId(),state.freeMode,state.autoPlaying,state.currentTask,state.task,state.scenarioIndex,state.stepIndex,panCanvas.width,panCanvas.height,panCanvas.clientWidth,panCanvas.clientHeight,state.drawTransform?.scale,state.drawTransform?.ox,state.drawTransform?.oy]);
+      let contact = null;
+      const stop = e => { e.preventDefault(); e.stopImmediatePropagation(); };
+      const ownsTouch = e => e.pointerType === "touch";
+      panCanvas.addEventListener("pointerdown", e => {
+        if (!ownsTouch(e) || e.target !== panCanvas) return;
+        if (e.isPrimary === false || contact || hasApparatusOwner()) { stop(e); return; }
+        const point = pointAt(e);
+        if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || !panCanvas.clientWidth || !panCanvas.clientHeight) return;
+        contact = { id:e.pointerId, point, x:e.clientX, y:e.clientY, top:window.scrollY, blank:blankAt(point), epoch:gestureEpoch(), max:0, panning:false, invalid:false, selection:state.selectedTerminal };
+        if (!contact.blank) return; // 器材命中保留原处理，整次接触不会转为滚页。
+        stop(e);
+        try { panCanvas.setPointerCapture(e.pointerId); }
+        catch (error) { console.warn("空白画布滚页无法捕获指针", error); }
+      }, true);
+      panCanvas.addEventListener("pointermove", e => {
+        if (!ownsTouch(e)) return;
+        if (e.isPrimary === false || contact && e.pointerId !== contact.id) { stop(e); return; }
+        if (!contact || e.pointerId !== contact.id || !contact.blank) return;
+        stop(e);
+        const dy = contact.y - e.clientY;
+        contact.max = Math.max(contact.max, Math.hypot(e.clientX-contact.x,dy));
+        contact.invalid ||= contact.epoch !== gestureEpoch();
+        if (!contact.invalid && (contact.panning || Math.abs(dy) > 6)) {
+          contact.panning = true;
+          window.scrollTo(0,contact.top+dy);
+        }
+      }, true);
+      const end = e => {
+        if (!ownsTouch(e)) return;
+        if (e.isPrimary === false || contact && e.pointerId !== contact.id) { stop(e); return; }
+        if (!contact || e.pointerId !== contact.id) return;
+        if (!contact.blank) {
+          if (e.type !== "lostpointercapture") contact = null;
+          return;
+        }
+        stop(e);
+        const ended = contact;
+        contact = null;
+        ended.max = Math.max(ended.max,Math.hypot(e.clientX-ended.x,e.clientY-ended.y));
+        if (e.type === "pointerup" && !ended.panning && ended.max <= 6 && !ended.invalid && ended.epoch === gestureEpoch() && blankAt(ended.point)) {
+          // 空白轻点不触发器材操作。
+        }
+        if (panCanvas.hasPointerCapture(e.pointerId)) panCanvas.releasePointerCapture(e.pointerId);
+      };
+      ["pointerup","pointercancel","lostpointercapture"].forEach(type => panCanvas.addEventListener(type,end,true));
+      ["pointerup","pointercancel"].forEach(type => window.addEventListener(type,e => {
+        if (ownsTouch(e) && contact && e.pointerId === contact.id && e.target !== panCanvas) contact = null;
+      },true));
+    }
+    /* classroom-canvas-pan:end */
+
     /* codex-physics-mode-adapter:start */
     {
       let codexModePauseStarted = 0;

@@ -999,21 +999,28 @@ body #app .toolbar button:disabled{
       if(target!==state.meterPosition){state.meterPosition=target;state.meterMoved=true;state.layout=geometry();updateStatus("电流表已移到位置"+target);draw()}
     }
     function onPointerDown(event){
-      if(state.autoPlaying)return;const point=canvasPoint(event),g=state.layout;
-      for(const name of["red","blue"]){if(distance(point,wireEnd(name))<=Math.max(24,28*g.s)){if(state.switchClosed){warn("换接导线前必须先断开开关。");return}state.drag={type:"wire",name};state.wires[name].terminal=null;state.wires[name].preview=point;canvas.setPointerCapture(event.pointerId);draw();event.preventDefault();return}}
+      if(state.autoPlaying||state.drag||event.isPrimary===false)return;const point=canvasPoint(event),g=state.layout;
+      for(const name of["red","blue"]){if(distance(point,wireEnd(name))<=Math.max(24,28*g.s)){if(state.switchClosed){warn("换接导线前必须先断开开关。");return}state.drag={type:"wire",name,pointerId:event.pointerId};state.wires[name].terminal=null;state.wires[name].preview=point;canvas.setPointerCapture(event.pointerId);draw();event.preventDefault();return}}
       if(pointIn(point,g.switchHit)){toggleSwitch();event.preventDefault();return}
-      if(pointIn(point,g.meterBody)){if(state.switchClosed){warn("移动电流表前必须先断开开关。");return}state.drag={type:"meter"};canvas.setPointerCapture(event.pointerId);event.preventDefault();return}
+      if(pointIn(point,g.meterBody)){if(state.switchClosed){warn("移动电流表前必须先断开开关。");return}state.drag={type:"meter",pointerId:event.pointerId};canvas.setPointerCapture(event.pointerId);event.preventDefault();return}
       showToast("拖动线头接线、点击开关，或断电后拖动电流表。")
     }
     function onPointerMove(event){
-      if(!state.drag)return;const point=canvasPoint(event);
+      if(!state.drag||state.drag.pointerId!==event.pointerId)return;const point=canvasPoint(event);
       if(state.drag.type==="wire")state.wires[state.drag.name].preview=point;else moveMeter(point);
       draw();event.preventDefault()
     }
     function onPointerUp(event){
-      if(!state.drag)return;const drag=state.drag,point=canvasPoint(event);
+      if(!state.drag||state.drag.pointerId!==event.pointerId)return;const drag=state.drag,point=canvasPoint(event);
       if(drag.type==="wire")finishWire(drag.name,point);else{moveMeter(point);state.drag=null;passStepIfReady({quiet:true})}
       try{canvas.releasePointerCapture(event.pointerId)}catch(error){console.warn("释放实验台指针失败",error)}
+      event.preventDefault()
+    }
+    function onPointerCancel(event){
+      const drag=state.drag;if(!drag||drag.pointerId!==event.pointerId)return;
+      if(drag.type==="wire")state.wires[drag.name].preview=null;
+      state.drag=null;updateStatus();draw();
+      if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId);
       event.preventDefault()
     }
     function roundRect(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r)}
@@ -1185,7 +1192,7 @@ body #app .toolbar button:disabled{
       finally{if(runId!==state.autoRunId)return;state.switchClosed=false;state.autoPlaying=false;state.autoCancel=false;autoDemoBtn.textContent="演示模式";freeBtn.disabled=false;demoCursor.style.opacity="0";setModeLabel();updateStatus();draw()}
     }
     function initEvents(){
-      canvas.addEventListener("pointerdown",onPointerDown);canvas.addEventListener("pointermove",onPointerMove);canvas.addEventListener("pointerup",onPointerUp);canvas.addEventListener("pointercancel",onPointerUp);
+      canvas.addEventListener("pointerdown",onPointerDown);canvas.addEventListener("pointermove",onPointerMove);canvas.addEventListener("pointerup",onPointerUp);canvas.addEventListener("pointercancel",onPointerCancel);canvas.addEventListener("lostpointercapture",onPointerCancel);
       recordBtn.addEventListener("click",()=>recordObservation());analyzeBtn.addEventListener("click",analyzeConclusion);
       resetBtn.addEventListener("click",()=>{const free=state.freeMode;resetScene({keepMode:true,quiet:true});state.freeMode=free;setFreeMode(free);showToast(free?"已重置自由探索。":"已回到关卡 1。")});
       autoDemoBtn.addEventListener("click",runAutoDemo);freeBtn.addEventListener("click",()=>setFreeMode(!state.freeMode));
@@ -1202,6 +1209,64 @@ body #app .toolbar button:disabled{
     window.recordObservation=recordObservation;
     window.analyzeConclusion=analyzeConclusion;
     window.__lab61={toggleSwitch,finishWire,moveMeter,recordObservation,analyzeConclusion,reset:resetScene,runAutoDemo};
+    /* classroom-canvas-pan:start */
+    {
+      const panCanvas = canvas;
+      const blankAt = (p) => { const g=state.layout; if(!g)return false; return !['red','blue'].some(n=>distance(p,wireEnd(n))<=Math.max(24,28*g.s))&&!pointIn(p,g.switchHit)&&!pointIn(p,g.meterBody); };
+      const pointAt = e => canvasPoint(e);
+      const hasApparatusOwner = () => !!state.drag;
+      const gestureEpoch = () => JSON.stringify([typeof codexModeController === "undefined" ? state.autoRunId : codexModeController?.currentRunId(),state.freeMode,state.autoPlaying,state.currentTask,state.task,state.scenarioIndex,state.stepIndex,panCanvas.width,panCanvas.height,panCanvas.clientWidth,panCanvas.clientHeight,state.drawTransform?.scale,state.drawTransform?.ox,state.drawTransform?.oy]);
+      let contact = null;
+      const stop = e => { e.preventDefault(); e.stopImmediatePropagation(); };
+      const ownsTouch = e => e.pointerType === "touch";
+      panCanvas.addEventListener("pointerdown", e => {
+        if (!ownsTouch(e) || e.target !== panCanvas) return;
+        if (e.isPrimary === false || contact || hasApparatusOwner()) { stop(e); return; }
+        const point = pointAt(e);
+        if (!Number.isFinite(point.x) || !Number.isFinite(point.y) || !panCanvas.clientWidth || !panCanvas.clientHeight) return;
+        contact = { id:e.pointerId, point, x:e.clientX, y:e.clientY, top:window.scrollY, blank:blankAt(point), epoch:gestureEpoch(), max:0, panning:false, invalid:false, selection:state.selectedTerminal };
+        if (!contact.blank) return; // 器材命中保留原处理，整次接触不会转为滚页。
+        stop(e);
+        try { panCanvas.setPointerCapture(e.pointerId); }
+        catch (error) { console.warn("空白画布滚页无法捕获指针", error); }
+      }, true);
+      panCanvas.addEventListener("pointermove", e => {
+        if (!ownsTouch(e)) return;
+        if (e.isPrimary === false || contact && e.pointerId !== contact.id) { stop(e); return; }
+        if (!contact || e.pointerId !== contact.id || !contact.blank) return;
+        stop(e);
+        const dy = contact.y - e.clientY;
+        contact.max = Math.max(contact.max, Math.hypot(e.clientX-contact.x,dy));
+        contact.invalid ||= contact.epoch !== gestureEpoch();
+        if (!contact.invalid && (contact.panning || Math.abs(dy) > 6)) {
+          contact.panning = true;
+          window.scrollTo(0,contact.top+dy);
+        }
+      }, true);
+      const end = e => {
+        if (!ownsTouch(e)) return;
+        if (e.isPrimary === false || contact && e.pointerId !== contact.id) { stop(e); return; }
+        if (!contact || e.pointerId !== contact.id) return;
+        if (!contact.blank) {
+          if (e.type !== "lostpointercapture") contact = null;
+          return;
+        }
+        stop(e);
+        const ended = contact;
+        contact = null;
+        ended.max = Math.max(ended.max,Math.hypot(e.clientX-ended.x,e.clientY-ended.y));
+        if (e.type === "pointerup" && !ended.panning && ended.max <= 6 && !ended.invalid && ended.epoch === gestureEpoch() && blankAt(ended.point)) {
+          // 空白轻点不触发器材操作。
+        }
+        if (panCanvas.hasPointerCapture(e.pointerId)) panCanvas.releasePointerCapture(e.pointerId);
+      };
+      ["pointerup","pointercancel","lostpointercapture"].forEach(type => panCanvas.addEventListener(type,end,true));
+      ["pointerup","pointercancel"].forEach(type => window.addEventListener(type,e => {
+        if (ownsTouch(e) && contact && e.pointerId === contact.id && e.target !== panCanvas) contact = null;
+      },true));
+    }
+    /* classroom-canvas-pan:end */
+
     /* codex-physics-mode-adapter:start */
     {
       let codexModePauseStarted = 0;
