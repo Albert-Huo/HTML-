@@ -3246,13 +3246,62 @@ function finishDockDrag(pointerId){
   resolveDrawerOverlap(true);
 }
 
+function layoutPanWeights(pan){
+  const items = Array.from(pan.children).filter((el)=>el.classList.contains('item'));
+  for(const el of items){
+    el.style.width = '';
+    el.style.height = '';
+    el.style.fontSize = '';
+  }
+  const weights = items.filter((el)=>el.classList.contains('weight'))
+    .sort((a,b)=>Number(b.dataset.mass) - Number(a.dataset.mass));
+  const columns = items.filter((el)=>!el.classList.contains('weight'))
+    .map((el)=>({ items:[el], width:el.offsetWidth, height:el.offsetHeight }));
+  // Leave clearance below the beam; each column grows upward from the pan surface.
+  const maxHeight = pan.offsetTop + pan.clientHeight / 2 - 8;
+  let column = null;
+  for(const el of weights){
+    if(!column || column.height + el.offsetHeight > maxHeight){
+      column = { items:[], width:el.offsetWidth, height:0 };
+      columns.push(column);
+    }
+    column.items.push(el);
+    column.height += el.offsetHeight;
+  }
+  const gap = 6;
+  const totalWidth = columns.reduce((sum,col)=>sum + col.width, 0) + Math.max(0, columns.length - 1) * gap;
+  const scale = totalWidth > 0 ? Math.min(1, (pan.clientWidth - 16) / totalWidth) : 1;
+  let left = (pan.clientWidth - totalWidth * scale) / 2;
+  for(const col of columns){
+    let bottom = pan.clientHeight / 2;
+    for(const [index, el] of col.items.entries()){
+      const width = el.offsetWidth * scale;
+      const height = el.offsetHeight * scale;
+      el.style.position = 'absolute';
+      el.style.width = `${width}px`;
+      el.style.height = `${height}px`;
+      el.style.fontSize = `${Math.max(9, 12 * scale)}px`;
+      el.style.left = `${left + (col.width * scale - width) / 2}px`;
+      el.style.top = `${bottom - height}px`;
+      el.style.zIndex = String(index + 1);
+      bottom -= height;
+    }
+    left += (col.width + gap) * scale;
+  }
+}
 function restoreItemToContainer(el, target){
   const container = target === 'left' ? leftPan : target === 'right' ? rightPan : target === 'shelf' ? oreShelf : weightBox;
   el.classList.remove('dragging');
   el.style.left = '';
   el.style.top = '';
   el.style.zIndex = '';
+  el.style.position = '';
+  el.style.width = '';
+  el.style.height = '';
+  el.style.fontSize = '';
   container.appendChild(el);
+  layoutPanWeights(leftPan);
+  layoutPanWeights(rightPan);
 }
 function beginItemDrag(el, pointerId, clientX, clientY){
   const stageRect = getStageRect();
@@ -3265,9 +3314,12 @@ function beginItemDrag(el, pointerId, clientX, clientY){
     offsetY:clientY - rect.top
   };
   el.classList.add('dragging');
+  el.style.zIndex = '100';
   el.style.left = `${rect.left - stageRect.left}px`;
   el.style.top = `${rect.top - stageRect.top}px`;
   stage.appendChild(el);
+  layoutPanWeights(leftPan);
+  layoutPanWeights(rightPan);
   if(pointerId >= 0){
     try { el.setPointerCapture(pointerId); }
     catch (err) { console.warn('setPointerCapture failed', err); }
@@ -3997,6 +4049,8 @@ const relayout = (()=>{
       initDockPositions(false);
       resolveDrawerOverlap(true);
       renderRider();
+      layoutPanWeights(leftPan);
+      layoutPanWeights(rightPan);
     }, 120));
   };
 })();
