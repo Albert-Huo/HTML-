@@ -1961,6 +1961,12 @@ body #app .toolbar button:disabled{
   }
 </style>
 
+<style>
+    .inquiry-card{margin:10px 0 0;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card-bg);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+    .inquiry-card summary{cursor:pointer;font-weight:700}.inquiry-card p{margin:8px 0}.inquiry-card fieldset{margin:8px 0;padding:0;border:0;min-width:0}.inquiry-options{display:flex;flex-wrap:wrap;gap:6px 16px}.inquiry-options label{display:flex;gap:5px;align-items:center;min-height:30px;cursor:pointer}.inquiry-card input{margin:0;accent-color:#8fb4d8}.inquiry-card textarea{display:block;width:100%;min-height:78px;margin:6px 0 8px;padding:8px;border:1px solid var(--line);border-radius:8px;background:rgba(127,127,127,.1);color:inherit;font:inherit;resize:vertical}.inquiry-card button.sub{background:rgba(127,127,127,.2);color:inherit}.inquiry-status{font-size:12px;opacity:.8}.inquiry-card a{color:#9bd3ff}.inquiry-evidence{padding-left:20px;margin:8px 0}.inquiry-hints details{margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:8px}.inquiry-card [hidden]{display:none!important}.inquiry-card :focus-visible{outline:2px solid #8fb4d8;outline-offset:3px}
+    :root[data-theme="light"] .inquiry-card{background:var(--theme-surface);border-color:var(--theme-border);color:var(--theme-text)}:root[data-theme="light"] .inquiry-card a{color:var(--theme-accent)}
+    @media(max-width:420px){.inquiry-card{padding:9px 10px;font-size:12px}.inquiry-options{display:grid;gap:0}.inquiry-options label{min-height:27px}.inquiry-card button.sub{font-size:12px}}
+</style>
 </head>
 <body>
 <script id="codex-lab-sound-bus" data-native-audio="false">
@@ -2196,6 +2202,15 @@ body #app .toolbar button:disabled{
     <div class="progress-dots" id="dots"></div>
   </div>
 
+    <section class="inquiry-card" aria-label="浮力探究预测">
+      <details id="inquiryPredictionCard" open><summary id="inquiryPredictionSummary">先留一个预测</summary>
+        <p>同在清水中，实际排开液体的体积从约20 mL增大到40 mL或更多，浮力怎样变化？</p>
+        <fieldset id="inquiryPredictionChoices"><legend>我的初始预测（只保存，不判对错）</legend><div class="inquiry-options">
+          <label><input type="radio" id="inquiryPrediction0" name="inquiryPrediction" value="0">浮力增大</label><label><input type="radio" id="inquiryPrediction1" name="inquiryPrediction" value="1">浮力减小</label><label><input type="radio" id="inquiryPrediction2" name="inquiryPrediction" value="2">浮力不变</label>
+        </div></fieldset><button class="sub" id="inquiryPredictionSave" type="button">保存预测</button><span class="inquiry-status" id="inquiryPredictionStatus" role="status" aria-live="polite"></span>
+      </details>
+      <p id="inquiryNext" hidden><a href="#inquiryNotebook" id="inquiryNotebookLink">已有证据，去解释 / 作新预测 ↓</a></p>
+    </section>
   <div id="stage">
     <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
       <button class="mobile-tab" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="false"><span class="tab-label">实验面板<span class="mobile-badge" id="experimentTabBadge" aria-hidden="true">0</span></span></button>
@@ -2332,17 +2347,25 @@ body #app .toolbar button:disabled{
   <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
     <div class="modal">
       <h3 id="doneTitle">实验完成</h3>
-      <p>你已经完成浮力影响因素探究：<br /><span class="formula"><i>F</i><sub>浮</sub></span> 与液体密度 ρ、排开液体体积 <span class="formula"><i>V</i><sub>排</sub></span> 有关。</p>
+      <p>你已完成本轮器材操作与记录分析，可以回看个人预测和实际证据。</p>
       <button class="sub ok" id="okBtn">OK</button>
     </div>
   </div>
 
+    <details class="inquiry-card" id="inquiryNotebook"><summary id="inquiryNotebookSummary">探究笔记 · 记录与解释</summary>
+      <p id="inquirySource"></p><ul class="inquiry-evidence" id="inquiryEvidenceList"></ul><p class="inquiry-status" id="inquiryEvidenceStatus"></p>
+      <p class="inquiry-status" id="inquiryDemoEvidence" hidden></p>
+      <section id="inquiryExplainSection" hidden><label for="inquiryExplanation">用哪两次观察支持或修正你的预测？写一两句解释。</label><textarea id="inquiryExplanation" maxlength="800"></textarea><button class="sub" id="inquiryExplanationSave" type="button">保存解释</button><span class="inquiry-status" id="inquiryExplanationStatus" role="status" aria-live="polite"></span>
+        <div class="inquiry-hints"><details id="inquiryHint1"><summary>提示一：选哪些记录？</summary><p>选出清水中实际V排约20 mL与40 mL或更多的两条记录。比较保存的V排、空气重力G、测力计示数与浮力。</p></details><details id="inquiryHint2"><summary>提示二：怎样联系观察？</summary><p>先确认两次都在清水中。用各条空气重力G减去液中示数，得到浮力，再联系实际V排的变化。</p></details><details id="inquiryHint3"><summary>提示三：解释框架</summary><p>我原来预测……；两条清水记录的实际V排分别是……，浮力分别是……；因此我保留／修正预测，因为……。这里20/40/60 mL选择是换块；不是同一物体连续浸入。</p></details></div>
+      </section>
+      <section id="inquiryTransferSection" hidden><p><b>改变条件再预测：</b>同一40 mL金属块已完全浸没在同一杯均匀清水中，再下移一点且不触底，浮力怎样变化？</p><fieldset><legend>我的新预测（只保存）</legend><div class="inquiry-options"><label><input type="radio" id="inquiryTransfer0" name="inquiryTransfer" value="0">浮力增大</label><label><input type="radio" id="inquiryTransfer1" name="inquiryTransfer" value="1">浮力减小</label><label><input type="radio" id="inquiryTransfer2" name="inquiryTransfer" value="2">浮力不变</label></div></fieldset><button class="sub" id="inquiryTransferSave" type="button">保存新预测</button><span class="inquiry-status" id="inquiryTransferStatus" role="status" aria-live="polite"></span><p id="inquiryTransferGuide" hidden>先完成原闯关流程，再进入自由模式：选同一40 mL块，在清水中全浸没且悬空，保存新的基准；再下移一点、停止、保存第二条。保持V排40.0 mL，不触底贴壁。</p><p id="inquiryTransferResult" hidden></p></section>
+      <p class="inquiry-status" id="inquiryCarriedTransfer" hidden></p>
+      <button class="sub" id="inquiryClearEvidence" type="button">清空本模式观察证据</button>
+    </details>
   <div class="explanation">
     <h2>实验名：探究浮力大小与哪些因素有关</h2>
-    <ul>
-      <li><b>关键操作与现象</b>：先让金属块悬挂在空气中，读取弹簧测力计示数；再把它浸入液体中，观察示数减小。保持液体不变、逐渐增大浸入体积时，浮力会增大；保持浸入体积相同、改用密度更大的液体时，浮力也会增大。</li>
-      <li><b>原理与结论</b>：浮力可由 <b><span class="formula"><i>F</i><sub>浮</sub></span> = F空气 - F液中示数</b> 求得。浮力大小与物体浸在液体中的体积有关，也与液体密度有关；浸入体积越大、液体密度越大，浮力越大。</li>
-    </ul>
+    <p>关键操作：选择体积块，拖动整套测力计和悬挂块，停止后记录实际V排、示数与浮力。这里20/40/60 mL是换块变体，本页模型的空气重力G固定为2.2 N。</p>
+    <p id="inquiryConclusion" hidden></p>
   </div>
 
   <script>
@@ -2355,21 +2378,21 @@ body #app .toolbar button:disabled{
       {
         text:'选择 <b>20 mL</b> 金属块，拖动<b>弹簧测力计</b>，让金属块浸入<b>清水烧杯</b>并记录一组数据。',
         hint:'提示：先选体积块，再拖动测力计整体，让金属块进入清水。',
-        check:(ctx)=>ctx.records.some(r=>r.liquid==='water' && Math.abs(r.volume-20)<=3 && r.ratio>=0.85)
+        check:(ctx)=>ctx.records.filter(r=>r.mode==='guided').some(r=>r.liquid==='water' && Math.abs(r.volume-20)<=3 && r.ratio>=0.85)
       },
       {
         text:'保持在<b>清水烧杯</b>中，改用 <b>40 mL 或以上</b> 体积块，再拖动测力计浸没并记录。',
         hint:'提示：此步只增大浸入液体中的体积，液体仍保持清水。',
-        check:(ctx)=>ctx.records.some(r=>r.liquid==='water' && r.volume>=40 && r.ratio>=0.85)
+        check:(ctx)=>ctx.records.filter(r=>r.mode==='guided').some(r=>r.liquid==='water' && r.volume>=40 && r.ratio>=0.85)
       },
       {
         text:'拖动测力计到<b>盐水烧杯</b>上方，保持排开体积约 <b>40 mL</b> 并记录。',
-        hint:'提示：比较与清水近似同体积时的浮力差异。',
-        check:(ctx)=>ctx.records.some(r=>r.liquid==='salt' && Math.abs(r.volume-40)<=4 && r.ratio>=0.85)
+        hint:'提示：选同一40 mL块，尽量保持实际V排与清水组相同，再记录比较。',
+        check:(ctx)=>ctx.records.filter(r=>r.mode==='guided').some(r=>r.liquid==='salt' && Math.abs(r.volume-40)<=4 && r.ratio>=0.85)
       },
       {
         text:'点击“分析结论”，完成本实验。',
-        hint:'提示：结论需同时体现体积效应和密度效应。',
+        hint:'提示：先用已保存的实际对照，在探究笔记中写自己的解释。',
         check:(ctx)=>ctx.analysisOk===true
       }
     ];
@@ -2460,6 +2483,7 @@ body #app .toolbar button:disabled{
     const FORMULA_VOLUME_HTML = '<span class="formula"><i>V</i><sub>排</sub></span>';
 
     const state = {
+      inquiry:{guided:newInquiryNote(),free:newInquiryNote(),demoRecords:[],demoActive:false,preserveOnReset:false,sequence:0,layoutEpoch:0},
       currentTask:0,
       completed:false,
       freeMode:false,
@@ -2497,6 +2521,85 @@ body #app .toolbar button:disabled{
       dockMoved:{control:false,data:false}
     };
 
+    const predictionLabels = ["浮力增大","浮力减小","浮力不变"];
+    const transferLabels = ["浮力增大","浮力减小","浮力不变"];
+    function newInquiryNote(){ return {prediction:null,explanationDraft:"",explanation:null,transferPrediction:null,transferStart:0,observations:[],transferEvidence:null}; }
+    function inquiryNote(){ return state.inquiry[state.freeMode?"free":"guided"]; }
+    function inquiryEvidence(note=inquiryNote(),mode=state.freeMode?"free":"guided"){
+      const rs=note.observations.filter(r=>r.source==="manual"&&r.mode===mode&&r.exact.valid&&r.liquid==="water");
+      const a=rs.find(r=>r.volume>=17&&r.volume<=23),b=a?rs.find(r=>r.volume>=40&&r.volume-a.volume>=15):null;
+      return {a,b,ready:Boolean(a&&b)};
+    }
+    function inquiryGeometry(){
+      const spec=getBlockSpec(),info=state.activeLiquid?getBeakerInfo(state.activeLiquid==='water'?beakerWater:beakerSalt,state.activeLiquid):null,rect=labArea.getBoundingClientRect();
+      const exact={selectedVolume:state.selectedVolumeMl,G:state.airWeightN,rawRatio:state.immersionRatio,dragging:state.draggingSystem,blockTop:state.blockTop,height:spec.h,layout:info?[state.inquiry.layoutEpoch,rect.width,rect.height,info.innerLeft,info.innerRight,info.liquidTop,info.bottom].join('|'):null};
+      exact.relativeTop=info?state.blockTop-info.liquidTop:null;exact.bottomGap=info?info.bottom-state.blockTop-spec.h:0;exact.sideGap=info?Math.min(state.blockLeft-info.innerLeft,info.innerRight-state.blockLeft-spec.w):0;
+      exact.valid=Boolean(info&&!exact.dragging&&exact.bottomGap>2&&exact.sideGap>=BLOCK_LIQUID_SIDE_CLEARANCE&&Math.abs(state.displacedMl-state.selectedVolumeMl*exact.rawRatio)<=.051&&Math.abs(exact.G-state.apparentN-state.buoyancyN)<=.00101);
+      return exact;
+    }
+    function inquiryDepthEvidence(owner=inquiryNote()){
+      if(owner.transferPrediction===null)return null;
+      const rs=state.inquiry.free.observations.filter(r=>r.sequence>owner.transferStart&&r.source==="manual"&&r.mode==="free"&&r.liquid==="water"&&r.exact.valid&&r.exact.selectedVolume===40&&r.exact.rawRatio>=1-1e-9&&Math.abs(r.volume-40)<=.05&&r.exact.relativeTop>=0);
+      for(const a of rs){const b=rs.find(r=>r.sequence>a.sequence&&r.exact.layout===a.exact.layout&&Math.abs(r.exact.G-a.exact.G)<=1e-9&&r.exact.relativeTop-a.exact.relativeTop>=2);if(b)return {a,b};}
+      return null;
+    }
+    function inquiryDensityPair(rs){
+      const water=rs.filter(r=>r.liquid==="water"&&r.exact?.valid&&r.exact.selectedVolume===40);
+      for(const a of water){const b=rs.find(r=>r.liquid==="salt"&&r.exact?.valid&&r.exact.selectedVolume===40&&Math.abs(r.volume-a.volume)<=.05&&Math.abs(r.exact.G-a.exact.G)<=1e-9);if(b)return {a,b};}return null;
+    }
+    function rememberInquiryRecord(record,source){
+      const mode=state.freeMode?"free":"guided";record.source=source;record.mode=mode;record.exact=inquiryGeometry();record.sequence=++state.inquiry.sequence;
+      const saved={...record,exact:{...record.exact}};if(source==="demo")state.inquiry.demoRecords.push(saved);else inquiryNote().observations.push(saved);
+    }
+    function inquiryDetail(){return tasks[state.currentTask].hint;}
+    function openInquiry(message,prediction=false){
+      $(prediction?"#inquiryPredictionCard":"#inquiryNotebook").open=true;
+      if(!prediction)$("#inquiryNext").hidden=false;
+      showToast(message);
+    }
+    function saveInquiryPrediction(){
+      if(state.autoPlaying)return;const note=inquiryNote();if(note.prediction!==null)return;
+      const selected=document.querySelector('input[name="inquiryPrediction"]:checked');
+      if(!selected){$("#inquiryPredictionStatus").textContent="请先选择一个预测。";return;}
+      note.prediction=selected.value;syncInquiry();$("#inquiryPredictionCard").open=false;
+    }
+    function saveInquiryExplanation(){
+      if(state.autoPlaying||!inquiryEvidence().ready)return;const note=inquiryNote(),text=$("#inquiryExplanation").value.trim();
+      if(!text){$("#inquiryExplanationStatus").textContent="请先写一两句自己的解释。";return;}
+      if(note.explanation!==text){note.transferPrediction=null;note.transferEvidence=null;}
+      note.explanationDraft=text;note.explanation=text;syncInquiry();
+    }
+    function saveTransferPrediction(){
+      const note=inquiryNote();if(state.autoPlaying||!inquiryEvidence().ready||note.explanation===null||note.transferPrediction!==null)return;
+      const selected=document.querySelector('input[name="inquiryTransfer"]:checked');
+      if(!selected){$("#inquiryTransferStatus").textContent="请先选择一个新预测。";return;}
+      note.transferPrediction=selected.value;note.transferStart=state.inquiry.sequence;note.transferEvidence=null;syncInquiry();
+    }
+    function clearInquiryEvidence(){if(!state.autoPlaying)clearData(true);}
+    function invalidateInquiryEvidence(){const note=inquiryNote();note.observations=[];note.explanation=null;note.transferPrediction=null;note.transferEvidence=null;}
+
+    function syncInquiry(){
+      const note=inquiryNote(),e=inquiryEvidence(),demo=state.autoPlaying||state.inquiry.demoActive,carried=state.freeMode&&state.inquiry.guided.transferPrediction!==null,owner=carried?state.inquiry.guided:note,depth=inquiryDepthEvidence(owner);
+      $("#inquiryPredictionSummary").textContent=note.prediction===null?"先留一个预测":"初始预测："+predictionLabels[Number(note.prediction)];
+      document.querySelectorAll('input[name="inquiryPrediction"]').forEach(r=>{r.checked=r.value===note.prediction;r.disabled=demo||note.prediction!==null;});$("#inquiryPredictionSave").disabled=demo||note.prediction!==null;$("#inquiryPredictionStatus").textContent=note.prediction===null?"":"已保存 · 保留初始想法";
+      $("#inquiryNext").hidden=!e.ready&&!carried;$("#inquiryNotebookSummary").textContent="探究笔记 · "+(state.freeMode?"自由观察":"闯关观察")+(e.ready?" · 可写解释":"");
+      $("#inquirySource").textContent=(state.freeMode?"我的自由观察":"我的闯关观察")+"（手动保存，显示当时实际V排）";
+      const list=$("#inquiryEvidenceList");list.innerHTML="";note.observations.forEach((r,i)=>{const li=document.createElement("li");li.textContent=(i+1)+". 手动 · "+(r.mode==="free"?"自由":"闯关")+" · "+r.liquidName+"：V排 "+r.volume.toFixed(1)+" mL，G "+r.exact.G.toFixed(3)+" N，示数 "+r.apparent.toFixed(3)+" N，浮力 "+r.buoyancy.toFixed(3)+" N"+(r.exact.valid?"":"（此位置不满足悬空停止条件）");list.appendChild(li);});
+      $("#inquiryEvidenceStatus").textContent=e.ready?"已有清水实际V排约20与40 mL或更多的悬空记录，可据此解释。":"还需手动保存清水中约20 mL与40 mL或更多的实际V排记录；停止拖动，保持杯内悬空。仅选择40 mL块不代表V排已有40 mL。";
+      $("#inquiryDemoEvidence").hidden=!state.inquiry.demoRecords.length;$("#inquiryDemoEvidence").textContent="演示证据（不计个人操作）："+state.inquiry.demoRecords.map(r=>r.liquidName+" V排="+r.volume.toFixed(1)+" mL，浮力="+r.buoyancy.toFixed(3)+" N").join("；");
+      $("#inquiryExplainSection").hidden=!e.ready;$("#inquiryExplanation").disabled=demo||!e.ready;if($("#inquiryExplanation").value!==note.explanationDraft)$("#inquiryExplanation").value=note.explanationDraft;$("#inquiryExplanationSave").disabled=demo||!e.ready;$("#inquiryExplanationStatus").textContent=note.explanation===null?"":"已保存";
+      $("#inquiryTransferSection").hidden=!(e.ready&&note.explanation!==null)&&!carried;
+      document.querySelectorAll('input[name="inquiryTransfer"]').forEach(r=>{r.checked=r.value===owner.transferPrediction;r.disabled=demo||owner.transferPrediction!==null;});$("#inquiryTransferSave").disabled=demo||owner.transferPrediction!==null;$("#inquiryTransferStatus").textContent=owner.transferPrediction===null?"":"已保存 · "+transferLabels[Number(owner.transferPrediction)];
+      $("#inquiryTransferGuide").hidden=owner.transferPrediction===null;$("#inquiryTransferGuide").textContent="先完成原闯关流程，再进入自由模式：选同一40 mL块，在清水中全浸没且悬空，保存新的基准；再下移一点、停止、保存第二条。保持V排40.0 mL，不触底贴壁。";
+      $("#inquiryTransferResult").hidden=owner.transferPrediction===null;$("#inquiryTransferResult").textContent=depth?"预测后的两次手动自由观察：同一40 mL块全浸没，后一次位置更低；V排均为40.0 mL，浮力 "+depth.a.buoyancy.toFixed(3)+" / "+depth.b.buoyancy.toFixed(3)+" N，示数 "+depth.a.apparent.toFixed(3)+" / "+depth.b.apparent.toFixed(3)+" N。用这两条记录回看新预测。":"还需预测之后新保存的两次自由记录：同一40 mL块、清水、全浸没、同一布局下更低且悬空的位置。半浸入→全浸没、同位置或旧记录不能检验这个问题。";
+      $("#inquiryCarriedTransfer").hidden=!carried;$("#inquiryCarriedTransfer").textContent=carried?"这里保留闯关中保存的新预测；以下检验只引用预测后新保存的手动自由记录，不混入闯关主对照。":"";
+      $("#inquiryClearEvidence").disabled=demo||!note.observations.length;$("#inquiryConclusion").hidden=!(e.ready&&note.explanation!==null);$("#inquiryConclusion").textContent="结论：本页模型中，同在清水里比较时，实际V排增大，浮力增大；各条浮力也等于该条G减去液中示数。";
+    }
+    function initInquiryEvents(){
+      $("#inquiryPredictionSave").addEventListener("click",saveInquiryPrediction);$("#inquiryExplanationSave").addEventListener("click",saveInquiryExplanation);$("#inquiryTransferSave").addEventListener("click",saveTransferPrediction);$("#inquiryClearEvidence").addEventListener("click",clearInquiryEvidence);
+      $("#inquiryNotebookLink").addEventListener("click",()=>{$("#inquiryNotebook").open=true;});
+      $("#inquiryExplanation").addEventListener("input",()=>{const note=inquiryNote();note.explanationDraft=$("#inquiryExplanation").value;if(note.explanation!==note.explanationDraft){note.explanation=null;note.transferPrediction=null;note.transferEvidence=null;}syncInquiry();});
+    }
     const clamp = (v,a,b)=>Math.max(a, Math.min(b,v));
     const round = (n,p=3)=>Number(n.toFixed(p));
     /* codex-physics-mode-source:pauseable-sleep-32:start */
@@ -2608,12 +2711,12 @@ body #app .toolbar button:disabled{
       }else if(state.currentTask === 1){
         detail = '此步只改变浸入体积，液体仍然保持清水。可换成更大体积块后再浸入。';
       }else if(state.currentTask === 2){
-        detail = '此步要控制浸入体积与清水组相近，再比较清水和盐水的浮力差异。';
+        detail = '此步保持同一40 mL块、实际V排与清水组相同，再比较液体。';
       }else if(state.currentTask === 3){
         detail = '分析时要同时说明体积效应和液体密度效应，缺一不可。';
       }
       hintDetail.textContent = detail.replace(/^提示：/, '');
-      if(state.analysisOk){
+      if(state.analysisOk&&state.autoPlaying){
         hintThought.innerHTML = '你已经验证：<b>浸入体积越大，浮力越大；液体密度越大，浮力越大</b>。';
       }else{
         hintThought.innerHTML = '本实验用控制变量法：先只改变 <b>浸入液体中的体积</b>，再只改变 <b>液体密度</b>，其余条件保持不变。';
@@ -2669,6 +2772,7 @@ body #app .toolbar button:disabled{
     }
 
     function setFreeMode(on){
+      if(state.freeMode!==!!on)state.analysisOk=false;
       state.freeMode = !!on;
       syncModeTag();
       freeBtn.textContent = state.freeMode ? '退出自由模式' : '自由模式';
@@ -2683,7 +2787,7 @@ body #app .toolbar button:disabled{
         recalcProgress();
         setStatus(currentStageStatus());
       }
-      syncHintLamp();
+      analysisText.hidden=true;analysisText.textContent="";syncHintLamp();syncInquiry();
     }
 
     function tryPassStep(showFailToast=true){
@@ -2770,6 +2874,7 @@ body #app .toolbar button:disabled{
     }
 
     function layoutApparatus(){
+      state.inquiry.layoutEpoch+=1;
       ensureApparatusHeight();
       const lab = labArea.getBoundingClientRect();
       const W = lab.width;
@@ -3045,6 +3150,9 @@ body #app .toolbar button:disabled{
     }
 
     function addRecord(){
+      if(!state.autoPlaying&&!state.freeMode&&inquiryNote().prediction===null){openInquiry("先在上方保存任意预测，再记录。",true);return;}
+      if(state.draggingSystem){showToast("请先停止拖动，再保存观察。");return;}
+
       if(!state.activeLiquid || state.displacedMl < 5){
         if(!state.freeMode) warnCurrentStep('请先把金属块浸入当前步骤要求的烧杯液体中，再记录数据。');
         else showToast('请先拖动弹簧测力计，让金属块浸入烧杯液体中再记录');
@@ -3065,6 +3173,7 @@ body #app .toolbar button:disabled{
         apparent:state.apparentN
       };
       state.records.push(rec);
+      rememberInquiryRecord(rec,state.autoPlaying?"demo":"manual");
       if(state.records.length > 30) state.records.shift();
       renderRecords();
       scheduleDraw();
@@ -3076,8 +3185,9 @@ body #app .toolbar button:disabled{
       tryPassStep(false);
     }
 
-    function clearData(announce=true){
-      state.records = [];
+    function clearData(announce=true,opts={}){
+      if(!opts.preserveInquiry)invalidateInquiryEvidence();
+      state.records=opts.preserveInquiry?[]:state.records.filter(r=>r.mode!==(state.freeMode?"free":"guided"));
       state.unseenRecordCount = 0;
       state.analysisOk = false;
       analysisText.classList.remove('ok');
@@ -3094,7 +3204,7 @@ body #app .toolbar button:disabled{
       recordBody.innerHTML = '';
       if(!state.records.length){
         recordBody.innerHTML = '<tr><td colspan="4" style="color:#9db4d6;">暂无记录</td></tr>';
-        return;
+        syncInquiry();return;
       }
       const rows = [...state.records].slice(-12).reverse();
       rows.forEach((r)=>{
@@ -3102,10 +3212,13 @@ body #app .toolbar button:disabled{
         tr.innerHTML = `<td>${r.liquidName}</td><td>${r.volume.toFixed(1)}</td><td>${r.buoyancy.toFixed(3)}</td><td>${r.apparent.toFixed(3)}</td>`;
         recordBody.appendChild(tr);
       });
+      syncInquiry();
     }
 
     function analyzeConclusion(advance=true){
-      if(state.records.length < 3){
+      if(!state.autoPlaying&&(!inquiryEvidence().ready||inquiryNote().explanation===null)){openInquiry(inquiryEvidence().ready?"先在探究笔记保存自己的解释。":"先补齐本模式清水实际V排的主对照。");return;}
+      const records=state.records.filter(r=>r.mode===(state.freeMode?"free":"guided"));
+      if(records.length < 3){
         state.analysisOk = false;
         analysisText.classList.remove('ok');
         analysisText.hidden = true;
@@ -3117,8 +3230,8 @@ body #app .toolbar button:disabled{
         return;
       }
 
-      const water = state.records.filter(r=>r.liquid==='water');
-      const salt = state.records.filter(r=>r.liquid==='salt');
+      const water = records.filter(r=>r.liquid==='water');
+      const salt = records.filter(r=>r.liquid==='salt');
 
       const wMin = water.reduce((m,r)=>!m||r.volume<m.volume?r:m, null);
       const wMax = water.reduce((m,r)=>!m||r.volume>m.volume?r:m, null);
@@ -3134,11 +3247,11 @@ body #app .toolbar button:disabled{
         analysisText.classList.add('ok');
         analysisText.hidden = false;
         analysisText.innerHTML = [
-          `结论成立：<b>${FORMULA_FORCE_HTML} 与液体密度 ρ、排开液体体积 ${FORMULA_VOLUME_HTML} 有关</b>。`,
+          state.autoPlaying?'演示分析（不计个人证据）':'根据本轮保存记录分析：',
           `体积效应：清水中从 ${wMin.volume.toFixed(1)}mL 到 ${wMax.volume.toFixed(1)}mL，${FORMULA_FORCE_HTML} 增大 ${ (wMax.buoyancy-wMin.buoyancy).toFixed(3) }N。`,
-          `密度效应：约40mL时，盐水浮力平均值大于清水。`
+          inquiryDensityPair(records)?'密度对照：同一40 mL块、相同实际V排与G，盐水浮力较大。':'已有不同液体记录；严格密度比较还需同一40 mL块、相同实际V排与G的清水/盐水对照。'
         ].join('<br />');
-        showToast('分析完成：结论正确');
+        showToast('已分析保存的记录');
       }else{
         analysisText.classList.remove('ok');
         analysisText.hidden = true;
@@ -3468,6 +3581,7 @@ body #app .toolbar button:disabled{
         return;
       }
       if(state.freeMode) return;
+      state.inquiry.demoActive=true;state.inquiry.demoRecords=[];
       const runId = ++state.autoRunId;
       state.autoPlaying = true;
       setFreeMode(false);
@@ -3493,7 +3607,7 @@ body #app .toolbar button:disabled{
           autoRecordIndex += 1;
         };
 
-        resetFlow(false);
+        resetFlow(false,{preserveInquiry:true});
         recalcProgress();
         setStatus('演示模式中');
 
@@ -3545,7 +3659,7 @@ body #app .toolbar button:disabled{
         }
       }finally{
         if(runId === state.autoRunId){
-          state.autoPlaying = false;
+          state.autoPlaying = false;state.inquiry.demoActive=false;syncInquiry();
           syncModeTag();
           syncInteractiveButtons();
           setStatus(state.completed ? '挑战完成' : (state.freeMode ? '自由探索' : currentStageStatus()));
@@ -3553,7 +3667,8 @@ body #app .toolbar button:disabled{
       }
     }
 
-    function resetFlow(announce=true){
+    function resetFlow(announce=true,opts={}){
+      if(!opts.preserveInquiry){state.inquiry[state.freeMode?"free":"guided"]=newInquiryNote();state.inquiry.demoRecords=[];}
       clearAllTimers();
       if(state.drawRAF){
         cancelAnimationFrame(state.drawRAF);
@@ -3566,7 +3681,7 @@ body #app .toolbar button:disabled{
       doneMaskEl.style.display = 'none';
 
       layoutApparatus();
-      clearData(false);
+      clearData(false,{preserveInquiry:true});
       setSelectedVolume(20);
       setStepUI(0);
       liftToAir(false);
@@ -3661,6 +3776,7 @@ body #app .toolbar button:disabled{
     }
 
     function init(){
+      initInquiryEvents();
       initDots();
       buildScales();
       layoutApparatus();
@@ -3752,6 +3868,7 @@ body #app .toolbar button:disabled{
             .finally(() => { codexModeRunActive = false; });
         },
         cancelDemo() {
+          state.inquiry.demoActive=false;state.inquiry.preserveOnReset=true;
           cancelAutoDemo(false);
           state.autoPlaying = false;
           state.autoPaused = false;
@@ -3759,13 +3876,14 @@ body #app .toolbar button:disabled{
         resetChallenge() {
           state.autoPlaying = false;
           state.autoPaused = false;
-          setFreeMode(false); resetFlow(false);
+          setFreeMode(false);const preserve=state.inquiry.preserveOnReset;state.inquiry.preserveOnReset=false;resetFlow(false,{preserveInquiry:preserve});
         },
         setFreeMode:(on) => setFreeMode(on),
         captureFreeEntry:() => captureModeWorld(() => state),
         restoreFreeEntry:(snapshot) => restoreModeWorld(snapshot, {
           getState:() => state,
-          reset:() => { setFreeMode(false); resetFlow(false); },
+          reset:() => { setFreeMode(false);resetFlow(false,{preserveInquiry:true}); },
+          restoreExtra:() => {state.inquiry.free=newInquiryNote();state.records=state.records.filter(r=>r.mode!=="free");},
           refresh:() => {
           if(typeof updateModeHud === "function") updateModeHud();
           if(typeof updateControlsState === "function") updateControlsState();
