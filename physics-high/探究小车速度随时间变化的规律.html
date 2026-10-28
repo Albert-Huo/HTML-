@@ -1,0 +1,3196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+  <title>探究小车速度随时间变化的规律</title>
+  <script id="codex-theme-bootstrap">
+    (() => {
+      const themeKey = "xingnian.physics.theme";
+      let theme = "dark";
+      try {
+        const storedTheme = localStorage.getItem(themeKey);
+        if (storedTheme === "light" || storedTheme === "dark") theme = storedTheme;
+      } catch (error) {
+        console.warn("[theme-pilot] failed to read saved theme", error);
+      }
+      document.documentElement.dataset.theme = theme;
+    })();
+  </script>
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --ink:#ffffff;
+      --card-bg:rgba(255,255,255,0.08);
+      --panel-bg:rgba(15,15,15,0.55);
+      --line:rgba(255,255,255,0.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --error:#ff6b6b;
+      --drawer-collapsed-width:164px;
+      --drawer-stack-offset:26px;
+      --shell-tool-size:13px;
+      --shell-tool-ink:#d9e8f8;
+      --shell-tool-bg:rgba(255,255,255,.075);
+      --shell-title-size:20px;
+      --shell-title-ink:#9bd3ff;
+      --shell-copy-size:15px;
+      --shell-copy-ink:#e8f4ff;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    #app{
+      width:100%;
+      max-width:980px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:980px;
+      height:24px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,0.12);
+      margin:0 0 12px;
+      background:#050505;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background-image:linear-gradient(90deg,#ff4c4c 0%,#ff9a3d 5.5%,#f7e94c 11%,#54e86d 17%,#40e0d0 24%,#4aa3ff 31%,#8757ff 38%,#ec5cff 44%,#ff4c4c 50%,#ff9a3d 55.5%,#f7e94c 61%,#54e86d 67%,#40e0d0 74%,#4aa3ff 81%,#8757ff 88%,#ec5cff 94%,#ff4c4c 100%);
+      background-size:200% 100%;
+      background-repeat:repeat;
+      filter:saturate(1.18) brightness(1.04);
+      opacity:.96;
+      animation:flowRainbow 8s linear infinite;
+    }
+    @keyframes flowRainbow{
+      0%{ background-position:0 0; }
+      100%{ background-position:-100% 0; }
+    }
+    .task-card{
+      width:100%;
+      max-width:980px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition:opacity .2s, filter .2s;
+    }
+    .task-card.free-mode{
+      opacity:.42;
+      filter:grayscale(.86) saturate(.42);
+    }
+    .task-step{
+      background:rgba(255,255,255,0.15);
+      border-radius:8px;
+      padding:6px 10px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .task-hint{ font-size:12px; color:#ffd54f; opacity:.95; }
+    .progress-dots{ display:flex; gap:6px; }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:rgba(255,255,255,0.26);
+      outline:2px solid rgba(255,255,255,0.12);
+    }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5); }
+    .quiz-card{
+      width:100%;
+      max-width:980px;
+      min-height:64px;
+      margin-top:10px;
+      padding:12px 14px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:12px;
+      background:rgba(255,255,255,.055);
+      color:#dce9f8;
+    }
+    .quiz-card[hidden]{ display:none !important; }
+    .quiz-prompt{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-height:38px;
+      font-size:15px;
+      line-height:1.55;
+    }
+    .quiz-row{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    .quiz-row:empty{ display:none; }
+    .quiz-row button{
+      min-height:46px;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:9px;
+      background:rgba(255,255,255,.07);
+      color:#f3f8ff;
+      font-size:14px;
+      line-height:1.45;
+      font-weight:800;
+    }
+    #stage{
+      width:100%;
+      max-width:980px;
+      height:66vh;
+      max-height:660px;
+      min-height:500px;
+      margin-top:10px;
+      position:relative;
+      overflow:hidden;
+      border-radius:12px;
+      background:#0b0f14;
+      box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      border:1px solid rgba(255,255,255,0.08);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 70% 25%, rgba(255,255,255,0.05), transparent 38%),
+        radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 44%);
+    }
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      padding:6px 8px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background:var(--panel-bg);
+      font-size:12px;
+    }
+    .tag{
+      border:1px solid rgba(255,255,255,.26);
+      border-radius:999px;
+      padding:3px 9px;
+      font-weight:700;
+      color:#dce9ff;
+      background:rgba(255,255,255,.06);
+    }
+    .mode-strip{
+      border-color:rgba(61,220,151,.58);
+      color:#effff7;
+      box-shadow:0 0 12px rgba(61,220,151,.14);
+    }
+    .lab-area{
+      position:absolute;
+      inset:54px 10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.82);
+      overflow:hidden;
+    }
+    .playfield{
+      position:absolute;
+      inset:0;
+      z-index:1;
+    }
+    .node{
+      position:absolute;
+      left:0;
+      top:0;
+      width:86px;
+      height:86px;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,0.28);
+      box-shadow:0 8px 22px rgba(0,0,0,0.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      color:#071328;
+      user-select:none;
+      touch-action:none;
+      cursor:grab;
+      transform:translate(-9999px,-9999px);
+    }
+    .node.dragging{ cursor:grabbing; box-shadow:0 18px 40px rgba(0,0,0,0.5); }
+    .mobile-tabs,.sheet-close{ display:none; }
+    .drawer{
+      position:absolute;
+      right:12px;
+      z-index:30;
+      width:min(270px, calc(100% - 24px));
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:10px;
+      overflow:hidden;
+      background:rgba(9,21,33,.94);
+      box-shadow:0 14px 36px rgba(0,0,0,.42);
+      transition:width .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    .drawer.control{ top:68px; }
+    .drawer.data{ top:calc(68px + var(--drawer-stack-offset)); }
+    .dock-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      min-height:42px;
+      padding:8px 10px;
+      background:rgba(255,255,255,.06);
+      font-size:13px;
+      font-weight:800;
+    }
+    .dock-body{
+      display:grid;
+      gap:8px;
+      padding:10px;
+      background:rgba(3,10,16,.42);
+    }
+    .drawer.collapsed .dock-body{ display:none; }
+    .drawer.collapsed{
+      width:var(--drawer-collapsed-width);
+      background:rgba(15,18,22,.92);
+      border-color:rgba(255,255,255,.16);
+    }
+    .drawer.collapsed .dock-header{
+      min-height:42px;
+      cursor:pointer;
+    }
+    .drawer button{ padding:8px 10px; }
+    .empty{ color:#aebfd0; font-size:12px; line-height:1.5; }
+    .toolbar{
+      width:100%;
+      max-width:980px;
+      margin-top:12px;
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:9px;
+    }
+    button{
+      border:none;
+      border-radius:8px;
+      padding:10px 16px;
+      color:#fff;
+      background:#444;
+      cursor:pointer;
+      transition:background .2s, transform .05s, opacity .2s;
+    }
+    button:hover{ background:#5a5a5a; }
+    button:active{ transform:scale(.98); }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+    .primary{ background:#2e7d32; }
+    .toolbar button{
+      border:1px solid rgba(255,255,255,.09);
+      padding:9px 12px;
+      background:var(--shell-tool-bg);
+      color:var(--shell-tool-ink);
+      font-size:var(--shell-tool-size);
+      font-weight:800;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+    }
+    .toolbar button:hover{
+      border-color:rgba(155,211,255,.22);
+      background:rgba(255,255,255,.11);
+    }
+    .checkmark{
+      position:absolute;
+      left:50%;
+      top:20%;
+      width:120px;
+      height:120px;
+      border-radius:50%;
+      transform:translate(-50%,-50%) scale(.6);
+      border:3px solid var(--accent);
+      background:rgba(61,220,151,.15);
+      box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);
+      z-index:30;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+      animation:pop .55s ease-out;
+    }
+    .checkmark.active{ display:flex; }
+    .checkmark > div{
+      width:60px;
+      height:30px;
+      border-left:8px solid var(--accent);
+      border-bottom:8px solid var(--accent);
+      transform:rotate(-45deg) translateY(-6px);
+    }
+    @keyframes pop{
+      0%{ transform:translate(-50%,-50%) scale(.4); opacity:.2; }
+      60%{ transform:translate(-50%,-50%) scale(1.08); opacity:1; }
+      100%{ transform:translate(-50%,-50%) scale(1); }
+    }
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:24px;
+      transform:translateX(-50%) translateY(20px);
+      background:rgba(0,0,0,0.8);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:10px;
+      font-size:14px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .25s, transform .25s;
+      z-index:90;
+    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+    .modal-mask{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:100;
+      background:rgba(0,0,0,.5);
+    }
+    .modal{
+      width:min(90vw, 360px);
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.15);
+      background:#111;
+      color:#fff;
+      padding:18px 16px;
+      text-align:center;
+    }
+    .modal h3{ margin:8px 0 6px; font-size:20px; }
+    .modal p{ margin-top:0; color:#cfd8dc; }
+    .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; }
+    .explanation{
+      width:100%;
+      max-width:980px;
+      margin:14px 0 20px;
+      line-height:1.65;
+      color:var(--shell-copy-ink);
+      font-size:var(--shell-copy-size);
+    }
+    .explanation h2{
+      margin:0 0 8px;
+      color:var(--shell-title-ink);
+      font-size:var(--shell-title-size);
+      line-height:1.35;
+      letter-spacing:.01em;
+    }
+    @media (max-width:720px){
+      #spectrum{ height:20px; margin-bottom:10px; }
+      .task-card{
+        grid-template-columns:minmax(0,1fr) auto;
+        gap:4px 8px;
+        padding:8px 10px;
+        border-radius:10px;
+        align-items:center;
+      }
+      .task-step{ position:absolute; width:1px; min-width:1px; max-width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; }
+      .task-text{ grid-column:1; grid-row:1; min-width:0; font-size:13px; line-height:1.38; }
+      #taskText{ font-weight:650; }
+      #taskHint{ margin-top:2px; font-size:12px; line-height:1.5; }
+      .progress-dots{ grid-column:2; grid-row:1; justify-content:flex-end; justify-self:end; align-items:center; gap:5px; }
+      .dot{ width:8px; height:8px; outline-width:1px; }
+      .quiz-card{ padding:12px; }
+      .quiz-row{ grid-template-columns:1fr; }
+      .quiz-row button{ min-height:48px; font-size:15px; }
+      #stage{ height:58vh; min-height:500px; max-height:560px; }
+      .lab-area{ inset:96px 8px 10px; }
+      .node{ width:74px; height:74px; }
+      .mobile-tabs{
+        position:absolute;
+        left:12px;
+        right:12px;
+        bottom:8px;
+        z-index:44;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:6px;
+        padding:5px;
+        border:1px solid rgba(91,188,255,.24);
+        border-radius:11px;
+        background:rgba(9,12,16,.9);
+        box-shadow:0 12px 30px rgba(0,0,0,.42);
+      }
+      .mobile-tabs.attached{
+        border-top:0;
+        border-radius:0 0 12px 12px;
+        background:linear-gradient(180deg,rgba(9,21,33,.96),rgba(6,14,23,.96));
+      }
+      .mobile-tab{
+        border:0;
+        border-radius:8px;
+        padding:9px 10px;
+        background:rgba(255,255,255,.04);
+        color:#cfe4ff;
+        font-weight:900;
+      }
+      .mobile-tab.active{
+        background:rgba(61,220,151,.16);
+        color:#effff7;
+        box-shadow:inset 0 0 0 1px rgba(61,220,151,.56);
+      }
+      .drawer{
+        top:auto;
+        left:12px;
+        right:12px;
+        bottom:56px;
+        width:auto;
+        border-radius:12px 12px 0 0;
+      }
+      .drawer.control,.drawer.data{ top:auto; }
+      .drawer .dock-header{ display:none; }
+      .drawer.collapsed{ display:none; }
+      .drawer .dock-body{
+        grid-template-columns:minmax(0,1fr) 36px;
+        align-items:center;
+        max-height:188px;
+        overflow:auto;
+        padding:8px;
+      }
+      .drawer .sheet-close{
+        display:inline-grid;
+        grid-column:2;
+        grid-row:1;
+        place-items:center;
+        width:36px;
+        height:36px;
+        padding:0;
+        border-radius:50%;
+        background:rgba(255,255,255,.055);
+        color:#e3f0ff;
+      }
+      .drawer .primary,.drawer .empty{ grid-column:1; grid-row:1; }
+      .toolbar{
+        display:grid;
+        grid-template-columns:repeat(3, minmax(0,1fr));
+        gap:7px;
+      }
+      .toolbar button{ min-width:0; padding:8px 6px; font-size:12px; font-weight:800; }
+    }
+  </style>
+  <style>
+    #hintLamp{border:1px solid rgba(150,170,190,.38);border-radius:8px;background:rgba(100,120,140,.13);color:#ffd54f;cursor:pointer}
+    #hintPop{display:none;padding:10px 12px;border:1px solid rgba(255,209,102,.36);border-radius:10px;background:rgba(16,18,20,.94);color:#f4efe2;font-size:13px;line-height:1.55}
+    #hintPop.open{display:block}
+  </style>
+<style>
+  :root{--bg:#131b23;--drawer-collapsed-width:164px}
+  #stage{height:600px;min-height:600px;max-height:none;touch-action:pan-y}
+  #stage.measuring{height:770px}
+  .lab-area{inset:106px 12px 12px;border:0;background:transparent;overflow:visible}
+  .lab-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+  .rig-card{position:relative;min-width:0}
+  #rigSvg{display:block;width:100%;height:340px;touch-action:none;overflow:visible}
+  #rigSvg [data-tool]{cursor:grab;outline:none}
+  #rigSvg [data-tool]:focus{filter:drop-shadow(0 0 5px #78d7ff)}
+  #paperList{display:flex;justify-content:center;gap:12px;font-size:12px;color:#849bab;margin-top:-22px}
+  #paperList span{padding:5px 12px;border:1px solid #324959;border-radius:20px}
+  #paperList .collected{color:#8de6bd;border-color:#4e9f7c;background:#18392f}
+  .measuring #rigSvg{height:245px}
+  .work-grid{display:none;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px}
+  .measuring .work-grid{display:grid}
+  .work-card{min-width:0;border:1px solid #334c5c;border-radius:12px;background:rgba(14,29,40,.82);padding:10px}
+  .work-head{font-size:13px;font-weight:700;color:#cbddea;min-height:22px}
+  #pointMeta{font-size:11px;color:#8faebf;min-height:18px}
+  #tapeSvg{width:100%;height:auto;display:block;touch-action:none;overflow:hidden}
+  #zoomSvg{width:100%;height:110px;display:block;touch-action:none}
+  #pointButtons{display:flex;gap:4px;justify-content:space-between;margin-top:5px}
+  #pointButtons button{min-height:38px;min-width:30px;padding:4px 5px;background:#263c4b;border:1px solid #385569;font-size:12px}
+  #pointButtons button.selected{border-color:#ffda8b;color:#ffdf9b;background:#544429}
+  #pointButtons button.read{box-shadow:inset 0 -3px #66d5a0}
+  .fine-controls{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:5px;font-size:11px;color:#9ab4c7}
+  .fine-controls button{min-height:36px;width:44px;padding:4px;background:#253d50}
+  #graphSvg{width:100%;height:auto;display:block}
+  #graphLegend{display:grid;gap:4px;font-size:11px}
+  .not-ready{opacity:.55}
+  .ctrl-line{display:flex;gap:7px;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:12px;min-width:0}
+  .ctrl-line label{display:flex;align-items:center;gap:4px;min-width:0}
+  input,select{font:inherit;min-height:36px;max-width:100%;border:1px solid #4c6577;background:#172a3b;color:#eef8ff;border-radius:6px;padding:5px}
+  #readingInput{width:108px}#originInput{width:54px}#intervalSelect{width:98px}
+  .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .action-grid button{min-height:38px;font-size:12px;padding:6px}
+  .drawer{width:275px;background:rgba(12,25,37,.83);backdrop-filter:blur(8px)}
+  .drawer.data{top:118px}
+  .dock-body{display:block;max-height:360px;overflow:auto}
+  .panel-grip{display:none}
+  .sheet-close{display:none}
+  .run-record{border-bottom:1px solid #354c5c;padding:5px 0 10px;margin-bottom:8px}
+  .run-record small{display:block;color:#a3bdcf;font-size:11px;margin:5px 0}
+  table{width:100%;border-collapse:collapse;font-size:11px;text-align:right}
+  th,td{padding:5px 3px;border-bottom:1px solid #2d4352;white-space:nowrap}
+  th{color:#9db7c8;font-weight:500}
+  .record-scroll{overflow:auto}
+  .result-text{font-size:12px;line-height:1.5;color:#bde8d4;margin:8px 0 0}
+  .badge{display:inline-grid;place-items:center;background:#e65353;color:white;border-radius:12px;min-width:20px;padding:1px 4px;font-size:11px;animation:recordBlink 1s ease-in-out infinite}
+  .badge[hidden]{display:none}
+  #dataTabBadge{margin-left:3px;vertical-align:super;font-size:10px}
+  @keyframes recordBlink{50%{box-shadow:0 0 9px #ff5151}}
+  .task-card.warning .task-step,.dot.warn{background:#b74141}
+  .task-card.free-mode{opacity:.42;filter:grayscale(.86) saturate(.42)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .task-hint{line-height:1.5}
+  .hint-lamp{position:absolute;top:62px;left:12px;width:34px;height:32px;z-index:25}
+  #hintPop{position:absolute;left:12px;right:12px;top:99px;z-index:70;max-width:580px}
+  .warn-flash{animation:lampWarn .22s 3}
+  @keyframes lampWarn{50%{box-shadow:0 0 17px #ff705d}}
+  .mode-strip{border:1px solid transparent;background:linear-gradient(#14212c,#14212c) padding-box,linear-gradient(90deg,#61dfff,#79e5ad,#ffce85,#c499ff,#61dfff) border-box;background-size:100% 100%,200% 100%;animation:modeFlow 7s linear infinite}
+  @keyframes modeFlow{to{background-position:0 0,200% 0}}
+  #demoCursor{position:absolute;z-index:80;width:22px;height:30px;pointer-events:none;transition:left .15s linear,top .15s linear;color:#fff;filter:drop-shadow(1px 2px 2px #000)}
+  #demoCursor:before{content:"";position:absolute;border-left:9px solid transparent;border-right:7px solid transparent;border-bottom:24px solid currentColor;transform:rotate(-25deg)}
+  #demoCursor.pulse:after{content:"";position:absolute;left:-10px;top:-7px;width:30px;height:30px;border:3px solid #ffd166;border-radius:50%;animation:cursorPulse .5s ease-out}
+  @keyframes cursorPulse{to{box-shadow:0 0 0 15px #ffd16600;opacity:0}}
+  .modal-mask{z-index:200}
+  .quiz-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  @media(max-width:720px){
+    #stage{height:510px;min-height:510px;max-height:none}
+    #stage.measuring{height:930px}
+    .hud{left:8px;right:8px;gap:5px;padding:5px;font-size:11px}
+    .tag{padding:3px 6px}
+    .lab-area{inset:106px 8px 66px}
+    #rigSvg{height:310px}
+    .measuring #rigSvg{height:182px}
+    .work-grid{grid-template-columns:minmax(0,1fr);gap:9px}
+    .work-card{padding:7px}
+    #zoomSvg{height:100px}
+    #paperList{font-size:12px;gap:6px;margin-top:-16px}
+    #paperList span{padding:4px 10px}
+    #pointButtons button{min-height:42px;flex:1;min-width:0;padding:4px 2px}
+    .work-head{font-size:14px}
+    #pointMeta{font-size:12px;line-height:1.5}
+    .fine-controls{font-size:12px}
+    #graphSvg{max-height:155px}
+    #graphLegend{font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+    .drawer{left:12px;right:12px;top:auto;bottom:56px;width:auto}
+    .drawer.control,.drawer.data{top:auto}
+    .drawer .dock-body{display:block;max-height:235px;padding:8px}
+    .panel-grip{display:block;height:17px;touch-action:none;cursor:grab}
+    .panel-grip:before{content:"";display:block;margin:6px auto 0;width:40px;height:4px;background:#7495ac;border-radius:4px}
+    .sheet-close{display:block!important;position:absolute;right:5px;top:16px;width:30px;height:30px;padding:2px!important}
+    #controlContent>.ctrl-line:first-child{padding-right:31px}
+    .ctrl-line{font-size:12px}
+    .run-record small{font-size:12px;line-height:1.5}
+    .run-record{padding-top:6px}
+    .run-record b{padding-right:28px}
+    .run-record table,.run-record tbody{display:block}
+    .run-record thead{display:none}
+    .run-record tbody{display:grid;gap:7px}
+    .run-record tr{display:grid;grid-template-columns:1fr 1fr;padding:6px;border:1px solid #334c5c;border-radius:6px}
+    .run-record td{display:flex;justify-content:space-between;gap:5px;white-space:normal;border:0;font-size:12px;line-height:1.45}
+    .run-record td:before{content:attr(data-label);color:#91aabb}
+    .quiz-row{grid-template-columns:1fr}
+  }
+</style>
+<style id="cart-measurement-ui">
+  [hidden]{display:none!important}
+  #stage,#stage.measuring{height:auto;min-height:530px;max-height:none}
+  .lab-area{position:relative;inset:auto;margin:106px 12px 76px;overflow:visible}
+  .reading-form{display:grid;grid-template-columns:minmax(0,1fr) 94px auto;align-items:center;gap:8px;margin-top:12px}
+  .reading-form label{font-size:12px;color:#d1e2ee}
+  .reading-form #readingInput{width:94px;min-height:42px}
+  .reading-form button{min-height:42px;padding:8px 12px;white-space:nowrap;font-size:12px}
+  .reading-progress{grid-column:1/-1;min-height:18px;margin:0;color:#a8c3d5;font-size:12px;line-height:1.55}
+  .speed-lesson{grid-column:1/-1}
+  .speed-lesson p{font-size:13px;line-height:1.7;margin:8px 0;overflow-wrap:anywhere}
+  .speed-form{display:flex;align-items:flex-end;flex-wrap:wrap;gap:12px}
+  .speed-form label{display:grid;gap:5px;font-size:12px}
+  .speed-form input{width:145px}.speed-form select{min-width:150px}
+  .speed-form button{min-height:38px}
+  .secondary-actions{margin-top:8px}.secondary-actions button{background:#263b4b;color:#b7cddb}
+  .recover-button{margin-top:10px;width:100%;border:1px solid #73caa8;color:#c7f7e0;background:#1a4336}
+  .suspect-reading{color:#ffd166!important}
+  #tapeSvg [data-count-point]{cursor:pointer}
+  #tapeSvg [data-count-point]:focus{outline:1px solid #ffd166}
+  @media(max-width:720px){
+    #stage,#stage.measuring{height:auto;min-height:440px}
+    .lab-area{margin:110px 8px 74px}
+    #rigSvg{height:230px}.measuring #rigSvg{height:182px}
+    .reading-form{grid-template-columns:minmax(0,1fr) 82px auto;gap:5px}
+    .reading-form #readingInput{width:82px;min-width:0;font-size:16px}
+    .reading-form label{font-size:12px}.reading-form button{padding:8px;font-size:12px}
+    .reading-progress,.speed-form label{font-size:13px}
+    .speed-lesson p{font-size:14px}
+    .speed-form{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .speed-form label,.speed-form input,.speed-form select{min-width:0;width:100%}
+    .speed-form input,.speed-form select{font-size:16px}
+    .speed-form button{grid-column:1/-1;min-height:42px}
+    .explanation{font-size:16px;line-height:1.7}
+    .explanation ul{margin:0;padding-left:22px}
+  }
+</style><style id="codex-exp35-49-mode-ui-standard">#stage #modeTag.mode-strip{position:relative!important;isolation:isolate!important;min-width:158px!important;width:auto!important;max-width:none!important;box-sizing:border-box!important;border:2px solid transparent!important;border-radius:999px!important;padding:4px 12px!important;font-weight:900!important;color:#fff!important;background:linear-gradient(rgba(6,10,14,.94),rgba(6,10,14,.94)) padding-box,linear-gradient(90deg,#35ff73,#4bd8ff,#6c5cff,#ff4fc3,#ffd166,#35ff73,#4bd8ff) border-box!important;background-size:100% 100%,260% 100%!important;box-shadow:0 0 13px rgba(75,216,255,.20),inset 0 0 10px rgba(255,255,255,.06)!important;white-space:nowrap!important;text-align:center!important;overflow:hidden!important;text-overflow:clip!important;animation:codexModeRibbonFlow 3.2s linear infinite,codexModeGlow 1.8s ease-in-out infinite alternate!important}#stage #modeTag.mode-strip::before{content:""!important;position:absolute!important;top:-2px!important;bottom:-2px!important;left:-48%!important;width:46%!important;border-radius:inherit!important;background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.08) 34%,rgba(255,255,255,.88) 50%,rgba(112,255,204,.42) 64%,transparent 100%)!important;opacity:.68!important;transform:skewX(-18deg) translateX(-130%);animation:codexModeSweep 2.4s linear infinite!important;mix-blend-mode:screen!important;pointer-events:none!important}#stage #modeTag.mode-strip::after{content:""!important;position:absolute!important;left:16px!important;right:16px!important;bottom:3px!important;height:2px!important;border-radius:999px!important;background:linear-gradient(90deg,transparent,#70ffcc,#ffd166,transparent)!important;opacity:.82!important;pointer-events:none!important}@keyframes codexModeRibbonFlow{0%{background-position:0 0,0 0}100%{background-position:0 0,-260% 0}}@keyframes codexModeSweep{0%{transform:skewX(-18deg) translateX(-130%)}100%{transform:skewX(-18deg) translateX(430%)}}@keyframes codexModeGlow{0%{box-shadow:0 0 11px rgba(75,216,255,.18),inset 0 0 9px rgba(255,255,255,.05)}100%{box-shadow:0 0 19px rgba(112,255,204,.34),inset 0 0 12px rgba(255,255,255,.10)}}@media (prefers-reduced-motion:reduce){#stage #modeTag.mode-strip{animation:none!important}#stage #modeTag.mode-strip::before{animation:none!important;display:none!important}}</style>
+  <style id="codex-theme-pilot-style">
+    :root[data-theme="dark"]{color-scheme:dark}
+    .theme-app-contents{display:contents}
+    @property --codex-mode-ring-angle{syntax:"<angle>";inherits:false;initial-value:0deg}
+    body #app #stage :is(#modeTag,#modeChip){
+      position:relative!important;isolation:isolate!important;min-width:158px!important;width:auto!important;max-width:none!important;
+      box-sizing:border-box!important;border:2px solid transparent!important;border-radius:999px!important;padding:4px 12px!important;
+      font-weight:900!important;color:#fff!important;white-space:nowrap!important;text-align:center!important;overflow:hidden!important;text-overflow:clip!important;
+      background:linear-gradient(rgba(6,10,14,.94),rgba(6,10,14,.94)) padding-box,
+        conic-gradient(from var(--codex-mode-ring-angle),#ff4c4c 0deg 45deg,#ff9a3d 45deg 90deg,#f7e94c 90deg 135deg,#54e86d 135deg 180deg,#40e0d0 180deg 225deg,#4aa3ff 225deg 270deg,#8757ff 270deg 315deg,#ec5cff 315deg 360deg) border-box!important;
+      box-shadow:0 0 13px rgba(75,216,255,.20)!important;
+      animation:codexModeRingTurn 8s linear infinite!important;
+    }
+    body #app #stage :is(#modeTag,#modeChip)::before,
+    body #app #stage :is(#modeTag,#modeChip)::after{content:none!important;display:none!important}
+    @keyframes codexModeRingTurn{to{--codex-mode-ring-angle:1turn}}
+    :root[data-theme="light"]{
+      color-scheme:light;
+      --theme-page:#f6f7fb;
+      --theme-surface:#fff;
+      --theme-surface-soft:#eef1f6;
+      --theme-text:#20242c;
+      --theme-muted:#667085;
+      --theme-border:#d7dce5;
+      --theme-accent:#155e75;
+    }
+    .theme-spectrum-row{
+      width:100%;max-width:980px;display:grid;grid-template-columns:minmax(0,1fr) 44px;
+      align-items:center;gap:8px;margin:0 0 12px;
+    }
+    .theme-spectrum-row #spectrum{grid-column:1;grid-row:1;width:100%!important;max-width:none!important;margin:0!important}
+    .theme-toolbar{
+      grid-column:2;grid-row:1;width:44px;max-width:none;min-height:44px;margin:0;
+      display:flex;align-items:center;justify-content:flex-end;
+    }
+    .theme-toggle{
+      width:44px;height:44px;padding:0;display:grid;place-items:center;
+      border:1px solid transparent;border-radius:999px;background:transparent;
+      color:#cbd5e1;cursor:pointer;touch-action:manipulation;
+      transition:color .18s ease,background .18s ease,border-color .18s ease,transform .08s ease;
+    }
+    .theme-toggle:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.12)}
+    .theme-toggle:active{transform:scale(.96)}
+    .theme-toggle:focus-visible{outline:3px solid #5bbcff;outline-offset:3px}
+    .theme-icon{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+    :root[data-theme="dark"] .theme-icon-moon,
+    :root[data-theme="light"] .theme-icon-sun{display:none}
+    :root[data-theme="light"] .theme-toggle{color:#5f6170}
+    :root[data-theme="light"] .theme-toggle:hover{background:#eef1f6;border-color:#d7dce5}
+    :root[data-theme="light"] body{background:var(--theme-page)!important;color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .task-card{
+      background:rgba(255,255,255,.94)!important;border-color:var(--theme-border)!important;
+      color:var(--theme-text)!important;box-shadow:0 10px 28px rgba(31,41,55,.08)!important;
+    }
+    :root[data-theme="light"] body #app .task-card .task-step{
+      background:var(--theme-surface-soft)!important;border-color:#cbd3de!important;color:var(--theme-text)!important;
+    }
+    :root[data-theme="light"] body #app .task-card .task-text{color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .task-card .task-hint,
+    :root[data-theme="light"] body #app .task-card #taskHint{color:#7a4d00!important}
+    :root[data-theme="light"] body #app .task-card .dot:not(.active):not(.done):not(.warn){
+      background:#98a2b3!important;outline-color:#667085!important;
+    }
+    :root[data-theme="light"] body #app .task-card .dot{position:relative}
+    :root[data-theme="light"] body #app .task-card .dot::after{
+      content:"";position:absolute;inset:-4px;border:1px solid #475467;border-radius:inherit;pointer-events:none;
+    }
+    :root[data-theme="light"] body #app #stage{color:var(--theme-stage-ink,var(--ink,var(--fg,#eaf2ff)))!important}
+    :root[data-theme="light"] body #app .toolbar{
+      background:rgba(255,255,255,.78)!important;border-color:var(--theme-border)!important;
+      box-shadow:0 8px 24px rgba(31,41,55,.06)!important;
+    }
+    :root[data-theme="light"] body #app .toolbar button{
+      background:#e5eaf1!important;color:#253041!important;border:1px solid #cbd3de!important;
+    }
+    :root[data-theme="light"] body #app .toolbar button:hover{background:#d9e1eb!important}
+    :root[data-theme="light"] body #app .explanation{
+      background:var(--theme-surface)!important;border-color:var(--theme-border)!important;
+      color:var(--theme-text)!important;box-shadow:0 10px 28px rgba(31,41,55,.07)!important;
+    }
+    :root[data-theme="light"] body #app .explanation :where(p,ul,ol,li,dl,dt,dd){color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .explanation .formula,
+    :root[data-theme="light"] body #app .explanation .formula *{color:var(--theme-text)!important}
+    :root[data-theme="light"] body #app .explanation h2{color:var(--theme-accent)!important}
+    :root[data-theme="light"] body #app #stage #controlDock,
+    :root[data-theme="light"] body #app #stage #dataDock{
+      background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+      color:var(--theme-text)!important;box-shadow:0 16px 38px rgba(31,41,55,.18)!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockHead,
+    :root[data-theme="light"] body #app #stage #dataDock .dockHead,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-header,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-header,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-header,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-header,
+    :root[data-theme="light"] body #app #stage #controlDock .panelHead,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsHead{
+      background:rgba(238,241,246,.96)!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .dockTitle,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-title,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-title,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-title,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-title,
+    :root[data-theme="light"] body #app #stage #controlDock .panelHead .title,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsHead .title{
+      color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .dockBody,
+    :root[data-theme="light"] body #app #stage #dataDock .dockBody,
+    :root[data-theme="light"] body #app #stage #controlDock .dock-body,
+    :root[data-theme="light"] body #app #stage #dataDock .dock-body,
+    :root[data-theme="light"] body #app #stage #controlDock .drawer-body,
+    :root[data-theme="light"] body #app #stage #dataDock .drawer-body,
+    :root[data-theme="light"] body #app #stage #controlDock .panelBody,
+    :root[data-theme="light"] body #app #stage #dataDock .resultsBody{
+      background:rgba(255,255,255,.92)!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock label,
+    :root[data-theme="light"] body #app #stage #dataDock label,
+    :root[data-theme="light"] body #app #stage #controlDock h3,
+    :root[data-theme="light"] body #app #stage #dataDock h3,
+    :root[data-theme="light"] body #app #stage #controlDock h4,
+    :root[data-theme="light"] body #app #stage #dataDock h4,
+    :root[data-theme="light"] body #app #stage #controlDock .source-line,
+    :root[data-theme="light"] body #app #stage #dataDock .source-line,
+    :root[data-theme="light"] body #app #stage #controlDock .mini,
+    :root[data-theme="light"] body #app #stage #dataDock .mini{color:#475467!important}
+    :root[data-theme="light"] body #app #stage #controlDock .secTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .secTitle{color:#475467!important}
+    :root[data-theme="light"] body #app #stage #controlDock .status-grid .pill,
+    :root[data-theme="light"] body #app #stage #dataDock .status-grid .pill{background:#e5eaf1!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock .pill,
+    :root[data-theme="light"] body #app #stage #dataDock .pill,
+    :root[data-theme="light"] body #app #stage #controlDock .pill-box,
+    :root[data-theme="light"] body #app #stage #dataDock .pill-box{background:#e5eaf1!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock .pill *,
+    :root[data-theme="light"] body #app #stage #dataDock .pill *,
+    :root[data-theme="light"] body #app #stage #controlDock .pill-box *,
+    :root[data-theme="light"] body #app #stage #dataDock .pill-box *{color:inherit!important}
+    :root[data-theme="light"] body #app #stage #controlDock span:not([class]),
+    :root[data-theme="light"] body #app #stage #dataDock span:not([class]),
+    :root[data-theme="light"] body #app #stage #controlDock .lab-hint,
+    :root[data-theme="light"] body #app #stage #dataDock .lab-hint,
+    :root[data-theme="light"] body #app #stage #controlDock .cardTitle,
+    :root[data-theme="light"] body #app #stage #dataDock .cardTitle,
+    :root[data-theme="light"] body #app #stage #controlDock small,
+    :root[data-theme="light"] body #app #stage #dataDock small,
+    :root[data-theme="light"] body #app #stage #controlDock .val,
+    :root[data-theme="light"] body #app #stage #dataDock .val{color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock b,
+    :root[data-theme="light"] body #app #stage #dataDock b{color:inherit!important}
+    :root[data-theme="light"] body #app #stage #controlDock .codex-panel-note,
+    :root[data-theme="light"] body #app #stage #dataDock .codex-panel-note{background:#eef1f6!important;border-color:#cbd3de!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage #controlDock button:not(.main):not(.sub):not(.danger):not(.warn):not(.good),
+    :root[data-theme="light"] body #app #stage #dataDock button:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+      background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good),
+    :root[data-theme="light"] body #app #stage #dataDock button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+      background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock button.main,
+    :root[data-theme="light"] body #app #stage #dataDock button.main{background:#2e7d32!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock button.sub,
+    :root[data-theme="light"] body #app #stage #dataDock button.sub{background:#475467!important;border-color:#475467!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock .analysisBox,
+    :root[data-theme="light"] body #app #stage #dataDock .analysisBox{background:#f5f7fa!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .analysis.ok{background:#f5f7fa!important;border-color:#6fcf9f!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .record-cue.ready,
+    :root[data-theme="light"] body #app #stage .record-cue.done{background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important}
+    :root[data-theme="light"] body #app #stage .record-cue.warn{background:#fff4d6!important;border-color:#e0a44c!important;color:#7a4d00!important}
+    :root[data-theme="light"] body #app #stage #dataNotice,
+    :root[data-theme="light"] body #app #stage .dataNotice,
+    :root[data-theme="light"] body #app #stage .dockNotice,
+    :root[data-theme="light"] body #app #stage .notice-badge,
+    :root[data-theme="light"] body #app #stage .dock-badge,
+    :root[data-theme="light"] body #app #stage #dataDock .badge,
+    :root[data-theme="light"] body #app #stage .mobile-badge{background:#b42318!important;color:#fff!important}
+    :root[data-theme="light"] body #app #stage #controlDock input,
+    :root[data-theme="light"] body #app #stage #controlDock select,
+    :root[data-theme="light"] body #app #stage #dataDock input,
+    :root[data-theme="light"] body #app #stage #dataDock select{
+      background:#fff!important;border-color:#cbd3de!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .record-cue:not(.ready):not(.warn):not(.done),
+    :root[data-theme="light"] body #app #stage .empty,
+    :root[data-theme="light"] body #app #stage .analysis:not(.ok){
+      background:#f5f7fa!important;border-color:#d7dce5!important;color:#344054!important;
+    }
+    :root[data-theme="light"] body #app #stage #controlDock .iconBtn,
+    :root[data-theme="light"] body #app #stage #dataDock .iconBtn,
+    :root[data-theme="light"] body #app #stage #controlDock .mini:not(div),
+    :root[data-theme="light"] body #app #stage #dataDock .mini:not(div),
+    :root[data-theme="light"] body #app #stage #controlDock .sheet-close,
+    :root[data-theme="light"] body #app #stage #dataDock .sheet-close{
+      background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+    }
+    :root[data-theme="light"] body #app #stage #dataDock table,
+    :root[data-theme="light"] body #app #stage #dataDock table th,
+    :root[data-theme="light"] body #app #stage #dataDock table td,
+    :root[data-theme="light"] body #app #stage #dataDock table.record,
+    :root[data-theme="light"] body #app #stage #dataDock table.record th,
+    :root[data-theme="light"] body #app #stage #dataDock table.record td,
+    :root[data-theme="light"] body #app #stage #dataDock table.table,
+    :root[data-theme="light"] body #app #stage #dataDock table.table th,
+    :root[data-theme="light"] body #app #stage #dataDock table.table td{
+      border-color:#d7dce5!important;color:#344054!important;
+    }
+    :root[data-theme="light"] body #app #stage #dataDock table th,
+    :root[data-theme="light"] body #app #stage #dataDock table.record th,
+    :root[data-theme="light"] body #app #stage #dataDock table.table th{
+      background:#eef1f6!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .chartWrap{
+      background:#101722!important;border-color:#334155!important;color:#eaf2ff!important;
+    }
+    :root[data-theme="light"] body #app #stage .mobile-tabs{
+      background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+    }
+    :root[data-theme="light"] body #app #stage .mobile-tab{background:#eef1f6!important;color:#344054!important}
+    :root[data-theme="light"] body #app #stage .mobile-tab.active{
+      background:#d9f5e8!important;color:#14532d!important;box-shadow:inset 0 0 0 1px #6fcf9f!important;
+    }
+    :root[data-theme="light"] body #app .modal{
+      background:#fff!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app .modal h3{color:#155e75!important}
+    :root[data-theme="light"] body #app .modal p{color:#475467!important}
+    :root[data-theme="light"] body #app .toast{
+      background:#fff!important;border-color:#cbd3de!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .hint-pop,
+    :root[data-theme="light"] body #app #stage .helpCard{
+      background:#fff!important;border-color:#d7dce5!important;color:#20242c!important;
+    }
+    :root[data-theme="light"] body #app #stage .hint-pop b,
+    :root[data-theme="light"] body #app #stage .helpCard b{color:#155e75!important}
+    @media(min-width:721px){
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"]{
+        width:164px!important;min-width:164px!important;max-width:164px!important;
+        left:var(--codex-panel-left)!important;top:var(--codex-panel-top)!important;
+        right:auto!important;bottom:auto!important;z-index:var(--codex-panel-z)!important;
+        overflow:visible!important;background:transparent!important;box-shadow:none!important;transition:none!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{
+        width:164px!important;min-width:164px!important;max-width:164px!important;
+        height:44px!important;min-height:44px!important;max-height:44px!important;box-sizing:border-box!important;
+        display:flex!important;align-items:center!important;flex-flow:row nowrap!important;gap:8px!important;
+        padding-top:0!important;padding-bottom:0!important;padding-left:10px!important;padding-right:10px!important;overflow:hidden!important;
+        position:relative!important;z-index:2!important;
+        touch-action:none!important;border:1px solid rgba(148,163,184,.32)!important;border-radius:12px!important;
+        background:rgba(15,23,42,.90)!important;box-shadow:0 8px 22px rgba(0,0,0,.28)!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*{min-height:0!important;max-height:40px!important;box-sizing:border-box!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:first-child{flex:1 1 auto!important;min-width:0!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]>*:last-child{flex:0 0 auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"] button{max-height:40px!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)){
+        gap:4px!important;
+        padding-left:6px!important;padding-right:6px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :first-child{
+        gap:2px!important;overflow:visible!important;text-overflow:clip!important;font-size:12px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) #dataNotice{
+        position:relative!important;z-index:3!important;flex:0 0 auto!important;
+        min-width:14px!important;height:16px!important;padding:0 2px!important;
+        font-size:10px!important;line-height:16px!important;box-sizing:border-box!important;pointer-events:auto!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child{
+        gap:3px!important;min-width:0!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]:has(#dataNotice):has(> :last-child > button:nth-of-type(2)) > :last-child > button{
+        min-width:0!important;padding-left:4px!important;padding-right:4px!important;font-size:10px!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{
+        position:absolute!important;z-index:1!important;display:none!important;box-sizing:border-box!important;
+        width:var(--codex-panel-body-width)!important;max-width:var(--codex-panel-body-width)!important;
+        max-height:var(--codex-panel-body-height)!important;overflow:auto!important;
+        border:1px solid rgba(148,163,184,.32)!important;border-radius:12px!important;
+        background:rgba(15,23,42,.88)!important;box-shadow:0 16px 38px rgba(0,0,0,.34)!important;
+      }
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-open="1"] [data-codex-panel-body="1"]{display:block!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-x="right"] [data-codex-panel-body="1"]{left:0!important;right:auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-x="left"] [data-codex-panel-body="1"]{left:auto!important;right:0!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-y="down"] [data-codex-panel-body="1"]{top:100%!important;bottom:auto!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-y="up"] [data-codex-panel-body="1"]{top:auto!important;bottom:100%!important}
+      body #app #stage:is(#stage) [data-codex-desktop-panel="1"][data-codex-panel-dragging="1"] [data-codex-panel-body="1"]{pointer-events:none!important}
+      body #app #stage:is(#stage) #controlDock[data-codex-desktop-panel="1"]~#dataDock[data-codex-desktop-panel="1"]{opacity:1!important;pointer-events:auto!important;transform:none!important}
+      body #app #stage:is(#stage) #controlDrawer.open~#dataDrawer{opacity:1!important;pointer-events:auto!important;transform:none!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"]{background:transparent!important;box-shadow:none!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-header="1"]{background:rgba(255,255,255,.92)!important;color:#20242c!important;border-color:#cbd3de!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] [data-codex-panel-body="1"]{background:rgba(255,255,255,.90)!important;color:#20242c!important;border-color:#cbd3de!important}
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+        background:#e5eaf1!important;border-color:#cbd3de!important;color:#253041!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.active:not(.main):not(.sub):not(.danger):not(.warn):not(.good){
+        background:#d9f5e8!important;border-color:#6fcf9f!important;color:#14532d!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.main{
+        background:#2e7d32!important;color:#fff!important;
+      }
+      :root[data-theme="light"] body #app #stage:is(#stage) [data-codex-desktop-panel="1"] button.sub{
+        background:#475467!important;border-color:#475467!important;color:#fff!important;
+      }
+    }
+    @media(max-width:720px){
+      .theme-spectrum-row{gap:6px;margin-bottom:10px}
+      .theme-toolbar{min-height:44px;margin:0}
+      .theme-toggle{width:44px;height:44px}
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet{
+        background:rgba(255,255,255,.94)!important;border-color:#cbd3de!important;
+      }
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .dock-body,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .dock-body,
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .drawer-body,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .drawer-body,
+      :root[data-theme="light"] body #app #stage #controlDock.mobile-sheet .panelBody,
+      :root[data-theme="light"] body #app #stage #dataDock.mobile-sheet .resultsBody{
+        background:rgba(255,255,255,.92)!important;color:#20242c!important;
+      }
+    }
+    @media(prefers-reduced-motion:reduce){
+      .theme-toggle,
+      body,.task-card,.toolbar,.explanation,#controlDock,#dataDock{transition:none!important}
+      body #app #stage :is(#modeTag,#modeChip){animation:none!important;--codex-mode-ring-angle:0deg}
+    }
+  </style>
+</head>
+<body>
+<script id="codex-lab-sound-bus" data-native-audio="false">
+(() => {
+  'use strict';
+  if (window.labSoundBus) return;
+  const nativeAudio = document.currentScript.dataset.nativeAudio === 'true';
+  let ctx = null, master = null, muted = false, held = false, unlocked = false, outputTarget = null;
+  let button = null, warned = false;
+  const voices = new Map();
+  const lastSounds = new Map();
+  const patterns = {
+    tap: { peak:.018, duration:.055, notes:[[440,0,.045]] },
+    hint: { peak:.035, duration:.18, notes:[[783.99,0,.08],[987.77,.09,.07]] },
+    record: { peak:.04, duration:.13, notes:[[554.37,0,.09]] },
+    warn: { peak:.045, duration:.22, notes:[[220,0,.09],[164.81,.1,.09]] },
+    step: { peak:.055, duration:.24, notes:[[523.25,0,.11],[659.25,.085,.13]] },
+    finish: { peak:.07, duration:.65, notes:[[392,0,.12],[523.25,.14,.14],[659.25,.3,.24]] },
+  };
+  function report(error) {
+    if (!warned) { warned = true; console.warn('[lab-audio] 无法播放音效', error); }
+  }
+  function syncButton() {
+    if (!button || nativeAudio) return;
+    button.textContent = muted ? '🔇' : '🔊';
+    button.setAttribute('aria-pressed', String(!muted));
+    button.setAttribute('aria-label', muted ? '开启音效' : '关闭音效');
+    button.title = muted ? '开启音效' : '关闭音效';
+    button.classList.toggle('muted', muted);
+  }
+  function paused() {
+    const mode = document.querySelector('#modeTag,#modeChip')?.textContent || '';
+    return (mode.includes('演示模式') && mode.includes('已暂停')) || document.querySelector('#resetBtn')?.textContent.trim() === '继续演示';
+  }
+  function applyGate() {
+    if (!master) return;
+    const target = muted || held || document.hidden || paused() ? 0 : 1;
+    if (target === outputTarget) return;
+    outputTarget = target;
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setTargetAtTime(target, now, .008);
+  }
+  function stopVoices() {
+    for (const [voice, stop] of voices) {
+      try { stop(ctx.currentTime); } catch (error) { report(error); }
+      voices.delete(voice);
+    }
+  }
+  function hush() {
+    held = true; stopVoices(); applyGate();
+    window.dispatchEvent(new Event('lab-audio-silence'));
+  }
+  function unlock(event) {
+    if (!event?.isTrusted || document.hidden) return null;
+    if (event.type === 'keydown' && !['Enter',' ','Spacebar'].includes(event.key)) return ctx;
+    if (held) stopVoices();
+    held = false;
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) {
+      if (button) { button.disabled = true; button.title = '当前浏览器不支持声音'; }
+      return null;
+    }
+    try {
+      if (!ctx) {
+        ctx = new Audio();
+        master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+        // Track scheduled one-shot voices so mute cannot revive their old tails.
+        // Continuous apparatus oscillators stay alive behind the output gate.
+        const createOscillator = ctx.createOscillator.bind(ctx);
+        ctx.createOscillator = () => {
+          const voice = createOscillator(); const stop = voice.stop.bind(voice);
+          voice.stop = when => { voices.set(voice, stop); return stop(when); };
+          voice.addEventListener('ended', () => voices.delete(voice), { once:true });
+          return voice;
+        };
+      }
+      unlocked = ctx.state === 'running';
+      if (ctx.state === 'suspended') ctx.resume().then(() => {
+        unlocked = ctx.state === 'running';
+      }).catch(error => { unlocked = false; report(error); });
+      applyGate(); return ctx;
+    } catch (error) { report(error); return null; }
+  }
+  function setMuted(value) {
+    const next = Boolean(value);
+    if (next === muted) return;
+    muted = next;
+    if (muted) { stopVoices(); window.dispatchEvent(new Event('lab-audio-silence')); }
+    applyGate(); syncButton();
+  }
+  function play(kind) {
+    if (!unlocked || !ctx || muted || held || document.hidden || paused() || ctx.state !== 'running') return false;
+    const nowMs = performance.now();
+    if (nowMs - (lastSounds.get(kind) ?? -Infinity) < (kind === 'finish' ? 650 : 100)) return false;
+    const pattern = patterns[kind] || patterns.hint;
+    lastSounds.set(kind, nowMs);
+    const start = ctx.currentTime + .005;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.linearRampToValueAtTime(pattern.peak, start + .008);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + pattern.duration);
+    gain.connect(master);
+    let remaining = pattern.notes.length;
+    for (const [frequency, offset, duration] of pattern.notes) {
+      const voice = ctx.createOscillator(); voice.type = 'sine';
+      voice.frequency.value = frequency; voice.connect(gain);
+      voice.addEventListener('ended', () => { voice.disconnect(); if (--remaining === 0) gain.disconnect(); }, { once:true });
+      voice.start(start + offset); voice.stop(start + offset + duration);
+    }
+    window.dispatchEvent(new CustomEvent('lab-ui-sound', { detail:{kind} }));
+    return true;
+  }
+  window.labSoundBus = {
+    unlock, play, setMuted, hush,
+    getContext: () => unlocked && ctx?.state === 'running' ? ctx : null,
+    getInput: () => master,
+    get muted() { return muted; },
+    get unlocked() { return unlocked && ctx?.state === 'running'; },
+    get held() { return held; },
+  };
+  document.addEventListener('pointerdown', unlock, { capture:true, passive:true });
+  document.addEventListener('keydown', unlock, { capture:true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hush(); });
+  window.addEventListener('pagehide', hush);
+  function mount() {
+    const stage = document.querySelector('#stage'); if (!stage) return;
+    button = stage.querySelector('#audioToggle');
+    if (!button) {
+      button = document.createElement('button'); button.id = 'audioToggle';
+      button.type = 'button'; button.className = 'audio-toggle'; stage.appendChild(button);
+    }
+    if (nativeAudio) {
+      const syncNativeMute = () => setMuted(button.getAttribute('aria-pressed') === 'false' || button.classList.contains('muted'));
+      new MutationObserver(syncNativeMute).observe(button, { attributes:true, attributeFilter:['aria-pressed','class'] });
+      syncNativeMute();
+    } else {
+      window.labAudio = window.labSoundBus;
+      syncButton();
+      button.addEventListener('click', event => {
+        event.stopPropagation(); if (!event.isTrusted) return;
+        setMuted(!muted); if (!muted) { held = false; applyGate(); play('hint'); }
+      });
+    }
+    const lamp = stage.querySelector('#hintLamp,.hint-lamp');
+    const mode = stage.querySelector('#modeTag,#modeChip');
+    if (mode) new MutationObserver(applyGate).observe(mode, { childList:true, characterData:true, subtree:true });
+    let quietUntil = 0;
+    let beginRound = () => {};
+    let acceptRecordClear = () => {};
+    document.addEventListener('click', event => {
+      const clicked = event.target.closest?.('button');
+      if (!clicked || clicked.disabled || clicked === button) return;
+      if (event.isTrusted && ((clicked.id === 'resetBtn' && /重置/.test(clicked.textContent)) || clicked.id === 'autoDemoBtn')) beginRound();
+      if (event.isTrusted && clicked.id === 'clearBtn') setTimeout(acceptRecordClear, 0);
+      if (/reset|autoDemo|freeBtn/i.test(clicked.id) && /暂停|退出|重置|自由/.test(clicked.textContent)) {
+        hush(); quietUntil = performance.now() + 300; return;
+      }
+      if (!nativeAudio) play(clicked === lamp ? 'hint' : 'tap');
+    }, { capture:true });
+    if (nativeAudio) return;
+    // Observe accepted state, never infer success from a button's name.
+    const snapshot = () => {
+      const body = document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody');
+      const records = [...(body?.querySelectorAll('tr') || [])].filter(row =>
+        row.querySelectorAll('td').length > 1 && !row.querySelector('td[colspan]'))
+        .map(row => row.dataset.recordId || row.textContent.trim());
+      const dots = document.querySelector('#dots,#progress,.progress-dots');
+      const done = dots?.querySelectorAll('.done').length || 0;
+      const warning = Boolean(dots?.querySelector('.warning,.warn,.error') || lamp?.classList.contains('flash'));
+      const mode = stage.querySelector('#modeTag,#modeChip')?.textContent || '';
+      const modal = document.querySelector('#doneMask,#doneModal,.modal-mask');
+      const finished = Boolean(modal && getComputedStyle(modal).display !== 'none' && getComputedStyle(modal).visibility !== 'hidden');
+      return { records, done, warning, finished, free:mode.includes('自由'), mode };
+    };
+    let previous = snapshot();
+    const seenRecords = new Set(previous.records);
+    let maxDone = previous.done;
+    let finishAnnounced = previous.finished;
+    acceptRecordClear = () => {
+      // Clear only after the experiment accepted the action; completion stays announced.
+      if (snapshot().records.length === 0) seenRecords.clear();
+    };
+    beginRound = () => {
+      seenRecords.clear(); maxDone = 0; finishAnnounced = false;
+      quietUntil = performance.now() + 300;
+    };
+    const feedbackChanges = new MutationObserver(() => {
+      const current = snapshot();
+      if (performance.now() >= quietUntil && current.free === previous.free) {
+        if (!current.free && current.finished && !finishAnnounced) play('finish');
+        else if (!current.free && current.done > maxDone) play('step');
+        else if (!current.free && current.warning && !previous.warning) play('warn');
+        else if (current.records.some(record => !seenRecords.has(record))) play('record');
+      }
+      current.records.forEach(record => seenRecords.add(record));
+      maxDone = Math.max(maxDone, current.done);
+      finishAnnounced ||= current.finished;
+      previous = current;
+    });
+    // Observe only feedback surfaces; apparatus animation updates every frame.
+    for (const node of [document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody'), document.querySelector('#dots,#progress,.progress-dots'), lamp, stage.querySelector('#modeTag,#modeChip'), document.querySelector('#doneMask,#doneModal,.modal-mask')].filter(Boolean)) {
+      feedbackChanges.observe(node, { subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['class','style'] });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+})();
+</script>
+  <div id="app">
+  <div class="theme-spectrum-row">
+  <div class="theme-toolbar">
+    <button class="theme-toggle" id="themeToggle" type="button" data-theme-module="pilot-v1" aria-label="切换到白天模式" aria-pressed="false" title="切换到白天模式">
+      <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="4"></circle>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"></path>
+      </svg>
+      <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"></path>
+      </svg>
+    </button>
+  </div>
+  <div id="spectrum"></div>
+  </div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">关卡 1 / 5</div>
+    <div class="task-text">
+      <div id="taskText">不装纸带试车，再回拉小车并穿接新纸带。</div>
+      <div class="task-hint" id="taskHint">先点小车试车，停止后回拉到起点，再把纸带拖到车尾。</div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </div>
+
+  <div class="quiz-card" id="quizCard" aria-live="polite" hidden>
+    <div class="quiz-prompt">
+      <span aria-hidden="true">🧠</span>
+      <span id="quizText">完成观察后显示结论小测。</span>
+    </div>
+    <div class="quiz-row" id="quizRow"></div>
+  </div>
+
+  <main id="stage" aria-label="物理实验台">
+    <div class="hud" id="hud">
+      <span class="tag mode-strip" id="modeTag">闯关模式 · 关卡 1/5</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+    <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示" aria-controls="hintPop" aria-expanded="false">💡</button>
+    <div class="hint-pop" id="hintPop" role="status"></div>
+    <div class="lab-area" id="labArea">
+      <div class="lab-layout">
+        <div class="rig-card"><svg id="rigSvg" viewBox="0 0 700 440" role="img" aria-label="小车、计时器与桌沿外的定滑轮和槽码"></svg><div id="paperList" aria-label="三档槽码采样记录"></div></div>
+        <div class="work-grid">
+          <section class="work-card" id="measureWork" aria-label="纸带毫米尺测量区">
+            <div class="work-head" id="tapeInfo"></div><div id="pointMeta"></div>
+            <svg id="tapeSvg" viewBox="0 0 720 145" aria-label="拖动主尺零位对齐纸带0点"></svg>
+            <svg id="zoomSvg" viewBox="0 0 360 110" aria-label="毫米尺放大窗，蓝线可拖动"></svg>
+            <div id="pointButtons" aria-label="选择当前测量点"></div>
+            <div class="fine-controls"><button id="fineLeft" type="button" aria-label="读数线向左微移0.1毫米">←</button><span>微移读数线</span><button id="fineRight" type="button" aria-label="读数线向右微移0.1毫米">→</button></div>
+            <form id="readingForm" class="reading-form" hidden>
+              <label id="readingLabel" for="readingInput">点0读数 / mm</label>
+              <input id="readingInput" type="number" inputmode="decimal" min="0" max="300" step="0.1" placeholder="估读至0.1" autocomplete="off" required>
+              <button id="recordButton" type="submit" class="primary">确认读数</button>
+              <span id="readingProgress" class="reading-progress" aria-live="polite"></span>
+            </form>
+          </section>
+          <section class="work-card" id="graphPanel" aria-label="速度时间图像">
+            <div class="work-head">三条纸带分别拟合</div><svg id="graphSvg" viewBox="0 0 420 204" aria-label="v-t图像，横轴时间，纵轴速度"></svg><div id="graphLegend"></div>
+          </section>
+          <section class="work-card speed-lesson" id="speedLesson" aria-label="由纸带位置计算速度" hidden>
+            <div class="work-head">先亲手算一个速度点</div>
+            <p id="speedFormula"></p>
+            <form id="speedForm" class="speed-form">
+              <label>v₂ / (m/s)<input id="speedInput" type="number" inputmode="decimal" step="0.001" min="0" placeholder="保留三位小数" required></label>
+              <label>对应时刻<select id="speedTime" required><option value="">请选择</option></select></label>
+              <button id="checkSpeedButton" type="submit" class="primary">核对计算</button>
+            </form>
+            <p id="speedFeedback" class="reading-progress" role="status"></p>
+          </section>
+        </div>
+      </div>
+    </div>
+
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab active" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="true">实验面板</button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false">数据面板<span class="badge" id="dataTabBadge" hidden>0</span></button>
+    </div>
+
+    <section class="dock drawer control" id="controlDock" aria-label="实验面板">
+      <div class="dock-header">
+        <span>实验面板</span>
+        <button id="controlToggleBtn" type="button">收起</button>
+      </div>
+      <div class="panel-grip" aria-label="拖动实验面板"></div><div class="dock-body" id="controlContent"></div>
+    </section>
+
+    <section class="dock drawer data collapsed" id="dataDock" aria-label="数据面板">
+      <div class="dock-header">
+        <span>数据面板 <i class="badge" id="unreadBadge" hidden>0</i></span>
+        <button id="dataToggleBtn" type="button">展开</button>
+      </div>
+      <div class="panel-grip" aria-label="拖动数据面板"></div><div class="dock-body"><div id="dataContent"></div>
+        <button class="sheet-close" id="dataSheetCloseBtn" type="button" aria-label="收起数据面板" title="收起">⌄</button>
+      </div>
+    </section>
+
+    <div id="demoCursor" hidden></div><div class="checkmark" id="checkmark"><div></div></div>
+  </main>
+
+  <div class="toolbar">
+    <button id="resetBtn" title="回到关卡1；已有实验可在重置后恢复">重置关卡</button>
+    <button id="autoDemoBtn">演示模式</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>完成，你真棒!</h3>
+      <p>你已完成全部实验步骤。</p>
+      <button id="okBtn" class="ok">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：探究小车速度随时间变化的规律</h2>
+    <ul>
+      <li><b>关键操作与现象：</b>先采集三条不同槽码条件的纸带，再用毫米尺读数、计算速度并分别作图。</li>
+      <li><b>测量方法：</b>相邻计数点跨5个原始时间间隔，中间有4个原始点，T=0.10 s。用两侧计数点间的平均速度估计中点瞬时速度；本页采用匀变速模型。</li>
+      <li><b>仿真条件：</b>忽略滑轮惯量和阻力，图像保留实际尺读数造成的偏差。</li>
+      <li id="experimentConclusion" hidden><b>实验结论：</b>同一条件下小车的速度随时间近似均匀增大，v—t直线斜率表示加速度；截距是所选计时起点的速度。</li>
+    </ul>
+  </div>
+  </div>
+
+  <!-- Runtime bundle slot: inline files selected from assets/runtime/manifest.js here. -->
+  <script id="physicsRuntimeBundle">
+    /* physics-runtime: primitives/measure.js */
+(function initMeasure(globalScope) {
+  const root = globalScope.PhysicsLabRuntime = globalScope.PhysicsLabRuntime || {};
+  const primitives = root.primitives = root.primitives || {};
+
+  function measureBinding({ sourceState, compute, format = (value) => String(value) }) {
+    const value = compute(sourceState);
+    return {
+      value,
+      displayText: format(value)
+    };
+  }
+
+  primitives.measureBinding = measureBinding;
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { measureBinding };
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+/* physics-runtime: components/paper-tape-analyzer.js */
+(function initPaperTapeAnalyzer(globalScope) {
+  const root = globalScope.PhysicsLabRuntime = globalScope.PhysicsLabRuntime || {};
+  const components = root.components = root.components || {};
+  const modes = new Set(['caliper-speed', 'ticker-fit']);
+  const finite = value => typeof value === 'number' && Number.isFinite(value);
+  const positive = value => finite(value) && value > 0;
+  const optionsObject = value => value !== null && Object.prototype.toString.call(value) === '[object Object]';
+  const cloneFit = fit => fit ? { ...fit, times: fit.times.slice(), velocities: fit.velocities.slice() } : null;
+  const cloneRecords = records => records.map(entry => ({ ...entry, ...(entry.fit ? { fit: cloneFit(entry.fit) } : {}) }));
+
+  // All positions, v0 and a use distanceUnit; all times use seconds. Keep raw
+  // precision here: the page adapter owns display rounding and unit conversion.
+  function createPaperTapeAnalyzer(options = {}) {
+    if (!optionsObject(options)) throw new TypeError('Paper-tape configuration must be an object');
+    const {
+    mode = 'caliper-speed', deltaT = 0.02,
+    defaultPoints = [0, 0.8, 1.7, 2.7, 3.8, 5.0, 6.3],
+    distanceUnit = 'cm', caliperIntervals = 4
+    } = options;
+    if (!modes.has(mode) || !positive(deltaT) || !['mm', 'cm', 'm'].includes(distanceUnit)
+        || !Number.isInteger(caliperIntervals) || caliperIntervals < 1
+        || !Array.isArray(defaultPoints) || defaultPoints.length <= caliperIntervals
+        || !defaultPoints.every(finite)) throw new TypeError('Invalid paper-tape configuration');
+    const initialPoints = defaultPoints.slice();
+    const units = Object.freeze({ distance: distanceUnit, time: 's', speed: `${distanceUnit}/s`, acceleration: `${distanceUnit}/s²` });
+    const state = {};
+    let selectionError = null;
+
+    function resetMode(nextMode) {
+      if (!modes.has(nextMode)) throw new TypeError('Unknown paper-tape mode');
+      Object.assign(state, {
+        mode: nextMode, deltaT, units, caliperIntervals,
+        points: nextMode === 'caliper-speed' ? initialPoints.slice() : [],
+        leftIndex: 0, rightIndex: caliperIntervals, selectedIndices: [],
+        deltaX: null, speedAtP: null, fit: null, runProgress: 0, history: []
+      });
+      selectionError = null;
+    }
+    const validIndex = index => Number.isInteger(index) && index >= 0 && index < state.points.length;
+    const snapshot = () => ({
+      ...state, units: { ...units }, points: state.points.slice(), selectedIndices: state.selectedIndices.slice(),
+      fit: cloneFit(state.fit), history: cloneRecords(state.history)
+    });
+    const rejected = reason => ({ accepted: false, reason, state: snapshot() });
+
+    function linearFit(xs, ys) {
+      const meanX = xs.reduce((a, x) => a + x, 0) / xs.length;
+      const meanY = ys.reduce((a, y) => a + y, 0) / ys.length;
+      const denom = xs.reduce((sum, x) => sum + (x - meanX) ** 2, 0);
+      if (!positive(denom)) return null;
+      const slope = xs.reduce((sum, x, i) => sum + (x - meanX) * (ys[i] - meanY), 0) / denom;
+      const intercept = meanY - slope * meanX;
+      return finite(slope) && finite(intercept) ? { slope, intercept } : null;
+    }
+
+    resetMode(mode);
+    return {
+      reset({ mode: nextMode = state.mode } = {}) {
+        resetMode(nextMode);
+        return snapshot();
+      },
+      selectCalipers(leftIndex, rightIndex) {
+        state.leftIndex = leftIndex;
+        state.rightIndex = rightIndex;
+        state.deltaX = null;
+        state.speedAtP = null;
+        return snapshot();
+      },
+      computeCaliperSpeed() {
+        state.deltaX = null;
+        state.speedAtP = null;
+        if (state.mode !== 'caliper-speed') return rejected('当前模式不是卡尺测速');
+        if (!validIndex(state.leftIndex) || !validIndex(state.rightIndex)) return rejected('请选择纸带内的整数点序号');
+        if (state.rightIndex - state.leftIndex !== caliperIntervals) return rejected(`请选择相隔 ${caliperIntervals} 个时间间隔的点`);
+        const dx = state.points[state.rightIndex] - state.points[state.leftIndex];
+        const duration = caliperIntervals * state.deltaT;
+        const speed = dx / duration;
+        if (!positive(duration) || !finite(dx) || !finite(speed)) return rejected('距离或时间无法产生有限读数');
+        state.deltaX = dx;
+        state.speedAtP = speed;
+        state.history.push({ kind: 'caliper-speed', leftIndex: state.leftIndex, rightIndex: state.rightIndex,
+          deltaX: dx, speedAtP: speed, deltaT: state.deltaT, duration, distanceUnit });
+        return { accepted: true, speedAtP: speed, state: snapshot() };
+      },
+      startTickerRun(options = {}) {
+        if (!optionsObject(options)) return rejected('打点参数必须是对象');
+        const { v0 = 0.5, a = 1.2, N = 6, deltaT: nextDeltaT = 0.1 } = options;
+        if (!finite(v0) || !finite(a) || !positive(nextDeltaT) || !Number.isInteger(N) || N < 2 || N > 10000)
+          return rejected('请使用有限初速度/加速度、正时间间隔和 2–10000 个间隔');
+        const points = Array.from({ length: N + 1 }, (_, index) => {
+          const t = index * nextDeltaT;
+          return v0 * t + 0.5 * a * t * t;
+        });
+        if (!points.every(finite) || !finite(N * nextDeltaT)) return rejected('参数导致数值溢出');
+        resetMode('ticker-fit');
+        state.deltaT = nextDeltaT;
+        state.points = points;
+        state.runProgress = 1;
+        return { ...snapshot(), accepted: true };
+      },
+      selectPoints(indices) {
+        state.fit = null;
+        selectionError = Array.isArray(indices) ? null : '选点必须是数组';
+        state.selectedIndices = Array.isArray(indices) ? indices.slice() : [];
+        return snapshot();
+      },
+      fitTickerData() {
+        state.fit = null;
+        if (state.mode !== 'ticker-fit') return rejected('当前模式不是打点拟合');
+        if (selectionError) return rejected(selectionError);
+        if (!state.runProgress) return rejected('请先完成一次打点');
+        const indices = state.selectedIndices.length ? state.selectedIndices : state.points.map((_, index) => index);
+        if (indices.length < 3) return rejected('至少选择 3 个点用于拟合');
+        if (indices.some((index, i) => !validIndex(index) || (i > 0 && index <= indices[i - 1])))
+          return rejected('点序号必须在纸带内且按时间严格递增，不得重复');
+        const times = [], velocities = [];
+        for (let i = 1; i < indices.length; i++) {
+          const left = indices[i - 1], right = indices[i];
+          const dt = (right - left) * state.deltaT;
+          times.push((left + right) * state.deltaT * 0.5);
+          velocities.push((state.points[right] - state.points[left]) / dt);
+        }
+        if (!times.every(finite) || !velocities.every(finite)) return rejected('数据含非有限数值');
+        const fit = linearFit(times, velocities);
+        if (!fit) return rejected('时间跨度不足或拟合退化');
+        state.fit = { times, velocities, ...fit };
+        state.history.push({ kind: 'ticker-fit', deltaT: state.deltaT, distanceUnit, fit: cloneFit(state.fit) });
+        return { accepted: true, fit: cloneFit(state.fit), state: snapshot() };
+      },
+      getObservation: snapshot,
+      getVisualState: snapshot,
+      getState: snapshot
+    };
+  }
+  components.createPaperTapeAnalyzer = createPaperTapeAnalyzer;
+  if (typeof module !== 'undefined' && module.exports) module.exports = { createPaperTapeAnalyzer };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+  </script>
+
+  <script id="physicsLabShellTemplate">
+(function(root,factory){
+  const api=factory(root);
+  if(typeof module==='object'&&module.exports) module.exports=api;
+  else root.CartSpeedLab=api;
+})(typeof globalThis!=='undefined'?globalThis:this,function(root){
+  'use strict';
+  const MASSES=[.01,.02,.03],FREQUENCY=50,PERIOD=1/FREQUENCY,EPS=1e-9;
+  const finite=value=>typeof value==='number'&&Number.isFinite(value);
+  const clone=value=>JSON.parse(JSON.stringify(value));
+
+  function fitLinear(times,values){
+    if(times.length!==values.length||times.length<5||!times.every(finite)||!values.every(finite)||times.some((t,i)=>i&&t<=times[i-1])) return null;
+    const mt=times.reduce((sum,t)=>sum+t,0)/times.length;
+    const mv=values.reduce((sum,v)=>sum+v,0)/values.length;
+    const stt=times.reduce((sum,t)=>sum+(t-mt)**2,0);
+    if(!(stt>1e-14)) return null;
+    const slope=times.reduce((sum,t,i)=>sum+(t-mt)*(values[i]-mv),0)/stt;
+    const intercept=mv-slope*mt;
+    const residual=times.reduce((sum,t,i)=>sum+(values[i]-intercept-slope*t)**2,0);
+    if(!finite(slope)||!finite(intercept)) return null;
+    return {slope,intercept,times:times.slice(),velocities:values.slice(),residual};
+  }
+
+  /** Deterministic task-local model. Distance is m; ruler inputs are mm. */
+  function createLab(mode='guided',checkpoint=null){
+    let state,counter=0;
+    const acceleration=mass=>mass*9.8/(.4+mass);
+    const fail=reason=>({ok:false,reason});
+    const ok=extra=>({ok:true,...extra});
+    function reset(nextMode=state?state.mode:mode){
+      if(!['guided','free'].includes(nextMode)) throw new TypeError('Unknown lab mode');
+      counter=0;
+      state={mode:nextMode,clock:0,mass:.02,position:0,power:false,powerOnAt:null,trialDone:false,
+        tapeMounted:false,motion:null,currentRun:null,runs:[],completed:false,caught:false,lastEvent:'ready'};
+      return getState();
+    }
+    function step(){
+      if(state.mode==='free') return state.runs.length?3:state.tapeMounted?1:0;
+      if(state.runs.length>=3) return state.runs.every(run=>run.fit&&run.fit.version===run.version)?4:3;
+      if(state.runs.length) return 2;
+      return state.tapeMounted?1:0;
+    }
+    function getState(){return {...clone(state),step:step(),stable:state.power&&state.clock-state.powerOnAt>=.5-EPS};}
+    function setMass(mass){
+      if(!finite(mass)||!MASSES.includes(mass)) return fail('请选择10、20或30 g悬挂总质量');
+      if(state.motion||state.power||state.currentRun) return fail('先接住、断电并取下当前纸带，再换槽码');
+      state.mass=mass;return ok();
+    }
+    function moveCart(position){
+      if(!finite(position)||position<0||position>.45) return fail('小车位置超出可用轨道');
+      if(state.motion||state.power||state.currentRun) return fail('停止并断电、取带后才能回拉小车');
+      state.position=position;state.caught=false;return ok();
+    }
+    function beginTrial(){
+      if(state.motion||state.power||state.tapeMounted||state.currentRun||state.runs.length) return fail('试车时不装纸带，也不接通计时器');
+      if(state.position>.005) return fail('先把小车拖回靠近计时器的起点');
+      state.position=0;state.caught=false;
+      state.motion={kind:'trial',releaseAt:state.clock,endAt:state.clock+.65,acceleration:acceleration(state.mass)};
+      state.lastEvent='trial';return ok();
+    }
+    function attachTape(){
+      if(state.mode==='guided'&&!state.trialDone) return fail('先不装纸带试车，确认能平稳运动');
+      if(state.motion||state.power||state.currentRun) return fail('先停止、断电并取下旧纸带');
+      if(state.position>.005) return fail('先把小车拖回起点，再装新纸带');
+      state.tapeMounted=true;state.lastEvent='tape-mounted';return ok();
+    }
+    function setPower(on){
+      if(typeof on!=='boolean') return fail('电源状态必须明确');
+      if(on){
+        if(state.power) return ok();
+        if(state.motion||state.currentRun) return fail('本次采样中不可重新通电；接住后更换新纸带');
+        if(!state.tapeMounted) return fail('先穿接新纸带');
+        state.power=true;state.powerOnAt=state.clock;state.lastEvent='power-on';
+      }else{
+        if(state.power&&state.motion?.kind==='capture') state.currentRun.invalidReason='采样未完成就断电';
+        state.power=false;
+        if(state.currentRun) state.currentRun.powerOffAt=state.clock;
+        state.lastEvent=state.motion?'power-off-moving':'power-off';
+      }
+      return ok();
+    }
+    function release(){
+      if(state.motion||state.currentRun) return fail('当前纸带尚未处理');
+      if(!state.tapeMounted||!state.power) return fail('先装纸带并接通计时器');
+      if(state.clock-state.powerOnAt<.5-EPS) return fail('等待打点稳定后再释放小车');
+      if(state.position>.005) return fail('小车必须靠近计时器，从起点释放');
+      const tick=Math.ceil((state.clock-state.powerOnAt)/PERIOD-EPS);
+      const phase=Math.max(0,state.powerOnAt+tick*PERIOD-state.clock);
+      const a=acceleration(state.mass);
+      state.position=0;state.caught=false;
+      state.currentRun={mode:state.mode,mass:state.mass,cartMass:.4,acceleration:a,frequency:FREQUENCY,phase,
+        releaseAt:state.clock,powerOnAt:state.powerOnAt,powerOffAt:null,caughtAt:null,points:[],invalidReason:null};
+      state.motion={kind:'capture',releaseAt:state.clock,endAt:state.clock+phase+1,acceleration:a};
+      state.lastEvent='released';return ok();
+    }
+    /** Advance logical time; sample every crossed 50 Hz tick, regardless of frame count. */
+    function advance(dt){
+      if(!finite(dt)||dt<0||!finite(state.clock+dt)) throw new TypeError('Invalid simulation time');
+      state.clock+=dt;
+      const motion=state.motion;
+      if(!motion) return;
+      const until=Math.min(state.clock,motion.endAt),tau=until-motion.releaseAt;
+      state.position=.5*motion.acceleration*tau*tau;
+      if(state.position>.45+EPS) throw new Error('TRACK_RANGE_EXCEEDED');
+      if(motion.kind==='capture'&&state.power){
+        const run=state.currentRun;
+        while(run.points.length<=50){
+          const t=run.phase+run.points.length*PERIOD;
+          if(motion.releaseAt+t>until+EPS) break;
+          run.points.push(.5*motion.acceleration*t*t);
+        }
+      }
+      if(state.clock>=motion.endAt-EPS){
+        state.motion=null;state.caught=true;state.lastEvent='caught-by-operator';
+        if(motion.kind==='trial') state.trialDone=true;
+        else{
+          state.currentRun.caughtAt=motion.endAt;
+          if(state.currentRun.points.length!==51) state.currentRun.invalidReason=state.currentRun.invalidReason||'运动点不足51个';
+        }
+      }
+    }
+    function discardTape(){
+      if(state.power||state.motion) return fail('接住并断电后再取带');
+      state.currentRun=null;state.tapeMounted=false;state.lastEvent='discarded';return ok();
+    }
+    function abort(){
+      if(state.motion){
+        state.motion=null;state.caught=true;
+        if(state.currentRun){state.currentRun.invalidReason='运行已中断';state.currentRun.caughtAt=state.clock;}
+      }
+      state.power=false;
+      if(state.currentRun)state.currentRun.powerOffAt=state.clock;
+      state.lastEvent='cancelled-held';return ok();
+    }
+    function saveTape(label=''){
+      const run=state.currentRun;
+      if(state.motion||state.power||!run||!state.caught) return fail('采样后接住、断电，再取下纸带');
+      if(run.invalidReason||run.points.length!==51) return fail(run.invalidReason||'纸带数据不足');
+      if(state.mode==='guided'&&state.runs.some(item=>item.mass===run.mass)) return fail('这一档槽码已采集，请换另一个重量和新纸带');
+      if(state.runs.length>=(state.mode==='guided'?3:6)) return fail('已达到本模式纸带数量，请重置后继续');
+      const id=state.mode+'-'+(++counter);
+      const saved={...clone(run),id,paperId:id,label:typeof label==='string'&&label.trim()?label.trim().slice(0,16):'纸带'+counter,
+        measurement:{j0:10,q:5,readings:Array(7).fill(null)},version:0,speedCheck:null,fit:null};
+      state.runs.push(saved);state.currentRun=null;state.tapeMounted=false;state.lastEvent='paper-saved';
+      return ok({run:clone(saved)});
+    }
+    const findRun=id=>state.runs.find(run=>run.id===id);
+    const measurementOpen=()=>state.mode==='free'?state.runs.length>0:state.runs.length===3;
+    function invalidate(run){run.version++;run.fit=null;run.speedCheck=null;state.completed=false;}
+    function configureMeasurement(id,{j0,q}={}){
+      const run=findRun(id);
+      if(!run||!measurementOpen()) return fail('先采齐三条纸带，再集中测量');
+      if(!Number.isInteger(j0)||j0<5||!Number.isInteger(q)||![3,5].includes(q)||j0+6*q>50||(state.mode==='guided'&&q!==5)) return fail('所选原始点序号或间隔超出纸带范围');
+      run.measurement={j0,q,readings:Array(7).fill(null)};invalidate(run);return ok();
+    }
+    function recordReading(id,index,mm){
+      const run=findRun(id);
+      if(!run||!measurementOpen()) return fail('先采齐三条纸带，再集中测量');
+      if(!Number.isInteger(index)||index<0||index>6||!finite(mm)||mm<0||mm>300) return fail('请输入0至300 mm范围内的有限读数');
+      if(Math.abs(mm*10-Math.round(mm*10))>1e-7) return fail('按1 mm分度估读到0.1 mm，只填写一位小数');
+      mm=Math.round(mm*10)/10;
+      const {j0,q}=run.measurement;
+      const expected=(run.points[j0+index*q]-run.points[j0])*1000;
+      // Truth only grades the instrument reading; all subsequent analysis uses mm below.
+      const suspect=Math.abs(mm-expected)>.200001;
+      if(suspect&&state.mode==='guided') return fail('请在放大尺面上再核对端点，按1 mm分度估读');
+      const proposed=run.measurement.readings.slice();proposed[index]=mm;
+      for(let i=1;i<proposed.length;i++) if(proposed[i]!==null&&proposed[i-1]!==null&&proposed[i]<=proposed[i-1]) return fail('位置读数应严格递增');
+      const known=proposed.filter(value=>value!==null);
+      if(known.some((value,i)=>i&&value<=known[i-1])) return fail('位置读数应随计数点序号严格递增');
+      run.measurement.readings=proposed;invalidate(run);return ok({suspect});
+    }
+    function checkSpeed(id,speed,index){
+      const run=findRun(id);
+      if(!run||!measurementOpen()||!run.measurement.readings.every(finite)) return fail('先完成本条纸带七个计数点的读数');
+      if(!finite(speed)) return fail('请填写有限的速度值，单位为m/s');
+      if(index!==2) return fail('点1到点3的平均速度对应中点2的时刻，不是两端点时刻');
+      const {readings,q}=run.measurement,T=q/FREQUENCY;
+      const expected=(readings[3]-readings[1])/1000/(2*T);
+      if(Math.abs(speed-expected)>.000500001) return fail('用点3减点1的毫米读数，换成米，再除以2T；速度保留三位小数');
+      run.speedCheck={version:run.version,index:2,speed};return ok();
+    }
+    function fitRun(id){
+      const run=findRun(id);
+      if(!run||!measurementOpen()) return fail('先采齐纸带');
+      const {q,readings}=run.measurement,T=q/FREQUENCY;
+      if(readings.length!==7||!readings.every(finite)||readings.some((value,i)=>i&&value<=readings[i-1])) return fail('请完成七个不同计数点的有效读数');
+      if(state.mode==='guided'&&run.id===state.runs[0].id&&run.speedCheck?.version!==run.version) return fail('先在尺面下完成一次中点速度计算，再描点拟合');
+      const create=root.PhysicsLabRuntime?.components?.createPaperTapeAnalyzer;
+      if(typeof create!=='function') throw new Error('PAPER_TAPE_RUNTIME_MISSING');
+      const analyzer=create({mode:'caliper-speed',defaultPoints:readings.map(value=>value/10),deltaT:T,caliperIntervals:2,distanceUnit:'cm'});
+      const velocities=[],times=[];
+      for(let i=1;i<=5;i++){
+        analyzer.selectCalipers(i-1,i+1);
+        const result=analyzer.computeCaliperSpeed();
+        if(!result.accepted) return fail(result.reason);
+        velocities.push(result.speedAtP/100);times.push(i*T);
+      }
+      const fit=fitLinear(times,velocities);
+      if(!fit) return fail('时间跨度或数据无效，不能拟合');
+      run.fit={...fit,version:run.version};return ok({fit:clone(run.fit)});
+    }
+    function finish(answers){
+      if(!state.runs.length||(state.mode==='guided'&&state.runs.length!==3)||!state.runs.every(run=>run.fit&&run.fit.version===run.version)) return fail('每条纸带都需要五个速度点与独立拟合');
+      if(answers?.trend!=='uniform'||answers?.slope!=='acceleration'||answers?.intercept!=='origin-speed') return fail('请结合图像重新判断速度变化、斜率和截距');
+      state.completed=true;return ok();
+    }
+    reset(mode);
+    if(checkpoint){state=clone(checkpoint.state);state.mode=mode;counter=checkpoint.counter;}
+    /** Create an independent mode branch, including apparatus, raw records and analysis. */
+    function fork(nextMode=state.mode){
+      if(!['guided','free'].includes(nextMode))throw new TypeError('Unknown lab mode');
+      return createLab(nextMode,{state,counter});
+    }
+    return {reset,getState,fork,setMass,moveCart,beginTrial,attachTape,setPower,release,advance,abort,saveTape,discardTape,configureMeasurement,recordReading,checkSpeed,fitRun,finish};
+  }
+  return {createLab,fitLinear};
+});
+
+(function(){
+  'use strict';
+  const $=selector=>document.querySelector(selector);
+  let lab=CartSpeedLab.createLab(),freeEntry=null,resetRecovery=null;
+  const stage=$('#stage'),rig=$('#rigSvg'),tape=$('#tapeSvg'),zoom=$('#zoomSvg'),graph=$('#graphSvg');
+  const control=$('#controlDock'),data=$('#dataDock');
+  const ui={runId:null,measure:{},point:0,unread:0,auto:false,paused:false,token:0,acting:false,
+    drag:null,controlKey:'',dataKey:'',paperKey:'',rigKey:'',quizKey:'',quiz:0,answers:{},warning:false,previousStep:0,doneDismissed:false,wasComplete:false};
+  const COLORS=['#71d5ff','#ffd166','#caafff','#7fe1b3','#ff9e9e','#ddd'];
+  const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
+  const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const texts=[
+    ['不装纸带试车，再回拉小车并穿接新纸带。','先点小车试车；停止后把车拖回右端，再将新纸带拖到车尾。'],
+    ['先通电，待打点稳定后释放小车，采集第一条纸带。','点计时器接通电源，绿灯稳定后点小车释放；接住后及时断电、保存纸带。'],
+    ['改变槽码并换新纸带，再采集两次。','10 g、20 g、30 g各保存一条；回拉小车时槽码同步上升。'],
+    ['逐条测量纸带，从位置读数计算速度并作图。','读数直接填在尺面下；首条先算一个中点速度，再分别描点拟合。'],
+    ['比较三组v—t图像，解释它们的斜率和截距。','每条纸带单独拟合；不把不同槽码条件的结果求平均。']
+  ];
+  const hints=[
+    '滑轮伸出桌面，细绳不能擦桌沿。无纸带试车后，按住车身向右回拉。新纸带必须穿过计时器导槽并接在车尾。初态20 g包含挂架。',
+    '50 Hz表示每0.02 s打一个点。本页稳定等待0.5 s。断电只停止打点，不会使车瞬停；采够点后画面会明确显示操作者接住小车，再请你断电。',
+    '每次换重量、回拉和取带前都要停止并断电。请用新纸带，不要覆盖上一条。三条收齐后再集中分析。',
+    '舍弃较密初段，0是另选的计时起点。相邻计数点跨5个原始时间间隔，中间有4个原始点，T=0.10 s。蓝线对准当前点，按1 mm刻度估读到0.1 mm，在尺面下填写。v₂=(x₃−x₁)/(2T)，对应点2的时刻。匀变速模型下，对称区间平均速度等于中点瞬时速度。',
+    '横轴t/s、纵轴v/(m/s)。直线斜率表示加速度；截距是所选计时起点的速度，并不一定为0。真实测量会有偏差，不能为了图线漂亮随意删点。'
+  ];
+  function selected(s){
+    if(!s.runs.length) return null;
+    return s.runs.find(run=>run.id===ui.runId)||s.runs[0];
+  }
+  function measurement(run){
+    if(!ui.measure[run.id]) ui.measure[run.id]={zero:6,cursor:0};
+    return ui.measure[run.id];
+  }
+  function expected(run,k=ui.point){
+    const m=run.measurement;
+    return (run.points[m.j0+k*m.q]-run.points[m.j0])*1000;
+  }
+  function notify(message,warn=false){
+    warn=warn&&lab.getState().mode!=='free';
+    const toast=$('#toast');toast.textContent=message;toast.classList.add('show');
+    clearTimeout(notify.timer);notify.timer=setTimeout(()=>toast.classList.remove('show'),2300);
+    ui.warning=warn;
+    if(warn) $('#hintLamp').classList.add('warn-flash','flash');
+    setTimeout(()=>$('#hintLamp').classList.remove('warn-flash','flash'),800);
+  }
+  function act(method,...args){
+    const result=lab[method](...args);
+    if(result&&!result.ok){notify(result.reason,true);render();return result;}
+    ui.warning=false;
+    if(method==='saveTape'){
+      if(data.classList.contains('collapsed'))ui.unread++;
+      ui.runId=result.run.id;ui.point=0;ui.quiz=0;ui.answers={};
+      notify(result.run.label+'已保存（'+Math.round(result.run.mass*1000)+' g）');
+    }
+    if(method==='recordReading'){if(data.classList.contains('collapsed'))ui.unread++;ui.quiz=0;ui.answers={};}
+    if(method==='saveTape'||method==='recordReading')window.labSoundBus?.play('record');
+    render();return result;
+  }
+  function geometry(s){
+    const x=510-s.position*500;
+    return {carX:x,carY:124,tailX:x+37,eyeX:x-37,pulleyX:75,pulleyY:148,r:24,
+      hookX:51,hookY:185+s.position*500,timerX:612,timerY:125};
+  }
+  function renderRig(s){
+    const key=[s.position,s.mass,s.power,s.stable,s.tapeMounted,s.caught,s.currentRun?.points.length,ui.drag?.tool,ui.drag?.x,ui.drag?.y].join('|');
+    if(key===ui.rigKey)return;ui.rigKey=key;
+    const g=geometry(s),a=-s.position/.048*180/Math.PI,w=-s.position/.018*180/Math.PI;
+    const dots=s.currentRun?s.currentRun.points:[];
+    const paper=s.tapeMounted?'<path d="M '+g.tailX+' 125 H 667" stroke="#d8cda8" stroke-width="11"/>'+
+      dots.map(value=>'<circle cx="'+(612-s.position*500+value*500)+'" cy="125" r="1.5" fill="#263443"/>').join(''):'';
+    rig.innerHTML='<defs><linearGradient id="wood" x2="0" y2="1"><stop stop-color="#d5b28c"/><stop offset="1" stop-color="#937457"/></linearGradient>'+
+      '<linearGradient id="cartPaint" x2=".3" y2="1"><stop stop-color="#78d2ed"/><stop offset="1" stop-color="#267c9c"/></linearGradient></defs>'+
+      '<path d="M 90 164 H 660 V 180 H 90 Z" fill="#6e8394"/><path d="M 110 180 V 410 M 630 180 V 410" stroke="#485967" stroke-width="12"/>'+
+      '<path d="M 75 153 H 659 V 165 H 75 Z" fill="url(#wood)" stroke="#e1c8a3"/><path d="M 80 155 V 148" stroke="#8295a8" stroke-width="7"/>'+
+      '<rect x="583" y="89" width="65" height="57" rx="7" fill="#8f9ca1" stroke="#c2d0d7" stroke-width="2"/>'+
+      '<rect x="592" y="100" width="42" height="10" rx="3" fill="#273139"/><text x="613" y="108" text-anchor="middle" fill="#ddf7ff" font-size="10">50 Hz</text>'+
+      '<rect x="588" y="122" width="62" height="8" fill="#111b23"/>'+
+      '<path d="M648 106 C 675 106 670 81 686 80" fill="none" stroke="#8893a3" stroke-width="3"/><path d="M685 73v14m4-11h7m-7 8h7" stroke="#bcc6d2" stroke-width="3"/>'+
+      paper+
+      '<path d="M590 120H646 M590 132H646" stroke="#c0cbd1" stroke-width="4"/>'+
+      '<g id="timerHit" data-tool="power" role="button" tabindex="0" aria-label="'+(s.power?'断开计时器电源':'接通计时器电源')+'"><rect x="575" y="78" width="83" height="77" rx="10" fill="transparent"/>'+
+      '<circle cx="640" cy="101" r="6" fill="'+(s.power?(s.stable?'#50ed9f':'#ffcc6d'):'#37464e')+'" stroke="#e3f6ff"/>'+
+      '<text x="616" y="65" text-anchor="middle" fill="#cfdee9" font-size="22">计时器</text></g>'+
+      '<g id="carHit" data-tool="car" role="button" tabindex="0" aria-label="拖动或点击小车"><path d="M '+(g.carX-35)+' 113 Q '+(g.carX-27)+' 102 '+(g.carX-12)+' 104 H '+(g.carX+16)+' L '+(g.carX+35)+' 119 V 140 H '+(g.carX-35)+'Z" fill="url(#cartPaint)" stroke="#bdeeff" stroke-width="2"/>'+
+      '<path d="M '+(g.carX-14)+' 108 H '+(g.carX+13)+' L '+(g.carX+23)+' 119 H '+(g.carX-14)+'Z" fill="#142c3c"/>'+
+      [-23,23].map(dx=>'<g transform="translate('+(g.carX+dx)+' 145) rotate('+w+')"><circle r="9" fill="#111a23" stroke="#a4b4bd" stroke-width="2"/><path d="M-6 0H6M0-6V6" stroke="#94a6b0" stroke-width="1.6"/></g>').join('')+
+      '<rect x="'+(g.carX-47)+'" y="92" width="96" height="68" fill="transparent"/></g>'+
+      '<circle cx="'+g.eyeX+'" cy="124" r="4" fill="#c7d9e3" stroke="#283641"/><circle cx="'+g.tailX+'" cy="125" r="3.5" fill="#d2e8f0" stroke="#344c5d"/>'+
+      '<circle cx="75" cy="148" r="25" fill="#303c48" stroke="#a8bbca" stroke-width="3"/>'+
+      '<g transform="rotate('+a+' 75 148)"><path d="M56 148H94M75 129V167" stroke="#8297a8" stroke-width="2"/></g><circle cx="75" cy="148" r="5" fill="#d3dee7"/>'+
+      '<path d="M '+g.eyeX+' 124 H 75 A24 24 0 0 0 51 148 V '+g.hookY+'" fill="none" stroke="#e8d9ba" stroke-width="2.8"/>'+
+      '<path d="M51 '+g.hookY+' q-8 9 0 13 q7 0 7-7" fill="none" stroke="#e2e8eb" stroke-width="3"/>'+
+      Array.from({length:Math.round(s.mass*1000/10)},(_,i)=>'<path d="M34 '+(g.hookY+15+i*9)+'h35v7H34Z" fill="#a8adb4" stroke="#e0e5e9"/>').join('')+
+      '<g data-tool="mass" id="massHit" role="button" tabindex="0" aria-label="更换槽码"><rect x="20" y="'+(g.hookY-6)+'" width="80" height="65" fill="transparent"/>'+
+      '<text x="106" y="'+(g.hookY+31)+'" fill="#e8c879" font-size="22">'+Math.round(s.mass*1000)+' g</text></g>'+
+      '<g id="paperRoll" data-tool="paper" role="button" tabindex="0" aria-label="将新纸带拖到小车尾部"><path d="M 557 205 l14-10 h91 l-8 25 H563 Z" fill="'+(s.tapeMounted?'#47685e':'#d5c5a2')+'" stroke="#eee0bf"/>'+
+      '<text x="612" y="250" text-anchor="middle" fill="#c4d5e1" font-size="23">'+(s.tapeMounted?'已装纸带':'新纸带')+'</text></g>'+
+      (s.caught?'<g transform="translate('+(g.carX+12)+' 73)"><path d="M0 20V1q4-5 8 0v15-23q4-4 8 0v23-18q4-4 8 0v19-10q4-4 8 0v20q0 18-15 18H9q-9-2-15-14l-8-14q0-8 6-3Z" fill="#d5ad8b" stroke="#ffe0c2" stroke-width="2"/><text x="8" y="-18" text-anchor="middle" fill="#f2d7bc" font-size="19">接住保持</text></g>':'')+
+      (ui.drag?.tool==='paper'?'<path d="M 612 208 L '+ui.drag.x+' '+ui.drag.y+'" stroke="#ffe4a6" stroke-width="9" opacity=".75"/>':'');
+  }
+  function mark(k){return ['0','1','2','3','4','5','6'][k];}
+  function choosePoint(k){
+    const s=lab.getState(),run=selected(s);if(!run)return;
+    ui.point=k;measurement(run).cursor=Math.max(0,expected(run,k)-2.3);
+    $('#readingInput').value='';
+    ui.controlKey='';render();
+  }
+  function ticks(start,end,map,y,font=15,labelStep=5){
+    let html='';
+    for(let mm=Math.max(0,Math.ceil(start));mm<=Math.min(300,Math.floor(end));mm++){
+      const x=map(mm),height=mm%10===0?20:mm%5===0?14:8;
+      html+='<path d="M'+x+' '+y+'v'+height+'" stroke="#273943" stroke-width="1"/>';
+      if(mm%labelStep===0)html+='<text x="'+x+'" y="'+(y+height+font+2)+'" text-anchor="middle" fill="#233742" font-size="'+font+'">'+mm+'</text>';
+    }
+    return html;
+  }
+  function renderTape(s){
+    const run=selected(s),enabled=s.mode==='free'?s.runs.length>0:s.runs.length===3;
+    $('#readingForm').hidden=!run||!enabled;
+    $('#speedLesson').hidden=true;
+    $('#measureWork').classList.toggle('not-ready',!enabled);
+    $('#tapeInfo').textContent=run?run.label+' · '+Math.round(run.mass*1000)+' g · '+(run.fit?'已拟合':'待测量'):'纸带将在采集后保留';
+    if(!run||!enabled){
+      tape.innerHTML='<path d="M20 28H697V62H20l6-9-6-8 6-8Z" fill="#c9bd9e" opacity=".55"/>'+
+        '<text x="360" y="110" text-anchor="middle" fill="#9cafbf" font-size="26">'+(s.runs.length?'收齐三条后集中测量':'尚无可测纸带')+'</text>';
+      zoom.innerHTML='';$('#pointButtons').innerHTML='';$('#pointMeta').textContent='';return;
+    }
+    ui.runId=run.id;
+    const m=measurement(run),conf=run.measurement,origin=run.points[conf.j0],target=expected(run),px=value=>25+value*2.2;
+    $('#pointMeta').textContent='原始点'+conf.j0+'起 · 跨'+conf.q+'个间隔（中间'+(conf.q-1)+'点）· T='+(conf.q/50).toFixed(2)+' s';
+    $('#readingLabel').textContent='点'+ui.point+'读数 / mm';
+    $('#readingProgress').textContent='已记录 '+conf.readings.filter(value=>value!==null).length+'/7 点'+(conf.readings[ui.point]!==null?' · 当前 '+conf.readings[ui.point].toFixed(1)+' mm':'');
+    tape.innerHTML='<defs><clipPath id="tapeClip"><rect x="12" y="17" width="696" height="44"/></clipPath></defs>'+
+      '<path d="M12 18H709V60H12l6-10-6-11 6-10Z" fill="#ded2af" stroke="#f0e4c4"/>'+
+      '<g clip-path="url(#tapeClip)">'+run.points.map((value,i)=>'<circle cx="'+px((value-origin)*1000)+'" cy="39" r="'+(i>=conf.j0&&((i-conf.j0)%conf.q===0)?3.5:1.6)+'" fill="#35464b"/>').join('')+'</g>'+
+      Array.from({length:7},(_,k)=>'<g data-count-point="'+k+'" role="button" tabindex="0" aria-label="选择计数点'+k+'"><rect x="'+(px(expected(run,k))-11)+'" y="0" width="22" height="59" fill="transparent"/><text x="'+px(expected(run,k))+'" y="14" text-anchor="middle" font-size="24" fill="'+(k===ui.point?'#ffd77c':'#c7d7e5')+'">'+mark(k)+'</text></g>').join('')+
+      '<g data-tool="ruler" tabindex="0" role="slider" aria-label="移动刻度尺零位，左右键微调" aria-valuemin="-4" aria-valuemax="30" aria-valuenow="'+m.zero.toFixed(1)+'"><rect x="'+px(m.zero)+'" y="72" width="660" height="63" rx="3" fill="#e6ded0" stroke="'+(Math.abs(m.zero)<.01?'#52d39b':'#8e9faf')+'" stroke-width="2"/>'+
+      ticks(0,300,mm=>px(mm+m.zero),73,15,50)+'</g>'+
+      '<path d="M'+px(target)+' 20V61" stroke="#ffd166" stroke-width="2"/>';
+    const start=Math.floor(target/10)*10-5,end=start+20,zx=mm=>18+(mm-start)*16;
+    zoom.innerHTML='<rect x="1" y="1" width="358" height="108" rx="8" fill="#0d1823" stroke="#385264"/>'+
+      '<path d="M8 24H351V42H8" fill="#ddd0ab"/><circle cx="'+zx(target)+'" cy="33" r="3.2" fill="#263a42"/>'+
+      '<path d="M'+zx(target)+' 14V47" stroke="#ffd166" stroke-width="1.5"/>'+
+      '<rect x="8" y="49" width="344" height="56" fill="#e8e0d2"/>'+ticks(start,end,mm=>zx(mm+m.zero),50,12)+
+      '<g data-tool="cursor"><path d="M'+zx(m.cursor)+' 5V105" stroke="#65caff" stroke-width="2"/>'+
+      '<path d="M'+(zx(m.cursor)-6)+' 6l6 9 6-9Z" fill="#65caff"/><rect x="'+(zx(m.cursor)-13)+'" y="3" width="26" height="102" fill="transparent"/></g>';
+    $('#pointButtons').innerHTML=Array.from({length:7},(_,k)=>'<button type="button" data-point="'+k+'" class="'+(k===ui.point?'selected ':'')+(conf.readings[k]!==null?'read':'')+'" aria-label="测量计数点'+k+'">'+k+(conf.readings[k]!==null?' ✓':'')+'</button>').join('');
+    if(conf.readings.every(value=>value!==null)){
+      const T=conf.q/50,checked=run.speedCheck?.version===run.version;
+      $('#speedLesson').hidden=false;
+      $('#speedFormula').innerHTML='点1与点3之间历时 <b>2T = '+(2*T).toFixed(2)+' s</b>，用它们之间的平均速度估计点2的瞬时速度：<br><b>v₂ ≈ (x₃ − x₁) / (2T)</b> = ('+conf.readings[3].toFixed(1)+' − '+conf.readings[1].toFixed(1)+') ÷ 1000 ÷ '+(2*T).toFixed(2)+' m/s';
+      const lessonKey=run.id+':'+run.version;
+      if($('#speedForm').dataset.key!==lessonKey){
+        $('#speedForm').dataset.key=lessonKey;$('#speedInput').value='';
+        $('#speedTime').innerHTML='<option value="">请选择</option>'+[1,2,3].map(k=>'<option value="'+k+'">点'+k+' · '+(k*T).toFixed(2)+' s</option>').join('');
+      }
+      $('#speedForm').hidden=checked;
+      $('#speedFeedback').textContent=checked?'计算正确：这个速度对应点2、t='+(2*T).toFixed(2)+' s。现在可计算本条其余速度并拟合。':'位置先由毫米换成米。先自己算一次，再在实验面板描点拟合。';
+    }
+  }
+  function renderGraph(s){
+    const runs=s.runs.filter(run=>run.fit),maxT=.55;
+    const values=runs.flatMap(run=>[...run.fit.velocities,run.fit.intercept,run.fit.intercept+run.fit.slope*run.fit.times.at(-1)]);
+    const minV=Math.min(0,...values)*1.15,maxV=Math.max(.5,...values)*1.15;
+    const x=t=>44+t/maxT*330,y=v=>167-(v-minV)/(maxV-minV)*133;
+    let html='<defs><clipPath id="graphClip"><rect x="44" y="22" width="345" height="145"/></clipPath></defs><path d="M44 22V167H389" fill="none" stroke="#94afc2"/><text x="46" y="14" fill="#cbdeee" font-size="12">v / (m/s)</text><text x="343" y="197" fill="#cbdeee" font-size="12">t / s</text>';
+    for(let i=0;i<=5;i++)html+='<path d="M'+x(i*.1)+' 167v4" stroke="#91adbf"/><text x="'+x(i*.1)+'" y="185" text-anchor="middle" fill="#90aabe" font-size="11">'+(i*.1).toFixed(1)+'</text>';
+    for(let i=0;i<=4;i++){const v=minV+i*(maxV-minV)/4;html+='<path d="M44 '+y(v)+'H385" stroke="#243745"/><text x="36" y="'+(y(v)+4)+'" text-anchor="end" fill="#90aabe" font-size="11">'+v.toFixed(2)+'</text>';}
+    if(!runs.length)html+='<text x="216" y="95" text-anchor="middle" fill="#819bac" font-size="14">测量后绘制v—t图像</text>';
+    runs.forEach(run=>{
+      const color=COLORS[s.runs.indexOf(run)%COLORS.length],fit=run.fit;
+      html+='<path clip-path="url(#graphClip)" d="M'+x(0)+' '+y(fit.intercept)+'L'+x(fit.times.at(-1))+' '+y(fit.intercept+fit.slope*fit.times.at(-1))+'" stroke="'+color+'" fill="none" stroke-width="1.8"/>';
+      fit.times.forEach((t,i)=>{html+='<circle cx="'+x(t)+'" cy="'+y(fit.velocities[i])+'" r="3.5" fill="'+color+'"/>';});
+    });
+    graph.innerHTML=html;
+    $('#graphLegend').innerHTML=runs.map(run=>'<span style="color:'+COLORS[s.runs.indexOf(run)%COLORS.length]+'">'+Math.round(run.mass*1000)+' g · a='+run.fit.slope.toFixed(3)+' m/s² · b='+run.fit.intercept.toFixed(3)+' m/s</span>').join('');
+  }
+  function openPanel(panel,open){
+    if(open&&stage.clientWidth<=720)(panel===control?data:control).classList.add('collapsed');
+    panel.classList.toggle('collapsed',!open);panel.style.zIndex=open?'39':'34';(panel===control?data:control).style.zIndex=open?'34':'39';
+    if(panel===data&&open){ui.unread=0;renderBadge();}
+    $('#experimentTab').classList.toggle('active',!control.classList.contains('collapsed'));
+    $('#dataTab').classList.toggle('active',!data.classList.contains('collapsed'));
+    for(const [tab,p] of [[$('#experimentTab'),control],[$('#dataTab'),data]])tab.setAttribute('aria-expanded',String(!p.classList.contains('collapsed')));
+    $('#controlToggleBtn').textContent=control.classList.contains('collapsed')?'展开':'收起';
+    $('#dataToggleBtn').textContent=data.classList.contains('collapsed')?'展开':'收起';
+    $('#mobileTabs').classList.toggle('attached',stage.clientWidth<=720&&(!control.classList.contains('collapsed')||!data.classList.contains('collapsed')));
+  }
+  function renderBadge(){
+    $('#unreadBadge').textContent=String(ui.unread);$('#unreadBadge').hidden=!ui.unread;
+    $('#dataTabBadge').textContent=String(ui.unread);$('#dataTabBadge').hidden=!ui.unread;
+  }
+  function renderControl(s){
+    const run=selected(s),m=run&&measurement(run),phase=s.motion?'moving':s.currentRun?'caught':s.stable?'stable':s.power?'warming':'off';
+    const key=[s.mode,s.step,s.mass,phase,s.tapeMounted,s.trialDone,s.runs.length,ui.runId,ui.point,s.runs.map(r=>r.version+':'+!!r.fit+':'+!!r.speedCheck).join(','),s.completed,!!resetRecovery].join('|');
+    if(key===ui.controlKey)return;ui.controlKey=key;
+    let html='';
+    const optionMass=mass=>'<option value="'+mass+'"'+(s.mass===mass?' selected':'')+'>'+Math.round(mass*1000)+' g'+(s.runs.some(r=>r.mass===mass)?' · 已采':'')+'</option>';
+    if(s.step<3||s.mode==='free'){
+      html+='<div class="ctrl-line"><label for="massSelect">悬挂总质量</label><select id="massSelect"'+(s.power||s.motion||s.currentRun?' disabled':'')+'>'+[.02,.01,.03].map(optionMass).join('')+'</select></div>';
+      html+='<div class="action-grid"><button data-action="trial"'+(s.trialDone?' class="secondary"':'')+'>无带试车</button>'+
+        '<button data-action="power" id="powerButton">'+(s.power?'断开电源':'接通电源')+'</button><button data-action="release" id="releaseButton">释放小车</button><button data-action="save" id="saveButton">取带并保存</button></div>';
+      if(s.currentRun?.invalidReason)html+='<button data-action="discard">取下无效纸带</button>';
+      if(!s.motion&&!s.power&&!s.currentRun)html+='<div class="action-grid secondary-actions"><button data-action="return" title="拖动小车回起点的替代操作">回拉到起点</button><button data-action="mount" title="拖动纸带到车尾的替代操作">穿接新纸带</button></div>';
+    }
+    if(run&&(s.step>=3||s.mode==='free')){
+      html+='<label class="ctrl-line">纸带<select id="paperSelect">'+s.runs.map(r=>'<option value="'+esc(r.id)+'"'+(r.id===run.id?' selected':'')+'>'+esc(r.label)+' · '+Math.round(r.mass*1000)+' g'+(r.fit?' ✓':'')+'</option>').join('')+'</select></label>'+
+        '<div class="ctrl-line"><label>起始点j<input id="originInput" type="number" min="5" max="'+(50-6*run.measurement.q)+'" step="1" value="'+run.measurement.j0+'"></label>'+
+        '<label>原始间隔<select id="intervalSelect"><option value="5"'+(run.measurement.q===5?' selected':'')+'>5 · 0.10 s</option>'+
+        (s.mode==='free'?'<option value="3"'+(run.measurement.q===3?' selected':'')+'>3 · 0.06 s</option>':'')+'</select></label><button data-action="points">重选</button></div>'+
+        '<button data-action="fit" id="fitButton" class="primary">描点并拟合本条</button>';
+      if(s.step===4)html+='<p class="result-text">三组已分别拟合。请在任务卡下完成图像判断。</p>';
+    }
+    if(resetRecovery&&s.mode==='guided')html+='<button data-action="recover" class="recover-button">恢复重置前的实验</button>';
+    html+='<button class="sheet-close" id="controlSheetCloseBtn" type="button" aria-label="收起实验面板">⌄</button>';
+    $('#controlContent').innerHTML=html;
+    $('#controlSheetCloseBtn').onclick=()=>openPanel(control,false);
+  }
+  function renderData(s){
+    const key=JSON.stringify(s.runs.map(run=>[run.id,run.version,!!run.fit]));
+    if(key===ui.dataKey)return;ui.dataKey=key;
+    $('#dataContent').innerHTML=s.runs.length?s.runs.map((run,i)=>{
+      const T=run.measurement.q/50,reads=run.measurement.readings;
+      return '<section class="run-record"><b style="color:'+COLORS[i%COLORS.length]+'">'+esc(run.label)+' · '+Math.round(run.mass*1000)+' g</b>'+
+        '<small>50 Hz · 51点 · 起点j='+run.measurement.j0+' · T='+T.toFixed(2)+' s</small>'+
+        (s.mode==='free'&&reads.some((value,k)=>value!==null&&Math.abs(value-expected(run,k))>.200001)?'<small class="suspect-reading">部分读数超出估读容差；保留原始记录，请核对尺面。拟合仅供分析。</small>':'')+
+        '<div class="record-scroll"><table><thead><tr><th>计数点</th><th>尺读数/mm</th><th>t/s</th><th>v/(m/s)</th></tr></thead><tbody>'+
+        reads.map((value,k)=>'<tr><td data-label="计数点">'+k+'</td><td data-label="读数 / mm">'+(value===null?'—':value.toFixed(1))+'</td><td data-label="时间 / s">'+(k*T).toFixed(2)+'</td><td data-label="速度 / (m/s)">'+(run.fit&&k>0&&k<6?run.fit.velocities[k-1].toFixed(3):'—')+'</td></tr>').join('')+
+        '</tbody></table></div>'+(run.fit?'<small>a='+run.fit.slope.toFixed(3)+' m/s²；b='+run.fit.intercept.toFixed(3)+' m/s</small>':'<small>尚未形成有效拟合</small>')+'</section>';
+    }).join(''):'<div class="empty">尚无纸带。完成采样并保存后显示。</div>';
+    renderBadge();
+  }
+  const quiz=[
+    ['每条v—t图线说明速度怎样变化？',[['uniform','随时间近似均匀增大'],['constant','速度一直不变']],'trend','uniform'],
+    ['v—t直线的斜率表示什么？',[['acceleration','加速度'],['distance','位移']],'slope','acceleration'],
+    ['图线在纵轴上的截距表示什么？',[['origin-speed','所选计时起点的速度'],['always-zero','任何情况下都应为零']],'intercept','origin-speed']
+  ];
+  function renderQuiz(s){
+    const card=$('#quizCard'),show=s.step===4&&!s.completed;
+    card.hidden=!show;
+    if(!show)return;
+    const key=String(ui.quiz);if(key===ui.quizKey)return;ui.quizKey=key;
+    const q=quiz[Math.min(ui.quiz,2)];
+    $('#quizText').textContent=q[0];
+    $('#quizRow').innerHTML=q[1].map(([value,label])=>'<button type="button" data-answer="'+value+'">'+label+'</button>').join('');
+  }
+  function status(s){
+    if(s.completed)return'完成';
+    if(s.motion)return s.motion.kind==='trial'?'无纸带试车中':'采样 '+(s.currentRun?.points.length||0)+'/51';
+    if(s.caught&&s.power)return'已接住，请断电';
+    if(s.currentRun?.invalidReason)return'本条无效，请取下';
+    if(s.currentRun)return'已断电，可保存';
+    if(s.power)return s.stable?'打点稳定，可释放':'等待打点稳定';
+    if(s.runs.length===3)return s.step===4?'三组图像已形成':'三条纸带已收齐';
+    if(s.position>.005)return'回拉小车到起点';
+    return s.tapeMounted?'纸带已装好':s.trialDone?'可穿接新纸带':'待无带试车';
+  }
+  function render(){
+    const s=lab.getState(),run=selected(s);
+    stage.classList.toggle('measuring',s.step>=3||(s.mode==='free'&&s.runs.length>0));
+    if(run)ui.runId=run.id;
+    const stageTask=s.mode==='free'?['自主探索纸带、计数间隔与速度图像。','重置操作恢复进入自由模式时的器材和记录；退出后回到原关卡。']:texts[s.step];
+    $('#taskStep').textContent=s.mode==='free'?'自主探索':'关卡 '+(s.step+1)+' / 5';
+    $('#taskText').textContent=stageTask[0];$('#taskHint').textContent=stageTask[1];
+    $('#modeTag').textContent=ui.auto?'演示模式 · '+(ui.paused?'已暂停':'自动运行'):s.mode==='free'?'自由模式 · 自主探索':'闯关模式 · 关卡 '+(s.step+1)+'/5';
+    $('#statusTag').textContent='状态：'+(ui.auto&&ui.paused?'演示已暂停':s.mode==='free'&&s.lastEvent==='ready'?'自由探索':status(s));
+    $('#taskCard').classList.toggle('free-mode',s.mode==='free');$('#taskCard').dataset.mode=s.mode==='free'?'free':'guided';
+    $('#taskCard').classList.toggle('warning',ui.warning);
+    const dotsKey=s.step+':'+s.completed+':'+ui.warning;
+    if($('#dots').dataset.key!==dotsKey){$('#dots').dataset.key=dotsKey;$('#dots').innerHTML=Array.from({length:5},(_,i)=>'<span class="dot '+(s.completed||i<s.step?'done':i===s.step?(ui.warning?'warn':'active'):'')+'" aria-label="关卡'+(i+1)+'"></span>').join('');}
+    $('#hintPop').textContent=hints[s.step];
+    $('#autoDemoBtn').textContent=ui.auto?'退出演示':'演示模式';
+    $('#resetBtn').textContent=ui.auto?(ui.paused?'继续演示':'暂停演示'):s.mode==='free'?'重置操作':'重置关卡';
+    $('#freeBtn').textContent=s.mode==='free'?'退出自由模式':'自由模式';$('#freeBtn').disabled=ui.auto;
+    $('#autoDemoBtn').disabled=s.mode==='free';
+    $('#paperList').innerHTML=[.02,.01,.03].map(m=>'<span class="'+(s.runs.some(r=>r.mass===m)?'collected':'')+'">'+Math.round(m*1000)+' g '+(s.runs.some(r=>r.mass===m)?'✓':'○')+'</span>').join('');
+    renderRig(s);renderControl(s);renderData(s);
+    const paperKey=[s.step,s.mode,ui.runId,ui.point,run?.version,run?.fit?.version,run?.speedCheck?.version,ui.drag?.tool,run&&measurement(run).zero,run&&measurement(run).cursor,s.runs.length].join('|');
+    if(paperKey!==ui.paperKey){ui.paperKey=paperKey;renderTape(s);renderGraph(s);}
+    renderQuiz(s);
+    if(s.step>ui.previousStep&&!ui.auto){
+      $('#checkmark').classList.add('active');setTimeout(()=>$('#checkmark').classList.remove('active'),650);
+      notify('进入关卡 '+(s.step+1));
+    }
+    ui.previousStep=s.step;
+    if(s.completed&&!ui.wasComplete)ui.doneDismissed=false;
+    if(!s.completed)ui.doneDismissed=false;
+    if(s.step!==4)ui.quizKey='';
+    $('#doneMask').style.display=s.mode==='guided'&&s.completed&&!ui.doneDismissed?'flex':'none';
+    $('#experimentConclusion').hidden=s.mode!=='guided'||!s.completed;
+    ui.wasComplete=s.completed;
+  }
+  function allowed(){return!ui.auto||ui.acting;}
+  function handler(action){
+    if(!allowed())return;
+    const s=lab.getState(),run=selected(s);
+    if(action==='trial')act('beginTrial');
+    if(action==='power')act('setPower',!s.power);
+    if(action==='release')act('release');
+    if(action==='save')act('saveTape');
+    if(action==='discard')act('discardTape');
+    if(action==='return')act('moveCart',0);
+    if(action==='mount')act('attachTape');
+    if(action==='recover'&&resetRecovery){
+      const saved=resetRecovery;resetRecovery=null;lab=saved.model.fork();restoreView(saved.view);
+      notify('已恢复器材、纸带、读数和分析；中断采样需重新采集');return;
+    }
+    if(action==='fit'&&run){
+      const result=act('fitRun',run.id);
+      if(result.ok){notify(run.label+'已计算五个内部点并拟合');openPanel(data,false);}
+    }
+    if(action==='points'&&run){
+      const result=act('configureMeasurement',run.id,{j0:Number($('#originInput').value),q:Number($('#intervalSelect').value)});
+      if(result.ok){ui.measure[run.id]={zero:6,cursor:0};ui.point=0;ui.controlKey='';ui.quiz=0;ui.answers={};$('#readingInput').value='';render();}
+    }
+    if(action==='record'&&run){
+      const m=measurement(run),value=$('#readingInput').value;
+      if(Math.abs(m.zero)>.01){notify('先拖动主尺，使零刻线对齐纸带0点',true);return;}
+      if(Math.abs(m.cursor-expected(run))>.2){notify('请将放大窗蓝线拖到当前纸带点',true);return;}
+      if(!value.trim()){notify('请先按刻度填写毫米读数',true);return;}
+      const result=act('recordReading',run.id,ui.point,Number(value));
+      if(result.ok){notify(result.suspect?'读数已保留；偏差超出估读容差，请复核':'点'+ui.point+'读数已记录');if(ui.point<6)choosePoint(ui.point+1);else{ui.controlKey='';$('#readingInput').value='';}render();}
+    }
+  }
+  $('#controlContent').addEventListener('click',e=>{const button=e.target.closest('[data-action]');if(button)handler(button.dataset.action);});
+  $('#controlContent').addEventListener('change',e=>{
+    if(!allowed())return;
+    if(e.target.id==='massSelect')act('setMass',Number(e.target.value));
+    if(e.target.id==='paperSelect'){ui.runId=e.target.value;ui.point=0;ui.controlKey='';$('#readingInput').value='';render();}
+    if(e.target.id==='intervalSelect'){
+      const max=50-6*Number(e.target.value);$('#originInput').max=String(max);
+      if(Number($('#originInput').value)>max)$('#originInput').value=String(max);
+    }
+  });
+  $('#readingForm').addEventListener('submit',e=>{e.preventDefault();handler('record');});
+  $('#speedForm').addEventListener('submit',e=>{
+    e.preventDefault();if(!allowed())return;const run=selected(lab.getState());if(!run)return;
+    if(!$('#speedInput').value.trim()){notify('请先计算并填写速度',true);return;}
+    const result=act('checkSpeed',run.id,Number($('#speedInput').value),Number($('#speedTime').value));
+    if(result.ok){notify('速度与对应时刻正确，可描点拟合');render();}
+  });
+  $('#pointButtons').addEventListener('click',e=>{const button=e.target.closest('[data-point]');if(button&&allowed())choosePoint(Number(button.dataset.point));});
+  tape.addEventListener('click',e=>{const point=e.target.closest('[data-count-point]');if(point&&allowed())choosePoint(Number(point.dataset.countPoint));});
+  tape.addEventListener('keydown',e=>{
+    if(!allowed())return;
+    if(['ArrowLeft','ArrowRight'].includes(e.key)&&e.target.closest('[data-tool="ruler"]')){
+      e.preventDefault();const run=selected(lab.getState());if(!run)return;
+      const m=measurement(run);m.zero=clamp(Math.round((m.zero+(e.key==='ArrowLeft'?-.5:.5))*10)/10,-4,30);
+      ui.paperKey='';render();tape.querySelector('[data-tool="ruler"]')?.focus({preventScroll:true});return;
+    }
+    if(!['Enter',' '].includes(e.key))return;const point=e.target.closest('[data-count-point]');
+    if(point){e.preventDefault();choosePoint(Number(point.dataset.countPoint));}
+  });
+  function svgPoint(svg,event){
+    const p=svg.createSVGPoint();p.x=event.clientX;p.y=event.clientY;
+    return p.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  rig.addEventListener('pointerdown',e=>{
+    if(!allowed())return;
+    const tool=e.target.closest('[data-tool]')?.dataset.tool;
+    if(!tool)return;
+    e.preventDefault();if(e.isTrusted)rig.setPointerCapture(e.pointerId);
+    const p=svgPoint(rig,e),s=lab.getState();ui.drag={tool,startX:p.x,startY:p.y,x:p.x,y:p.y,startPosition:s.position,moved:false};
+  });
+  rig.addEventListener('pointermove',e=>{
+    if(!ui.drag||!allowed())return;const p=svgPoint(rig,e),d=ui.drag;
+    if(Math.hypot(p.x-d.startX,p.y-d.startY)>4)d.moved=true;
+    d.x=p.x;d.y=p.y;
+    if(d.tool==='car'&&d.moved){
+      const next=clamp(d.startPosition-(p.x-d.startX)/500,0,.45);
+      const result=lab.moveCart(next<.005?0:next);
+      if(!result.ok&&!d.warned){notify(result.reason,true);d.warned=true;}
+    }
+    render();
+  });
+  function rigEnd(e,cancel=false){
+    const d=ui.drag;if(!d)return;const p=svgPoint(rig,e),s=lab.getState();ui.drag=null;
+    if(cancel){render();return;}
+    if(d.tool==='power'&&!d.moved)handler('power');
+    if(d.tool==='mass'&&!d.moved)act('setMass',[.01,.02,.03][([.01,.02,.03].indexOf(s.mass)+1)%3]);
+    if(d.tool==='car'&&!d.moved){if(!s.tapeMounted)handler('trial');else handler('release');}
+    if(d.tool==='paper'){
+      const g=geometry(s);
+      if(d.moved&&Math.hypot(p.x-g.tailX,p.y-125)<56){const result=act('attachTape');if(result.ok)notify('纸带已穿过导槽并接在车尾');}
+      else notify('把新纸带拖到小车右侧的车尾挂点',true);
+    }
+    render();
+  }
+  rig.addEventListener('pointerup',e=>rigEnd(e));
+  rig.addEventListener('pointercancel',e=>rigEnd(e,true));
+  rig.addEventListener('keydown',e=>{if(e.key!=='Enter'||!allowed())return;const tool=e.target.closest('[data-tool]')?.dataset.tool;if(tool==='power')handler('power');if(tool==='car')handler(lab.getState().tapeMounted?'release':'trial');});
+  for(const svg of [tape,zoom]){
+    svg.addEventListener('pointerdown',e=>{
+      if(!allowed())return;
+      const run=selected(lab.getState());if(!run)return;
+      const tool=e.target.closest('[data-tool]')?.dataset.tool;if(!tool)return;
+      e.preventDefault();if(e.isTrusted)svg.setPointerCapture(e.pointerId);
+      const p=svgPoint(svg,e),m=measurement(run);
+      ui.drag={tool,svg,startX:p.x,startZero:m.zero,startCursor:m.cursor,runId:run.id};
+    });
+    svg.addEventListener('pointermove',e=>{
+      const d=ui.drag;if(!d||d.svg!==svg||!allowed())return;
+      const p=svgPoint(svg,e),m=ui.measure[d.runId],delta=p.x-d.startX;
+      if(d.tool==='ruler'){m.zero=clamp(d.startZero+delta/2.2,-4,30);if(Math.abs(m.zero)<3)m.zero=0;}
+      if(d.tool==='cursor')m.cursor=clamp(d.startCursor+delta/16,0,300);
+      ui.paperKey='';render();
+    });
+    function end(){if(ui.drag?.svg===svg){ui.drag=null;ui.paperKey='';render();}}
+    svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
+  }
+  $('#fineLeft').onclick=()=>nudge(-.1);$('#fineRight').onclick=()=>nudge(.1);
+  function nudge(delta){
+    if(!allowed())return;const run=selected(lab.getState());if(!run)return;
+    measurement(run).cursor=clamp(measurement(run).cursor+delta,0,300);ui.paperKey='';render();
+  }
+  $('#quizRow').addEventListener('click',e=>{
+    const button=e.target.closest('[data-answer]');if(!button||!allowed())return;
+    const q=quiz[ui.quiz];
+    if(button.dataset.answer!==q[3]){
+      notify(['比较相等时间内速度的增加量，观察散点是否接近一条上升直线','斜率是Δv/Δt，先核对它的单位','纸带0点选在运动中段，计时起点不等于静止释放时刻'][ui.quiz],true);render();return;
+    }
+    ui.answers[q[2]]=button.dataset.answer;ui.warning=false;
+    if(ui.quiz<2){ui.quiz++;render();}else{
+      const result=act('finish',ui.answers);
+      if(result.ok){openPanel(control,true);openPanel(data,false);notify('三组独立图像共同支持实验结论');}
+    }
+  });
+  $('#hintLamp').onclick=()=>{const open=$('#hintPop').classList.toggle('open');$('#hintLamp').setAttribute('aria-expanded',String(open));};
+  $('#controlToggleBtn').onclick=()=>openPanel(control,control.classList.contains('collapsed'));
+  $('#dataToggleBtn').onclick=()=>openPanel(data,data.classList.contains('collapsed'));
+  $('#experimentTab').onclick=()=>openPanel(control,control.classList.contains('collapsed'));
+  $('#dataTab').onclick=()=>openPanel(data,data.classList.contains('collapsed'));
+  $('#dataSheetCloseBtn').onclick=()=>openPanel(data,false);
+  $('#okBtn').onclick=()=>{ui.doneDismissed=true;$('#doneMask').style.display='none';};
+  function panelDrag(handle,panel){
+    let drag=null;
+    handle.addEventListener('pointerdown',e=>{
+      if(e.target.closest('button'))return;e.preventDefault();handle.setPointerCapture(e.pointerId);
+      const b=panel.getBoundingClientRect(),s=stage.getBoundingClientRect();
+      drag={x:e.clientX,y:e.clientY,left:b.left-s.left,top:b.top-s.top,width:b.width};
+      panel.style.width=drag.width+'px';panel.style.right='auto';panel.style.bottom='auto';panel.style.zIndex='40';
+    });
+    handle.addEventListener('pointermove',e=>{
+      if(!drag)return;panel.style.left=clamp(drag.left+e.clientX-drag.x,0,stage.clientWidth-drag.width)+'px';
+      panel.style.top=clamp(drag.top+e.clientY-drag.y,0,stage.clientHeight-40)+'px';
+    });
+    const end=()=>{drag=null;};handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel',end);
+  }
+  for(const panel of [control,data]){
+    panelDrag(panel.querySelector('.dock-header'),panel);panelDrag(panel.querySelector('.panel-grip'),panel);
+    panel.addEventListener('pointerdown',()=>{panel.style.zIndex='40';(panel===control?data:control).style.zIndex='34';});
+  }
+  function clearPanelPositions(){for(const panel of [control,data])for(const key of ['left','right','top','bottom','width'])panel.style[key]='';}
+  function reset(mode=lab.getState().mode){
+    freeEntry=null;
+    ui.token++;ui.auto=false;ui.paused=false;lab.reset(mode);
+    Object.assign(ui,{runId:null,measure:{},point:0,unread:0,controlKey:'',dataKey:'',paperKey:'',rigKey:'',quizKey:'',quiz:0,answers:{},warning:false,previousStep:0,drag:null,doneDismissed:false,wasComplete:false});
+    $('#readingInput').value='';$('#speedInput').value='';$('#speedForm').dataset.key='';
+    $('#doneMask').style.display='none';clearPanelPositions();openPanel(control,false);openPanel(data,false);render();
+  }
+  function cancelAuto(){
+    ui.token++;ui.auto=false;ui.paused=false;ui.acting=false;
+    // A visible operator catch is an external stopping event, independent of power.
+    lab.abort();reset('guided');$('#demoCursor').hidden=true;render();
+  }
+  const viewKeys=['runId','measure','point','unread','quiz','answers','warning','previousStep','doneDismissed','wasComplete'];
+  function saveView(){return JSON.parse(JSON.stringify(Object.fromEntries(viewKeys.map(key=>[key,ui[key]]))));}
+  function restoreView(view){
+    Object.assign(ui,JSON.parse(JSON.stringify(view)),{drag:null,controlKey:'',dataKey:'',paperKey:'',rigKey:'',quizKey:''});
+    $('#readingInput').value='';$('#speedInput').value='';$('#speedForm').dataset.key='';
+    clearPanelPositions();openPanel(control,false);openPanel(data,false);render();
+  }
+  $('#resetBtn').onclick=()=>{
+    if(ui.auto){ui.paused=!ui.paused;render();}
+    else if(freeEntry){lab=freeEntry.baseline.fork();restoreView(freeEntry.view);}
+    else{
+      const s=lab.getState();
+      if(s.runs.length||s.currentRun||s.trialDone){
+        const model=lab.fork();model.abort();resetRecovery={model,view:saveView()};
+      }
+      reset();if(resetRecovery)notify('已回到关卡1；实验面板可恢复重置前的记录');
+    }
+  };
+  $('#freeBtn').onclick=()=>{
+    if(ui.auto)return;
+    if(freeEntry){const entry=freeEntry;freeEntry=null;lab=entry.guided;restoreView(entry.view);}
+    else{freeEntry={guided:lab,baseline:lab.fork('free'),view:saveView()};lab=freeEntry.baseline.fork();restoreView(freeEntry.view);}
+  };
+  function checkpoint(token){if(token!==ui.token)throw new Error('AUTO_CANCELLED');}
+  async function wait(ms,token){
+    let left=ms;
+    while(left>0){checkpoint(token);await new Promise(resolve=>setTimeout(resolve,40));if(!ui.paused)left-=40;}
+    checkpoint(token);
+  }
+  function clientPoint(svg,x,y){
+    const p=svg.createSVGPoint();p.x=x;p.y=y;return p.matrixTransform(svg.getScreenCTM());
+  }
+  async function cursorTo(x,y,token){
+    const cursor=$('#demoCursor'),b=stage.getBoundingClientRect();cursor.hidden=false;
+    cursor.style.left=(x-b.left)+'px';cursor.style.top=(y-b.top)+'px';await wait(260,token);
+  }
+  async function clickElement(el,token){
+    checkpoint(token);el.scrollIntoView({block:'nearest'});
+    const b=el.getBoundingClientRect();await cursorTo(b.left+b.width/2,b.top+b.height/2,token);
+    $('#demoCursor').classList.add('pulse');await wait(180,token);
+    ui.acting=true;try{el.click();}finally{ui.acting=false;}
+    $('#demoCursor').classList.remove('pulse');await wait(230,token);
+  }
+  async function gesture(svg,tool,from,to,token){
+    const element=svg.querySelector('[data-tool="'+tool+'"]');if(!element)throw new Error('AUTO_TARGET_MISSING:'+tool);
+    let a=clientPoint(svg,from.x,from.y),b=clientPoint(svg,to.x,to.y);
+    await cursorTo(a.x,a.y,token);
+    function emit(type,p){
+      ui.acting=true;
+      try{svg.dispatchEvent(new PointerEvent(type,{bubbles:true,pointerId:99,clientX:p.x,clientY:p.y,pointerType:'mouse',buttons:type==='pointerup'?0:1}));}
+      finally{ui.acting=false;}
+    }
+    ui.acting=true;
+    try{element.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:99,clientX:a.x,clientY:a.y,pointerType:'mouse',buttons:1}));}
+    finally{ui.acting=false;}
+    for(let i=1;i<=12;i++){
+      checkpoint(token);const p={x:a.x+(b.x-a.x)*i/12,y:a.y+(b.y-a.y)*i/12};emit('pointermove',p);
+      const st=stage.getBoundingClientRect();$('#demoCursor').style.left=(p.x-st.left)+'px';$('#demoCursor').style.top=(p.y-st.top)+'px';
+      await wait(45,token);
+    }
+    emit('pointerup',b);await wait(180,token);
+  }
+  async function autoDemo(){
+    if(ui.auto){cancelAuto();notify('演示已退出，已恢复关卡1初态');return;}
+    if(lab.getState().mode==='free')return;
+    resetRecovery=null;reset('guided');ui.auto=true;const token=++ui.token;render();openPanel(control,true);
+    function placeControls(){
+      control.style.left='12px';control.style.right='auto';control.style.top=(stage.clientHeight-control.offsetHeight-68)+'px';control.style.bottom='auto';
+    }
+    try{
+      placeControls();await clickElement($('#controlContent [data-action="trial"]'),token);await wait(900,token);
+      for(const mass of [.02,.01,.03]){
+        checkpoint(token);let s=lab.getState(),g=geometry(s);
+        await gesture(rig,'car',{x:g.carX,y:125},{x:510,y:125},token);
+        openPanel(control,true);placeControls();
+        const select=$('#massSelect');const sb=select.getBoundingClientRect();await cursorTo(sb.left+sb.width/2,sb.top+sb.height/2,token);
+        ui.acting=true;try{select.value=String(mass);select.dispatchEvent(new Event('change',{bubbles:true}));}finally{ui.acting=false;}
+        g=geometry(lab.getState());await gesture(rig,'paper',{x:611,y:207},{x:g.tailX,y:125},token);
+        openPanel(control,true);placeControls();await clickElement($('#powerButton'),token);await wait(600,token);
+        await clickElement($('#releaseButton'),token);await wait(1250,token);
+        await clickElement($('#powerButton'),token);
+        const before=lab.getState().runs.length;await clickElement($('#saveButton'),token);
+        if(lab.getState().runs.length!==before+1)throw new Error('AUTO_RECORD_NOT_PERSISTED');
+      }
+      const ids=lab.getState().runs.map(run=>run.id);
+      for(const id of ids){
+        openPanel(control,true);
+        control.style.left='12px';control.style.top='72px';control.style.bottom='auto';
+        const select=$('#paperSelect');await cursorTo(select.getBoundingClientRect().left+40,select.getBoundingClientRect().top+15,token);
+        ui.acting=true;try{select.value=id;select.dispatchEvent(new Event('change',{bubbles:true}));}finally{ui.acting=false;}
+        const run=selected(lab.getState());let m=measurement(run);
+        await gesture(tape,'ruler',{x:25+m.zero*2.2+20,y:90},{x:45,y:90},token);
+        for(let k=0;k<7;k++){
+          await clickElement($('#pointButtons [data-point="'+k+'"]'),token);
+          const r=selected(lab.getState()),target=expected(r),start=Math.floor(target/10)*10-5;
+          m=measurement(r);
+          const zx=value=>18+(value-start)*16;
+          await gesture(zoom,'cursor',{x:zx(m.cursor),y:30},{x:zx(target),y:30},token);
+          const input=$('#readingInput');await cursorTo(input.getBoundingClientRect().left+30,input.getBoundingClientRect().top+15,token);
+          input.value=(Math.round(target*10)/10).toFixed(1);input.dispatchEvent(new Event('input',{bubbles:true}));
+          const countBefore=lab.getState().runs.find(x=>x.id===id).measurement.readings.filter(x=>x!==null).length;
+          await clickElement($('#recordButton'),token);
+          const countAfter=lab.getState().runs.find(x=>x.id===id).measurement.readings.filter(x=>x!==null).length;
+          if(countAfter!==countBefore+1)throw new Error('AUTO_RECORD_NOT_PERSISTED');
+        }
+        const measured=selected(lab.getState()),T=measured.measurement.q/50;
+        $('#speedInput').value=((measured.measurement.readings[3]-measured.measurement.readings[1])/1000/(2*T)).toFixed(3);
+        $('#speedTime').value='2';await clickElement($('#checkSpeedButton'),token);
+        if(lab.getState().runs.find(run=>run.id===id).speedCheck?.version!==measured.version)throw new Error('AUTO_SPEED_NOT_CONFIRMED');
+        openPanel(control,true);await clickElement($('#fitButton'),token);await wait(500,token);
+      }
+      for(let i=0;i<3;i++)await clickElement($('#quizRow [data-answer="'+quiz[i][3]+'"]'),token);
+      if(!lab.getState().completed)throw new Error('AUTO_NOT_COMPLETED');
+    }catch(error){
+      if(error.message!=='AUTO_CANCELLED'){lab.abort();console.error('演示失败',error);notify('演示停止：'+error.message,true);}
+    }finally{
+      if(token===ui.token){ui.auto=false;ui.paused=false;ui.acting=false;lab.setPower(false);$('#demoCursor').hidden=true;render();}
+    }
+  }
+  $('#autoDemoBtn').onclick=autoDemo;
+  let previous=performance.now();
+  function frame(now){
+    const dt=Math.max(0,(now-previous)/1000);previous=now;
+    if(!document.hidden&&!(ui.auto&&ui.paused)){lab.advance(dt);render();}
+    requestAnimationFrame(frame);
+  }
+  let oldMobile=stage.clientWidth<=720;
+  let resizeFrame=0;
+  window.addEventListener('resize',()=>{cancelAnimationFrame(resizeFrame);resizeFrame=requestAnimationFrame(()=>{
+    const mobile=stage.clientWidth<=720;
+    if(mobile!==oldMobile){clearPanelPositions();openPanel(control,false);openPanel(data,false);oldMobile=mobile;}
+    ui.paperKey='';render();
+  });});
+  document.addEventListener('visibilitychange',()=>{previous=performance.now();});
+  window.addEventListener('pagehide',()=>{if(ui.auto)cancelAuto();else lab.abort();});
+  window.CartLabReview={snapshot:()=>({model:lab.getState(),view:JSON.parse(JSON.stringify({runId:ui.runId,point:ui.point,measure:ui.measure,auto:ui.auto,paused:ui.paused,unread:ui.unread,quiz:ui.quiz}))}),geometry:()=>geometry(lab.getState())};
+  openPanel(control,false);openPanel(data,false);render();requestAnimationFrame(frame);
+})();
+
+</script>
+  <script id="codex-theme-pilot-runtime">
+    (() => {
+      const themeKey = "xingnian.physics.theme";
+      const root = document.documentElement;
+      const button = document.getElementById("themeToggle");
+      if (!button) {
+        console.warn("[theme-pilot] theme toggle button was not found");
+        return;
+      }
+      const normalizeTheme = (value) => value === "light" ? "light" : "dark";
+      const stage = document.getElementById("stage");
+      if (stage) {
+        const activeTheme = normalizeTheme(root.dataset.theme);
+        try {
+          root.dataset.theme = "dark";
+          stage.style.setProperty("--theme-stage-ink", getComputedStyle(stage).color);
+        } finally {
+          root.dataset.theme = activeTheme;
+        }
+      }
+      const syncButton = (theme) => {
+        const lightEnabled = theme === "light";
+        const nextLabel = lightEnabled ? "切换到黑夜模式" : "切换到白天模式";
+        button.setAttribute("aria-pressed", String(lightEnabled));
+        button.setAttribute("aria-label", nextLabel);
+        button.title = nextLabel;
+      };
+      const applyTheme = (value, persist) => {
+        const theme = normalizeTheme(value);
+        root.dataset.theme = theme;
+        syncButton(theme);
+        if (persist) {
+          try {
+            localStorage.setItem(themeKey, theme);
+          } catch (error) {
+            console.warn("[theme-pilot] failed to save theme", error);
+          }
+        }
+      };
+      const panelStandardVersion = "physics-middle-panel-v1";
+      const desktopBreakpoint = 720;
+      const panelWidth = 164;
+      const panelHeaderHeight = 44;
+      const panelSafe = 6;
+      const bodySafe = 8;
+      const panelBodyMinWidth = 280;
+      const panelBodyMaxWidth = 520;
+      const panelBodyMinAvailableWidth = 120;
+      const panelBodyMinHeight = 80;
+      const panelBodyMaxHeight = 420;
+      const panelBodyMinAvailableHeight = 64;
+      const panelHeaderSelector = "[data-drag-handle],.dock-header,.dockHead,.dock-head,.drawer-header,.drawer-head,.panelHead,.resultsHead";
+      const panelBodySelector = ".dock-body,.dockBody,.drawer-body,.panelBody,.resultsBody";
+      const panelVariants = [
+        {
+          kind:"dock",
+          panels:[
+            { id:"controlDock", toggleSelector:"#controlToggleBtn" },
+            { id:"dataDock", toggleSelector:"#dataToggleBtn" },
+          ],
+        },
+        {
+          kind:"drawer63",
+          panels:[
+            { id:"controlDrawer", toggleSelector:"[data-drawer=\"controlDrawer\"]" },
+            { id:"dataDrawer", toggleSelector:"[data-drawer=\"dataDrawer\"]" },
+          ],
+        },
+      ];
+      let desktopPanels = [];
+      let desktopActive = false;
+      let desktopInitialized = false;
+      let panelCoordinatorInstalled = false;
+      let panelMutationFrame = 0;
+      let panelResizeTimer = 0;
+      let panelToggleGeneration = 0;
+      let panelToggleTransaction = null;
+      let panelToggleFrame = 0;
+      let panelToggleTimer = 0;
+      let panelLastTransaction = null;
+      const panelToggleSettleMs = 280;
+      let mutationObserver = null;
+      let positionedParentObserver = null;
+      let resizeObserver = null;
+      let lifecycleObserver = null;
+      const panelCleanupCallbacks = [];
+
+      const clampPanelValue = (value, minimum, maximum) => Math.min(maximum, Math.max(minimum, value));
+      const getStageSize = () => {
+        if (!stage) return { width:0, height:0 };
+        const rect = stage.getBoundingClientRect();
+        return {
+          width:stage.clientWidth || rect.width,
+          height:stage.clientHeight || rect.height,
+        };
+      };
+      const desktopPanelMutationAllowed = () => {
+        if (!desktopActive) return false;
+        const { width } = getStageSize();
+        if (width && width <= desktopBreakpoint) {
+          syncDesktopPanelMode();
+          return false;
+        }
+        return true;
+      };
+      const resolveDesktopPanels = () => {
+        if (!stage) {
+          panelVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] stage was not found for panel", panel.id);
+          }));
+          return null;
+        }
+        const presentVariants = panelVariants.filter((variant) => variant.panels.some(({ id }) =>
+          document.querySelectorAll(`[id="${id}"]`).length > 0));
+        if (!presentVariants.length) {
+          panelVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] panel shell was not found", panel.id);
+          }));
+          return null;
+        }
+        if (presentVariants.length > 1) {
+          presentVariants.forEach((variant) => variant.panels.forEach((panel) => {
+            console.warn("[desktop-panels] ambiguous panel variant", panel.id);
+          }));
+          return null;
+        }
+        const variant = presentVariants[0];
+        let valid = true;
+        const panels = variant.panels.map((definition, index) => {
+          const panel = { id:definition.id };
+          const wrappers = Array.from(document.querySelectorAll(`[id="${definition.id}"]`));
+          const toggles = Array.from(document.querySelectorAll(definition.toggleSelector));
+          const wrapper = wrappers.length === 1 ? wrappers[0] : null;
+          const headerMatches = wrapper
+            ? Array.from(wrapper.children).filter((child) => child.matches(panelHeaderSelector))
+            : [];
+          const bodyMatches = wrapper
+            ? Array.from(wrapper.children).filter((child) => child.matches(panelBodySelector))
+            : [];
+          const toggle = toggles.length === 1 ? toggles[0] : null;
+          const issues = [];
+          if (!wrapper) issues.push(`wrapper count ${wrappers.length}`);
+          if (headerMatches.length !== 1) issues.push(`direct header count ${headerMatches.length}`);
+          if (bodyMatches.length !== 1) issues.push(`direct body count ${bodyMatches.length}`);
+          if (headerMatches[0] && headerMatches[0] === bodyMatches[0]) issues.push("header and body are the same element");
+          if (!toggle || !toggle.matches("button") || !wrapper?.contains(toggle)) {
+            issues.push(`contained toggle count ${toggles.length}`);
+          }
+          if (issues.length) {
+            valid = false;
+            console.warn("[desktop-panels] invalid panel", panel.id, issues.join(", "));
+            return null;
+          }
+          return {
+            id:definition.id,
+            kind:variant.kind,
+            index,
+            wrapper,
+            header:headerMatches[0],
+            body:bodyMatches[0],
+            toggle,
+            originalMoved:null,
+            anchor:null,
+            zIndex:index === 0 ? 36 : 30,
+            drag:null,
+            measureFrame:0,
+            measureRetried:false,
+            measureWarned:false,
+          };
+        });
+        return valid ? panels : null;
+      };
+      const panelIsOpen = (panel) => panel.kind === "dock"
+        ? !panel.wrapper.classList.contains("collapsed")
+        : panel.wrapper.classList.contains("open");
+      const setPanelOpen = (panel, open) => {
+        if (panel.kind === "dock") panel.wrapper.classList.toggle("collapsed", !open);
+        else panel.wrapper.classList.toggle("open", open);
+        panel.body.classList.toggle("collapsed", !open);
+      };
+      const setPanelDragging = (panel, dragging) => {
+        panel.wrapper.dataset.codexPanelDragging = dragging ? "1" : "0";
+      };
+      const getDefaultAnchors = () => {
+        const { width } = getStageSize();
+        const control = { x:Math.max(panelSafe, width - panelWidth - 12), y:58 };
+        return [control, { x:control.x, y:control.y + panelHeaderHeight + 10 }];
+      };
+      const applyAnchor = (panel, nextAnchor) => {
+        if (!desktopPanelMutationAllowed()) return false;
+        const { width, height } = getStageSize();
+        const maximumX = Math.max(panelSafe, width - panelWidth - panelSafe);
+        const maximumY = Math.max(panelSafe, height - panelHeaderHeight - panelSafe);
+        panel.anchor = {
+          x:clampPanelValue(nextAnchor.x, panelSafe, maximumX),
+          y:clampPanelValue(nextAnchor.y, panelSafe, maximumY),
+        };
+        const offsetParent = panel.wrapper.offsetParent;
+        const stageRect = stage.getBoundingClientRect();
+        const offsetParentRect = offsetParent?.getBoundingClientRect?.() || stageRect;
+        const containingBlockOffset = offsetParent && offsetParent !== stage ? {
+          x:offsetParentRect.left + offsetParent.clientLeft - stageRect.left - stage.clientLeft,
+          y:offsetParentRect.top + offsetParent.clientTop - stageRect.top - stage.clientTop,
+        } : { x:0, y:0 };
+        panel.wrapper.style.setProperty("--codex-panel-left", `${panel.anchor.x - containingBlockOffset.x}px`);
+        panel.wrapper.style.setProperty("--codex-panel-top", `${panel.anchor.y - containingBlockOffset.y}px`);
+        return true;
+      };
+      const fitAvailableDimension = (desired, available, minimum, maximum) => {
+        const safeAvailable = Math.max(0, available);
+        if (safeAvailable < minimum) return safeAvailable;
+        return clampPanelValue(Math.min(desired, safeAvailable), minimum, maximum);
+      };
+      const choosePanelPlacement = (panel) => {
+        const { width:stageWidth, height:stageHeight } = getStageSize();
+        const anchor = panel.anchor || { x:panelSafe, y:panelSafe };
+        const bodyRect = panel.body.getBoundingClientRect();
+        const measuredWidth = Math.max(panel.body.scrollWidth || 0, bodyRect.width || 0);
+        const measuredHeight = Math.max(panel.body.scrollHeight || 0, bodyRect.height || 0);
+        const open = panelIsOpen(panel);
+        if (open && (!measuredWidth || !measuredHeight)) return null;
+        const desiredWidth = clampPanelValue(
+          Math.max(measuredWidth, panelBodyMinWidth),
+          panelBodyMinWidth,
+          panelBodyMaxWidth,
+        );
+        const desiredHeight = clampPanelValue(
+          Math.max(measuredHeight, panelBodyMinHeight),
+          panelBodyMinHeight,
+          panelBodyMaxHeight,
+        );
+        const leftSpace = Math.max(0, anchor.x + panelWidth - bodySafe);
+        const rightSpace = Math.max(0, stageWidth - anchor.x - bodySafe);
+        const leftFits = leftSpace >= desiredWidth;
+        const rightFits = rightSpace >= desiredWidth;
+        let x;
+        if (leftFits && rightFits) x = "left";
+        else if (leftFits) x = "left";
+        else if (rightFits) x = "right";
+        else x = leftSpace >= rightSpace ? "left" : "right";
+        const availableWidth = x === "left" ? leftSpace : rightSpace;
+        const downSpace = Math.max(0, stageHeight - anchor.y - panelHeaderHeight - bodySafe);
+        const upSpace = Math.max(0, anchor.y - bodySafe);
+        const y = downSpace < desiredHeight && upSpace > downSpace ? "up" : "down";
+        const availableHeight = y === "up" ? upSpace : downSpace;
+        return {
+          x,
+          y,
+          width:fitAvailableDimension(desiredWidth, availableWidth, panelBodyMinAvailableWidth, panelBodyMaxWidth),
+          height:fitAvailableDimension(desiredHeight, availableHeight, panelBodyMinAvailableHeight, panelBodyMaxHeight),
+        };
+      };
+      const layoutPanel = (panel) => {
+        const placement = choosePanelPlacement(panel);
+        if (!placement) {
+          if (!panel.measureRetried) {
+            if (!panel.measureFrame) {
+              panel.measureFrame = requestAnimationFrame(() => {
+                panel.measureFrame = 0;
+                if (desktopActive && panel.wrapper.isConnected && panelIsOpen(panel)) {
+                  panel.measureRetried = true;
+                  layoutPanel(panel);
+                }
+              });
+            }
+            return;
+          }
+          if (!panel.measureWarned) {
+            panel.measureWarned = true;
+            console.warn("[desktop-panels] panel body measurement failed", panel.id);
+          }
+          return;
+        }
+        if (panel.measureFrame) cancelAnimationFrame(panel.measureFrame);
+        panel.measureFrame = 0;
+        panel.measureRetried = false;
+        panel.measureWarned = false;
+        panel.wrapper.dataset.codexPanelX = placement.x;
+        panel.wrapper.dataset.codexPanelY = placement.y;
+        panel.wrapper.style.setProperty("--codex-panel-body-width", `${Math.round(placement.width)}px`);
+        panel.wrapper.style.setProperty("--codex-panel-body-height", `${Math.round(placement.height)}px`);
+      };
+      const assertPanelManaged = (panel) => {
+        const { wrapper, header, body } = panel;
+        wrapper.dataset.codexDesktopPanel = "1";
+        header.dataset.codexPanelHeader = "1";
+        body.dataset.codexPanelBody = "1";
+        wrapper.dataset.codexPanelDragging = panel.drag?.active ? "1" : "0";
+        if (wrapper.dataset.moved !== "1") wrapper.dataset.moved = "1";
+      };
+      const syncPanel = (panel) => {
+        if (!desktopPanelMutationAllowed()) return;
+        assertPanelManaged(panel);
+        const defaults = getDefaultAnchors();
+        if (!applyAnchor(panel, panel.anchor || defaults[panel.index])) return;
+        applyPanelLayer(panel);
+        const open = panelIsOpen(panel);
+        panel.wrapper.dataset.codexPanelOpen = open ? "1" : "0";
+        panel.toggle.setAttribute("aria-expanded", open ? "true" : "false");
+        panel.toggle.textContent = open ? "收起" : "展开";
+        layoutPanel(panel);
+      };
+      const applyPanelLayer = (panel) => {
+        panel.wrapper.style.setProperty("--codex-panel-z", String(panel.zIndex));
+      };
+      const promotePanel = (panel) => {
+        if (!desktopActive) return;
+        desktopPanels.forEach((candidate) => {
+          candidate.zIndex = candidate === panel ? 36 : 30;
+          applyPanelLayer(candidate);
+        });
+      };
+      const preservePanelAudioUnlock = (panel) => {
+        const panelId = panel.id;
+        try {
+          const labAudio = window.labAudio;
+          if (!labAudio || labAudio.unlocked === true) return;
+          let result;
+          if (typeof labAudio.unlock === "function") result = labAudio.unlock();
+          else if (typeof labAudio.resume === "function") result = labAudio.resume();
+          else if (typeof labAudio.play === "function") result = labAudio.play("tap");
+          if (result && typeof result.catch === "function") {
+            result.catch((error) => {
+              console.warn("[desktop-panels] audio unlock failed for panel", panelId, error);
+            });
+          }
+        } catch (error) {
+          console.warn("[desktop-panels] audio unlock failed for panel", panelId, error);
+        }
+      };
+      const releasePanelPointer = (panel, pointerId) => {
+        try {
+          if (!panel.header.hasPointerCapture || panel.header.hasPointerCapture(pointerId)) {
+            panel.header.releasePointerCapture(pointerId);
+          }
+        } catch (error) {
+          console.warn("[desktop-panels] pointer release failed for panel", panel.id, error);
+        }
+      };
+      const cancelPanelDrag = (panel) => {
+        const drag = panel.drag;
+        if (!drag) {
+          if (desktopActive) setPanelDragging(panel, false);
+          return;
+        }
+        try {
+          releasePanelPointer(panel, drag.pointerId);
+        } finally {
+          panel.drag = null;
+          if (desktopActive) setPanelDragging(panel, false);
+        }
+      };
+      const bindPanelListener = (target, type, listener, options) => {
+        target.addEventListener(type, listener, options);
+        panelCleanupCallbacks.push(() => target.removeEventListener(type, listener, options));
+      };
+      const snapshotPanelToggleTransaction = (transaction, status) => transaction ? {
+        generation:transaction.generation,
+        sourceId:transaction.sourceId,
+        panelWasOpen:transaction.panelWasOpen,
+        peerWasOpen:transaction.peerWasOpen,
+        targets:{ ...transaction.targets },
+        applications:transaction.applications,
+        lastReason:transaction.lastReason,
+        status,
+      } : null;
+      const clearPanelToggleHandles = () => {
+        if (panelToggleFrame) cancelAnimationFrame(panelToggleFrame);
+        if (panelToggleTimer) clearTimeout(panelToggleTimer);
+        panelToggleFrame = 0;
+        panelToggleTimer = 0;
+      };
+      const cancelPanelToggleTransaction = (reason = "cancelled") => {
+        panelToggleGeneration += 1;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, reason);
+        }
+        clearPanelToggleHandles();
+        panelToggleTransaction = null;
+        return panelToggleGeneration;
+      };
+      const applyPanelToggleTransaction = (generation, reason) => {
+        if (!desktopPanelMutationAllowed()) return false;
+        const transaction = panelToggleTransaction;
+        if (!transaction || transaction.generation !== generation || panelToggleGeneration !== generation) return false;
+        desktopPanels.forEach((candidate) => {
+          if (Object.prototype.hasOwnProperty.call(transaction.targets, candidate.id)) {
+            setPanelOpen(candidate, transaction.targets[candidate.id]);
+          }
+        });
+        desktopPanels.forEach(syncPanel);
+        transaction.applications += 1;
+        transaction.lastReason = reason;
+        return true;
+      };
+      const schedulePanelToggleTransaction = (generation, reason) => {
+        if (!desktopActive || !panelToggleTransaction || panelToggleTransaction.generation !== generation || panelToggleGeneration !== generation) return;
+        if (panelToggleFrame) return;
+        panelToggleFrame = requestAnimationFrame(() => {
+          panelToggleFrame = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          applyPanelToggleTransaction(generation, reason);
+        });
+      };
+      const armPanelToggleTransaction = (generation) => {
+        panelToggleTimer = setTimeout(() => {
+          panelToggleTimer = 0;
+          if (panelToggleGeneration !== generation || panelToggleTransaction?.generation !== generation) return;
+          if (!applyPanelToggleTransaction(generation, "settle-expiry")) return;
+          panelLastTransaction = snapshotPanelToggleTransaction(
+            panelToggleTransaction,
+            panelToggleTransaction.commitStatus || "committed",
+          );
+          panelToggleTransaction = null;
+        }, panelToggleSettleMs);
+      };
+      const beginPanelToggleTransaction = (panel) => {
+        if (!desktopPanelMutationAllowed()) return null;
+        const previousTargets = panelToggleTransaction?.targets || null;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "superseded");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const peer = desktopPanels.find((candidate) => candidate !== panel) || null;
+        const panelWasOpen = previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, panel.id)
+          ? previousTargets[panel.id]
+          : panelIsOpen(panel);
+        const peerWasOpen = peer && previousTargets && Object.prototype.hasOwnProperty.call(previousTargets, peer.id)
+          ? previousTargets[peer.id]
+          : peer ? panelIsOpen(peer) : false;
+        panelToggleTransaction = {
+          generation,
+          sourceId:panel.id,
+          panelWasOpen,
+          peerWasOpen,
+          targets:{
+            [panel.id]:!panelWasOpen,
+            ...(peer ? { [peer.id]:peerWasOpen } : {}),
+          },
+          applications:0,
+          lastReason:"captured",
+        };
+        armPanelToggleTransaction(generation);
+        return generation;
+      };
+      const beginPanelResetTransaction = () => {
+        if (!desktopPanelMutationAllowed()) return null;
+        if (panelToggleTransaction) {
+          panelLastTransaction = snapshotPanelToggleTransaction(panelToggleTransaction, "reset-requested");
+        }
+        clearPanelToggleHandles();
+        const generation = ++panelToggleGeneration;
+        const [panel, peer] = desktopPanels;
+        panelToggleTransaction = {
+          generation,
+          sourceId:"resetBtn",
+          panelWasOpen:panel ? panelIsOpen(panel) : false,
+          peerWasOpen:peer ? panelIsOpen(peer) : false,
+          targets:Object.fromEntries(desktopPanels.map((candidate) => [candidate.id, false])),
+          applications:0,
+          lastReason:"captured",
+          commitStatus:"reset-committed",
+        };
+        applyPanelToggleTransaction(generation, "reset-capture");
+        armPanelToggleTransaction(generation);
+        return generation;
+      };
+      const panelToggleDebugSnapshot = () => ({
+        generation:panelToggleGeneration,
+        settleMs:panelToggleSettleMs,
+        pending:Number(Boolean(panelToggleFrame)) + Number(Boolean(panelToggleTimer)),
+        active:desktopActive,
+        current:snapshotPanelToggleTransaction(panelToggleTransaction, "active"),
+        last:panelLastTransaction ? { ...panelLastTransaction, targets:{ ...panelLastTransaction.targets } } : null,
+      });
+      const bindPanelDrag = (panel) => {
+        const { wrapper, header, toggle } = panel;
+        const onWrapperPointerDown = (event) => {
+          if (!desktopActive) return;
+          if (toggle.contains(event.target)) wrapper.dataset.moved = "1";
+          promotePanel(panel);
+        };
+        const onWrapperClick = () => promotePanel(panel);
+        const onToggleClickCapture = () => {
+          if (!desktopActive) return;
+          beginPanelToggleTransaction(panel);
+        };
+        const onToggleClick = () => {
+          const generation = panelToggleTransaction?.generation;
+          if (!desktopActive || !generation || panelToggleTransaction.sourceId !== panel.id) return;
+          schedulePanelToggleTransaction(generation, "click-bubble");
+        };
+        const onHeaderPointerDown = (event) => {
+          if (!desktopActive || event.target.closest?.("button")) return;
+          if (event.button !== undefined && event.button !== 0) return;
+          preservePanelAudioUnlock(panel);
+          event.stopImmediatePropagation();
+          event.preventDefault();
+          const wrapperRect = wrapper.getBoundingClientRect();
+          panel.drag = {
+            pointerId:event.pointerId,
+            startX:event.clientX,
+            startY:event.clientY,
+            offsetX:event.clientX - wrapperRect.left,
+            offsetY:event.clientY - wrapperRect.top,
+            active:false,
+          };
+          promotePanel(panel);
+          try {
+            header.setPointerCapture(event.pointerId);
+          } catch (error) {
+            console.warn("[desktop-panels] pointer capture failed for panel", panel.id, error);
+            panel.drag = null;
+            setPanelDragging(panel, false);
+          }
+        };
+        const onHeaderPointerMove = (event) => {
+          const drag = panel.drag;
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          event.stopImmediatePropagation();
+          if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 4) return;
+          drag.active = true;
+          setPanelDragging(panel, true);
+          const stageRect = stage.getBoundingClientRect();
+          if (!applyAnchor(panel, {
+            x:event.clientX - stageRect.left - drag.offsetX,
+            y:event.clientY - stageRect.top - drag.offsetY,
+          })) return;
+          layoutPanel(panel);
+          event.preventDefault();
+        };
+        const finishDrag = (event) => {
+          const drag = panel.drag;
+          if (!drag || event.pointerId !== drag.pointerId) return;
+          event.stopImmediatePropagation();
+          try {
+            releasePanelPointer(panel, event.pointerId);
+          } finally {
+            panel.drag = null;
+            if (desktopActive) {
+              setPanelDragging(panel, false);
+              layoutPanel(panel);
+            }
+          }
+        };
+        const onLostPointerCapture = (event) => {
+          if (!panel.drag || event.pointerId !== panel.drag.pointerId) return;
+          panel.drag = null;
+          if (desktopActive) setPanelDragging(panel, false);
+        };
+        bindPanelListener(wrapper, "pointerdown", onWrapperPointerDown, true);
+        bindPanelListener(wrapper, "click", onWrapperClick, true);
+        bindPanelListener(toggle, "click", onToggleClickCapture, true);
+        bindPanelListener(toggle, "click", onToggleClick);
+        bindPanelListener(header, "pointerdown", onHeaderPointerDown, true);
+        bindPanelListener(header, "pointermove", onHeaderPointerMove, true);
+        bindPanelListener(header, "pointerup", finishDrag, true);
+        bindPanelListener(header, "pointercancel", finishDrag, true);
+        bindPanelListener(header, "lostpointercapture", onLostPointerCapture, true);
+      };
+      const cancelPanelFrames = (panel) => {
+        if (panel.measureFrame) cancelAnimationFrame(panel.measureFrame);
+        panel.measureFrame = 0;
+        panel.measureRetried = false;
+        panel.measureWarned = false;
+      };
+      const resetDesktopPanelLayout = () => {
+        if (!desktopPanelMutationAllowed()) return;
+        const anchors = getDefaultAnchors();
+        desktopPanels.forEach((panel, index) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+          panel.zIndex = index === 0 ? 36 : 30;
+          if (!applyAnchor(panel, anchors[index])) return;
+          applyPanelLayer(panel);
+        });
+      };
+      const resetDesktopPanels = (cancelTransaction = true) => {
+        if (!desktopActive) return;
+        if (cancelTransaction) cancelPanelToggleTransaction("reset");
+        resetDesktopPanelLayout();
+        desktopPanels.forEach((panel) => {
+          setPanelOpen(panel, false);
+          syncPanel(panel);
+        });
+      };
+      const rememberPanelMoved = (panel) => {
+        panel.originalMoved = {
+          present:panel.wrapper.hasAttribute("data-moved"),
+          value:panel.wrapper.getAttribute("data-moved"),
+        };
+      };
+      const activateDesktopPanels = () => {
+        desktopActive = true;
+        desktopPanels.forEach((panel) => {
+          rememberPanelMoved(panel);
+          const { wrapper, header, body } = panel;
+          wrapper.dataset.codexDesktopPanel = "1";
+          header.dataset.codexPanelHeader = "1";
+          body.dataset.codexPanelBody = "1";
+          wrapper.dataset.codexPanelOpen = panelIsOpen(panel) ? "1" : "0";
+          wrapper.dataset.codexPanelDragging = "0";
+          wrapper.dataset.moved = "1";
+        });
+        if (!desktopInitialized) {
+          desktopInitialized = true;
+          resetDesktopPanels();
+          return;
+        }
+        const defaults = getDefaultAnchors();
+        desktopPanels.forEach((panel, index) => {
+          if (!applyAnchor(panel, panel.anchor || defaults[index])) return;
+          applyPanelLayer(panel);
+          syncPanel(panel);
+        });
+      };
+      const deactivateDesktopPanels = () => {
+        if (!desktopActive) return;
+        cancelPanelToggleTransaction("deactivate");
+        desktopPanels.forEach((panel) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+          const { wrapper, header, body, originalMoved } = panel;
+          delete wrapper.dataset.codexDesktopPanel;
+          delete header.dataset.codexPanelHeader;
+          delete body.dataset.codexPanelBody;
+          delete wrapper.dataset.codexPanelOpen;
+          delete wrapper.dataset.codexPanelDragging;
+          delete wrapper.dataset.codexPanelX;
+          delete wrapper.dataset.codexPanelY;
+          wrapper.style.removeProperty("--codex-panel-body-width");
+          wrapper.style.removeProperty("--codex-panel-body-height");
+          wrapper.style.removeProperty("--codex-panel-left");
+          wrapper.style.removeProperty("--codex-panel-top");
+          wrapper.style.removeProperty("--codex-panel-z");
+          if (originalMoved.present) wrapper.setAttribute("data-moved", originalMoved.value ?? "");
+          else wrapper.removeAttribute("data-moved");
+        });
+        desktopActive = false;
+      };
+      const syncDesktopPanelMode = () => {
+        const { width } = getStageSize();
+        if (!width) return;
+        if (width <= desktopBreakpoint) {
+          deactivateDesktopPanels();
+          return;
+        }
+        if (!desktopActive) {
+          activateDesktopPanels();
+          return;
+        }
+        desktopPanels.forEach((panel) => {
+          if (!applyAnchor(panel, panel.anchor)) return;
+          applyPanelLayer(panel);
+          syncPanel(panel);
+        });
+      };
+      const queuePanelSync = (records = []) => {
+        if (!desktopPanelMutationAllowed()) return;
+        const transaction = panelToggleTransaction;
+        const panelClassChanged = records.some((record) => record.type === "attributes" && record.attributeName === "class");
+        if (transaction && panelClassChanged) {
+          schedulePanelToggleTransaction(transaction.generation, "class-mutation");
+          return;
+        }
+        if (panelMutationFrame) return;
+        const generation = panelToggleGeneration;
+        panelMutationFrame = requestAnimationFrame(() => {
+          panelMutationFrame = 0;
+          if (!desktopPanelMutationAllowed() || generation !== panelToggleGeneration) return;
+          desktopPanels.forEach(syncPanel);
+        });
+      };
+      const schedulePanelResize = () => {
+        clearTimeout(panelResizeTimer);
+        panelResizeTimer = setTimeout(syncDesktopPanelMode, 120);
+      };
+      const isResetIntent = (button) => button.textContent.includes("重置");
+      const managedPanelNodesConnected = () => stage?.isConnected && desktopPanels.every((panel) =>
+        [panel.wrapper, panel.header, panel.body, panel.toggle].every((node) => node.isConnected));
+      const teardownDesktopPanels = () => {
+        cancelPanelToggleTransaction("disconnect");
+        clearTimeout(panelResizeTimer);
+        panelResizeTimer = 0;
+        if (panelMutationFrame) cancelAnimationFrame(panelMutationFrame);
+        panelMutationFrame = 0;
+        if (desktopActive) deactivateDesktopPanels();
+        else desktopPanels.forEach((panel) => {
+          cancelPanelDrag(panel);
+          cancelPanelFrames(panel);
+        });
+        if (mutationObserver) mutationObserver.disconnect();
+        if (positionedParentObserver) positionedParentObserver.disconnect();
+        if (resizeObserver) resizeObserver.disconnect();
+        if (lifecycleObserver) lifecycleObserver.disconnect();
+        mutationObserver = null;
+        positionedParentObserver = null;
+        resizeObserver = null;
+        lifecycleObserver = null;
+        panelCleanupCallbacks.splice(0).reverse().forEach((cleanup) => cleanup());
+        desktopPanels = [];
+      };
+      const installDesktopPanels = () => {
+        if (panelCoordinatorInstalled) return;
+        panelCoordinatorInstalled = true;
+        const resolved = resolveDesktopPanels();
+        if (!resolved) return;
+        desktopPanels = resolved;
+        desktopPanels.forEach(bindPanelDrag);
+        mutationObserver = new MutationObserver(queuePanelSync);
+        desktopPanels.forEach((panel) => {
+          mutationObserver.observe(panel.wrapper, {
+            attributes:true,
+            attributeFilter:["class", "data-moved"],
+          });
+          mutationObserver.observe(panel.body, {
+            attributes:true,
+            attributeFilter:["class"],
+          });
+        });
+        const positionedParents = [...new Set(desktopPanels.map((panel) => panel.wrapper.offsetParent))]
+          .filter((parent) => parent && parent !== stage);
+        if (positionedParents.length) {
+          positionedParentObserver = new MutationObserver(schedulePanelResize);
+          positionedParents.forEach((parent) => positionedParentObserver.observe(parent, {
+            attributes:true,
+            attributeFilter:["class", "style"],
+          }));
+        }
+        bindPanelListener(window, "resize", schedulePanelResize);
+        if ("ResizeObserver" in window) {
+          resizeObserver = new ResizeObserver(schedulePanelResize);
+          resizeObserver.observe(stage);
+          positionedParents.forEach((parent) => resizeObserver.observe(parent));
+        }
+        lifecycleObserver = new MutationObserver(() => {
+          if (!managedPanelNodesConnected()) teardownDesktopPanels();
+        });
+        lifecycleObserver.observe(document.documentElement, { childList:true, subtree:true });
+        const resetButtons = document.querySelectorAll("#resetBtn");
+        if (resetButtons.length === 1) {
+          const resetButton = document.getElementById("resetBtn");
+          const onResetClick = () => {
+            if (!isResetIntent(resetButton)) return;
+            resetDesktopPanelLayout();
+            beginPanelResetTransaction();
+          };
+          bindPanelListener(resetButton, "click", onResetClick, true);
+        } else {
+          console.warn("[desktop-panels] expected one reset button", "resetBtn");
+        }
+        const panelCoordinatorApi = { version:panelStandardVersion };
+        if (window.__CODEX_PHYSICS_PANEL_TEST__ === true) panelCoordinatorApi.getTransactionState = panelToggleDebugSnapshot;
+        window.__codexDesktopPanels = Object.freeze(panelCoordinatorApi);
+        syncDesktopPanelMode();
+      };
+      const isolateThemePointer = (event) => {
+        if (button.contains(event.target)) event.stopPropagation();
+      };
+      window.addEventListener("pointerdown", isolateThemePointer, true);
+      window.addEventListener("mousedown", isolateThemePointer, true);
+      window.addEventListener("touchstart", isolateThemePointer, { capture:true, passive:true });
+      window.addEventListener("click", (event) => {
+        if (!button.contains(event.target)) return;
+        event.stopPropagation();
+        applyTheme(root.dataset.theme === "light" ? "dark" : "light", true);
+      }, true);
+      window.addEventListener("storage", (event) => {
+        if (event.key === themeKey) applyTheme(event.newValue, false);
+      });
+      applyTheme(root.dataset.theme, false);
+      installDesktopPanels();
+    })();
+  </script>
+<script id="codex-stage-tools-runtime">
+(() => {
+  'use strict';
+  function mount() {
+    const stage = document.querySelector('#stage');
+    const lamp = stage?.querySelector('#hintLamp, .hint-lamp');
+    const pop = stage?.querySelector('#hintPop');
+    const hud = stage?.querySelector('.hud');
+    if (!stage || !lamp || !pop || !hud || stage.dataset.stageToolsMounted) return;
+    stage.dataset.stageToolsMounted = 'true';
+    const wrap = lamp.closest('.hint-lamp-wrap');
+    const anchor = wrap || lamp;
+    let frame = 0;
+    let disposed = false;
+    const put = (node, key, value) => {
+      if (node.style.getPropertyValue(key) !== value || node.style.getPropertyPriority(key) !== 'important') {
+        node.style.setProperty(key, value, 'important');
+      }
+    };
+    const pixels = value => `${Math.round(value * 100) / 100}px`;
+    function expanded() {
+      return pop.classList.contains('open') || Boolean(wrap?.classList.contains('open'));
+    }
+    function syncExpanded() {
+      lamp.setAttribute('aria-controls', pop.id);
+      lamp.setAttribute('aria-expanded', String(expanded()));
+      lamp.setAttribute('aria-label', expanded() ? '收起提示' : '查看提示');
+    }
+    function closeHint() {
+      // Reuse the page's own close action so legacy state.hintOpen and its
+      // wrapper stay synchronized with the popover after Escape/outside clicks.
+      if (wrap ? wrap.classList.contains('open') : expanded()) lamp.click();
+      pop.classList.remove('open');
+      wrap?.classList.remove('open');
+      syncExpanded();
+    }
+    function managedHint() {
+      if (lamp.dataset.stageHint !== 'managed') return;
+      pop.textContent = document.querySelector('#taskHint')?.textContent || '按步骤操作器材，观察现象并记录数据。';
+      pop.classList.toggle('open');
+      syncExpanded();
+    }
+    lamp.addEventListener('click', managedHint);
+    function layout() {
+      frame = 0;
+      if (disposed) return;
+      const s = stage.getBoundingClientRect();
+      const h = hud.getBoundingClientRect();
+      const originX = s.left + stage.clientLeft;
+      const originY = s.top + stage.clientTop;
+      const left = Math.max(8, h.left - originX);
+      const top = Math.max(8, h.bottom - originY + 6);
+      put(anchor, 'position', 'absolute');
+      put(anchor, 'left', pixels(left));
+      put(anchor, 'right', 'auto');
+      put(anchor, 'top', pixels(top));
+      put(anchor, 'bottom', 'auto');
+      put(anchor, 'z-index', '72');
+      if (wrap) {
+        put(wrap, 'width', '36px'); put(wrap, 'height', '36px');
+        put(lamp, 'position', 'static'); put(lamp, 'transform', 'none');
+      }
+      for (const button of [lamp, stage.querySelector('#audioToggle')].filter(Boolean)) {
+        put(button, 'width', '36px'); put(button, 'height', '36px');
+        put(button, 'min-width', '36px'); put(button, 'min-height', '36px');
+        put(button, 'padding', '0'); put(button, 'margin', '0');
+        put(button, 'display', 'grid'); put(button, 'place-items', 'center');
+        put(button, 'font-size', '18px'); put(button, 'box-sizing', 'border-box');
+      }
+      const audio = stage.querySelector('#audioToggle');
+      if (audio) {
+        put(audio, 'position', 'absolute'); put(audio, 'left', pixels(left + 42));
+        put(audio, 'right', 'auto'); put(audio, 'top', pixels(top));
+        put(audio, 'bottom', 'auto'); put(audio, 'z-index', '72');
+        put(audio, 'border', '1px solid rgba(150,170,190,.38)');
+        put(audio, 'border-radius', '8px');
+        put(audio, 'background', 'rgba(100,120,140,.13)');
+        put(audio, 'cursor', 'pointer');
+      }
+      put(pop, 'position', 'absolute'); put(pop, 'box-sizing', 'border-box');
+      put(pop, 'left', wrap ? '0px' : pixels(left)); put(pop, 'right', 'auto');
+      put(pop, 'top', pixels(wrap ? 44 : top + 44)); put(pop, 'bottom', 'auto');
+      put(pop, 'transform', 'none'); put(pop, 'z-index', '71');
+      put(pop, 'width', pixels(Math.max(1, Math.min(340, stage.clientWidth - left - 10))));
+      put(pop, 'max-width', 'none');
+      put(pop, 'max-height', pixels(Math.max(48, stage.clientHeight - top - 60)));
+      put(pop, 'overflow-y', 'auto'); put(pop, 'overflow-wrap', 'anywhere');
+      syncExpanded();
+    }
+    const requestLayout = () => { if (!disposed && !frame) frame = requestAnimationFrame(layout); };
+    function onKey(event) {
+      if (event.key === 'Escape' && expanded()) {
+        closeHint(); lamp.focus({ preventScroll:true });
+      }
+    }
+    function onOutside(event) {
+      if (!lamp.contains(event.target) && !pop.contains(event.target)) closeHint();
+    }
+    const changes = new MutationObserver(syncExpanded);
+    changes.observe(pop, { attributes:true, attributeFilter:['class'] });
+    if (wrap) changes.observe(wrap, { attributes:true, attributeFilter:['class'] });
+    const sizes = new ResizeObserver(requestLayout);
+    sizes.observe(hud); sizes.observe(stage);
+    window.addEventListener('resize', requestLayout);
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onOutside, { passive:true });
+    lamp.addEventListener('click', requestLayout);
+    function dispose() {
+      disposed = true; cancelAnimationFrame(frame);
+      sizes.disconnect(); changes.disconnect();
+      window.removeEventListener('resize', requestLayout);
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onOutside);
+      lamp.removeEventListener('click', requestLayout);
+      lamp.removeEventListener('click', managedHint);
+      delete stage.dataset.stageToolsMounted;
+    }
+    window.addEventListener('pagehide', dispose, { once:true });
+    layout();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+  window.addEventListener('pageshow', event => { if (event.persisted) mount(); });
+})();
+</script>
+</body>
+</html>
