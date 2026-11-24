@@ -168,6 +168,7 @@
   .readout-chip b{ color:var(--accent); }
 
   .balance-zone{
+    --beam-y:190px;
     position:relative;
     width:min(100%, 720px);
     height:420px;
@@ -176,34 +177,49 @@
   .balance-base{
     position:absolute;
     left:50%;
-    bottom:26px;
+    top:calc(var(--beam-y) + 48px);
     transform:translateX(-50%);
-    width:142px;
-    height:118px;
+    width:min(90%, 418px);
+    height:44px;
     background:linear-gradient(180deg, #3f5972 0%, #253a4f 100%);
-    border-radius:12px 12px 0 0;
+    border-radius:12px 12px 6px 6px;
     box-shadow:inset 0 0 18px rgba(0,0,0,.44);
+  }
+  .balance-base::before{
+    content:"";
+    position:absolute;
+    bottom:100%;
+    left:50%;
+    width:38px;
+    height:49px;
+    transform:translateX(-50%);
+    background:linear-gradient(90deg,#30475a,#628096,#30475a);
   }
   .balance-scale{
     position:absolute;
     left:50%;
-    bottom:8px;
+    top:calc(var(--beam-y) - 94px);
     transform:translateX(-50%);
-    width:112px;
-    height:74px;
-    background:repeating-linear-gradient(90deg, transparent, transparent 9px, rgba(0,0,0,.38) 10px) top center / 84px 18px no-repeat, #e8edf0;
-    border-radius:56px 56px 0 0;
-    clip-path:polygon(0 0,100% 0,86% 100%,14% 100%);
+    width:96px;
+    height:30px;
+    background:linear-gradient(#26313d,#26313d) center / 2px 20px no-repeat, repeating-linear-gradient(90deg, transparent, transparent 9px, rgba(0,0,0,.38) 10px) center / 78px 12px no-repeat, #e8edf0;
+    border-radius:8px 8px 16px 16px;
     box-shadow:0 8px 16px rgba(0,0,0,.3);
+  }
+  @property --balance-tilt{
+    syntax:"<angle>";
+    inherits:true;
+    initial-value:0deg;
   }
   .balance-beam-group{
     position:absolute;
     left:50%;
-    top:136px;
+    top:var(--beam-y);
     width:0;
     height:0;
     z-index:10;
-    transition:transform .45s ease;
+    transform:rotate(var(--balance-tilt, 0deg));
+    transition:--balance-tilt .45s ease;
   }
   .beam{
     position:absolute;
@@ -256,10 +272,10 @@
   }
   .pointer{
     position:absolute;
-    top:-4px;
-    left:-2px;
-    width:4px;
-    height:156px;
+    top:-91px;
+    left:-1.5px;
+    width:3px;
+    height:93px;
     border-radius:2px;
     background:#e74c3c;
   }
@@ -289,16 +305,27 @@
 
   .pan-stem{
     position:absolute;
-    top:8px;
-    width:2px;
-    height:90px;
-    background:#c8d0d5;
+    top:0;
+    width:0;
+    height:0;
+    transform:rotate(calc(-1 * var(--balance-tilt, 0deg)));
+    transform-origin:0 0;
+  }
+  .pan-stem::before{
+    content:"";
+    position:absolute;
+    top:-39px;
+    left:-4px;
+    width:8px;
+    height:41px;
+    border-radius:4px;
+    background:linear-gradient(90deg,#788c9c,#dde5e8,#788c9c);
   }
   .pan-stem.left{ left:-138px; }
   .pan-stem.right{ left:138px; }
   .pan{
     position:absolute;
-    top:90px;
+    top:-62px;
     width:110px;
     height:34px;
     border-radius:50% / 18px;
@@ -316,15 +343,48 @@
   .pan.right{ left:0; }
   .pan-label{
     position:absolute;
-    top:128px;
+    top:-81px;
+    left:0;
     width:110px;
     transform:translateX(-50%);
     text-align:center;
     font-size:12px;
     color:#96a8bb;
   }
-  .pan-label.left{ left:-138px; }
-  .pan-label.right{ left:138px; }
+  .pan:not(:empty) + .pan-label{ visibility:hidden; }
+  .forceps-tool{
+    position:absolute;
+    display:grid;
+    place-items:center;
+    left:50%;
+    bottom:156px;
+    width:68px;
+    height:54px;
+    padding:4px;
+    transform:translateX(-50%);
+    z-index:104;
+    border:1px solid #7199ad;
+    border-radius:10px;
+    background:#20364a;
+    color:#e4f2fb;
+    cursor:grab;
+    touch-action:none;
+    user-select:none;
+  }
+  .forceps-tool svg{ width:46px;height:30px;display:block; }
+  .forceps-tool .forceps-jaw{ transform-origin:34px 10px; }
+  .forceps-tool.holding .jaw-left{ transform:rotate(9deg); }
+  .forceps-tool.holding .jaw-right{ transform:rotate(-9deg); }
+  .forceps-tool.positioned{
+    bottom:auto;
+    transform:translate(-50%,-73%);
+    cursor:grabbing;
+    border-color:transparent;
+    background:transparent;
+  }
+  .forceps-tool.positioned svg{ position:absolute;top:8px;filter:drop-shadow(0 1px 3px #000); }
+  .forceps-tool.positioned span{ visibility:hidden; }
+  .forceps-tool.holding{ color:#8af1c4; }
 
   .rider-track{
     --rider-width:13px;
@@ -789,10 +849,9 @@
     #stage{ min-height:620px; }
     .lab-area{ min-height:620px; padding:90px 10px 64px; }
     .balance-zone{ width:100%; height:470px; }
-    .balance-beam-group{ top:152px; }
     .beam{ left:-150px; width:300px; }
-    .pan-stem.left,.pan.left,.pan-label.left{ left:-116px; }
-    .pan-stem.right,.pan.right,.pan-label.right{ left:116px; }
+    .pan-stem.left{ left:-116px; }
+    .pan-stem.right{ left:116px; }
     .nut-control.left{ left:-172px; }
     .nut-control.right{ left:150px; }
     .rider-track{ top:-10px; left:-108px; width:82px; height:18px; }
@@ -1883,21 +1942,18 @@
       text-align:center;
       font-size:10px;
     }
-    #stage .balance-zone{ width:100% !important; height:420px !important; }
-    #stage .balance-beam-group{ top:84px !important; }
+    #stage .balance-zone{ --beam-y:151px; width:100% !important; height:420px !important; }
     #stage .beam{ left:-138px !important; width:276px !important; }
     #stage .rider-track{ left:-99px !important; width:76px !important; }
-    #stage .pan-stem.left,
-    #stage .pan-label.left{ left:-92px !important; }
-    #stage .pan-stem.right,
-    #stage .pan-label.right{ left:92px !important; }
+    #stage .pan-stem.left{ left:-92px !important; }
+    #stage .pan-stem.right{ left:92px !important; }
     #stage .pan.left,
     #stage .pan.right{ left:0 !important; }
     #stage .pan{ width:92px !important; }
     #stage .nut-control.left{ left:-150px !important; }
     #stage .nut-control.right{ left:126px !important; }
-    #stage .balance-base{ bottom:112px !important; width:126px !important; height:104px !important; }
-    #stage .balance-scale{ bottom:94px !important; }
+    #stage .forceps-tool{ margin-bottom:9px; }
+    #stage .forceps-tool.positioned{ margin-bottom:0; }
     #stage .platform{ min-height:72px !important; bottom:8px !important; }
     #stage .ore-shelf{ left:8px !important; width:86px !important; }
     #stage .weight-box{
@@ -2494,8 +2550,8 @@
   <div class="task-card" id="taskCard">
     <div class="task-step" id="taskStep">关卡 1 / 3</div>
     <div class="task-text">
-      <div id="taskText">先调节托盘天平的平衡螺母，使空载时指针回到中央。</div>
-      <div class="task-hint" id="taskHint">提示：指针偏左说明左边重，应向右调节平衡螺母。</div>
+      <div id="taskText">先把游码移到零刻度线，再调节平衡螺母，使空载时指针回到中央。</div>
+      <div class="task-hint" id="taskHint">提示：使游码左端与零刻度线对齐。</div>
     </div>
     <div class="progress-dots">
       <span class="dot active" id="dot1"></span>
@@ -2554,10 +2610,8 @@
             <div class="rider-visual" id="riderVisual"></div>
           </div>
 
-          <div class="pan-stem left"><div class="pan left" id="leftPan"></div></div>
-          <div class="pan-stem right"><div class="pan right" id="rightPan"></div></div>
-          <div class="pan-label left">左盘（放物体）</div>
-          <div class="pan-label right">右盘（放砝码）</div>
+          <div class="pan-stem left"><div class="pan left" id="leftPan"></div><div class="pan-label">左盘（放物体）</div></div>
+          <div class="pan-stem right"><div class="pan right" id="rightPan"></div><div class="pan-label">右盘（放砝码）</div></div>
         </div>
 
         <div class="platform ore-shelf" id="oreShelf">
@@ -2569,6 +2623,14 @@
           <div class="box-label">砝码盒</div>
         </div>
       </div>
+
+      <button type="button" class="forceps-tool" id="forceps" aria-label="用镊子夹取砝码">
+        <svg viewBox="0 0 68 44" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+          <path class="forceps-jaw jaw-left" d="M34 7 C28 8 26 14 27 23 L31 39" />
+          <path class="forceps-jaw jaw-right" d="M34 7 C40 8 42 14 41 23 L37 39" />
+        </svg>
+        <span>镊子</span>
+      </button>
 
       <div class="checkmark" id="checkmark"><div></div></div>
     </div>
@@ -2637,7 +2699,7 @@
   <div class="explanation">
     <h2>实验名：用托盘天平测量物体质量</h2>
     <ul>
-      <li><b>实验说明</b>：先调平，再左物右码，最后移动游码直到指针回到中央。</li>
+      <li><b>实验说明</b>：先将游码归零并调平。左盘放待测物体，用镊子从大到小在右盘加减砝码，用过的砝码夹回盒中。最后移动游码使指针回到中央，并按游码左端读数。</li>
       <li><b>原理与结论</b>：<span id="conclusionText">完成测量和结论小测后显示。</span></li>
     </ul>
   </div>
@@ -2664,22 +2726,22 @@ window.AUTO_DEMO_TIMING = AUTO_DEMO_TIMING;
 
 const TASKS = [
   {
-    text:'先调节托盘天平的平衡螺母，使空载时指针回到中央；观察到平衡后点击“确认观察”。',
-    hint:'提示：指针偏左说明左边重，应向右调节平衡螺母；调平后别忘了点“确认观察”。',
+    text:'先把游码移到零刻度线，再调节平衡螺母。空载时指针回到中央后，点击“确认观察”。',
+    hint:'提示：游码按左端对齐。指针偏左表示左边重，应向右调节螺母。',
     check:() => state.itemsPos.ore === 'shelf' && allWeightsInBox() && Math.abs(getNetDiff()) < 0.12 && state.riderValue === 0
   },
   {
-    text:'把待测物体放到左盘，再把合适的砝码放到右盘，使右盘质量逼近物体质量；观察合适后点击“确认观察”。',
-    hint:'提示：遵循“左物右码”，并让右盘砝码总质量比物体质量略小；摆好后点击“确认观察”。',
+    text:'把待测物体放到左盘。拖动镊子对准砝码，松手夹起，再拖到右盘松手放下。',
+    hint:'提示：由大到小加减砝码，取下后夹回盒。右盘质量略小于物体质量时点击“确认观察”。',
     check:() => {
       const remain = state.oreMass - state.rightLoad;
-      return state.itemsPos.ore === 'left' && state.rightLoad > 0 && remain >= 0 && remain <= 5.0;
+      return !state.forcepsGrip && state.itemsPos.ore === 'left' && state.rightLoad > 0 && remain >= 0 && remain <= 5.0;
     }
   },
   {
     text:'拖动游码精确平衡天平，并记录最后读数；指针居中后点击“确认观察”。',
     hint:'提示：缓慢移动游码，直到指针完全回到中央；最后点击“确认观察”完成读数。',
-    check:() => state.itemsPos.ore === 'left' && state.rightLoad > 0 && Math.abs(getNetDiff()) < 0.12
+    check:() => !state.forcepsGrip && state.itemsPos.ore === 'left' && state.rightLoad > 0 && Math.abs(getNetDiff()) < 0.12
   }
 ];
 
@@ -2717,6 +2779,7 @@ const state = {
   unseenRecordCount:0,
   dockMoved:{ control:false, data:false },
   pointerDrag:null,
+  forcepsGrip:null,
   riderDrag:null,
   toastTimer:0,
   demoRunId:0,
@@ -2746,6 +2809,7 @@ const riderVisual = $('#riderVisual');
 const oreEl = $('#ore');
 const oreShelf = $('#oreShelf');
 const weightBox = $('#weightBox');
+const forceps = $('#forceps');
 const leftPan = $('#leftPan');
 const rightPan = $('#rightPan');
 const checkmark = $('#checkmark');
@@ -2922,7 +2986,7 @@ function updatePhysics(){
   refreshLoads();
   const diff = getNetDiff();
   const angle = clamp(diff * -2.5, -20, 20);
-  beamGroup.style.transform = `rotate(${angle}deg)`;
+  beamGroup.style.setProperty('--balance-tilt', `${angle}deg`);
   const isBalanced = Math.abs(diff) < 0.12;
   state.diffText = isBalanced ? '平衡' : (diff > 0 ? '左偏' : '右偏');
   diffVal.textContent = state.diffText;
@@ -3032,7 +3096,8 @@ function passCurrentTask(fromAuto = false){
   const task = TASKS[state.currentTask];
   if(!task.check()){
     if(!fromAuto){
-      if(state.currentTask === 0) warnCurrentStep('请先把空载天平调到平衡。');
+      if(state.currentTask === 0) warnCurrentStep('请先把游码移到零刻度线，再把空载天平调到平衡。');
+      else if(state.forcepsGrip) warnCurrentStep('请先用镊子放下已经夹起的砝码。');
       else if(state.currentTask === 1) warnCurrentStep('请先完成“左物右码”，并让右盘质量逼近待测物体。');
       else warnCurrentStep('请继续移动游码，直到指针回到中央。');
     }
@@ -3257,8 +3322,8 @@ function layoutPanWeights(pan){
     .sort((a,b)=>Number(b.dataset.mass) - Number(a.dataset.mass));
   const columns = items.filter((el)=>!el.classList.contains('weight'))
     .map((el)=>({ items:[el], width:el.offsetWidth, height:el.offsetHeight }));
-  // Leave clearance below the beam; each column grows upward from the pan surface.
-  const maxHeight = pan.offsetTop + pan.clientHeight / 2 - 8;
+  // Each column starts at the pan surface and grows without covering the instrument above it.
+  const maxHeight = pan.clientWidth < 100 ? 70 : 100;
   let column = null;
   for(const el of weights){
     if(!column || column.height + el.offsetHeight > maxHeight){
@@ -3350,6 +3415,90 @@ function detectDropTarget(clientX, clientY, itemId){
   if(itemId !== 'ore' && inside(boxRect)) return 'box';
   return itemId === 'ore' ? state.itemsPos.ore : 'box';
 }
+function parkForceps(){
+  forceps.classList.remove('positioned', 'holding');
+  forceps.style.left = '';
+  forceps.style.top = '';
+  forceps.setAttribute('aria-label', '用镊子夹取砝码');
+}
+function cancelForceps(){
+  const drag = state.pointerDrag;
+  if(drag?.kind === 'forceps'){
+    if(forceps.hasPointerCapture(drag.pointerId)) forceps.releasePointerCapture(drag.pointerId);
+    state.pointerDrag = null;
+  }
+  if(state.forcepsGrip){
+    const { id, origin } = state.forcepsGrip;
+    const el = weightElement(id);
+    state.itemsPos[id] = origin;
+    state.forcepsGrip = null;
+    if(el) restoreItemToContainer(el, origin);
+  }
+  parkForceps();
+}
+function positionForceps(clientX, clientY){
+  const rect = getStageRect();
+  const x = clamp(clientX - rect.left, 28, rect.width - 28);
+  const y = clamp(clientY - rect.top, 39, rect.height - 19);
+  forceps.classList.add('positioned');
+  forceps.style.left = `${x}px`;
+  forceps.style.top = `${y}px`;
+  if(state.forcepsGrip){
+    const weight = weightElement(state.forcepsGrip.id);
+    weight.style.left = `${x - weight.offsetWidth / 2}px`;
+    weight.style.top = `${y - weight.offsetHeight * .43}px`;
+  }
+}
+function beginForcepsDrag(pointerId){
+  state.pointerDrag = { kind:'forceps', pointerId };
+  if(pointerId >= 0) forceps.setPointerCapture(pointerId);
+}
+function atForcepsPoint(element, x, y, padding = 0){
+  const rect = element.getBoundingClientRect();
+  return x >= rect.left - padding && x <= rect.right + padding && y >= rect.top - padding && y <= rect.bottom + padding;
+}
+function finishForcepsDrag(clientX, clientY, fromAuto = false){
+  const drag = state.pointerDrag;
+  if(drag?.kind !== 'forceps') return false;
+  if(drag.pointerId >= 0 && forceps.hasPointerCapture(drag.pointerId)) forceps.releasePointerCapture(drag.pointerId);
+  state.pointerDrag = null;
+  if(!state.forcepsGrip){
+    const weight = WEIGHTS.map(entry=>weightElement(entry.id))
+      .filter(el=>el && atForcepsPoint(el, clientX, clientY))
+      .sort((a,b)=>Number(b.style.zIndex) - Number(a.style.zIndex))[0];
+    if(!weight){
+      parkForceps();
+      if(!fromAuto) showToast('把镊子夹口对准一枚砝码，松手夹起。');
+      return false;
+    }
+    const origin = state.itemsPos[weight.id];
+    state.forcepsGrip = { id:weight.id, origin };
+    state.itemsPos[weight.id] = 'held';
+    stage.appendChild(weight);
+    weight.classList.add('dragging');
+    forceps.classList.add('holding');
+    forceps.setAttribute('aria-label', `镊子夹着 ${weight.dataset.mass} 克砝码`);
+    positionForceps(clientX, clientY);
+    layoutPanWeights(leftPan);
+    layoutPanWeights(rightPan);
+    updatePhysics();
+    return true;
+  }
+  const { id, origin } = state.forcepsGrip;
+  const near = (el)=>atForcepsPoint(el, clientX, clientY, 8);
+  const target = near(rightPan) ? 'right' : near(weightBox) ? 'box' : near(leftPan) && state.freeMode ? 'left' : null;
+  if(!target){
+    cancelForceps();
+    updatePhysics();
+    if(!fromAuto) warnCurrentStep('请用镊子把砝码放到右盘或送回砝码盒。');
+    return false;
+  }
+  state.itemsPos[id] = origin;
+  state.forcepsGrip = null;
+  const dropped = commitItemDrop(id, target, fromAuto);
+  parkForceps();
+  return dropped;
+}
 function commitItemDrop(id, target, fromAuto = false){
   const el = document.getElementById(id);
   const previous = state.itemsPos[id];
@@ -3404,13 +3553,19 @@ function beginRiderDrag(pointerId){
     catch (err) { console.warn('setPointerCapture failed', err); }
   }
 }
-function updateRiderFromClientX(clientX){
-  const rect = riderTrack.getBoundingClientRect();
-  const usable = rect.width - riderVisual.offsetWidth;
-  const local = clamp(clientX - rect.left - riderVisual.offsetWidth / 2, 0, usable);
-  state.riderValue = Number(((local / usable) * 5).toFixed(1));
+function setRiderValue(value){
+  state.riderValue = Number(clamp(value, 0, 5).toFixed(1));
   state.hasInteracted = true;
   updatePhysics();
+}
+function updateRiderFromClientX(clientX){
+  const rect = riderTrack.getBoundingClientRect();
+  const width = riderTrack.clientWidth;
+  const usable = width - riderVisual.offsetWidth;
+  const tilt = Number.parseFloat(getComputedStyle(beamGroup).getPropertyValue('--balance-tilt')) || 0;
+  const projection = Math.cos(tilt * Math.PI / 180);
+  const local = width / 2 + (clientX - (rect.left + rect.width / 2)) / projection;
+  setRiderValue(5 * (local - riderVisual.offsetWidth / 2) / usable);
 }
 function finishRiderDrag(pointerId){
   if(pointerId >= 0){
@@ -3424,8 +3579,14 @@ function finishRiderDrag(pointerId){
 function handleItemPointerDown(e){
   if(state.autoPlaying) return;
   const el = e.currentTarget;
+  if(el.classList.contains('weight')){
+    warnCurrentStep('请用镊子夹取砝码，避免直接用手接触。');
+    e.preventDefault();
+    return;
+  }
+  if(state.pointerDrag) return;
   if(!state.freeMode){
-    if((el.id === 'ore' || el.classList.contains('weight')) && state.currentTask === 0){
+    if(state.currentTask === 0){
       warnCurrentStep('请先调平天平，再进行称量。');
       return;
     }
@@ -3434,8 +3595,8 @@ function handleItemPointerDown(e){
   e.preventDefault();
 }
 function handleRiderPointerDown(e){
-  if(state.autoPlaying) return;
-  if(!state.freeMode && state.currentTask < 2){
+  if(state.autoPlaying || state.pointerDrag) return;
+  if(!state.freeMode && state.currentTask === 1){
     warnCurrentStep('请先完成加砝码步骤，再移动游码。');
     return;
   }
@@ -3450,6 +3611,10 @@ function adjustNut(dir, fromAuto = false){
     warnCurrentStep('请先按当前步骤继续，不需要再调平衡螺母。');
     return;
   }
+  if(!state.freeMode && state.riderValue !== 0){
+    warnCurrentStep('先将游码左端移至零刻度线，再调节平衡螺母。');
+    return;
+  }
   state.nutOffset = Number((state.nutOffset + dir).toFixed(2));
   state.hasInteracted = true;
   updatePhysics();
@@ -3457,6 +3622,7 @@ function adjustNut(dir, fromAuto = false){
 }
 
 function resetApparatusPositions(){
+  cancelForceps();
   oreShelf.appendChild(oreEl);
   state.itemsPos.ore = 'shelf';
   restoreItemToContainer(oreEl, 'shelf');
@@ -3485,6 +3651,7 @@ function createWeights(){
 }
 function resetAll(opts = {}){
   const { preserveAuto = false, preserveFreeMode = state.freeMode, showTip = false } = opts;
+  cancelForceps();
   clearTrackedTimers();
   if(state.rafId){
     cancelAnimationFrame(state.rafId);
@@ -3515,6 +3682,7 @@ function resetAll(opts = {}){
   doneMask.style.display = 'none';
   createWeights();
   resetApparatusPositions();
+  if(!preserveFreeMode) state.riderValue = .5;
   setStepUI(0);
   renderRecordTable();
   refreshDataNotice();
@@ -3556,6 +3724,7 @@ function refreshInteractionLocks(){
 }
 function setFreeMode(on){
   if(state.autoPlaying) return;
+  cancelForceps();
   if(on){
     challengeEntrySnapshot = captureChallengeState();
     state.freeMode = true;
@@ -3572,7 +3741,7 @@ function setFreeMode(on){
     state.hasInteracted = false;
     updatePhysics();
     freeEntrySnapshot = captureApparatusState();
-    showToast('自由模式：可自由调平、放砝码和拖动游码。');
+    showToast('自由模式：可调平、用镊子取放砝码和拖动游码。');
   }else{
     const snapshot = challengeEntrySnapshot;
     challengeEntrySnapshot = null;
@@ -3586,13 +3755,11 @@ function setFreeMode(on){
 
 function zeroRider(){
   if(state.autoPlaying) return;
-  if(!state.freeMode && state.currentTask < 2){
+  if(!state.freeMode && state.currentTask === 1){
     warnCurrentStep('当前步骤不需要移动游码。');
     return;
   }
-  state.riderValue = 0;
-  state.hasInteracted = true;
-  updatePhysics();
+  setRiderValue(0);
   playUiSound('slide');
 }
 function captureApparatusState(){
@@ -3606,6 +3773,7 @@ function captureApparatusState(){
   };
 }
 function restoreApparatusState(snapshot){
+  cancelForceps();
   state.oreMass = snapshot.oreMass;
   state.targetWeightLoad = snapshot.targetWeightLoad;
   state.nutOffset = snapshot.nutOffset;
@@ -3768,23 +3936,38 @@ async function demoDragItemTo(id, targetEl, runId){
   if(!dropped || state.itemsPos[id] !== targetName) throw new Error('AUTO_ITEM_DROP_NOT_PERSISTED');
   await waitAuto(180, runId);
 }
+async function demoDragForcepsTo(target, runId){
+  const tool = forceps.getBoundingClientRect();
+  const end = target.getBoundingClientRect();
+  const startX = tool.left + tool.width / 2;
+  const startY = tool.top + tool.height / 2;
+  const endX = end.left + end.width / 2;
+  const endY = end.top + end.height / 2;
+  const rect = getStageRect();
+  await moveDemoCursorTo(startX - rect.left, startY - rect.top, runId, 180);
+  beginForcepsDrag(-1);
+  await clickDemoCursor(100, runId);
+  for(let i = 1; i <= 14; i += 1){
+    const x = startX + (endX - startX) * (i / 14);
+    const y = startY + (endY - startY) * (i / 14);
+    positionForceps(x, y);
+    setDemoCursor(x - rect.left, y - rect.top);
+    await waitAuto(26, runId);
+  }
+  if(!finishForcepsDrag(endX, endY, true)) throw new Error('AUTO_FORCEPS_OPERATION_FAILED');
+  await waitAuto(180, runId);
+}
 async function demoDragRiderTo(value, runId){
-  const trackRect = riderTrack.getBoundingClientRect();
-  const riderRect = riderVisual.getBoundingClientRect();
-  const startX = riderRect.left + riderRect.width / 2;
-  const startY = riderRect.top + riderRect.height / 2;
-  const usable = trackRect.width - riderRect.width;
-  const local = (value / 5) * usable + riderRect.width / 2;
-  const endX = trackRect.left + local;
-  const endY = startY;
-  await moveDemoCursorTo(startX - getStageRect().left, startY - getStageRect().top, runId, 220);
+  const startValue = state.riderValue;
+  const start = elemCenterInStage(riderVisual);
+  await moveDemoCursorTo(start.x, start.y, runId, 220);
   beginRiderDrag(-1);
   await clickDemoCursor(120, runId);
   const steps = 16;
   for(let i = 1; i <= steps; i += 1){
-    const cx = startX + (endX - startX) * (i / steps);
-    updateRiderFromClientX(cx);
-    setDemoCursor(cx - getStageRect().left, endY - getStageRect().top);
+    setRiderValue(startValue + (value - startValue) * (i / steps));
+    const point = elemCenterInStage(riderVisual);
+    setDemoCursor(point.x, point.y);
     await waitAuto(28, runId);
   }
   finishRiderDrag(-1);
@@ -3828,6 +4011,8 @@ async function startAutoDemo(){
   ensureAutoDrawerLayout();
   setStatus('演示中');
   try {
+    await demoDragRiderTo(0, runId);
+    if(state.riderValue !== 0) throw new Error('AUTO_RIDER_NOT_ZEROED');
     while(Math.abs(getNetDiff()) >= 0.12){
       const targetBtn = getNetDiff() > 0 ? nutR : nutL;
       await demoClickElement(targetBtn, runId, async ()=>{ adjustNut(getNetDiff() > 0 ? -0.5 : 0.5, true); });
@@ -3851,7 +4036,10 @@ async function startAutoDemo(){
       }
     }
     for(const id of targetWeights){
-      await demoDragItemTo(id, rightPan, runId);
+      await demoDragForcepsTo(weightElement(id), runId);
+      if(state.forcepsGrip?.id !== id) throw new Error('AUTO_FORCEPS_PICK_NOT_PERSISTED');
+      await demoDragForcepsTo(rightPan, runId);
+      if(state.itemsPos[id] !== 'right') throw new Error('AUTO_FORCEPS_DROP_NOT_PERSISTED');
       await waitAuto(180, runId);
     }
     await waitForAutoCondition(() => TASKS[1].check(), 2000, runId, 'AUTO_STEP2_NOT_READY');
@@ -3885,6 +4073,8 @@ async function startAutoDemo(){
     }
   } finally {
     if(runId === state.demoRunId){
+      cancelForceps();
+      updatePhysics();
       hideDemoCursor();
       state.autoPlaying = false;
       state.autoPaused = false;
@@ -3898,20 +4088,35 @@ async function startAutoDemo(){
 
 function initHandlers(){
   oreEl.addEventListener('pointerdown', handleItemPointerDown);
+  forceps.addEventListener('pointerdown', (e)=>{
+    if(e.button !== 0 || state.autoPlaying || state.pointerDrag || state.riderDrag) return;
+    if(!state.freeMode && (state.currentTask === 0 || state.completed || state.awaitingQuiz)){
+      if(state.currentTask === 0) warnCurrentStep('请先将游码归零并调平，再用镊子取砝码。');
+      return;
+    }
+    beginForcepsDrag(e.pointerId);
+    e.preventDefault();
+  });
   nutL.addEventListener('pointerdown', (e)=>{ if(e.button === 0){ adjustNut(0.5); e.preventDefault(); } });
   nutR.addEventListener('pointerdown', (e)=>{ if(e.button === 0){ adjustNut(-0.5); e.preventDefault(); } });
   riderTrack.addEventListener('pointerdown', handleRiderPointerDown);
   stage.addEventListener('pointermove', (e)=>{
+    if(state.pointerDrag?.kind === 'forceps' && state.pointerDrag.pointerId === e.pointerId) positionForceps(e.clientX, e.clientY);
     if(state.pointerDrag && state.pointerDrag.kind === 'dock') updateDockDrag(e.clientX, e.clientY);
     if(state.pointerDrag && state.pointerDrag.kind === 'item') updateItemDrag(e.clientX, e.clientY);
     if(state.riderDrag) updateRiderFromClientX(e.clientX);
   });
   stage.addEventListener('pointerup', (e)=>{
+    if(state.pointerDrag?.kind === 'forceps' && state.pointerDrag.pointerId === e.pointerId) finishForcepsDrag(e.clientX, e.clientY);
     if(state.pointerDrag && state.pointerDrag.kind === 'dock') finishDockDrag(e.pointerId);
     if(state.pointerDrag && state.pointerDrag.kind === 'item') finishItemDrag(e.clientX, e.clientY);
     if(state.riderDrag) finishRiderDrag(e.pointerId);
   });
   stage.addEventListener('pointercancel', (e)=>{
+    if(state.pointerDrag?.kind === 'forceps' && state.pointerDrag.pointerId === e.pointerId){
+      cancelForceps();
+      updatePhysics();
+    }
     if(state.pointerDrag && state.pointerDrag.kind === 'dock') finishDockDrag(e.pointerId);
     if(state.pointerDrag && state.pointerDrag.kind === 'item') finishItemDrag(e.clientX, e.clientY);
     if(state.riderDrag) finishRiderDrag(e.pointerId);

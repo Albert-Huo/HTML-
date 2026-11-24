@@ -2188,7 +2188,7 @@ body #app .toolbar button:disabled{
   </div>
 
   <div class="task-card" id="taskCard">
-    <div class="task-step" id="taskStep">关卡 1 / 4</div>
+    <div class="task-step" id="taskStep">关卡 1 / 6</div>
     <div class="task-text">
       <div id="taskText"></div>
       <div class="task-hint" id="taskHint"></div>
@@ -2202,21 +2202,22 @@ body #app .toolbar button:disabled{
       <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false"><span class="tab-label">数据面板<span class="mobile-badge" id="dataTabBadge" aria-hidden="true">0</span></span></button>
     </div>
     <div class="hud">
-      <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/4</span>
-      <span class="tag" id="statusTag">状态：清水 20 mL</span>
+      <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/6</span>
+      <span class="tag" id="statusTag">状态：空气中称量</span>
     </div>
 
     <div class="hint-lamp-wrap" id="hintLampWrap">
       <button id="hintLamp" class="hint-lamp-btn" type="button" aria-label="查看实验提示">💡</button>
       <div class="hint-pop" id="hintPop">
         <h4>当前提示</h4>
-        <div class="hint-detail" id="hintDetail">先选择 20 mL 金属块，把它浸入清水并记录第一组数据。</div>
+        <div class="hint-detail" id="hintDetail">先在空气中称量 40 mL 或 60 mL 的金属块。</div>
         <h4>实验思路</h4>
-        <div class="hint-thought" id="hintThought">本实验用控制变量法：先只改变浸入液体中的体积，再只改变液体密度，比较浮力变化。</div>
+        <div class="hint-thought" id="hintThought">用同一块金属比较浸入体积、全浸深度和液体密度。</div>
       </div>
     </div>
 
     <div class="lab-area" id="labArea">
+      <span id="demoCursor" aria-hidden="true" hidden style="position:absolute;width:18px;height:18px;border:2px solid #f7e078;border-radius:50%;box-shadow:0 0 8px #f7e078;z-index:19;pointer-events:none;transform:translate(-50%,-50%);"></span>
       <div class="stand">
         <div class="arm"></div>
         <div class="rod"></div>
@@ -2309,7 +2310,7 @@ body #app .toolbar button:disabled{
       <div class="dockBody collapsed drawer-body" id="dataBody">
         <table class="record">
           <thead>
-            <tr><th>介质</th><th><span class="formula"><i>V</i><sub>排</sub></span>(mL)</th><th><span class="formula"><i>F</i><sub>浮</sub></span>(N)</th><th>示数(N)</th></tr>
+            <tr><th>测量条件</th><th><span class="formula"><i>V</i><sub>排</sub></span>(mL)</th><th>测力计(N)</th><th><span class="formula"><i>F</i><sub>浮</sub></span>(N)</th></tr>
           </thead>
           <tbody id="recordBody"></tbody>
         </table>
@@ -2332,7 +2333,7 @@ body #app .toolbar button:disabled{
   <div class="modal-mask" id="doneMask" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
     <div class="modal">
       <h3 id="doneTitle">实验完成</h3>
-      <p>你已经完成浮力影响因素探究：<br /><span class="formula"><i>F</i><sub>浮</sub></span> 与液体密度 ρ、排开液体体积 <span class="formula"><i>V</i><sub>排</sub></span> 有关。</p>
+      <p>你已用两次测力计示数的差求浮力，并比较了排开体积、完全浸没深度与液体密度。</p>
       <button class="sub ok" id="okBtn">OK</button>
     </div>
   </div>
@@ -2340,8 +2341,8 @@ body #app .toolbar button:disabled{
   <div class="explanation">
     <h2>实验名：探究浮力大小与哪些因素有关</h2>
     <ul>
-      <li><b>关键操作与现象</b>：先让金属块悬挂在空气中，读取弹簧测力计示数；再把它浸入液体中，观察示数减小。保持液体不变、逐渐增大浸入体积时，浮力会增大；保持浸入体积相同、改用密度更大的液体时，浮力也会增大。</li>
-      <li><b>原理与结论</b>：浮力可由 <b><span class="formula"><i>F</i><sub>浮</sub></span> = F空气 - F液中示数</b> 求得。浮力大小与物体浸在液体中的体积有关，也与液体密度有关；浸入体积越大、液体密度越大，浮力越大。</li>
+      <li><b>关键操作与现象</b>：先称同一金属块在空气中的重力，再读出它部分浸入、在两种深度完全浸入清水、完全浸入盐水时的测力计示数。</li>
+      <li><b>原理与结论</b>：用空气中示数减去液中示数得到浮力。同一种液体中，排开的体积越大，浮力越大。完全浸没后，继续下沉且未触底，浮力保持不变。排开体积相同时，液体密度越大，浮力越大。</li>
     </ul>
   </div>
 
@@ -2352,26 +2353,12 @@ body #app .toolbar button:disabled{
     };
 
     const tasks = [
-      {
-        text:'选择 <b>20 mL</b> 金属块，拖动<b>弹簧测力计</b>，让金属块浸入<b>清水烧杯</b>并记录一组数据。',
-        hint:'提示：先选体积块，再拖动测力计整体，让金属块进入清水。',
-        check:(ctx)=>ctx.records.some(r=>r.liquid==='water' && Math.abs(r.volume-20)<=3 && r.ratio>=0.85)
-      },
-      {
-        text:'保持在<b>清水烧杯</b>中，改用 <b>40 mL 或以上</b> 体积块，再拖动测力计浸没并记录。',
-        hint:'提示：此步只增大浸入液体中的体积，液体仍保持清水。',
-        check:(ctx)=>ctx.records.some(r=>r.liquid==='water' && r.volume>=40 && r.ratio>=0.85)
-      },
-      {
-        text:'拖动测力计到<b>盐水烧杯</b>上方，保持排开体积约 <b>40 mL</b> 并记录。',
-        hint:'提示：比较与清水近似同体积时的浮力差异。',
-        check:(ctx)=>ctx.records.some(r=>r.liquid==='salt' && Math.abs(r.volume-40)<=4 && r.ratio>=0.85)
-      },
-      {
-        text:'点击“分析结论”，完成本实验。',
-        hint:'提示：结论需同时体现体积效应和密度效应。',
-        check:(ctx)=>ctx.analysisOk===true
-      }
+      { key:'air', status:'空气中称量', text:'选择 <b>40 mL 或 60 mL</b> 的金属块，记录它悬在空气中的测力计示数。', hint:'提示：先提起样块，读取空气中示数。之后全程使用这块金属。' },
+      { key:'partial', status:'清水部分浸入', text:'把同一块金属<b>部分浸入清水</b>，读取液中示数并记录。', hint:'提示：拖动测力计，让大约半块金属浸入水中，上部露出液面。' },
+      { key:'shallow', status:'清水浅处全浸', text:'在同一杯清水中缓慢下放，直到金属块<b>刚完全浸没</b>，读取示数并记录。', hint:'提示：块顶刚没过液面即可。将空气中示数减去液中示数。' },
+      { key:'deep', status:'清水深处全浸', text:'保持同一金属块完全浸没，继续<b>向下移动</b>一段距离，读取示数并记录。', hint:'提示：观察顶部深度增大时，测力计示数是否变化。保持样块悬挂，勿触底。' },
+      { key:'salt', status:'盐水完全浸没', text:'把同一金属块移入<b>盐水</b>并完全浸没，读取示数并记录。', hint:'提示：此时和清水全浸时排开体积相同，可比较液体密度的影响。' },
+      { key:'analysis', status:'等待分析', text:'点击“分析结论”，比较三组控制变量的证据。', hint:'提示：比较部分与全浸、清水中两个全浸深度、清水与盐水。' }
     ];
 
     const $ = (s)=>document.querySelector(s);
@@ -2436,6 +2423,7 @@ body #app .toolbar button:disabled{
     const checkmarkEl = $('#checkmark');
     const doneMaskEl = $('#doneMask');
     const okBtn = $('#okBtn');
+    const demoCursor = $('#demoCursor');
 
     const AIR_WEIGHT_N = 2.2;
     const SCALE_MAX_N = 5;
@@ -2455,6 +2443,8 @@ body #app .toolbar button:disabled{
     const HOOK_LINK_BASE_HEIGHT = 22;
     const AIR_CLEARANCE_ABOVE_WATER = 14;
     const BLOCK_LIQUID_SIDE_CLEARANCE = 6;
+    const BLOCK_BOTTOM_CLEARANCE = 5;
+    const BEAKER_LIQUID_DEPTH_CM = 12;
     const HOOK_BASE_OFFSET = SCALE_TOTAL_HEIGHT - HOOK_ASSY_HEIGHT - HOOK_ASSY_BOTTOM + HOOK_METAL_TOP + HOOK_METAL_SIZE * HOOK_ANCHOR_RATIO;
     const FORMULA_FORCE_HTML = '<span class="formula"><i>F</i><sub>浮</sub></span>';
     const FORMULA_VOLUME_HTML = '<span class="formula"><i>V</i><sub>排</sub></span>';
@@ -2467,7 +2457,8 @@ body #app .toolbar button:disabled{
       autoRunId:0,
       successCooldown:false,
       warningStep:-1,
-      selectedVolumeMl:20,
+      selectedVolumeMl:40,
+      stageStatus:'空气中称量',
       airWeightN:AIR_WEIGHT_N,
       draggingSystem:false,
       scaleCenterX:0,
@@ -2482,6 +2473,8 @@ body #app .toolbar button:disabled{
       blockTop:0,
       activeLiquid:null,
       immersionRatio:0,
+      immersionDepthCm:0,
+      depthFraction:0,
       displacedMl:0,
       buoyancyN:0,
       apparentN:2.2,
@@ -2558,8 +2551,19 @@ body #app .toolbar button:disabled{
       showCheck.t = setTimeout(()=>checkmarkEl.classList.remove('active'), 520);
     }
 
-    function setStatus(msg){
-      statusTag.textContent = `状态：${msg}`;
+    function setStatus(msg = state.stageStatus){
+      state.stageStatus = msg;
+      const reading = state.activeLiquid ? ` · 排开 ${state.displacedMl.toFixed(1)} mL` : '';
+      const depth = state.immersionRatio === 1 ? ` · 顶部深度 ${state.immersionDepthCm.toFixed(1)} cm` : '';
+      statusTag.textContent = `状态：${msg}${reading}${depth}`;
+    }
+
+    function guidedRecord(key){
+      return state.records.find(record=>!record.free && record.key === key);
+    }
+
+    function recordedTask(task){
+      return task.key === 'analysis' ? state.analysisOk : Boolean(guidedRecord(task.key));
     }
 
     function syncModeTag(){
@@ -2573,20 +2577,19 @@ body #app .toolbar button:disabled{
       autoDemoBtn.textContent = state.autoPlaying ? '退出演示' : '演示模式';
       autoDemoBtn.disabled = !state.autoPlaying && state.freeMode;
       recordBtn.disabled = state.autoPlaying;
+      recordBtn.hidden = !state.freeMode && tasks[state.currentTask].key === 'analysis';
       liftBtn.disabled = state.autoPlaying;
       analyzeBtn.disabled = state.autoPlaying;
       clearBtn.disabled = state.autoPlaying;
       resetBtn.disabled = state.autoPlaying;
       freeBtn.disabled = state.autoPlaying;
-      volumeSelect.disabled = state.autoPlaying;
+      const locked = state.autoPlaying || (!state.freeMode && Boolean(guidedRecord('air')));
+      volumeSelect.disabled = locked;
+      document.querySelectorAll('.vol-btn').forEach(btn=>{ btn.disabled = locked; });
     }
 
     function currentStageStatus(){
-      if(state.currentTask === 0) return '清水 20 mL';
-      if(state.currentTask === 1) return '清水 ≥40 mL';
-      if(state.currentTask === 2) return '盐水约 40 mL';
-      if(state.currentTask === 3) return '等待分析';
-      return '待操作';
+      return (tasks[state.currentTask] || tasks[0]).status;
     }
 
     function flashHintLamp(){
@@ -2602,21 +2605,12 @@ body #app .toolbar button:disabled{
       if(!hintLampWrap) return;
       hintLampWrap.classList.toggle('open', !!state.hintOpen);
       const task = tasks[state.currentTask] || tasks[0];
-      let detail = task.hint;
-      if(state.freeMode){
-        detail = '自由模式下可切换 20/40/60 mL 金属块，并拖动弹簧测力计，让金属块进入清水或盐水，对比浮力变化。';
-      }else if(state.currentTask === 1){
-        detail = '此步只改变浸入体积，液体仍然保持清水。可换成更大体积块后再浸入。';
-      }else if(state.currentTask === 2){
-        detail = '此步要控制浸入体积与清水组相近，再比较清水和盐水的浮力差异。';
-      }else if(state.currentTask === 3){
-        detail = '分析时要同时说明体积效应和液体密度效应，缺一不可。';
-      }
+      const detail = state.freeMode ? '自由模式可选 20、40 或 60 mL 样块。要记录浮力，先在空气中称量这块样品。' : task.hint;
       hintDetail.textContent = detail.replace(/^提示：/, '');
       if(state.analysisOk){
-        hintThought.innerHTML = '你已经验证：<b>浸入体积越大，浮力越大；液体密度越大，浮力越大</b>。';
+        hintThought.textContent = '同种液体中排开体积越大，浮力越大。同块全浸后改变深度，浮力不变。等体积换用盐水，浮力增大。';
       }else{
-        hintThought.innerHTML = '本实验用控制变量法：先只改变 <b>浸入液体中的体积</b>，再只改变 <b>液体密度</b>，其余条件保持不变。';
+        hintThought.textContent = '用同一块金属比较浸入体积、全浸深度和液体密度。';
       }
     }
 
@@ -2662,6 +2656,8 @@ body #app .toolbar button:disabled{
       taskTextEl.innerHTML = tasks[idx].text;
       taskHintEl.textContent = tasks[idx].hint;
       updateDots();
+      syncModeTag();
+      syncInteractiveButtons();
       syncHintLamp();
       if(!state.autoPlaying && !state.freeMode && !state.completed){
         setStatus(currentStageStatus());
@@ -2689,13 +2685,8 @@ body #app .toolbar button:disabled{
     function tryPassStep(showFailToast=true){
       if(state.freeMode || state.autoPlaying || state.completed || state.successCooldown) return false;
       const current = tasks[state.currentTask];
-      if(!current || !current.check(state)){
-        if(showFailToast){
-          if(state.currentTask === 0) warnCurrentStep('步骤1要求：先把 20 mL 金属块浸入清水并记录。');
-          else if(state.currentTask === 1) warnCurrentStep('步骤2要求：仍在清水中，把浸入体积增大到 40 mL 或以上后再记录。');
-          else if(state.currentTask === 2) warnCurrentStep('步骤3要求：改到盐水中，并保持排开体积约 40 mL 再记录。');
-          else warnCurrentStep('请先完成分析后再结束实验。');
-        }
+      if(!current || !recordedTask(current)){
+        if(showFailToast) warnCurrentStep(getGuidedRecordBlockReason());
         return false;
       }
       state.successCooldown = true;
@@ -2716,7 +2707,7 @@ body #app .toolbar button:disabled{
     function recalcProgress(){
       if(state.completed || state.freeMode) return;
       let idx = 0;
-      while(idx < tasks.length && tasks[idx].check(state)) idx += 1;
+      while(idx < tasks.length && recordedTask(tasks[idx])) idx += 1;
       if(state.warningStep > -1 && idx > state.warningStep){
         state.warningStep = -1;
       }
@@ -2805,12 +2796,7 @@ body #app .toolbar button:disabled{
         state.scaleCenterX = clamp(state.scaleCenterX, state.minScaleX, state.maxScaleX);
       }
 
-      const liquidTop = getReferenceLiquidTop();
-      const spec = getBlockSpec();
-      const preferredBlockTop = liquidTop - spec.h - AIR_CLEARANCE_ABOVE_WATER;
-      state.homeScaleTopY = Math.round(scaleTopForBlockTop(preferredBlockTop, state.homeScaleX));
-      state.minScaleTopY = state.homeScaleTopY;
-      state.maxScaleTopY = Math.round(scaleTopForBlockTop(liquidTop + 14, state.scaleCenterX));
+      updateScaleTravel();
       state.scaleTopY = clamp(state.scaleTopY || state.homeScaleTopY, state.minScaleTopY, state.maxScaleTopY);
 
       springScale.style.left = `${state.scaleCenterX}px`;
@@ -2833,6 +2819,23 @@ body #app .toolbar button:disabled{
       return liquidRect.top - labRect.top + 3;
     }
 
+    function fullDepthRange(info, spec = getBlockSpec()){
+      return Math.max(0, info.bottom - info.liquidTop - spec.h - BLOCK_BOTTOM_CLEARANCE);
+    }
+
+    function updateScaleTravel(){
+      const spec = getBlockSpec();
+      const preferredBlockTop = getReferenceLiquidTop() - spec.h - AIR_CLEARANCE_ABOVE_WATER;
+      state.homeScaleTopY = Math.round(scaleTopForBlockTop(preferredBlockTop, state.homeScaleX));
+      state.minScaleTopY = state.homeScaleTopY;
+      const limits = [[beakerWater, 'water'], [beakerSalt, 'salt']].map(([beaker, key])=>{
+        const info = getBeakerInfo(beaker, key);
+        const center = (info.innerLeft + info.innerRight) / 2;
+        return scaleTopForBlockTop(info.liquidTop + fullDepthRange(info, spec), center);
+      });
+      state.maxScaleTopY = Math.max(state.minScaleTopY, Math.floor(Math.min(...limits)));
+    }
+
     function getHookDropForApparent(apparentN){
       const loadRatio = clamp(apparentN / state.airWeightN, 0, 1);
       return 8 + loadRatio * 24;
@@ -2853,6 +2856,8 @@ body #app .toolbar button:disabled{
         btn.classList.toggle('active', Number(btn.dataset.vol)===v);
       });
       applyBlockGeometry(getBlockSpec(v));
+      updateScaleTravel();
+      state.scaleTopY = clamp(state.scaleTopY, state.minScaleTopY, state.maxScaleTopY);
       updatePhysics();
     }
 
@@ -2906,11 +2911,11 @@ body #app .toolbar button:disabled{
       let chosen = null;
       for(const info of infos){
         if(blockLeft < info.innerLeft + BLOCK_LIQUID_SIDE_CLEARANCE || blockRight > info.innerRight - BLOCK_LIQUID_SIDE_CLEARANCE) continue;
-        if(blockTop > info.bottom || blockBottom < info.liquidTop) continue;
+        if(blockBottom > info.bottom || blockBottom <= info.liquidTop) continue;
         const immersionPx = clamp(blockBottom - info.liquidTop, 0, spec.h);
         const ratio = immersionPx / spec.h;
         if(!chosen || ratio > chosen.ratio){
-          chosen = { key:info.key, ratio };
+          chosen = { info, ratio };
         }
       }
 
@@ -2918,18 +2923,26 @@ body #app .toolbar button:disabled{
         return {
           activeLiquid:null,
           immersionRatio:0,
+          immersionDepthCm:0,
+          depthFraction:0,
           displacedMl:0,
           buoyancyN:0,
           apparentN:state.airWeightN
         };
       }else{
         const immersionRatio = clamp(chosen.ratio, 0, 1);
+        const info = chosen.info;
+        const cover = Math.max(0, blockTop - info.liquidTop);
+        const depthFraction = cover / Math.max(1, fullDepthRange(info, spec));
+        const immersionDepthCm = cover * BEAKER_LIQUID_DEPTH_CM / Math.max(1, info.bottom - info.liquidTop);
         const displacedMl = round(state.selectedVolumeMl * immersionRatio, 1);
-        const rho = LIQUIDS[chosen.key].rho;
+        const rho = LIQUIDS[info.key].rho;
         const buoyancyN = round(rho * 9.8 * displacedMl * 1e-6, 3);
         return {
-          activeLiquid:chosen.key,
+          activeLiquid:info.key,
           immersionRatio,
+          immersionDepthCm,
+          depthFraction,
           displacedMl,
           buoyancyN,
           apparentN:round(clamp(state.airWeightN - buoyancyN, 0, 9), 3)
@@ -2994,6 +3007,8 @@ body #app .toolbar button:disabled{
       state.blockTop = solved.blockTop;
       state.activeLiquid = solved.activeLiquid;
       state.immersionRatio = solved.immersionRatio;
+      state.immersionDepthCm = solved.immersionDepthCm;
+      state.depthFraction = solved.depthFraction;
       state.displacedMl = solved.displacedMl;
       state.buoyancyN = solved.buoyancyN;
       state.apparentN = solved.apparentN;
@@ -3018,6 +3033,7 @@ body #app .toolbar button:disabled{
 
       beakerWater.classList.toggle('active', state.activeLiquid==='water' && state.immersionRatio>0.05);
       beakerSalt.classList.toggle('active', state.activeLiquid==='salt' && state.immersionRatio>0.05);
+      setStatus();
     }
 
     function updatePhysics(){
@@ -3026,44 +3042,54 @@ body #app .toolbar button:disabled{
 
     function getGuidedRecordBlockReason(){
       if(state.freeMode) return '';
-      if(state.currentTask === 0){
-        if(state.activeLiquid !== 'water' || state.immersionRatio < 0.85 || Math.abs(state.displacedMl - 20) > 3){
-          return '步骤1要求：先把 20 mL 金属块浸入清水并记录。';
-        }
-      }else if(state.currentTask === 1){
-        if(state.activeLiquid !== 'water' || state.immersionRatio < 0.85 || state.displacedMl < 40){
-          return '步骤2要求：仍在清水中，把浸入体积增大到 40 mL 或以上后再记录。';
-        }
-      }else if(state.currentTask === 2){
-        if(state.activeLiquid !== 'salt' || state.immersionRatio < 0.85 || Math.abs(state.displacedMl - 40) > 4){
-          return '步骤3要求：改到盐水中，并保持排开体积约 40 mL 再记录。';
-        }
-      }else if(state.currentTask === 3){
-        return '请先完成分析后再结束实验。';
+      const key = tasks[state.currentTask].key;
+      if(key === 'analysis') return '测量已完成，请点击“分析结论”。';
+      if(guidedRecord(key)) return '本项已记录，请完成下一项。';
+      if(key === 'air'){
+        if(![40,60].includes(state.selectedVolumeMl)) return '闯关请选择 40 mL 或 60 mL 的金属块。';
+        if(state.activeLiquid || state.blockTop + getBlockSpec().h > getReferenceLiquidTop()) return '请提起样块，在空气中悬挂时读取示数。';
+        return '';
       }
+      if(guidedRecord('air')?.sampleVolume !== state.selectedVolumeMl) return '请继续使用已在空气中称量的同一块金属。';
+      if(key === 'salt') return state.activeLiquid === 'salt' && state.immersionRatio === 1 ? '' : '请将同一块金属完全浸没在盐水中。';
+      if(state.activeLiquid !== 'water') return '这一步请在清水中操作。';
+      if(key === 'partial') return state.immersionRatio >= .20 && state.immersionRatio <= .75 ? '' : '请下移到大约半块浸入，保留一部分露出液面。';
+      if(state.immersionRatio !== 1) return '请在样块完全浸没时记录。';
+      if(key === 'shallow' && state.depthFraction > .38) return '请将样块向上移动，直到顶部刚没过液面。';
+      if(key === 'deep' && state.depthFraction < .60) return '请保持完全浸没，再把样块向下拖深一些。';
       return '';
     }
 
     function addRecord(){
-      if(!state.activeLiquid || state.displacedMl < 5){
-        if(!state.freeMode) warnCurrentStep('请先把金属块浸入当前步骤要求的烧杯液体中，再记录数据。');
-        else showToast('请先拖动弹簧测力计，让金属块浸入烧杯液体中再记录');
-        return;
-      }
       const guidedBlockReason = getGuidedRecordBlockReason();
       if(guidedBlockReason){
         warnCurrentStep(guidedBlockReason);
         return;
       }
+      const liquid = state.activeLiquid || 'air';
+      const sampleVolume = state.selectedVolumeMl;
+      const air = state.freeMode
+        ? state.records.findLast(record=>record.free && record.liquid === 'air' && record.sampleVolume === sampleVolume)
+        : guidedRecord('air');
+      if(liquid !== 'air' && !air){
+        showToast('请先提起同一块金属，在空气中记录测力计示数。');
+        return;
+      }
+      const airForce = liquid === 'air' ? state.apparentN : air.apparent;
       const rec = {
-        id:`${Date.now()}_${Math.random().toString(36).slice(2,6)}`,
-        liquid:state.activeLiquid,
-        liquidName:LIQUIDS[state.activeLiquid].name,
+        key:state.freeMode ? 'free' : tasks[state.currentTask].key,
+        free:state.freeMode,
+        sampleVolume,
+        liquid,
+        liquidName:LIQUIDS[liquid]?.name || '空气',
         volume:round(state.displacedMl,1),
-        ratio:round(state.immersionRatio,2),
-        buoyancy:state.buoyancyN,
+        ratio:state.immersionRatio,
+        depth:round(state.immersionDepthCm,1),
+        airForce,
+        buoyancy:round(airForce - state.apparentN, 3),
         apparent:state.apparentN
       };
+      invalidateAnalysis();
       state.records.push(rec);
       if(state.records.length > 30) state.records.shift();
       renderRecords();
@@ -3072,22 +3098,39 @@ body #app .toolbar button:disabled{
         state.unseenRecordCount += 1;
         updateBadge();
       }
+      syncInteractiveButtons();
       showToast('已记录一组实验数据');
       tryPassStep(false);
+    }
+
+    function invalidateAnalysis(){
+      state.analysisOk = false;
+      analysisText.classList.remove('ok');
+      analysisText.hidden = true;
+      analysisText.textContent = '';
     }
 
     function clearData(announce=true){
       state.records = [];
       state.unseenRecordCount = 0;
-      state.analysisOk = false;
-      analysisText.classList.remove('ok');
-      analysisText.hidden = true;
-      analysisText.textContent = '';
+      invalidateAnalysis();
       renderRecords();
       updateReadoutUI();
       scheduleDraw();
       clearBadge();
-      if(announce) showToast('已清空数据');
+      if(announce){
+        if(!state.freeMode){
+          clearAllTimers();
+          state.completed = false;
+          state.successCooldown = false;
+          state.warningStep = -1;
+          doneMaskEl.style.display = 'none';
+          setStepUI(0);
+          liftToAir(false);
+        }
+        syncInteractiveButtons();
+        showToast('已清空数据');
+      }
     }
 
     function renderRecords(){
@@ -3099,53 +3142,71 @@ body #app .toolbar button:disabled{
       const rows = [...state.records].slice(-12).reverse();
       rows.forEach((r)=>{
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.liquidName}</td><td>${r.volume.toFixed(1)}</td><td>${r.buoyancy.toFixed(3)}</td><td>${r.apparent.toFixed(3)}</td>`;
+        const condition = r.liquid === 'air' ? '空气' : r.liquidName + (r.ratio === 1 ? ' · 全浸 · 顶部深 ' + r.depth.toFixed(1) + ' cm' : ' · 部分浸入');
+        const forces = r.liquid === 'air' ? r.apparent.toFixed(3) : r.airForce.toFixed(3) + ' − ' + r.apparent.toFixed(3);
+        const cells = [
+          ['测量条件',r.sampleVolume + ' mL 样块 · ' + condition],
+          ['排开体积 (mL)',r.volume.toFixed(1)],
+          ['测力计 (N)',forces],
+          ['浮力 (N)',r.liquid === 'air' ? '—' : r.buoyancy.toFixed(3)]
+        ];
+        cells.forEach(([label, value])=>{
+          const td = tr.insertCell();
+          td.dataset.label = label;
+          td.textContent = value;
+        });
         recordBody.appendChild(tr);
       });
     }
 
+    function pairedEvidence(){
+      if(!state.freeMode){
+        const readings = ['air','partial','shallow','deep','salt'].map(guidedRecord);
+        return readings.every(Boolean) ? readings : null;
+      }
+      for(const air of state.records.filter(record=>record.free && record.liquid === 'air')){
+        const sameSample = state.records.filter(record=>record.free && record.sampleVolume === air.sampleVolume && record.airForce === air.apparent);
+        const water = sameSample.filter(record=>record.liquid === 'water' && record.ratio === 1).sort((a,b)=>a.depth-b.depth);
+        const partial = sameSample.find(record=>record.liquid === 'water' && record.ratio > 0 && record.ratio < 1);
+        const salt = sameSample.find(record=>record.liquid === 'salt' && record.ratio === 1);
+        if(partial && salt && water.length >= 2 && water.at(-1).depth - water[0].depth >= .5) return [air,partial,water[0],water.at(-1),salt];
+      }
+      return null;
+    }
+
     function analyzeConclusion(advance=true){
-      if(state.records.length < 3){
-        state.analysisOk = false;
-        analysisText.classList.remove('ok');
-        analysisText.hidden = true;
-        analysisText.textContent = '';
-        if(advance){
-          if(!state.freeMode) warnCurrentStep('请先补齐清水低体积、清水高体积、盐水同体积三组数据。');
-          else showToast('请先补充实验数据');
-        }
+      invalidateAnalysis();
+      const evidence = pairedEvidence();
+      if(!evidence){
+        if(advance) showToast('请补齐同一块样品在空气、清水部分浸入、清水两种全浸深度和盐水全浸的数据。');
         return;
       }
-
-      const water = state.records.filter(r=>r.liquid==='water');
-      const salt = state.records.filter(r=>r.liquid==='salt');
-
-      const wMin = water.reduce((m,r)=>!m||r.volume<m.volume?r:m, null);
-      const wMax = water.reduce((m,r)=>!m||r.volume>m.volume?r:m, null);
-      const volumeEffect = !!(wMin && wMax && (wMax.volume - wMin.volume >= 15) && (wMax.buoyancy - wMin.buoyancy >= 0.09));
-
-      const near40Water = water.filter(r=>Math.abs(r.volume-40)<=6);
-      const near40Salt = salt.filter(r=>Math.abs(r.volume-40)<=6);
-      const avg = (arr, key)=>arr.reduce((s,r)=>s+r[key],0)/arr.length;
-      const densityEffect = near40Water.length>0 && near40Salt.length>0 && (avg(near40Salt, 'buoyancy') - avg(near40Water, 'buoyancy') > 0.02);
-
-      state.analysisOk = volumeEffect && densityEffect;
-      if(state.analysisOk){
-        analysisText.classList.add('ok');
-        analysisText.hidden = false;
-        analysisText.innerHTML = [
-          `结论成立：<b>${FORMULA_FORCE_HTML} 与液体密度 ρ、排开液体体积 ${FORMULA_VOLUME_HTML} 有关</b>。`,
-          `体积效应：清水中从 ${wMin.volume.toFixed(1)}mL 到 ${wMax.volume.toFixed(1)}mL，${FORMULA_FORCE_HTML} 增大 ${ (wMax.buoyancy-wMin.buoyancy).toFixed(3) }N。`,
-          `密度效应：约40mL时，盐水浮力平均值大于清水。`
-        ].join('<br />');
-        showToast('分析完成：结论正确');
-      }else{
-        analysisText.classList.remove('ok');
-        analysisText.hidden = true;
-        analysisText.textContent = '';
-        if(advance) showToast('请补充数据后再分析');
+      const [air, partial, shallow, deep, salt] = evidence;
+      const volumeEffect = shallow.volume > partial.volume && shallow.buoyancy > partial.buoyancy;
+      const depthEffect = deep.depth - shallow.depth >= .5 && shallow.volume === deep.volume && Math.abs(shallow.buoyancy - deep.buoyancy) <= .001;
+      const densityEffect = salt.volume === shallow.volume && salt.buoyancy > shallow.buoyancy;
+      if(!volumeEffect || !depthEffect || !densityEffect){
+        if(advance) showToast('请核对用于控制变量比较的同块、同液或同体积数据。');
+        return;
       }
-
+      state.analysisOk = true;
+      analysisText.classList.add('ok');
+      analysisText.hidden = false;
+      const force = value=>value.toFixed(3) + ' N';
+      const volume = value=>value.toFixed(1) + ' mL';
+      const depth = value=>value.toFixed(1) + ' cm';
+      const lines = [
+        '称重法：清水全浸时，空气中 ' + force(air.apparent) + ' − 液中 ' + force(shallow.apparent) + ' = ' + force(shallow.buoyancy) + '。',
+        '排开体积：清水中从 ' + volume(partial.volume) + ' 增至 ' + volume(shallow.volume) + '，浮力从 ' + force(partial.buoyancy) + ' 增至 ' + force(shallow.buoyancy) + '。',
+        '全浸深度：同块在清水中，顶部深度由 ' + depth(shallow.depth) + ' 增至 ' + depth(deep.depth) + '，浮力仍为 ' + force(deep.buoyancy) + '。',
+        '液体密度：同块全浸，排开 ' + volume(salt.volume) + '，盐水浮力 ' + force(salt.buoyancy) + ' 大于清水 ' + force(shallow.buoyancy) + '。'
+      ];
+      lines.forEach((line,index)=>{
+        if(index) analysisText.append(document.createElement('br'));
+        analysisText.append(line);
+      });
+      if(advance) setControlCollapsed(false);
+      showToast('已根据测量数据得出结论');
       if(advance) tryPassStep(false);
     }
 
@@ -3419,6 +3480,7 @@ body #app .toolbar button:disabled{
       const tx = scaleX;
       const ty = scaleTopY;
       const t0 = codexModeNow();
+      demoCursor.hidden = false;
 
       return new Promise((resolve)=>{
         function step(now){
@@ -3433,6 +3495,8 @@ body #app .toolbar button:disabled{
           const p = clamp((codexModeNow() - t0) / duration, 0, 1);
           const e = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2)/2;
           setScalePos(sx + (tx-sx)*e, sy + (ty-sy)*e);
+          demoCursor.style.left = `${state.scaleCenterX}px`;
+          demoCursor.style.top = `${state.scaleTopY + 58}px`;
           if(p < 1){
             requestAnimationFrame(step);
           }else{
@@ -3443,11 +3507,13 @@ body #app .toolbar button:disabled{
       });
     }
 
-    function getImmerseTarget(liquidKey){
+    function getImmerseTarget(liquidKey, position='shallow'){
       const info = liquidKey==='water' ? getBeakerInfo(beakerWater, 'water') : getBeakerInfo(beakerSalt, 'salt');
       const scaleX = (info.innerLeft + info.innerRight) / 2;
       const spec = getBlockSpec();
-      const blockTop = info.liquidTop + Math.max(10, Math.round(spec.h * 0.18));
+      const maxDepth = fullDepthRange(info, spec);
+      const depth = position === 'partial' ? -spec.h * .5 : maxDepth * (position === 'deep' ? .78 : .20);
+      const blockTop = info.liquidTop + depth;
       const scaleTop = clamp(scaleTopForBlockTop(blockTop, scaleX), state.minScaleTopY, state.maxScaleTopY);
       return {scaleX, scaleTop};
     }
@@ -3456,6 +3522,7 @@ body #app .toolbar button:disabled{
       if(!state.autoPlaying) return;
       state.autoPlaying = false;
       state.autoRunId += 1;
+      demoCursor.hidden = true;
       syncModeTag();
       syncInteractiveButtons();
       setStatus(state.completed ? '挑战完成' : (state.freeMode ? '自由探索' : currentStageStatus()));
@@ -3497,43 +3564,29 @@ body #app .toolbar button:disabled{
         recalcProgress();
         setStatus('演示模式中');
 
-        await pause(850);
-        setSelectedVolume(20);
-        recalcProgress();
-        await pause(720);
-        const p1 = getImmerseTarget('water');
-        await animateSystemTo(p1.scaleX, p1.scaleTop, 1080, runId);
-        ensureActive();
-        await pause(900);
-        autoRecord();
-        recalcProgress();
-        await pause(1200);
-
-        liftToAir(false);
-        await pause(820);
+        await pause(700);
         setSelectedVolume(40);
-        recalcProgress();
-        await pause(780);
-        const p2 = getImmerseTarget('water');
-        await animateSystemTo(p2.scaleX, p2.scaleTop, 1120, runId);
-        ensureActive();
-        await pause(900);
-        autoRecord();
-        recalcProgress();
-        await pause(1200);
-
         liftToAir(false);
-        await pause(760);
-        setSelectedVolume(40);
-        await pause(640);
-        const p3 = getImmerseTarget('salt');
-        await animateSystemTo(p3.scaleX, p3.scaleTop, 1280, runId);
+        const recordObservation = async()=>{
+          await pause(850);
+          autoRecord();
+          recalcProgress();
+          setStatus('演示：' + currentStageStatus());
+          await pause(580);
+        };
+        await recordObservation();
+        for(const position of ['partial','shallow','deep']){
+          const target = getImmerseTarget('water', position);
+          await animateSystemTo(target.scaleX, target.scaleTop, 1000, runId);
+          ensureActive();
+          await recordObservation();
+        }
+        await animateSystemTo(state.homeScaleX, state.homeScaleTopY, 820, runId);
         ensureActive();
-        await pause(900);
-        autoRecord();
-        recalcProgress();
-        await pause(1200);
-
+        const salt = getImmerseTarget('salt');
+        await animateSystemTo(salt.scaleX, salt.scaleTop, 1050, runId);
+        ensureActive();
+        await recordObservation();
         await pause(780);
         analyzeConclusion(false);
         if(!state.analysisOk) throw new Error('AUTO_ANALYSIS_FAILED');
@@ -3546,6 +3599,7 @@ body #app .toolbar button:disabled{
       }finally{
         if(runId === state.autoRunId){
           state.autoPlaying = false;
+          demoCursor.hidden = true;
           syncModeTag();
           syncInteractiveButtons();
           setStatus(state.completed ? '挑战完成' : (state.freeMode ? '自由探索' : currentStageStatus()));
@@ -3564,10 +3618,11 @@ body #app .toolbar button:disabled{
       state.successCooldown = false;
       state.warningStep = -1;
       doneMaskEl.style.display = 'none';
+      demoCursor.hidden = true;
 
       layoutApparatus();
       clearData(false);
-      setSelectedVolume(20);
+      setSelectedVolume(state.freeMode ? 20 : 40);
       setStepUI(0);
       liftToAir(false);
       updatePhysics();
@@ -3601,12 +3656,14 @@ body #app .toolbar button:disabled{
         btn.addEventListener('click', ()=>{
           if(state.autoPlaying) return;
           setSelectedVolume(Number(btn.dataset.vol));
+          liftToAir(false);
           tryPassStep(false);
         });
       });
       volumeSelect.addEventListener('change', ()=>{
         if(state.autoPlaying) return;
         setSelectedVolume(Number(volumeSelect.value));
+        liftToAir(false);
         tryPassStep(false);
       });
 
@@ -3677,7 +3734,7 @@ body #app .toolbar button:disabled{
       state.scaleCenterX = state.homeScaleX;
       state.scaleTopY = state.homeScaleTopY;
       updatePhysics();
-      setSelectedVolume(20);
+      setSelectedVolume(40);
       renderRecords();
 
       initDockPositions(true);

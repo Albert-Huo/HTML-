@@ -961,6 +961,15 @@ body #app .toolbar button:disabled{
   }
 </style>
 
+  <style id="exp57-ruler-controls">
+    #exp57MarkStart[hidden], #exp57RulerReadings[hidden] { display:none !important; }
+    #exp57RulerReadings { margin:7px 0; padding:7px; border:1px solid rgba(159,204,183,.42); border-radius:8px; font-size:12px; }
+    #exp57RulerReadings p { margin:0 0 4px; }
+    #exp57ReadingInputs { grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
+    #exp57ReadingInputs:not([hidden]) { display:grid; }
+    #exp57ReadingInputs label { display:grid; gap:3px; }
+    #exp57ReadingInputs input { width:100%; min-width:0; min-height:36px; box-sizing:border-box; border:1px solid #7e9e91; border-radius:6px; padding:4px; color:CanvasText; background:Canvas; font:inherit; font-size:16px; }
+  </style>
 </head>
 <body>
 <script id="codex-lab-sound-bus" data-native-audio="false">
@@ -1220,8 +1229,18 @@ body #app .toolbar button:disabled{
         </div>
         <div class="dockBody drawer-body">
           <div class="controls control-row">
+            <button class="sub" id="exp57MarkStart" type="button" hidden>记起点读数</button>
             <button class="main" id="recordBtn" type="button">记录本次</button>
             <button class="sub" id="analyzeBtn" type="button">分析结论</button>
+          </div>
+          <div id="exp57RulerReadings" hidden>
+            <p id="exp57StartReading"></p>
+            <p id="exp57EndReading"></p>
+            <div id="exp57ReadingInputs" hidden>
+              <label>钩码 h (m)<input id="exp57Height" type="number" min="0" step="0.01"></label>
+              <label>绳端 s (m)<input id="exp57Distance" type="number" min="0" step="0.01"></label>
+              <label>效率 η (%)<input id="exp57Efficiency" type="number" min="0" max="100" step="0.1"></label>
+            </div>
           </div>
           <div class="load-controls">
             <button class="sub" id="loadMinusBtn" type="button">减少钩码</button>
@@ -1269,7 +1288,7 @@ body #app .toolbar button:disabled{
 
     <section class="explanation">
       <h2>测量滑轮组的机械效率</h2>
-      <p>缓慢匀速拉动弹簧测力计，使钩码上升。记录物重 G、拉力 F、钩码上升高度 h 和绳端移动距离 s，计算有用功与总功。</p>
+      <p>先称物重 G，读钩码和绳端的起点刻度。匀速拉测力计，读拉力 F 和两处终点刻度。用终点减起点求钩码上升高度 h 和绳端移距 s，再计算有用功与总功。</p>
       <p><span class="formula"><i>W</i><sub>有用</sub> = <i>Gh</i></span>　<span class="formula"><i>W</i><sub>总</sub> = <i>Fs</i></span>　<span class="formula">η = <i>Gh</i> / <i>Fs</i></span></p>
       <p>实际装置存在动滑轮重、绳重和摩擦，所以机械效率不会达到 100%。本实验只在同一套滑轮组中比较改变物重的结果。</p>
     </section>
@@ -1298,6 +1317,12 @@ body #app .toolbar button:disabled{
     const dataToggleBtn = $("#dataToggleBtn");
     const recordBtn = $("#recordBtn");
     const analyzeBtn = $("#analyzeBtn");
+    const markStartBtn = $("#exp57MarkStart");
+    const rulerReadings = $("#exp57RulerReadings");
+    const startReadout = $("#exp57StartReading");
+    const endReadout = $("#exp57EndReading");
+    const readingInputs = $("#exp57ReadingInputs");
+    const readingAnswers = [$("#exp57Height"), $("#exp57Distance"), $("#exp57Efficiency")];
     const loadMinusBtn = $("#loadMinusBtn");
     const loadPlusBtn = $("#loadPlusBtn");
     const quickLoadMinusBtn = $("#quickLoadMinusBtn");
@@ -1325,8 +1350,9 @@ body #app .toolbar button:disabled{
 
     const TRIAL_LOADS = [1, 2, 3];
     const TARGET_S = 0.30;
-    const TARGET_H = 0.10;
     const SUPPORT_SEGMENTS = 3;
+    const WEIGHT_START_CM = 10;
+    const ROPE_START_CM = 5;
     const SPRING_SCALE_MAX_N = 5;
     const ROPE_CONNECTOR_Y = 138;
     const GAUGE_BOTTOM_CLEARANCE = 48;
@@ -1338,17 +1364,17 @@ body #app .toolbar button:disabled{
       },
       {
         text: "第 1 次：缓慢匀速提升并记录",
-        hint: "向下缓慢拖动测力计，直至 s = 0.30 m，再点击“记录本次”。",
-        detail: "拉动过快会使示数不稳定。观察 h 与 s 的关系：三段绳子承担动滑轮时，s 约为 3h。"
+        hint: "先记两把尺的起点，再缓慢拉到限位。读终点，算出 h、s 和效率后记录。",
+        detail: "看钩码上沿挂点和黄色绳端各自对应的刻度。h、s 是各尺的终点减起点，厘米换算成米后填入。"
       },
       {
         text: "第 2 次：增加钩码后重复测量",
-        hint: "重新称量、安装并接绳，再缓慢拉到目标位置。",
+        hint: "重新称量、接绳，记录两把尺的起点后再匀速下拉。",
         detail: "装置保持不变，只增加钩码。四个物理量 G、F、h、s 都要由本次操作取得。"
       },
       {
         text: "第 3 次：再次增加钩码并测量",
-        hint: "完成第三次匀速提升，记录最后一组数据。",
+        hint: "完成第三次匀速提升，读尺并计算，记录最后一组数据。",
         detail: "仍使用同一滑轮组和相同提升高度，便于比较物重改变时机械效率的变化。"
       },
       {
@@ -1374,6 +1400,9 @@ body #app .toolbar button:disabled{
       unseenRecords: 0,
       weightLocation: "tray",
       weighed: false,
+      weightReading: null,
+      rulerStart: null,
+      rulerEnd: null,
       scaleConnected: false,
       pullPx: 0,
       pullElapsed: 0,
@@ -1413,14 +1442,64 @@ body #app .toolbar button:disabled{
     }
     function currentLoad() { return state.freeMode ? state.freeLoad : TRIAL_LOADS[state.trialIndex]; }
     function targetForce(load) { return Number(((load + 0.30) / SUPPORT_SEGMENTS + 0.05).toFixed(2)); }
-    function liveS() { return TARGET_S * state.pullPx / state.maxPullPx; }
-    function liveH() { return liveS() / SUPPORT_SEGMENTS; }
     function forceReading() {
       if (state.weightLocation === "scale") return currentLoad();
       if (state.scaleConnected && state.weightLocation === "block") return targetForce(currentLoad());
       return 0;
     }
     function springStretch() { return clamp(forceReading() / SPRING_SCALE_MAX_N, 0, 1); }
+
+    function rulerGeometry(g) {
+      const pxPerCm = state.maxPullPx / (TARGET_S * 100);
+      return {
+        pxPerCm,
+        weightY: g.blockHook.y,
+        weightZeroY: g.blockHook.y + state.pullPx / SUPPORT_SEGMENTS + WEIGHT_START_CM * pxPerCm,
+        ropeY: g.scaleY,
+        ropeZeroY: g.connector.y - ROPE_START_CM * pxPerCm
+      };
+    }
+    function currentRulerReadings(g = geometry()) {
+      const scales = rulerGeometry(g);
+      return {
+        weight: Math.round((scales.weightZeroY - scales.weightY) / scales.pxPerCm),
+        rope: Math.round((scales.ropeY - scales.ropeZeroY) / scales.pxPerCm)
+      };
+    }
+    function syncRulerControls() {
+      const start = state.rulerStart, end = state.rulerEnd;
+      markStartBtn.hidden = !state.scaleConnected || Boolean(start) || state.completed;
+      rulerReadings.hidden = !start;
+      readingInputs.hidden = !end;
+      startReadout.textContent = start
+        ? `起点：钩码 ${start.weight} cm，绳端 ${start.rope} cm，${state.weightReading===null ? "标称物重" : "实测物重"} ${(state.weightReading ?? currentLoad()).toFixed(2)} N。`
+        : "";
+      endReadout.textContent = end ? `终点：钩码 ${end.weight} cm，绳端 ${end.rope} cm，拉力 ${end.force.toFixed(2)} N。` : "";
+    }
+    function clearRulerReadings() {
+      state.rulerStart = null;
+      state.rulerEnd = null;
+      readingAnswers.forEach(input => { input.value = ""; });
+      syncRulerControls();
+    }
+    function markRulerStart() {
+      if (!state.scaleConnected || state.weightLocation !== "block" || state.pullPx !== 0 || state.rulerStart) return false;
+      state.rulerStart = currentRulerReadings();
+      syncRulerControls();
+      updateStatus();
+      draw();
+      return true;
+    }
+    function rulerDifferences() {
+      const start = state.rulerStart, end = state.rulerEnd;
+      if (!start || !end) return null;
+      const h = (end.weight - start.weight) / 100;
+      const s = (end.rope - start.rope) / 100;
+      const G = state.weightReading ?? (state.freeMode ? currentLoad() : null);
+      const F = end.force;
+      if (!(h > 0 && s > 0 && G > 0 && F > 0)) return null;
+      return { h, s, G, F, efficiency:G * h / (F * s) * 100 };
+    }
 
     function initDots() {
       dots.innerHTML = "";
@@ -1454,8 +1533,9 @@ body #app .toolbar button:disabled{
         else if (state.autoPlaying) text = "自动演示中";
         else if (state.weightLocation === "scale") text = "已读出物重";
         else if (state.weightLocation === "block" && !state.scaleConnected) text = "请连接测力计";
+        else if (state.scaleConnected && !state.rulerStart) text = "请记尺面起点";
         else if (state.scaleConnected && !state.pullComplete) text = "可缓慢拉动";
-        else if (state.pullComplete) text = "可记录";
+        else if (state.pullComplete) text = "可读终点并计算";
         else text = "待操作";
       }
       statusTag.textContent = "状态：" + text;
@@ -1491,6 +1571,7 @@ body #app .toolbar button:disabled{
     function resetApparatus() {
       state.weightLocation = "tray";
       state.weighed = false;
+      state.weightReading = null;
       state.scaleConnected = false;
       state.pullPx = 0;
       state.pullElapsed = 0;
@@ -1499,6 +1580,7 @@ body #app .toolbar button:disabled{
       state.drag = null;
       state.dragWeight = null;
       state.scaleGhost = null;
+      clearRulerReadings();
       updateFreeLoadControls();
       updateStatus();
       draw();
@@ -1576,27 +1658,34 @@ body #app .toolbar button:disabled{
       updateMobileTabs();
     }
 
-    function makeRecord() {
-      const G = currentLoad();
-      const F = targetForce(G);
-      const h = TARGET_H;
-      const s = TARGET_S;
+    function makeRecord({ G, F, h, s, efficiency }) {
       const useful = G * h;
       const total = F * s;
       return {
         label: state.freeMode ? "自由" + (state.freeRecords.length + 1) : String(state.trialIndex + 1),
         G, F, h, s, useful, total,
-        efficiency: useful / total * 100
+        efficiency
       };
     }
     function recordCurrent(options) {
       const opts = options || {};
+      if (!state.freeMode && (state.completed || state.currentTask === 4)) return false;
       if (!state.freeMode && !state.weighed) { if (!opts.auto) warn("先把钩码拖到测力计挂钩，读出物重 G"); return false; }
       if (state.weightLocation !== "block") { if (!opts.auto) warn(state.freeMode ? "请把钩码挂到动滑轮" : "称量后请把钩码挂到动滑轮"); return false; }
       if (!state.scaleConnected) { if (!opts.auto) warn("请把测力计接到黄色绳端"); return false; }
       if (!state.pullComplete) { if (!opts.auto) warn("请缓慢拉到 s = 0.30 m，并保持示数稳定"); return false; }
+      const readings = rulerDifferences();
+      if (!readings) { if (!opts.auto) warn("请先完成两把尺的起点与终点测量"); return false; }
+      const expected = [readings.h, readings.s, readings.efficiency];
+      const tolerances = [.005, .005, .51];
+      const incorrect = readingAnswers.findIndex((input, index) =>
+        input.value === "" || !Number.isFinite(input.valueAsNumber) || Math.abs(input.valueAsNumber - expected[index]) > tolerances[index]);
+      if (incorrect >= 0) {
+        if (!opts.auto) warn(incorrect < 2 ? "请核对尺面差值，并将厘米换算成米。" : "请核对 η＝Gh ÷ Fs × 100%。");
+        return false;
+      }
       const collection = state.freeMode ? state.freeRecords : state.records;
-      collection.push(makeRecord());
+      collection.push(makeRecord(readings));
       state.unseenRecords += 1;
       renderRecords();
       showCheck();
@@ -1611,6 +1700,7 @@ body #app .toolbar button:disabled{
         resetApparatus();
       } else {
         setStepUI(4);
+        clearRulerReadings();
         updateStatus("三组数据已齐");
       }
       return true;
@@ -2069,20 +2159,37 @@ body #app .toolbar button:disabled{
       ctx.restore();
     }
     function drawRulers(g) {
-      const x = g.rigX - 120;
-      const y0 = g.fixedSmall.y + 30;
-      const y1 = g.h - 70;
+      if (!state.scaleConnected) return;
+      const scales = rulerGeometry(g);
+      const weightX = Math.max(30, g.rigX - 88);
+      const ropeX = Math.min(g.w - 28, g.ropeX + 66);
       ctx.save();
-      ctx.strokeStyle = "rgba(211,223,218,.46)";
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke();
-      for (let y = y0; y <= y1; y += 12) {
-        const major = Math.round((y - y0) / 12) % 5 === 0;
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (major ? 14 : 8), y); ctx.stroke();
+      const drawScale = (x, zeroY, sign, max, readingY, sourceX, name, color) => {
+        ctx.strokeStyle = "rgba(219,229,235,.70)";
+        ctx.lineWidth = 1;
+        for (let i=0; i<=max; i+=1) {
+          const y = zeroY + i * scales.pxPerCm * sign;
+          const major = i % 5 === 0;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (major ? 12 : 6), y); ctx.stroke();
+          if (major) {
+            ctx.fillStyle = "#e1ebf0";
+            ctx.font = "10px Menlo, monospace";
+            ctx.textAlign = "right";
+            ctx.fillText(String(i), x - 3, y + 3);
+          }
+        }
+        const labelY = Math.min(zeroY, zeroY + max * scales.pxPerCm * sign) - 8;
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.font = "700 11px sans-serif";
+        ctx.fillText(name, x + 2, labelY);
+        ctx.strokeStyle = color;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath(); ctx.moveTo(x, readingY); ctx.lineTo(sourceX, readingY); ctx.stroke();
+        ctx.setLineDash([]);
       }
-      ctx.fillStyle = "#93a19e";
-      ctx.font = "12px Menlo, monospace";
-      ctx.fillText("h", x - 10, y0 - 8);
+      drawScale(weightX, scales.weightZeroY, -1, 20, scales.weightY, g.blockHook.x, "钩码/cm", "#75e6bf");
+      drawScale(ropeX, scales.ropeZeroY, 1, 35, scales.ropeY, g.ropeX, "绳端/cm", "#f6cc6e");
       ctx.restore();
     }
     function draw() {
@@ -2151,7 +2258,7 @@ body #app .toolbar button:disabled{
       ctx.textAlign = "left";
       ctx.fillStyle = "rgba(228,184,91,.9)";
       ctx.font = "700 12px Menlo, monospace";
-      ctx.fillText("s " + liveS().toFixed(2) + " m · h " + liveH().toFixed(2) + " m", metricsX, 24);
+      if (state.scaleConnected) ctx.fillText("两尺分度值 1 cm", metricsX, 24);
       ctx.fillStyle = state.tooFast ? "#ef6a61" : (state.pullComplete ? "#63d7ad" : "#aebbb7");
       ctx.font = "700 12px PingFang SC, sans-serif";
       ctx.textAlign = "right";
@@ -2174,6 +2281,7 @@ body #app .toolbar button:disabled{
         state.scaleGhost = null;
         state.weightLocation = "scale";
         state.weighed = true;
+        state.weightReading = forceReading();
         if (!opts.quiet) { showCheck(); showToast("测力计读数：" + currentLoad().toFixed(2) + " N"); }
       } else if (target === "block" && (state.weighed || state.freeMode)) {
         state.weightLocation = "block";
@@ -2182,6 +2290,7 @@ body #app .toolbar button:disabled{
         state.weightLocation = "tray";
         if (!opts.quiet) showToast("钩码已放回托盘");
       }
+      clearRulerReadings();
       updateFreeLoadControls();
       updateStatus();
       draw();
@@ -2194,6 +2303,7 @@ body #app .toolbar button:disabled{
       }
       state.scaleConnected = true;
       state.scaleGhost = null;
+      syncRulerControls();
       if (!state.freeMode && state.currentTask === 0) {
         setStepUI(1);
         showCheck();
@@ -2218,12 +2328,16 @@ body #app .toolbar button:disabled{
       if (reached && state.pullElapsed >= 350 && !state.tooFast) {
         state.pullPx = state.maxPullPx;
         state.pullComplete = true;
-        if (!opts.quiet) { showCheck(); showToast("提升完成，示数稳定，可记录"); }
+        state.rulerEnd = { ...currentRulerReadings(), force: forceReading() };
+        syncRulerControls();
+        if (!opts.quiet) { showCheck(); showToast("提升完成，请读终点并计算"); }
       } else if (state.tooFast) {
         state.pullPx = 0;
         state.pullElapsed = 0;
         state.pullComplete = false;
         state.tooFast = false;
+        state.rulerEnd = null;
+        syncRulerControls();
         if (!opts.quiet) warn("拉动过快，请重新缓慢向下拉");
       } else if (!opts.quiet) {
         showToast("继续缓慢下拉到 0.30 m");
@@ -2240,6 +2354,7 @@ body #app .toolbar button:disabled{
         if (!hitScale(point, g)) return false;
         if (state.scaleConnected) {
           if (state.pullComplete) return false;
+          if (!state.rulerStart) { warn("请打开实验面板，先记两把尺的起点"); return true; }
           state.drag = { type: "scalePull", pointerStartY: point.y, pullStart: state.pullPx, lastY: point.y, lastTime: event.timeStamp };
         } else {
           if (state.weightLocation === "scale") {
@@ -2358,6 +2473,8 @@ body #app .toolbar button:disabled{
       }
       state.freeLoad = clamp(state.freeLoad + delta, 1, 4);
       state.weighed = state.weightLocation === "scale";
+      state.weightReading = state.weighed ? forceReading() : null;
+      clearRulerReadings();
       updateFreeLoadControls();
       draw();
       showToast("当前物重：" + state.freeLoad.toFixed(1) + " N");
@@ -2424,7 +2541,12 @@ body #app .toolbar button:disabled{
       await moveDemoCursor(demoPoint("scale"), token, true);
       await moveDemoCursor(demoPoint("connector"), token, true);
       connectScale({ quiet: true });
+      setDrawerCollapsed(controlDock, false, { quiet: true });
+      const mark = markStartBtn.getBoundingClientRect(), area = labArea.getBoundingClientRect();
+      await moveDemoCursor({ x:mark.left-area.left+mark.width/2, y:mark.top-area.top+mark.height/2 }, token, true);
+      if (!markRulerStart()) throw new Error("AUTO_RULER_START_MISSING");
       await sleep(760);
+      setDrawerCollapsed(controlDock, true, { quiet: true });
     }
     async function autoPull(token) {
       await moveDemoCursor(demoPoint("pullRing"), token, true);
@@ -2459,12 +2581,20 @@ body #app .toolbar button:disabled{
           if (trial > 0) setStepUI(trial + 1);
           await autoPrepareTrial(token);
           await autoPull(token);
+          setDrawerCollapsed(controlDock, false, { quiet: true });
+          const measured = rulerDifferences();
+          if (!measured) throw new Error("AUTO_RULER_READINGS_MISSING");
+          [measured.h.toFixed(2), measured.s.toFixed(2), measured.efficiency.toFixed(1)]
+            .forEach((value, index) => { readingAnswers[index].value = value; });
+          updateStatus("用终点减起点，再计算效率");
+          await sleep(680);
           const before = state.records.length;
           const saved = recordCurrent({ auto: true });
           if (!saved || state.records.length !== before + 1) throw new Error("AUTO_RECORD_NOT_PERSISTED");
           showCheck();
           updateStatus("第 " + (trial + 1) + " 次已记录");
           await /* codex-physics-mode-source:pace-57-recordConfirm */ sleep(900, "recordConfirm");
+          if (trial < TRIAL_LOADS.length-1) setDrawerCollapsed(controlDock, true, { quiet: true });
         }
         setStepUI(4);
         await /* codex-physics-mode-source:pace-57-analysisLead */ sleep(800, "analysisLead");
@@ -2515,6 +2645,8 @@ body #app .toolbar button:disabled{
         pullComplete: state.pullComplete,
         forceReading: forceReading(),
         scalePointerRatio: clamp(forceReading() / SPRING_SCALE_MAX_N, 0, 1),
+        rulerStart: state.rulerStart,
+        rulerEnd: state.rulerEnd,
         lastError: state.lastError,
         mobile: state.mobile
       };
@@ -2529,6 +2661,8 @@ body #app .toolbar button:disabled{
       } else if (action === "pull") {
         applyPullY(state.maxPullPx, 900, .4);
         finishScalePull({ quiet: true });
+      } else if (action === "mark-ruler-start") {
+        return markRulerStart();
       } else if (action === "record") {
         return recordCurrent({ auto: true });
       } else if (action === "analyze") {
@@ -2554,6 +2688,7 @@ body #app .toolbar button:disabled{
       controlSheetCloseBtn.addEventListener("click", () => setDrawerCollapsed(controlDock, true));
       dataSheetCloseBtn.addEventListener("click", () => setDrawerCollapsed(dataDock, true));
       recordBtn.addEventListener("click", () => recordCurrent());
+      markStartBtn.addEventListener("click", markRulerStart);
       analyzeBtn.addEventListener("click", () => analyzeCurrent());
       loadMinusBtn.addEventListener("click", () => changeFreeLoad(-1));
       loadPlusBtn.addEventListener("click", () => changeFreeLoad(1));

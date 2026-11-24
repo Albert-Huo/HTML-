@@ -595,6 +595,10 @@ body #app .toolbar button:disabled{
   }
 </style>
 
+  <style id="exp51-assembly-controls">
+    .exp51-brush-hit { position:absolute; z-index:4; border:1px dashed #91cbef; border-radius:8px; background:rgba(39,99,141,.18); color:#e8f5ff; padding:3px; font-size:11px; font-weight:700; line-height:1.1; cursor:pointer; }
+    .exp51-brush-hit:focus-visible { outline:3px solid #76e5b7; outline-offset:2px; }
+  </style>
 </head>
 <body>
 <script id="codex-lab-sound-bus" data-native-audio="false">
@@ -820,11 +824,16 @@ body #app .toolbar button:disabled{
   </div>
   <div id="spectrum"></div>
   </div>
-    <section id="taskCard" class="task-card"><div class="task-step" id="taskStep">步骤 1 / 4</div><div class="task-text"><div id="taskText"></div><div id="taskHint"></div></div><div class="progress-dots" id="dots"></div></section>
+    <section id="taskCard" class="task-card"><div class="task-step" id="taskStep">关卡 1 / 5</div><div class="task-text"><div id="taskText"></div><div id="taskHint"></div></div><div class="progress-dots" id="dots"></div></section>
     <main id="stage" aria-label="设计与制作简易直流发电机模型实验台">
       <div class="hud"><span class="tag mode-strip" id="modeTag">模式：引导</span><span class="tag" id="statusTag">状态：待操作</span></div>
       <button class="hint-lamp" id="hintLamp" type="button" aria-label="查看提示">💡</button><div class="hint-pop" id="hintPop"></div>
-      <div class="lab-area" id="labArea"><canvas id="labCanvas"></canvas><button class="crank-handle-hit" id="crankHandleHit" type="button" aria-label="拖动手摇发电机曲柄"></button></div>
+      <div class="lab-area" id="labArea">
+        <canvas id="labCanvas"></canvas>
+        <button class="crank-handle-hit" id="crankHandleHit" type="button" aria-label="拖动手摇发电机曲柄"></button>
+        <button class="exp51-brush-hit" id="exp51TopBrush" type="button" aria-label="装上方电刷">上电刷</button>
+        <button class="exp51-brush-hit" id="exp51BottomBrush" type="button" aria-label="装下方电刷">下电刷</button>
+      </div>
       <section class="dock drawer control collapsed" id="controlDock"><div class="dock-header" data-drag-handle><span class="dockTitle">实验面板</span><button class="iconBtn" id="controlToggleBtn" type="button">展开</button></div><div class="dock-body">
         <div class="controls"><button class="main" id="recordBtn" type="button">记录</button><button class="sub" id="analyzeBtn" type="button">分析</button></div>
         <div class="analysis" id="analysisText">完成三次记录后分析。</div>
@@ -834,19 +843,21 @@ body #app .toolbar button:disabled{
     <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换"></div>
     </main>
     <div class="toolbar"><button class="sub" id="resetBtn" type="button">步骤重置</button><button class="sub" id="autoDemoBtn" type="button">自动演示</button><button class="sub" id="freeBtn" type="button">自由模式</button></div>
-    <section class="explanation"><h2>实验名：设计与制作简易直流发电机模型</h2><p><b>关键过程：</b>沿圆周拖动手摇柄，使线圈在 N、S 磁极间转动；比较顺时针、快速和反向转动时中心零位电流计的响应。</p><p><b>现象与结论：</b>线圈内产生交变感应电动势，分裂环换向器每半周交换接触，使固定转向时外电路得到同一极性的脉动直流；加快转速响应增强，反转曲柄后端子极性和指针方向反转。发电机把机械能转化为电能。</p></section>
+    <section class="explanation"><h2>实验名：设计与制作简易直流发电机模型</h2><p><b>关键过程：</b>将上下两个电刷装到分裂环换向器上，接通外电路。沿圆周拖动手摇柄，使线圈在 N、S 磁极间转动，比较顺时针、快速和反向转动时中心零位电流计的响应。</p><p><b>现象与结论：</b>发电机把机械能转化为电能。线圈内的感应电动势交变。分裂环每半周交换接触，使固定转向时外电路的电流方向不变、大小随转动变化，形成脉动直流。转得更快时响应增强，反转曲柄后端子极性反转。交流发电机用滑环保持线圈端与电刷的对应关系，外电路电流方向周期性改变。</p></section>
   </div>
   <script>
   (() => {
     "use strict";
     const $ = s => document.querySelector(s);
     const stage = $("#stage"), labArea = $("#labArea"), canvas = $("#labCanvas"), ctx = canvas.getContext("2d"), crankHandleHit = $("#crankHandleHit");
+    const brushButtons = { top:$("#exp51TopBrush"), bottom:$("#exp51BottomBrush") };
     const taskStep = $("#taskStep"), taskText = $("#taskText"), taskHint = $("#taskHint"), dots = $("#dots"), modeTag = $("#modeTag"), statusTag = $("#statusTag");
     const hintLamp = $("#hintLamp"), hintPop = $("#hintPop"), controlDock = $("#controlDock"), dataDock = $("#dataDock"), controlToggleBtn = $("#controlToggleBtn"), dataToggleBtn = $("#dataToggleBtn");
     const recordBtn = $("#recordBtn"), analyzeBtn = $("#analyzeBtn"), analysisText = $("#analysisText"), recordBody = $("#recordBody"), emptyRecords = $("#emptyRecords"), dataNotice = $("#dataNotice");
     const resetBtn = $("#resetBtn"), autoDemoBtn = $("#autoDemoBtn"), freeBtn = $("#freeBtn"), toast = $("#toast"), checkmark = $("#checkmark"), doneMask = $("#doneMask"), okBtn = $("#okBtn"), demoCursor = $("#demoCursor");
     const TWO_PI = Math.PI * 2;
     const THREE_QUARTER_VIEW=Object.freeze({depthX:.18,depthY:-.08,barrelDx:38,barrelDy:-12});
+    const BRUSH_CLEARANCE = 49;
     let codexModeController = null; /* codex-physics-mode-source:advanced-controller */
     const state = {
       currentTask:0, completed:false, freeMode:false, autoPlaying:false, autoCancel:false, autoLastError:null,
@@ -855,9 +866,11 @@ body #app .toolbar button:disabled{
       rotationDirection:0, turns:0, coilEmf:0, rectifiedCurrent:0, meterDeflection:0,
       evidence:{forward:false,fast:false,reverse:false}, observations:{forward:null,fast:null,reverse:null}, lastObservationKey:null,
       directionTravel:{forward:0,reverse:0,fast:0}, signalSamples:[], crankDrag:null,
+      brushes:{top:false,bottom:false},
       rafId:0, lastFrameAt:0, timers:new Set(), uiTimers:new Set(), settleResolvers:[], autoWaitResolve:null
     };
     const tasks = [
+      {key:"assembly", text:"装好换向器的两个电刷", hint:"分别点选上方电刷、下方电刷，让两者接触分裂环。", detail:"拆开的电刷与铜半环之间有间隙。任一电刷未装好时，转动线圈会产生感应电动势，外电路电流计仍保持零位。"},
       {key:"forward", text:"顺时针转动并记录", hint:"抓住圆形摇柄，顺时针连续转动。", detail:"从摇柄当前位置沿圆周顺时针拖动，观察中心零位电流计向正端偏转。"},
       {key:"fast", text:"加快转速并记录", hint:"继续顺时针转动，但明显加快。", detail:"比较指针偏转幅度；转速越大，脉动直流的响应越强。"},
       {key:"reverse", text:"反向转动并记录", hint:"改为逆时针连续转动。", detail:"换向器使固定转向的端子极性保持不变；反转曲柄后，外电路极性才反转。"},
@@ -872,7 +885,7 @@ body #app .toolbar button:disabled{
     function setStepUI(index){ state.currentTask=clamp(index,0,tasks.length-1); state.stepWarning=false; const task=tasks[state.currentTask]; taskStep.textContent="步骤 "+(state.currentTask+1)+" / "+tasks.length; taskText.textContent=task.text; taskHint.textContent=task.hint; hintPop.textContent=task.detail; updateDots(); updateStatus(); draw(); }
     function setModeLabel(){ modeTag.textContent=state.autoPlaying?"模式：自动演示":(state.freeMode?"模式：自由":"模式：引导"); }
     function speedLabel(){ const speed=Math.abs(state.angularVelocity); return speed>=14?"快速":speed>=2?"正常":"静止"; }
-    function updateStatus(text){ const fallback=state.completed?"已完成":Math.abs(state.angularVelocity)<.08?"待转动":(state.rotationDirection>0?"顺时针 · ":"逆时针 · ")+speedLabel(); statusTag.textContent="状态："+(text||fallback); }
+    function updateStatus(text){ const fallback=state.completed?"已完成":!circuitClosed()?"外电路断开":Math.abs(state.angularVelocity)<.08?"待转动":(state.rotationDirection>0?"顺时针 · ":"逆时针 · ")+speedLabel(); statusTag.textContent="状态："+(text||fallback); }
     function clearUiTimer(id){ if(!id) return; clearTimeout(id); state.uiTimers.delete(id); }
     function scheduleUi(fn,ms){ const id=setTimeout(() => { state.uiTimers.delete(id); fn(); },ms); state.uiTimers.add(id); return id; }
     function clearUiTimers(){ for(const id of state.uiTimers) clearTimeout(id); state.uiTimers.clear(); showToast.timer=0; showCheck.timer=0; resizeCanvas.timer=0; }
@@ -914,12 +927,54 @@ body #app .toolbar button:disabled{
       crankHandleHit.style.height=box.height+"px";
     }
 
+    function brushPositions(g) {
+      const { s, commutator:{cx,cy} } = g;
+      const topGap = state.brushes.top ? 0 : BRUSH_CLEARANCE*s;
+      const bottomGap = state.brushes.bottom ? 0 : BRUSH_CLEARANCE*s;
+      return {
+        top:{x:cx+3*s,y:cy-38*s-topGap,gap:topGap},
+        bottom:{x:cx-3*s,y:cy+38*s+bottomGap,gap:bottomGap}
+      };
+    }
+    function syncInteractiveButtons(){
+      const g = layout(), positions = brushPositions(g);
+      const width = Math.max(46, 60*g.s), height = Math.max(44, 25*g.s);
+      for (const [side, button] of Object.entries(brushButtons)) {
+        button.hidden = state.brushes[side];
+        button.style.left = positions[side].x-width/2+"px";
+        button.style.top = positions[side].y-height/2+"px";
+        button.style.width = width+"px";
+        button.style.height = height+"px";
+      }
+    }
+    function circuitClosed(){
+      return state.brushes.top && state.brushes.bottom;
+    }
+    function installBrush(side){
+      if (state.brushes[side]) return false;
+      if (Math.abs(state.angularVelocity)>=.08) {
+        warnStep("请等曲柄停稳后安装电刷。");
+        return false;
+      }
+      state.brushes[side] = true;
+      syncInteractiveButtons();
+      if (circuitClosed()) {
+        if (!state.freeMode && state.currentTask===0) setStepUI(1);
+        showCheck();
+        updateStatus("两只电刷已接触，外电路闭合");
+      } else {
+        updateStatus("已装一只电刷，外电路仍断开");
+      }
+      draw();
+      return true;
+    }
+
     function updateSignals(){
       const previousCoilEmf=state.coilEmf;
       const phase=Math.sin(state.crankAngle);
       state.coilEmf=state.angularVelocity*phase;
       const direction=state.rotationDirection || Math.sign(state.angularVelocity);
-      state.rectifiedCurrent=direction*Math.abs(state.coilEmf);
+      state.rectifiedCurrent=circuitClosed() ? direction*Math.abs(state.coilEmf) : 0;
       const target=clamp(state.rectifiedCurrent/16,-1,1);
       state.meterDeflection+=(target-state.meterDeflection)*.34;
       if(previousCoilEmf*state.coilEmf<0) state.signalSamples.push({coilEmf:0,rectifiedCurrent:0});
@@ -1011,10 +1066,15 @@ body #app .toolbar button:disabled{
     }
 
     function evidenceReady(key){
+      if(!circuitClosed()) return false;
       if(key==="forward"||key==="fast"||key==="reverse") return Boolean(state.observations[key]);
       return state.records.length>=3;
     }
     function recordObservation(options){
+      if(!circuitClosed()){
+        if(!(options&&options.quiet)) warnStep("请装好上下两个电刷，接通外电路。");
+        return false;
+      }
       const key=state.freeMode?(state.lastObservationKey||(state.rotationDirection<0?"reverse":Math.abs(state.angularVelocity)>=14?"fast":"forward")):tasks[state.currentTask].key;
       if(key==="analysis"||!evidenceReady(key)){ if(!(options&&options.quiet)) warnStep("请先完成当前曲柄操作并观察指针。"); return false; }
       if(!hasRecord(key)){
@@ -1174,10 +1234,7 @@ body #app .toolbar button:disabled{
       ctx.beginPath(); ctx.ellipse(front.x,front.y,rx,ry,0,0,TWO_PI); ctx.strokeStyle="#b9c9d3"; ctx.lineWidth=2.2*s; ctx.stroke();
       ctx.fillStyle="#17232c"; ctx.beginPath(); ctx.ellipse(front.x,front.y,4.5*s,10*s,0,0,TWO_PI); ctx.fill();
       ctx.restore();
-      const mid={x:(back.x+front.x)/2,y:(back.y+front.y)/2};
-      const brushTop={x:mid.x+3*s,y:mid.y-38*s};
-      const brushBottom={x:mid.x-3*s,y:mid.y+38*s};
-      return {back,front,rx,ry,brushTop,brushBottom};
+      return {back,front,rx,ry};
     }
     function drawCommutator(g){
       const s=g.s,cx=g.commutator.cx,cy=g.commutator.cy,a=state.crankAngle;
@@ -1185,12 +1242,13 @@ body #app .toolbar button:disabled{
       const view=drawCommutatorBarrel(g,a);
       line([[contacts.upper.x,contacts.upper.y],[view.back.x-17*s,contacts.upper.y],[view.back.x,view.back.y-11*s]],"#d9a441",3.5*s);
       line([[contacts.lower.x,contacts.lower.y],[view.back.x-17*s,contacts.lower.y],[view.back.x,view.back.y+11*s]],"#f1c45c",3.5*s);
-      const brushTop=view.brushTop,brushBottom=view.brushBottom;
+      const {top:brushTop,bottom:brushBottom}=brushPositions(g);
       fillRound(brushTop.x-18*s,brushTop.y-8*s,36*s,16*s,4*s,"#48525a");
       fillRound(brushBottom.x-18*s,brushBottom.y-8*s,36*s,16*s,4*s,"#48525a");
-      line([[brushTop.x,brushTop.y+8*s],[brushTop.x,view.front.y-view.ry+3*s]],"#9ba6ad",5*s);
-      line([[brushBottom.x,brushBottom.y-8*s],[brushBottom.x,view.front.y+view.ry-3*s]],"#9ba6ad",5*s);
-      label("电刷",cx+4*s,cy-55*s,11*s); label("分裂环换向器",cx+8*s,cy+61*s,12*s,"#ffc98f");
+      line([[brushTop.x,brushTop.y+8*s],[brushTop.x,view.front.y-view.ry+3*s-brushTop.gap]],"#9ba6ad",5*s);
+      line([[brushBottom.x,brushBottom.y-8*s],[brushBottom.x,view.front.y+view.ry-3*s+brushBottom.gap]],"#9ba6ad",5*s);
+      if(circuitClosed()) label("电刷",cx+4*s,cy-55*s,11*s);
+      label("分裂环换向器",cx+8*s,cy+61*s,12*s,"#ffc98f");
       return {
         negative:{x:brushTop.x+18*s,y:brushTop.y},
         positive:{x:brushBottom.x+18*s,y:brushBottom.y}
@@ -1235,7 +1293,8 @@ body #app .toolbar button:disabled{
       fillRound(x,y,w,44*s,10*s,"rgba(0,0,0,.58)");
       const direction=state.rotationDirection===0?"停止":state.rotationDirection>0?"顺时针":"逆时针";
       ctx.save(); ctx.fillStyle="#eaf5ff"; ctx.font="700 "+Math.max(10,14*s)+"px Arial"; ctx.textAlign="left"; ctx.textBaseline="middle";
-      ctx.fillText("曲柄："+direction+" · "+speedLabel()+"   线圈电动势："+round(state.coilEmf,2)+"   外电路："+(state.rectifiedCurrent>=0?"+":"")+round(state.rectifiedCurrent,2),x+14*s,y+22*s); ctx.restore();
+      const output=circuitClosed() ? (state.rectifiedCurrent>=0?"+":"")+round(state.rectifiedCurrent,2) : "断开";
+      ctx.fillText("曲柄："+direction+" · "+speedLabel()+"   线圈电动势："+round(state.coilEmf,2)+"   外电路："+output,x+14*s,y+22*s); ctx.restore();
     }
     function draw(){
       if(!state.width||!state.height) return;
@@ -1253,7 +1312,7 @@ body #app .toolbar button:disabled{
       const stageRect=stage.getBoundingClientRect(), rect=labArea.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
       state.width=rect.width; state.height=rect.height; state.stageWidth=stageRect.width; state.stageHeight=stageRect.height;
       canvas.width=Math.round(rect.width*dpr); canvas.height=Math.round(rect.height*dpr); canvas.style.width=rect.width+"px"; canvas.style.height=rect.height+"px"; ctx.setTransform(dpr,0,0,dpr,0,0);
-      fitDrawers(); syncCrankHandleLayer(); draw();
+      fitDrawers(); syncCrankHandleLayer(); syncInteractiveButtons(); draw();
     }
     function pointerPoint(event){ const rect=canvas.getBoundingClientRect(); return {x:event.clientX-rect.left,y:event.clientY-rect.top}; }
     function onPointerDown(event){
@@ -1312,13 +1371,21 @@ body #app .toolbar button:disabled{
       resetScene({quiet:true,keepMode:false});
       state.autoPlaying=true; state.autoCancel=false; state.autoLastError=null; autoDemoBtn.textContent="退出自动演示"; freeBtn.disabled=true; setModeLabel(); setDrawerCollapsed(controlDock,false); setDrawerCollapsed(dataDock,true);
       try{
+        for (const side of ["top","bottom"]) {
+          const point = brushPositions(layout())[side];
+          moveCursorTo(point.x,point.y);
+          if(!(await autoWait(470))) throw new Error("AUTO_CANCELLED");
+          if(!installBrush(side)) throw new Error("AUTO_BRUSH_ASSEMBLY_FAILED:"+side);
+          if(!(await autoWait(350))) throw new Error("AUTO_CANCELLED");
+        }
+        if(!circuitClosed()) throw new Error("AUTO_CIRCUIT_OPEN");
         const script=[
           {direction:"forward",speed:"normal",turns:2,key:"forward"},
           {direction:"forward",speed:"fast",turns:2,key:"fast"},
           {direction:"reverse",speed:"normal",turns:2,key:"reverse"}
         ];
         for(let i=0;i<script.length;i++){
-          setStepUI(i); updateStatus("自动演示");
+          setStepUI(i+1); updateStatus("自动演示");
           await autoCrank(script[i].direction,script[i].speed,script[i].turns);
           if(!(await /* codex-physics-mode-source:pace-51-observePrimary */ autoWait(0,"observePrimary"))) throw new Error("AUTO_CANCELLED");
           if(state.autoCancel) throw new Error("AUTO_CANCELLED");
@@ -1326,7 +1393,7 @@ body #app .toolbar button:disabled{
           if(!(await /* codex-physics-mode-source:pace-51-recordConfirm */ autoWait(0,"recordConfirm"))) throw new Error("AUTO_CANCELLED");
           if(!(await /* codex-physics-mode-source:pace-51-stepTransition */ autoWait(0,"stepTransition"))) throw new Error("AUTO_CANCELLED");
         }
-        setStepUI(3);
+        setStepUI(tasks.length-1);
         if(!(await /* codex-physics-mode-source:pace-51-analysisLead */ autoWait(700,"analysisLead"))) throw new Error("AUTO_CANCELLED");
         if(!analyzeConclusion()) throw new Error("AUTO_ANALYSIS_FAILED");
         if(!(await autoWait(900))) throw new Error("AUTO_CANCELLED");
@@ -1350,9 +1417,10 @@ body #app .toolbar button:disabled{
       state.completed=false; state.analysisDone=false; state.currentTask=0; state.stepWarning=false; state.successCooldown=false;
       state.records=[]; state.unseenRecords=0; state.crankAngle=-Math.PI/4; state.angularVelocity=0; state.rotationDirection=0; state.turns=0;
       state.coilEmf=0; state.rectifiedCurrent=0; state.meterDeflection=0; state.evidence={forward:false,fast:false,reverse:false}; state.observations={forward:null,fast:null,reverse:null}; state.lastObservationKey=null; state.directionTravel={forward:0,reverse:0,fast:0}; state.signalSamples=[]; state.crankDrag=null;
+      state.brushes={top:false,bottom:false};
       state.autoLastError=null;
       if(!options||!options.keepMode) state.freeMode=false;
-      doneMask.style.display="none"; analysisText.classList.remove("ok"); analysisText.textContent="完成三次记录后分析。"; renderRecords(); updateBadge(); setModeLabel(); syncCrankHandleLayer(); setStepUI(0);
+      doneMask.style.display="none"; analysisText.classList.remove("ok"); analysisText.textContent="完成三次记录后分析。"; renderRecords(); updateBadge(); setModeLabel(); syncCrankHandleLayer(); syncInteractiveButtons(); setStepUI(0);
       if(!options||!options.quiet) showToast("已重置");
       return true;
     }
@@ -1388,6 +1456,7 @@ body #app .toolbar button:disabled{
         schemaVersion:1, experimentId:51,
         mode:state.freeMode?"free":"guided", currentTask:state.currentTask, completed:state.completed, analysisDone:state.analysisDone,
         physics:{
+          brushes:{...state.brushes}, circuitClosed:circuitClosed(),
           crankAngle:round(state.crankAngle), angularVelocity:round(state.angularVelocity), rotationDirection:state.rotationDirection,
           turns:round(state.turns), coilEmf:round(state.coilEmf), rectifiedCurrent:round(state.rectifiedCurrent), directionTravel:{...state.directionTravel},
           meterDeflection:round(state.meterDeflection), evidence:{...state.evidence}, signalSamples:state.signalSamples.map(sample => ({...sample}))
@@ -1400,6 +1469,9 @@ body #app .toolbar button:disabled{
     }
     function initEvents(){
       crankHandleHit.addEventListener("pointerdown",onPointerDown); crankHandleHit.addEventListener("pointermove",onPointerMove); crankHandleHit.addEventListener("pointerup",finishCrank); crankHandleHit.addEventListener("pointercancel",finishCrank);
+      Object.entries(brushButtons).forEach(([side, button]) => {
+        button.addEventListener("click", () => { if(!state.autoPlaying) installBrush(side); });
+      });
       recordBtn.addEventListener("click",() => recordObservation()); analyzeBtn.addEventListener("click",analyzeConclusion);
       resetBtn.addEventListener("click",() => { const free=state.freeMode; resetScene({quiet:true,keepMode:true}); setFreeMode(free,{quiet:true}); showToast("已重置"); });
       autoDemoBtn.addEventListener("click",() => state.autoPlaying?cancelAutoDemo():runAutoDemo());

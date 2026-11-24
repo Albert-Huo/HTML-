@@ -166,18 +166,23 @@
   }
   .sampleStand{
     position:absolute;
-    left:50%;
+    left:72%;
     bottom:26px;
     transform:translateX(-50%);
-    width:178px;
+    width:50%;
     height:24px;
     border-radius:999px;
     background:linear-gradient(180deg,#d9dee4,#9da7b4);
     box-shadow:0 8px 14px rgba(0,0,0,.28);
+    color:#182634;
+    font-size:11px;
+    font-weight:800;
+    text-align:center;
+    line-height:24px;
   }
   .sampleBlock{
     position:absolute;
-    left:50%;
+    left:27%;
     bottom:50px;
     transform:translateX(-50%);
     width:76px;
@@ -187,10 +192,33 @@
     border:1px solid rgba(255,255,255,.14);
     box-shadow:0 18px 28px rgba(0,0,0,.28);
     transition:width .18s ease, height .18s ease, background .18s ease;
+    padding:0;
+    cursor:grab;
+    touch-action:none;
+    z-index:1;
   }
+  .sampleStage[data-on-scale="true"] .sampleBlock{ left:72%; }
+  #stage .sampleBlock.dragging{
+    left:var(--sample-x) !important;
+    top:var(--sample-y) !important;
+    bottom:auto !important;
+    transform:translate(-50%,-50%);
+    cursor:grabbing;
+  }
+  .sampleBlock:focus-visible{ outline:2px solid #87e7d9; outline-offset:3px; }
+  .sampleHomeLabel{
+    position:absolute; left:27%; bottom:11px; transform:translateX(-50%);
+    color:#a8bbd2; font-size:11px; white-space:nowrap;
+  }
+  #readVolumeBtn{
+    margin-top:8px; min-height:44px; width:100%; padding:4px;
+    color:#e9fff9; background:#205348; border:1px solid #5d9b8e;
+    border-radius:8px; font:inherit; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  #readVolumeBtn[aria-pressed="true"]{ background:#173c36; color:#b3f4de; }
   .sampleGlow{
     position:absolute;
-    left:50%;
+    left:27%;
     bottom:44px;
     transform:translateX(-50%);
     width:130px;
@@ -199,6 +227,7 @@
     filter:blur(14px);
     opacity:.38;
   }
+  .sampleStage[data-on-scale="true"] .sampleGlow{ left:72%; }
   .sampleLabel{
     position:absolute;
     left:16px;
@@ -854,16 +883,19 @@
       font-size:11px !important;
     }
     #stage .sampleBlock{
-      width:44px !important;
-      height:44px !important;
-      bottom:32px !important;
+      width:var(--sample-narrow-size, 40px) !important;
+      height:var(--sample-narrow-size, 40px) !important;
+      bottom:36px !important;
       border-radius:12px !important;
     }
     #stage .sampleStand{
       bottom:20px !important;
-      width:110px !important;
+      width:50% !important;
       height:16px !important;
+      line-height:16px !important;
+      font-size:10px !important;
     }
+    #stage .sampleHomeLabel{ bottom:20px !important; font-size:10px !important; }
     #stage .sampleGlow{
       bottom:32px !important;
       width:116px !important;
@@ -1747,7 +1779,7 @@
   <div class="task-card" id="taskCard">
     <div class="task-step" id="taskStep">关卡 1 / 4</div>
     <div class="task-text">
-      <div id="taskText">选择“铝块”，把体积调到 20 cm³，点击“测量并记录”，再点击“确认观察”。</div>
+      <div id="taskText">把铝块的体积调到 20 cm³，读取滑尺，再放上秤盘称量并记录。</div>
       <div class="task-hint" id="taskHint">提示：先用同一种物质记录多组数据，才能看出质量与体积成正比。</div>
     </div>
     <div class="progress-dots">
@@ -1775,8 +1807,8 @@
     <button class="audio-toggle" id="audioToggle" type="button" aria-label="关闭音效" aria-pressed="true" title="关闭音效">🔊</button>
     <div class="observation-panel" id="exp11ObservationPanel" aria-live="polite">
       <span data-reading data-mobile-redundant>材料 <b id="obsMaterial">铝块</b></span>
-      <span data-reading data-mobile-redundant>V <b id="obsVolume">20 cm³</b></span>
-      <span data-reading data-mobile-redundant>m <b id="obsMass">54.0 g</b></span>
+      <span data-reading data-mobile-redundant>V <b id="obsVolume">—</b></span>
+      <span data-reading data-mobile-redundant>m <b id="obsMass">—</b></span>
       <span data-reading>点数 <b id="obsCount">0</b></span>
       <span data-reading aria-label="拟合状态"><b id="obsFit">未拟合</b></span>
     </div>
@@ -1793,33 +1825,31 @@
 <div class="lab-area">
       <div class="bench">
         <div class="apparatusCard">
-          <div class="cardTitle">样品与电子天平</div>
-          <div class="sampleStage">
+          <div class="cardTitle">样品与电子秤</div>
+          <div class="sampleStage" id="sampleStage" data-on-scale="false">
             <div class="sampleGlow" id="sampleGlow"></div>
             <div class="sampleLabel" id="sampleLabel">铝块</div>
-            <div class="sampleSpecs">
-              <div class="specPill">体积：<b id="sampleVolume">20 cm³</b></div>
-              <div class="specPill">密度：<b id="sampleDensity">2.7 g/cm³</b></div>
-            </div>
-            <div class="sampleBlock" id="sampleBlock"></div>
-            <div class="sampleStand"></div>
+            <div class="sampleHomeLabel">待测区</div>
+            <div class="sampleStand" id="sampleStand">秤盘</div>
+            <button class="sampleBlock" id="sampleBlock" type="button" aria-label="把铝块放到秤盘" aria-pressed="false"></button>
           </div>
           <div class="balancePanel">
-            <div class="mini">改变样品体积后，电子天平会显示当前这块样品应有的质量。点击“测量并记录”把该点写入图像。</div>
+            <div class="mini">从滑尺读取体积，再把样品拖到秤盘中央。也可点击样品放上秤盘。</div>
             <div class="balanceDisplay">
-              <span>电子天平</span>
-              <b id="massReadout">54.0 g</b>
+              <span>电子秤</span>
+              <b id="massReadout">0.0 g</b>
             </div>
             <div class="volumeRig">
               <div class="volumeTop">
-                <span>体积调节滑尺</span>
+                <span>体积滑尺</span>
                 <span id="volumeValue">20 cm³</span>
               </div>
-              <div class="volumeTrack" id="volumeTrack">
+              <div class="volumeTrack" id="volumeTrack" role="slider" tabindex="0" aria-label="样品体积" aria-valuemin="10" aria-valuemax="100" aria-valuenow="20" aria-valuetext="20 立方厘米">
                 <div class="volumeFill" id="volumeFill"></div>
                 <div class="volumeHandle" id="volumeHandle"></div>
               </div>
               <div class="volumeScale"><span>10</span><span>30</span><span>50</span><span>70</span><span>90</span><span>100</span></div>
+              <button id="readVolumeBtn" type="button" aria-pressed="false">读取体积 V</button>
             </div>
           </div>
         </div>
@@ -1864,8 +1894,8 @@
         </div>
         <div class="readout">
           <span class="pill">当前材料：<b id="materialPill">铝块</b></span>
-          <span class="pill">当前体积：<b id="volumePill">20 cm³</b></span>
-          <span class="pill">当前质量：<b id="massPill">54.0 g</b></span>
+          <span class="pill">已读体积：<b id="volumePill">—</b></span>
+          <span class="pill">当前质量：<b id="massPill">—</b></span>
           <span class="pill">测量点数：<b id="countPill">0</b></span>
           <span class="pill">分析状态：<b id="analysisPill">未拟合</b></span>
         </div>
@@ -1934,7 +1964,7 @@
   <div class="explanation">
     <h2>实验名：探究物体的质量与体积之间的关系</h2>
     <ul>
-      <li><b>关键操作与现象</b>：选择同一种材料，改变样品体积并测量质量，把各组数据记录到 m-V 图像中。</li>
+      <li><b>关键操作与现象</b>：选择同一种材料，为不同大小的样品分别读取体积、用电子秤测质量，再把各组数据记入 m-V 图像。</li>
       <li><b>关键操作与现象</b>：再换一种材料重复记录，可以看到不同材料的数据点形成不同斜率的直线。</li>
       <li><b>原理与结论</b>：同一种物质的质量与体积成正比，图像近似为过原点的直线；不同物质的斜率不同，说明密度不同。</li>
     </ul>
@@ -1949,17 +1979,17 @@ const MATERIALS = {
 };
 const TASKS = [
   {
-    text:'选择“铝块”，把体积调到 20 cm³，点击“测量并记录”，再点击“确认观察”。',
-    hint:'提示：先用同一种物质记录第一组数据，后续才能比较质量与体积的变化。',
+    text:'把铝块的体积调到 20 cm³，读取滑尺，再放上秤盘称量并记录。',
+    hint:'点“读取体积 V”记录滑尺示数，再拖动样品到秤盘。可点击样品将它放上秤盘。',
     check:() => state.records.some((r)=>r.material==='aluminum' && r.volume===20)
   },
   {
-    text:'继续保持“铝块”，再记录 2 组不同体积的数据，然后点击“确认观察”。',
-    hint:'提示：铝块至少要有 3 个不同体积的数据点，才能看出一条直线。',
+    text:'使用铝块再测两组不同体积的样品，分别读取体积、称量并记录。',
+    hint:'调节体积会换一个待测样品。每个样品都要重新读取体积和称量。',
     check:() => uniqueVolumes('aluminum').length >= 3
   },
   {
-    text:'切换到另一种材料，再记录 2 组不同体积的数据，然后点击“确认观察”。',
+    text:'换一种材料，再测两组不同体积的样品。分别读取体积、称量并记录。',
     hint:'提示：建议切换到“铁块”，这样两种材料的斜率差异最明显。',
     check:() => materialKeysWithTwoPoints().length >= 2
   },
@@ -1997,7 +2027,10 @@ const state = {
   fitVisible:false,
   analysisOk:false,
   fitSummary:'',
-  measuredAtCurrent:false,
+  volumeReading:null,
+  sampleOnScale:false,
+  sampleDrag:null,
+  suppressSampleClick:false,
   volumeDrag:null
 };
 
@@ -2010,11 +2043,12 @@ const taskHintEl = $('#taskHint');
 const modeTag = $('#modeTag');
 const statusTag = $('#statusTag');
 const sampleLabel = $('#sampleLabel');
+const sampleStage = $('#sampleStage');
 const sampleBlock = $('#sampleBlock');
+const sampleStand = $('#sampleStand');
 const sampleGlow = $('#sampleGlow');
-const sampleVolume = $('#sampleVolume');
-const sampleDensity = $('#sampleDensity');
 const massReadout = $('#massReadout');
+const readVolumeBtn = $('#readVolumeBtn');
 const volumeValue = $('#volumeValue');
 const volumeTrack = $('#volumeTrack');
 const volumeFill = $('#volumeFill');
@@ -2075,6 +2109,7 @@ function trackTimer(id){ state.timers.add(id); return id; }
 function untrackTimer(id){ state.timers.delete(id); }
 function clearTrackedTimers(){ state.timers.forEach((id)=>clearTimeout(id)); state.timers.clear(); }
 function currentMass(){ return Number((MATERIALS[state.material].density * state.volume).toFixed(1)); }
+function scaleHasSample(){ return state.sampleOnScale && !state.sampleDrag?.moved; }
 function uniqueVolumes(material){ return [...new Set(state.records.filter((r)=>r.material===material && r.kind==='measure').map((r)=>r.volume))].sort((a,b)=>a-b); }
 function materialKeysWithTwoPoints(){
   return Object.keys(MATERIALS).filter((key)=>uniqueVolumes(key).length >= 2);
@@ -2083,7 +2118,7 @@ function getMeasureRecords(material){
   return state.records.filter((r)=>r.kind==='measure' && (!material || r.material===material));
 }
 function getGraphMaxY(){
-  const base = Math.max(120, ...getMeasureRecords().map((r)=>r.mass + 20), currentMass() + 20);
+  const base = Math.max(120, ...getMeasureRecords().map((r)=>r.mass + 20));
   return Math.ceil(base / 50) * 50;
 }
 
@@ -2149,13 +2184,14 @@ function lockSuccess(){
 
 function updateSampleVisual(){
   const meta = MATERIALS[state.material];
-  const size = clamp(42 + (state.volume - 10) * 0.48, 42, 90);
+  const size = 40 * Math.cbrt(state.volume / 10);
   sampleLabel.textContent = meta.label;
-  sampleVolume.textContent = `${state.volume} cm³`;
-  sampleDensity.textContent = `${meta.density.toFixed(1)} g/cm³`;
-  massReadout.textContent = `${currentMass().toFixed(1)} g`;
+  sampleStage.dataset.onScale = String(state.sampleOnScale);
+  sampleBlock.setAttribute('aria-label', state.sampleOnScale ? `把${meta.label}移回待测区` : `把${meta.label}放到秤盘`);
+  sampleBlock.setAttribute('aria-pressed', String(state.sampleOnScale));
   sampleBlock.style.width = `${size}px`;
   sampleBlock.style.height = `${size}px`;
+  sampleBlock.style.setProperty('--sample-narrow-size', `${size * .58}px`);
   sampleBlock.style.background = `linear-gradient(135deg, ${meta.color}, rgba(255,255,255,.1))`;
   sampleGlow.style.background = meta.glow;
   sampleGlow.style.width = `${size + 54}px`;
@@ -2166,6 +2202,8 @@ function renderVolume(){
   volumeHandle.style.left = `${ratio * usable + volumeHandle.offsetWidth / 2}px`;
   volumeFill.style.width = `${ratio * 100}%`;
   volumeValue.textContent = `${state.volume} cm³`;
+  volumeTrack.setAttribute('aria-valuenow', String(state.volume));
+  volumeTrack.setAttribute('aria-valuetext', `${state.volume} 立方厘米`);
 }
 function isMobileViewport(){ return window.innerWidth <= 720 || stage.clientWidth <= 720; }
 function placeGraphCardForViewport(){
@@ -2334,8 +2372,11 @@ function drawGraph(){
 }
 
 function updateVolume(value){
-  state.volume = clamp(Math.round(value / 5) * 5, 10, 100);
-  state.measuredAtCurrent = false;
+  const volume = clamp(Math.round(value / 5) * 5, 10, 100);
+  if(volume !== state.volume){
+    state.volume = volume;
+    clearSampleMeasurements();
+  }
   renderVolume();
   updateSampleVisual();
   refreshReadouts();
@@ -2343,8 +2384,10 @@ function updateVolume(value){
 }
 function setMaterial(key, fromAuto = false){
   if(state.autoPlaying && !fromAuto) return;
-  state.material = key;
-  state.measuredAtCurrent = false;
+  if(key !== state.material){
+    state.material = key;
+    clearSampleMeasurements();
+  }
   matButtons.forEach((btn)=>btn.classList.toggle('active', btn.dataset.key === key));
   updateSampleVisual();
   refreshReadouts();
@@ -2358,26 +2401,94 @@ function updateVolumeFromClientX(clientX){
   updateVolume(10 + ratio * 90);
 }
 
+function clearSampleMeasurements(){
+  state.volumeReading = null;
+  state.sampleOnScale = false;
+  state.sampleDrag = null;
+  sampleBlock.classList.remove('dragging');
+}
+
+function readSampleVolume(){
+  state.volumeReading = state.volume;
+  refreshReadouts();
+  return true;
+}
+
+function placeSample(onScale){
+  state.sampleOnScale = onScale;
+  updateSampleVisual();
+  refreshReadouts();
+}
+
+function startSampleDrag(event){
+  if((state.autoPlaying && event.pointerId >= 0) || state.sampleDrag || event.button !== 0) return;
+  const rect = sampleBlock.getBoundingClientRect();
+  state.suppressSampleClick = false;
+  state.sampleDrag = {
+    pointerId:event.pointerId, startX:event.clientX, startY:event.clientY,
+    offsetX:event.clientX - (rect.left + rect.width / 2),
+    offsetY:event.clientY - (rect.top + rect.height / 2),
+    moved:false
+  };
+  if(event.pointerId >= 0) sampleBlock.setPointerCapture(event.pointerId);
+}
+
+function moveSampleDrag(event){
+  const drag = state.sampleDrag;
+  if(!drag || drag.pointerId !== event.pointerId) return;
+  if(!drag.moved){
+    if(Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 5) return;
+    drag.moved = true;
+    sampleBlock.classList.add('dragging');
+    refreshReadouts();
+  }
+  const box = sampleStage.getBoundingClientRect();
+  sampleBlock.style.setProperty('--sample-x', `${clamp(event.clientX - drag.offsetX - box.left, 0, box.width)}px`);
+  sampleBlock.style.setProperty('--sample-y', `${clamp(event.clientY - drag.offsetY - box.top, 0, box.height)}px`);
+}
+
+function finishSampleDrag(event, cancelled = false){
+  const drag = state.sampleDrag;
+  if(!drag || drag.pointerId !== event.pointerId) return;
+  state.sampleDrag = null;
+  state.suppressSampleClick = drag.moved || cancelled;
+  sampleBlock.classList.remove('dragging');
+  if(cancelled || !drag.moved){
+    refreshReadouts();
+    return;
+  }
+  const pan = sampleStand.getBoundingClientRect();
+  const x = event.clientX - drag.offsetX;
+  const y = event.clientY - drag.offsetY;
+  const tolerance = sampleBlock.offsetHeight;
+  placeSample(x >= pan.left && x <= pan.right && y >= pan.top - tolerance && y <= pan.bottom + 16);
+}
+
 function refreshReadouts(){
   const meta = MATERIALS[state.material];
+  const volumeText = state.volumeReading === null ? '—' : `${state.volumeReading} cm³`;
+  const massText = scaleHasSample() ? `${currentMass().toFixed(1)} g` : '—';
+  massReadout.textContent = scaleHasSample() ? massText : '0.0 g';
+  readVolumeBtn.textContent = state.volumeReading === null ? '读取体积 V' : `已读 ${volumeText}`;
+  readVolumeBtn.setAttribute('aria-pressed', String(state.volumeReading !== null));
   materialPill.textContent = meta.label;
-  volumePill.textContent = `${state.volume} cm³`;
-  massPill.textContent = `${currentMass().toFixed(1)} g`;
+  volumePill.textContent = volumeText;
+  massPill.textContent = massText;
   countPill.textContent = `${getMeasureRecords().length}`;
   analysisPill.textContent = state.analysisOk ? '已完成' : (state.fitVisible ? '已拟合' : '未拟合');
   obsMaterial.textContent = meta.label;
-  obsVolume.textContent = `${state.volume} cm³`;
-  obsMass.textContent = `${currentMass().toFixed(1)} g`;
+  obsVolume.textContent = volumeText;
+  obsMass.textContent = massText;
   obsCount.textContent = `${getMeasureRecords().length}`;
   obsFit.textContent = state.analysisOk ? '已完成' : (state.fitVisible ? '已拟合' : '未拟合');
   if(state.analysisOk){
     effectText.textContent = '观察：同种材料点几乎共线，不同材料斜率不同';
     labNote.textContent = '实验状态：分析结论成立';
   }else if(state.autoPlaying){
-    effectText.textContent = `观察：${MATERIALS[state.material].label} 当前质量 ${currentMass().toFixed(1)} g`;
+    effectText.textContent = `观察：${meta.label} ${massText === '—' ? '待称量' : massText}`;
     labNote.textContent = '实验状态：自动演示中';
   }else if(state.freeMode){
-    effectText.textContent = `观察：${MATERIALS[state.material].label} 当前质量 ${currentMass().toFixed(1)} g`;
+    effectText.textContent = `观察：${meta.label} ${massText === '—' ? '待称量' : massText}`;
     labNote.textContent = '实验状态：自由探索中，可切换材料、调体积并记录';
   }else if(state.currentTask === 0){
     effectText.textContent = '观察：先获取铝块第一组数据';
@@ -2523,12 +2634,17 @@ function measureCurrent(fromAuto = false){
     else warnCurrentStep('当前步骤需要点击“线性拟合”，不是继续测量。');
     return false;
   }
+  if(state.volumeReading !== state.volume || !scaleHasSample()){
+    if(!fromAuto) warnCurrentStep(state.volumeReading !== state.volume
+      ? '请先点击“读取体积 V”，取得这块样品的滑尺读数。'
+      : '请把样品放到秤盘上，读取质量后再记录。');
+    return false;
+  }
   if(state.records.some((r)=>r.kind==='measure' && r.material===state.material && r.volume===state.volume)){
     if(!fromAuto) showToast('该材料与体积组合已记录，无需重复写入。');
     return false;
   }
-  addRecord({ kind:'measure', material:state.material, volume:state.volume, mass:currentMass(), note:`${MATERIALS[state.material].label}测量点` });
-  state.measuredAtCurrent = true;
+  addRecord({ kind:'measure', material:state.material, volume:state.volumeReading, mass:currentMass(), note:`${MATERIALS[state.material].label}测量点` });
   state.fitVisible = false;
   state.analysisOk = false;
   analysisBox.textContent = isMobileViewport()
@@ -2749,6 +2865,8 @@ function finishVolumeDrag(pointerId){
 }
 function refreshInteractionLocks(){
   const autoLocked = state.autoPlaying;
+  sampleBlock.disabled = autoLocked;
+  readVolumeBtn.disabled = autoLocked;
   measureBtn.disabled = autoLocked;
   fitBtn.disabled = autoLocked;
   checkBtn.disabled = autoLocked;
@@ -2779,7 +2897,8 @@ function captureFreeSnapshot(){
     fitVisible:state.fitVisible,
     analysisOk:state.analysisOk,
     fitSummary:state.fitSummary,
-    measuredAtCurrent:state.measuredAtCurrent,
+    volumeReading:state.volumeReading,
+    sampleOnScale:state.sampleOnScale,
     awaitingQuiz:state.awaitingQuiz,
     quizPassed:state.quizPassed
   };
@@ -2798,7 +2917,8 @@ function restoreFreeSnapshot(){
     fitVisible:snapshot.fitVisible,
     analysisOk:snapshot.analysisOk,
     fitSummary:snapshot.fitSummary,
-    measuredAtCurrent:snapshot.measuredAtCurrent,
+    volumeReading:snapshot.volumeReading,
+    sampleOnScale:snapshot.sampleOnScale,
     awaitingQuiz:snapshot.awaitingQuiz,
     quizPassed:snapshot.quizPassed
   });
@@ -2853,7 +2973,7 @@ function resetAll(opts = {}){
   state.awaitingQuiz = false;
   state.quizPassed = false;
   state.fitSummary = '';
-  state.measuredAtCurrent = false;
+  clearSampleMeasurements();
   state.pointerDrag = null;
   state.volumeDrag = null;
   doneMask.style.display = 'none';
@@ -3011,6 +3131,25 @@ async function demoDragVolumeTo(value, runId){
   finishVolumeDrag(-1);
   await waitAuto(160, runId);
 }
+async function demoMeasureSample(runId){
+  await demoClickElement(readVolumeBtn, runId, readSampleVolume);
+  const sample = elemCenterInStage(sampleBlock);
+  const pan = elemCenterInStage(sampleStand);
+  await moveDemoCursorTo(sample.x, sample.y, runId);
+  const stageRect = getStageRect();
+  startSampleDrag({pointerId:-1, button:0, clientX:stageRect.left + sample.x, clientY:stageRect.top + sample.y});
+  for(let i = 1; i <= 12; i += 1){
+    const x = sample.x + (pan.x - sample.x) * i / 12;
+    const y = sample.y + (pan.y - 18 - sample.y) * i / 12;
+    moveSampleDrag({pointerId:-1, clientX:stageRect.left + x, clientY:stageRect.top + y});
+    setDemoCursor(x, y);
+    await waitAuto(24, runId);
+  }
+  finishSampleDrag({pointerId:-1, clientX:stageRect.left + pan.x, clientY:stageRect.top + pan.y - 18});
+  const before = state.records.length;
+  await demoClickElement(measureBtn, runId, () => measureCurrent(true));
+  assertAutoRecorded(before);
+}
 function stopAutoDemo(byUser = false){
   if(!state.autoPlaying) return;
   state.demoRunId += 1;
@@ -3046,33 +3185,23 @@ async function startAutoDemo(){
   try {
     await demoClickElement(matButtons.find((btn)=>btn.dataset.key === 'aluminum'), runId, async ()=>{ setMaterial('aluminum', true); });
     await demoDragVolumeTo(20, runId);
-    let before = state.records.length;
-    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
-    assertAutoRecorded(before);
+    await demoMeasureSample(runId);
     await demoConfirmTask(runId, 0);
     await waitAuto(460, runId);
 
     await demoDragVolumeTo(40, runId);
-    before = state.records.length;
-    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
-    assertAutoRecorded(before);
+    await demoMeasureSample(runId);
     await waitAuto(180, runId);
     await demoDragVolumeTo(60, runId);
-    before = state.records.length;
-    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
-    assertAutoRecorded(before);
+    await demoMeasureSample(runId);
     await demoConfirmTask(runId, 1);
     await waitAuto(460, runId);
 
     await demoClickElement(matButtons.find((btn)=>btn.dataset.key === 'iron'), runId, async ()=>{ setMaterial('iron', true); });
     await demoDragVolumeTo(20, runId);
-    before = state.records.length;
-    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
-    assertAutoRecorded(before);
+    await demoMeasureSample(runId);
     await demoDragVolumeTo(40, runId);
-    before = state.records.length;
-    await demoClickElement(measureBtn, runId, async ()=>{ measureCurrent(true); });
-    assertAutoRecorded(before);
+    await demoMeasureSample(runId);
     await demoConfirmTask(runId, 2);
     await waitAuto(460, runId);
 
@@ -3101,11 +3230,32 @@ async function startAutoDemo(){
 
 function initHandlers(){
   matButtons.forEach((btn)=>btn.addEventListener('click', ()=> setMaterial(btn.dataset.key, false)));
+  readVolumeBtn.addEventListener('click', readSampleVolume);
+  sampleBlock.addEventListener('pointerdown', startSampleDrag);
+  sampleBlock.addEventListener('pointermove', moveSampleDrag);
+  sampleBlock.addEventListener('pointerup', finishSampleDrag);
+  sampleBlock.addEventListener('pointercancel', (event)=>finishSampleDrag(event, true));
+  sampleBlock.addEventListener('lostpointercapture', (event)=>finishSampleDrag(event, true));
+  sampleBlock.addEventListener('click', (event)=>{
+    if(state.autoPlaying) return;
+    if(event.detail !== 0 && state.suppressSampleClick){
+      state.suppressSampleClick = false;
+      return;
+    }
+    placeSample(!state.sampleOnScale);
+  });
   volumeTrack.addEventListener('pointerdown', (e)=>{
     if(state.autoPlaying) return;
     beginVolumeDrag(e.pointerId);
     updateVolumeFromClientX(e.clientX);
     e.preventDefault();
+  });
+  volumeTrack.addEventListener('keydown', (event)=>{
+    if(state.autoPlaying) return;
+    const movement = {ArrowLeft:-5, ArrowDown:-5, ArrowRight:5, ArrowUp:5};
+    if(!(event.key in movement)) return;
+    event.preventDefault();
+    updateVolume(state.volume + movement[event.key]);
   });
   stage.addEventListener('pointermove', (e)=>{
     if(state.pointerDrag && state.pointerDrag.kind === 'dock') updateDockDrag(e.clientX, e.clientY);

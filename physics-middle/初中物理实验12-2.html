@@ -2004,7 +2004,7 @@
 
     <div class="lab-area" id="labArea">
       <div class="scale-zone">
-        <div class="module-label" style="left:58px; top:-14px;">天平</div>
+        <div class="module-label" style="left:58px; top:-14px;">电子秤</div>
         <div class="scale-body"></div>
         <div class="scale-plate"></div>
         <div class="scale-stem"></div>
@@ -2041,17 +2041,17 @@
           <div class="solid-loop"></div>
           <div class="solid-body"></div>
         </div>
-        <div class="solid-note" id="solidNote">拖动铝块到天平上称量，再拖到量筒中浸没，利用液面升高量测体积。</div>
+        <div class="solid-note" id="solidNote">先用电子秤称量干燥铝块，再用量筒测浸没前后的体积差。</div>
       </div>
 
       <div class="formula-card">
         <div><b>实验思路</b></div>
-        <div>先用天平测固体质量 <b>m</b>，再由量筒读出初始体积 <b>V₁</b> 和浸没后体积 <b>V₂</b>，由 <b>V固 = V₂ - V₁</b> 求体积。</div>
+        <div>先用电子秤测干燥固体的质量 <b>m</b>，再由量筒读出初始体积 <b>V₁</b> 和浸没后体积 <b>V₂</b>，由 <b>V固 = V₂ - V₁</b> 求体积。</div>
         <div class="formula-eq">ρ = m / (V₂ - V₁)</div>
         <div id="resultSummary" style="margin-top:8px;color:#d5e6f8;">当前：等待完成质量与体积测量</div>
       </div>
 
-      <div class="scene-tip" id="sceneTip">先观察量筒量程与分度值，并把视线对准初始液面 40 mL。</div>
+      <div class="scene-tip" id="sceneTip">先把干燥铝块拖到电子秤上称量。</div>
       <div class="bench"></div>
     </div>
 
@@ -2113,7 +2113,7 @@
   <div class="explanation">
     <h2>实验名：测量固体的密度</h2>
     <ul>
-      <li>先用天平测出固体质量 <b>m</b>。</li>
+      <li>先用电子秤测出干燥固体的质量 <b>m</b>。课本用托盘天平测量同一个质量。</li>
       <li>再读取量筒中水的初始体积 <b>V₁</b> 与浸没后的总体积 <b>V₂</b>。</li>
       <li>固体体积 <b>V固 = V₂ - V₁</b>，密度 <b>ρ = m / V固</b>。</li>
     </ul>
@@ -2133,9 +2133,9 @@
     const LAB = {
       name:'测量固体的密度',
       tasks:[
-        { text:'观察量筒的量程和分度值，并把视线与初始液面 <b>40 mL</b> 齐平后记录 <b>V₁</b>。', hint:'拖动眼睛虚线到 40 mL 刻线，再点击“记录 V₁”。' },
-        { text:'把铝块拖到天平上，记录其质量 <b>m</b>。', hint:'铝块放稳后点击“记录 m”，再点“确认观察”。' },
-        { text:'把铝块浸没在量筒中，视线与液面最低处相平，记录终体积 <b>V₂</b>。', hint:'铝块拖入量筒后，液面升到 60 mL；把视线对到弯月面最低处，再点击“记录 V₂”。' },
+        { text:'把干燥铝块拖到电子秤上，记录质量 <b>m</b>。', hint:'铝块放稳后点“记录 m”，再点“确认观察”。先称量可避免附着的水影响示数。' },
+        { text:'观察量筒的量程和分度值，将视线与初始液面的最低处相平，记录 <b>V₁</b>。', hint:'把眼睛虚线拖到初始弯月面最低处，再点“记录 V₁”和“确认观察”。' },
+        { text:'把铝块浸没在量筒中，视线与液面最低处相平，记录终体积 <b>V₂</b>。', hint:'液面升高后，重新把视线与弯月面最低处相平，再点“记录 V₂”。' },
         { text:'点击“计算并分析”，得到固体密度并进入结论小测。', hint:'比较铝块浸没前后的液面变化，想一想增加的体积代表什么。' }
       ]
     };
@@ -2169,6 +2169,7 @@
       solidHomeY:448,
       solidOnScale:false,
       solidInCylinder:false,
+      solidWet:false,
       cylinderMl:40,
       baselineMl:40,
       solidMass:54.0,
@@ -2363,17 +2364,13 @@
     }
 
     function currentTargetMl(){
-      if(state.currentTask === 0) return INITIAL_ML;
-      if(state.currentTask === 2) return state.cylinderMl;
-      if(state.V2 !== null) return state.V2;
-      if(state.solidInCylinder) return state.cylinderMl;
-      return state.V1 !== null ? state.V1 : INITIAL_ML;
+      return state.cylinderMl;
     }
 
     function updateSceneTip(){
       const tips = [
-        '先把眼睛虚线拖到 40 mL 初始液面，再记录 V₁。',
-        '把铝块放到天平秤盘中央，读取稳定质量 m。',
+        '把干燥铝块放到电子秤秤盘中央，读取稳定质量 m。',
+        '先把眼睛虚线与初始弯月面最低处相平，再记录 V₁。',
         '将铝块拖到量筒中完全浸没，液面升高后再读 V₂。',
         '点击“计算并分析”，得到固体体积与密度。'
       ];
@@ -2415,7 +2412,7 @@
     }
 
     function refreshScale(){
-      scaleReadout.textContent = state.solidOnScale ? `${state.solidMass.toFixed(1)} g` : '0.0 g';
+      scaleReadout.textContent = state.solidOnScale && !state.solidDragging ? `${state.solidMass.toFixed(1)} g` : '0.0 g';
       pillMass.textContent = `m：${state.m === null ? '--' : `${state.m.toFixed(1)} g`}`;
     }
 
@@ -2487,8 +2484,8 @@
 
     function currentTaskReady(){
       switch(state.currentTask){
-        case 0: return state.V1 !== null;
-        case 1: return state.m !== null;
+        case 0: return state.m !== null;
+        case 1: return state.V1 !== null;
         case 2: return state.V2 !== null;
         case 3: return !!state.analysisOk;
         default: return false;
@@ -2498,10 +2495,9 @@
     function refreshButtons(){
       const hasAllMeasurements = state.m !== null && state.V1 !== null && state.V2 !== null;
       const isFinalGuidedStep = !state.freeMode && state.currentTask === LAB.tasks.length - 1;
-      recordV1Btn.disabled = !((state.freeMode || state.currentTask === 0) && state.eyeAligned);
-      recordMassBtn.disabled = !((state.freeMode || state.currentTask === 1) && state.solidOnScale);
-      const v2Aligned = Math.abs(state.eyeY - mlToEyeY(FINAL_ML)) <= 8;
-      recordV2Btn.disabled = !((state.freeMode || state.currentTask === 2) && state.solidInCylinder && v2Aligned);
+      recordMassBtn.disabled = !((state.freeMode || state.currentTask === 0) && state.solidOnScale && !state.solidWet && !state.solidDragging);
+      recordV1Btn.disabled = !((state.freeMode || state.currentTask === 1) && !state.solidInCylinder && !state.solidDragging && state.eyeAligned);
+      recordV2Btn.disabled = !((state.freeMode || state.currentTask === 2) && state.solidInCylinder && !state.solidDragging && state.eyeAligned);
       analyzeBtn.disabled = !hasAllMeasurements
         || (!state.freeMode && !isFinalGuidedStep)
         || (!state.freeMode && state.analysisOk)
@@ -2567,7 +2563,7 @@
       eyeGuide.style.top = `${state.eyeY - CYL_ZONE_ORIGIN.y - 10}px`;
       solidNote.textContent = state.solidInCylinder
         ? '铝块已完全浸没在量筒中，请把视线与液面最低处相平，读取 V₂。'
-        : '拖动铝块到天平上称量，再拖到量筒中浸没，利用液面升高量测体积。';
+        : '先用电子秤称量干燥铝块，再用量筒测浸没前后的体积差。';
     }
 
     function hideDemoCursor(){
@@ -2588,15 +2584,16 @@
       state.V2 = null;
       state.Vsolid = null;
       state.rho = null;
-      state.eyeY = mlToEyeY(INITIAL_ML);
+      state.eyeY = mlToEyeY(INITIAL_ML) + 32;
       state.eyeDragging = false;
-      state.eyeAligned = true;
+      state.eyeAligned = false;
       state.solidDragging = false;
       syncSolidHome();
       state.solidX = state.solidHomeX;
       state.solidY = state.solidHomeY;
       state.solidOnScale = false;
       state.solidInCylinder = false;
+      state.solidWet = false;
       state.cylinderMl = INITIAL_ML;
       state.records = [];
       state.dataUnseen = 0;
@@ -2768,6 +2765,11 @@
     }
 
     function snapToScale(){
+      if(state.solidWet){
+        placeSolidHome();
+        warnStep('铝块已沾水。重置后用干燥铝块重新称量。');
+        return false;
+      }
       state.solidOnScale = true;
       state.solidInCylinder = false;
       const target = scaleSnapPosition();
@@ -2775,17 +2777,25 @@
       state.solidY = target.y;
       state.cylinderMl = INITIAL_ML;
       reRender();
+      return true;
     }
 
     function snapIntoCylinder(){
+      if(!state.freeMode && (state.currentTask < 2 || state.m === null || state.V1 === null)){
+        placeSolidHome();
+        warnStep('先记录干燥铝块的质量 m 和量筒初始读数 V₁，再浸没铝块。');
+        return false;
+      }
       state.solidOnScale = false;
       state.solidInCylinder = true;
+      state.solidWet = true;
       state.cylinderMl = FINAL_ML;
       const target = cylinderSnapPosition();
       state.solidX = target.x;
       state.solidY = target.y;
       setStatus('铝块已浸没，请读取 V₂');
       reRender();
+      return true;
     }
 
     function stopSolidDrag(pointerId){
@@ -2797,8 +2807,8 @@
     }
 
     function recordV1(){
-      if(!state.eyeAligned){
-        showToast('请先把视线虚线对准 40 mL 液面（靠近会自动吸附）');
+      if((!state.freeMode && state.currentTask !== 1) || state.solidInCylinder || state.solidDragging || !state.eyeAligned){
+        showToast('请在铝块浸没前，将视线对准初始弯月面最低处再读数。');
         return;
       }
       state.V1 = round(state.cylinderMl, 1);
@@ -2808,8 +2818,8 @@
     }
 
     function recordMass(){
-      if(!state.solidOnScale){
-        showToast('请先把铝块放到天平上');
+      if((!state.freeMode && state.currentTask !== 0) || !state.solidOnScale || state.solidWet || state.solidDragging){
+        showToast('请把干燥铝块放到电子秤上再读数。');
         return;
       }
       state.m = round(state.solidMass, 1);
@@ -2819,11 +2829,11 @@
     }
 
     function recordV2(){
-      if(!state.solidInCylinder){
+      if((!state.freeMode && state.currentTask !== 2) || !state.solidInCylinder || state.solidDragging){
         showToast('请先把铝块浸没在量筒中');
         return;
       }
-      if(Math.abs(state.eyeY - mlToEyeY(FINAL_ML)) > 8){
+      if(!state.eyeAligned){
         showToast('视线需与弯月面最低处相平');
         return;
       }
@@ -3206,7 +3216,17 @@
         setAutoPanelCollapsed('dataDock', true);
         await revealAutoControlPanel();
 
-        setStatus('自动演示：先让视线与 40 mL 液面相平');
+        setStatus('自动演示：先把干燥铝块拖到电子秤上称量');
+        await moveCursorToElement(solid);
+        await autoPause(SOLID_AUTO_PACE.cursorPress);
+        await animateSolidTo(scaleSnapPosition(), SOLID_AUTO_PACE.dragToScale);
+        snapToScale();
+        await autoPause(SOLID_AUTO_PACE.observeReading);
+        await autoPressElement(recordMassBtn, recordMass, SOLID_AUTO_PACE.recordReview);
+        assertAutoRecordField('m', state.m);
+        await autoPressElement(confirmBtn, advanceIfAllowed, SOLID_AUTO_PACE.stepTransition);
+
+        setStatus('自动演示：让视线与初始液面相平');
         state.eyeY = clamp(mlToEyeY(INITIAL_ML) + 36, CYL_BODY.y + 6, CYL_BODY.y + CYL_BODY.h - 6);
         reRender();
         await autoPause(SOLID_AUTO_PACE.recordReview);
@@ -3215,16 +3235,6 @@
         await autoPause(SOLID_AUTO_PACE.observeReading);
         await autoPressElement(recordV1Btn, recordV1, SOLID_AUTO_PACE.recordReview);
         assertAutoRecordField('V1', state.V1);
-        await autoPressElement(confirmBtn, advanceIfAllowed, SOLID_AUTO_PACE.stepTransition);
-
-        setStatus('自动演示：把铝块拖到天平上称量');
-        await moveCursorToElement(solid);
-        await autoPause(SOLID_AUTO_PACE.cursorPress);
-        await animateSolidTo(scaleSnapPosition(), SOLID_AUTO_PACE.dragToScale);
-        snapToScale();
-        await autoPause(SOLID_AUTO_PACE.observeReading);
-        await autoPressElement(recordMassBtn, recordMass, SOLID_AUTO_PACE.recordReview);
-        assertAutoRecordField('m', state.m);
         await autoPressElement(confirmBtn, advanceIfAllowed, SOLID_AUTO_PACE.stepTransition);
 
         setStatus('自动演示：把铝块完全浸没，观察液面升高');
@@ -4735,7 +4745,13 @@
 <script data-task-entry="p01">
 /* P0-1: keep task actions discoverable while reusing the original gated controls. */
 (() => {
-  const firstActions = [{"id": "recordV1Btn", "label": "记录 V₁"}, {"id": "confirmBtn", "label": "确认观察"}, {"id": "analyzeBtn", "label": "分析结论"}];
+  const firstActions = [
+    {id:'recordMassBtn', label:'记录 m', task:1},
+    {id:'recordV1Btn', label:'记录 V₁', task:2},
+    {id:'recordV2Btn', label:'记录 V₂', task:3},
+    {id:'confirmBtn', label:'确认观察'},
+    {id:'analyzeBtn', label:'分析结论'}
+  ];
   function mountTaskEntry() {
     const card = document.querySelector('#taskCard,.task-card');
     const panel = document.querySelector('#controlDock,#controlDrawer');
@@ -4747,7 +4763,7 @@
     row.id = 'taskEntryActions'; row.setAttribute('role', 'group'); row.setAttribute('aria-label', '当前任务操作');
     const status = document.createElement('div');
     status.id = 'taskEntryStatus'; status.setAttribute('role', 'status');
-    const proxies = firstActions.map(({id,label}) => {
+    const proxies = firstActions.map(({id,label,task}) => {
       const proxy = document.createElement('button');
       proxy.type = 'button'; proxy.dataset.entryTarget = id || label;
       const source = () => id ? document.getElementById(id) : [...panel.querySelectorAll('button')].find(button => button.textContent.trim() === label);
@@ -4756,7 +4772,7 @@
         if (button && !button.disabled && !button.hidden) button.click();
         sync();
       });
-      row.appendChild(proxy); return {proxy,source};
+      row.appendChild(proxy); return {proxy,source,task};
     });
     const locate = document.createElement('button');
     locate.type = 'button'; locate.className = 'entry-locate'; locate.id = 'taskEntryLocate';
@@ -4800,10 +4816,12 @@
       const first = !!step && Number(step[1]) === 1;
       const analysis = !!step && Number(step[1]) === Number(step[2]);
       let waiting = false;
-      for (const {proxy,source} of proxies) {
+      for (const {proxy,source,task} of proxies) {
         const button = source();
         const isAnalysis = /分析/.test(button?.textContent || '');
-        proxy.hidden = !button || button.hidden || getComputedStyle(button).display === 'none' || (isAnalysis ? !analysis : !first && analysis && !/确认/.test(button.textContent));
+        proxy.hidden = !button || button.hidden || getComputedStyle(button).display === 'none'
+          || (task && task !== Number(step?.[1]))
+          || (isAnalysis ? !analysis : !first && analysis && !/确认/.test(button.textContent));
         if (!button) continue;
         proxy.disabled = button.disabled;
         waiting ||= !proxy.hidden && proxy.disabled;

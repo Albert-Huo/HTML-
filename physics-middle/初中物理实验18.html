@@ -979,6 +979,23 @@ body #app .toolbar button:disabled{
   }
 </style>
 
+  <style id="exp18-measurement-controls">
+    #exp18StopwatchControls { position:absolute; z-index:2; top:141px; left:max(144px, calc(100% - 532px)); width:132px; display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+    #exp18StopwatchControls button { min-height:35px; padding:5px 3px; font-size:12px; }
+    #exp18AssistWatch { grid-column:1/-1; }
+    #exp18AssistWatch[aria-pressed="true"] { border-color:#7fd1ff; color:#b9e9ff; }
+    #exp18SegmentEntry { min-width:0; margin:8px 0; padding:7px; border:1px solid rgba(147,181,216,.42); border-radius:8px; }
+    #exp18SegmentEntry legend { padding:0 4px; font-weight:700; }
+    #exp18SegmentInputs { margin:0 0 6px; font-size:12px; }
+    .exp18-values { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
+    .exp18-values label { display:grid; gap:3px; font-size:11px; }
+    .exp18-values input { width:100%; min-width:0; min-height:36px; box-sizing:border-box; border:1px solid #7a94ad; border-radius:6px; padding:4px; color:CanvasText; background:Canvas; font:inherit; font-size:16px; }
+    @media(max-width:720px) {
+      #exp18StopwatchControls { top:107px; left:auto; right:16px; }
+      #exp18StopwatchControls button { min-height:42px; }
+      #exp18AssistWatch { position:absolute; top:-67px; right:calc(100% + 8px); width:76px; }
+    }
+  </style>
 </head>
 <body>
 <script id="codex-lab-sound-bus" data-native-audio="false">
@@ -1225,6 +1242,11 @@ body #app .toolbar button:disabled{
     <div class="hint-pop" id="hintPop"></div>
 <div class="lab-area" id="labArea">
       <canvas id="scene"></canvas>
+      <div id="exp18StopwatchControls" role="group" aria-label="斜面秒表">
+        <button class="sub" type="button" id="exp18StartWatch">开始计时</button>
+        <button class="sub" type="button" id="exp18StopWatch" disabled>停止计时</button>
+        <button class="sub" type="button" id="exp18AssistWatch" aria-pressed="false">碰撞辅助</button>
+      </div>
     </div>
 
     <div class="dock drawer control" id="controlDock" style="right:10px; top:10px; left:auto; bottom:auto;">
@@ -1242,6 +1264,15 @@ body #app .toolbar button:disabled{
         </div>
         <div id="controlFields"></div>
         <div class="btnRow" id="actionBtns"></div>
+        <fieldset id="exp18SegmentEntry" hidden>
+          <legend>下半程计算</legend>
+          <p id="exp18SegmentInputs"></p>
+          <div class="exp18-values">
+            <label>路程 s₃ (m)<input type="number" step="0.01" min="0" id="exp18DistanceAnswer"></label>
+            <label>时间 t₃ (s)<input type="number" step="0.01" min="0" id="exp18TimeAnswer"></label>
+            <label>均速 v₃ (m/s)<input type="number" step="0.01" min="0" id="exp18SpeedAnswer"></label>
+          </div>
+        </fieldset>
         <div class="btnRow" style="margin-top:8px;">
           <button class="sub" id="recordBtn">记录当前数据</button>
           <button class="sub" id="checkBtn">确认观察 ✅</button>
@@ -1302,6 +1333,7 @@ body #app .toolbar button:disabled{
 
   <script>
     const LAB_ID = 18;
+    const EXP18_WATCH_RETRY = '启停离放车或碰撞过远，请将小车拖回顶端重测。';
 
     const LABS = {
       14:{
@@ -1413,20 +1445,21 @@ body #app .toolbar button:disabled{
         name:'测量物体运动的速度',
         catalog:'中小学实验教学目录 初中物理 18',
         textbook:'人教版初中物理 速度测量活动（目录条目对齐）',
-        apparatusHint:'器材：斜面木板 + 小车 + 金属片 + 刻度尺 + 秒表。点击小车释放；测速后将小车向斜面顶端拖动，松手即可吸附归位。',
+        apparatusHint:'紧接着启动秒表和释放小车，撞到金属片时停表。碰撞辅助可在发车和撞击时自动启停。',
         bullets:[
           '先测小车通过斜面全程 s1 的时间 t1，再求平均速度 v1=s1/t1。',
           '再把金属片移到斜面中部，测上半段路程 s2 的时间 t2，求平均速度 v2=s2/t2。',
-          '比较 v1 与 v2，可体会小车在斜面上运动时速度并不保持不变。'
+          '两次都从同一顶端释放。用全程减去上半程，得到下半程的路程和时间，再用 v₃=s₃/t₃ 计算。',
+          '下半程开始时小车已有速度。直接从斜面中部静止释放，测到的是另一种运动。'
         ],
         tableHeaders:['路程段','时间(s)','平均速度(m/s)','备注'],
         controls:[],
         actions:[],
         tasks:[
-          {text:'先将金属片放到斜面底端，释放小车完成整段 <b>s1</b> 测速并记录后，再点“确认观察”。', hint:'提示：点击小车释放；撞击金属片后秒表停止。'},
-          {text:'将小车向斜面顶端拖动并松手归位，再把金属片拖到中部，完成上半段 <b>s2</b> 测速并记录。', hint:'顺序：拖车归位 → 金属片吸附到中部 → 点击小车释放。'},
-          {text:'比较 <b>v1</b> 与 <b>v2</b> 的大小关系，确认已保留 2 条记录后，再点“确认观察”。', hint:'提示：速度由 v=s/t 计算得到。'},
-          {text:'点击“分析结论”后，还需点击“确认观察”才能完成本实验。', hint:'提示：结论要体现“上半段平均速度与全程平均速度不同”，最后别忘了点“确认观察”。'}
+          {text:'测量并记录全程 <b>s₁</b> 的路程、时间和平均速度，再点“确认观察”。', hint:'启动秒表后立刻点小车，碰到末端金属片时停表。'},
+          {text:'从同一顶端释放小车，测量并记录上半程 <b>s₂</b>，再点“确认观察”。', hint:'先把小车拖回顶端，再把金属片移到中部；依照两次点击启停秒表。'},
+          {text:'用两次记录求下半程的路程、时间和平均速度。', hint:'打开实验面板填写 s₃=s₁−s₂、t₃=t₁−t₂ 和 v₃=s₃/t₃，再点“确认观察”。'},
+          {text:'比较上、下半程的平均速度，分析后确认观察。', hint:'点击“分析结论”，再点击“确认观察”完成。'}
         ]
       },
       19:{
@@ -1547,6 +1580,12 @@ body #app .toolbar button:disabled{
     const th2 = $('#th2');
     const th3 = $('#th3');
     const th4 = $('#th4');
+    const exp18StartWatch = $('#exp18StartWatch');
+    const exp18StopWatch = $('#exp18StopWatch');
+    const exp18AssistWatch = $('#exp18AssistWatch');
+    const exp18SegmentEntry = $('#exp18SegmentEntry');
+    const exp18SegmentInputs = $('#exp18SegmentInputs');
+    const exp18Answers = [$('#exp18DistanceAnswer'), $('#exp18TimeAnswer'), $('#exp18SpeedAnswer')];
 
     let codexModeController = null; /* codex-physics-mode-source:controller */
     const state = {
@@ -1718,7 +1757,12 @@ body #app .toolbar button:disabled{
           cartDragOriginT:null,
           cartDragReady:false,
           hitFlash:0,
-          lastMeasureMode:null
+          lastMeasureMode:null,
+          watchAssist:false,
+          watchRunning:false,
+          watchElapsed:0,
+          watchStopped:false,
+          timedRun:null
         };
         case 19: return { applied:false, lastDeform:0, recoverPct:100, applyCount:0 };
         case 20: return { velocity:0, cartX:0.18, animating:false, targetX:0.18, beforeV:0, afterV:0, changed:false };
@@ -1757,6 +1801,7 @@ body #app .toolbar button:disabled{
         d.classList.toggle('done', n<idx || state.completed);
         d.classList.toggle('warn', !state.completed && n===state.stepWarnIdx);
       });
+      if(LAB_ID===18) updateExp18SegmentEntry();
     }
 
     function setFreeMode(on){
@@ -1944,6 +1989,12 @@ body #app .toolbar button:disabled{
       ap.draggingCart = false;
       ap.cartDragOriginT = null;
       ap.cartDragReady = false;
+      ap.watchRunning = false;
+      ap.watchElapsed = 0;
+      ap.watchStopped = false;
+      ap.timedRun = null;
+      ap.lastTime = null;
+      ap.lastSpeed = null;
       if(announce) setStatus('小车已归位');
       updatePills();
       return true;
@@ -1965,9 +2016,96 @@ body #app .toolbar button:disabled{
       ap.lastMeasureMode = null;
       ap.lastDistanceM = null;
       ap.lastMeasureLabel = null;
+      ap.timedRun = {
+        distance:ap.activeDistanceM, mode:ap.markerMode, label:ap.activeLabel, assisted:ap.watchAssist,
+        duration:ap.runDuration, startOffset:ap.watchRunning ? -ap.watchElapsed : null, collided:false, invalid:false
+      };
+      if(ap.watchAssist) startExp18Watch();
       setStatus(`小车下滑中，目标路程 ${ap.activeLabel}`);
       updatePills();
       return true;
+    }
+
+    function setExp18WatchAssist(enabled){
+      const ap = state.apparatus;
+      if(ap.running || ap.watchRunning) return false;
+      ap.watchAssist = enabled;
+      updatePills();
+      return true;
+    }
+
+    function startExp18Watch(){
+      const ap = state.apparatus;
+      if(ap.watchRunning || (!ap.cartReady && !ap.running)) return false;
+      ap.watchRunning = true;
+      ap.watchElapsed = 0;
+      ap.watchStopped = false;
+      ap.lastTime = null;
+      ap.lastSpeed = null;
+      if(ap.running && ap.timedRun) ap.timedRun.startOffset = ap.liveElapsed;
+      setStatus('秒表计时中');
+      updatePills();
+      return true;
+    }
+
+    function storeExp18Reading(){
+      const ap = state.apparatus;
+      const run = ap.timedRun;
+      if(!run?.collided || !ap.watchStopped) return;
+      const time = round(ap.watchElapsed, 2);
+      const allowed = Math.min(.55, run.duration * .45);
+      const stopOffset = ap.watchElapsed + run.startOffset - run.duration;
+      if(time <= 0 || run.startOffset===null || Math.abs(run.startOffset)>allowed || Math.abs(stopOffset)>allowed){
+        run.invalid = true;
+        setStatus(EXP18_WATCH_RETRY);
+        return;
+      }
+      ap.lastTime = time;
+      ap.lastSpeed = round(run.distance / time, 2);
+      ap.lastMeasureMode = run.mode;
+      ap.lastDistanceM = run.distance;
+      ap.lastMeasureLabel = run.label;
+      setStatus(`测得 ${run.label} 用时 ${time.toFixed(2)} s，可记录或将小车归位重测`);
+    }
+
+    function stopExp18Watch(){
+      const ap = state.apparatus;
+      if(!ap.watchRunning) return false;
+      ap.watchRunning = false;
+      if(!ap.timedRun){
+        ap.watchElapsed = 0;
+        setStatus('还未发车，请重新计时');
+        updatePills();
+        return false;
+      }
+      ap.watchStopped = true;
+      if(ap.timedRun.collided) storeExp18Reading();
+      else setStatus('秒表已停，等待小车到达金属片');
+      updatePills();
+      return true;
+    }
+
+    function exp18RecordedSegments(){
+      const full = state.records.find(record => record.segment === 'full');
+      const half = state.records.find(record => record.segment === 'half');
+      if(!full || !half) return null;
+      const distance = round(full.distance - half.distance, 2);
+      const time = round(full.time - half.time, 2);
+      return { full, half, distance, time, speed:distance>0 && time>0 ? round(distance/time, 2) : null };
+    }
+
+    function updateExp18SegmentEntry(){
+      if(!state.apparatus) return;
+      const values = exp18RecordedSegments();
+      exp18SegmentEntry.hidden = state.freeMode || !values || state.currentTask < 2;
+      exp18SegmentInputs.textContent = !values ? '' :
+        `全程 ${values.full.distance.toFixed(2)} m / ${values.full.time.toFixed(2)} s；上半程 ${values.half.distance.toFixed(2)} m / ${values.half.time.toFixed(2)} s。` +
+        (values.speed===null ? ' 时间差必须为正，请重新测量任一段并更新记录。' : ' 结果保留两位小数。');
+    }
+
+    function exp18AnswersCorrect(values){
+      return values && values.speed !== null && [values.distance, values.time, values.speed].every((expected, index) =>
+        exp18Answers[index].value !== '' && Math.abs(exp18Answers[index].valueAsNumber - expected) < .006);
     }
 
     function getScenePoint(e){
@@ -2238,7 +2376,10 @@ body #app .toolbar button:disabled{
           return { c1:`${ap.cyclesDone}次`, c2:String(ap.elapsed), c3:String(single), c4:`节奏:${state.vars.tempo}`, y:single };
         }
         case 18:{
-          if(ap.lastTime===null || ap.lastSpeed===null){ showToast('请先发车并计时'); return null; }
+          if(ap.lastTime===null || ap.lastSpeed===null){
+            showToast(ap.timedRun?.invalid ? EXP18_WATCH_RETRY : '请先发车并计时');
+            return null;
+          }
           const isHalf = ap.lastMeasureMode === 'half';
           const isFull = ap.lastMeasureMode === 'full';
           const label = isFull ? '全程 s1' : (isHalf ? '上半段 s2' : '自定义');
@@ -2246,8 +2387,9 @@ body #app .toolbar button:disabled{
           const c1 = isFull || isHalf
             ? `${label}=${distanceM.toFixed(2)}m`
             : `${label} s=${distanceM.toFixed(2)}m`;
-          const note = isFull || isHalf ? 'v=s/t' : '自由模式';
-          return { c1, c2:String(ap.lastTime), c3:String(ap.lastSpeed), c4:note, y:ap.lastSpeed };
+          const note = ap.timedRun.assisted ? '碰撞辅助' : '手动计时';
+          return { c1, c2:ap.lastTime.toFixed(2), c3:ap.lastSpeed.toFixed(2), c4:note, y:ap.lastSpeed,
+            segment:ap.lastMeasureMode, distance:distanceM, time:ap.lastTime };
         }
         case 19:{
           if(!ap.applied){ showToast('请先施加力'); return null; }
@@ -2265,27 +2407,27 @@ body #app .toolbar button:disabled{
       const rec = buildRecord();
       if(!rec) return false;
       if(LAB_ID === 18 && !state.freeMode){
-        const guidedRecords = state.records.filter(r=>r.c1.includes('全程 s1') || r.c1.includes('上半段 s2'));
-        if(!(state.currentTask===0 || state.currentTask===1)){
-          showToast('请在需要记录的步骤中再记录数据');
-          return false;
-        }
-        if(state.currentTask===0 && guidedRecords.length !== 0){
-          showToast('步骤1只需要保留第一组测速记录');
-          return false;
-        }
-        if(state.currentTask===1 && guidedRecords.length < 1){
-          showToast('请先完成第一组记录');
-          return false;
-        }
-        if(state.currentTask===0 && state.apparatus.lastMeasureMode !== 'full'){
+        if(state.completed) return false;
+        if(state.currentTask===0 && rec.segment !== 'full'){
           showToast('步骤1需要金属片放在斜面底端，记录全程 s1');
           return false;
         }
-        if(state.currentTask===1 && state.apparatus.lastMeasureMode !== 'half'){
-          showToast('步骤2需要金属片放在斜面中部，记录上半段 s2');
-          return false;
+        const previous = state.records.findIndex(row => row.segment === rec.segment);
+        if(previous >= 0){
+          state.records[previous] = rec;
+          renderRecords();
+          scheduleChart();
+        }else{
+          pushRecord(rec);
         }
+        state.analysisOk = false;
+        analysisText.classList.remove('ok');
+        analysisText.textContent = '请根据最新的两次测量比较平均速度。';
+        exp18Answers.forEach(input => { input.value = ''; });
+        if(state.currentTask>2) setStepUI(2);
+        else updateExp18SegmentEntry();
+        setStatus(previous>=0 ? '已更新本段数据' : '已记录，等待确认');
+        return true;
       }
       pushRecord(rec);
       setStatus(state.freeMode ? '自由探索' : '已记录，等待确认');
@@ -2342,10 +2484,17 @@ body #app .toolbar button:disabled{
               ? '结论：在自由模式下，记录了至少两组不同路程与时间数据后，可以比较不同路程段对应的平均速度，并结合 v=s/t 继续分析小车在斜面上的运动变化。'
               : '请至少获得 2 组数据记录后再分析结论。';
           }else{
-            const s1 = rs.find(r=>r.c1.includes('全程 s1'));
-            const s2 = rs.find(r=>r.c1.includes('上半段 s2'));
-            ok = !!(s1 && s2 && Number(s1.c3) > Number(s2.c3));
-            msg = ok ? '结论：由 v=s/t 可知，全程平均速度 v1 大于上半段平均速度 v2，说明小车在斜面上运动时速度逐渐增大。' : '请先获得 s1、s2 两组记录，并比较 v1、v2 的大小。';
+            const values = exp18RecordedSegments();
+            ok = state.currentTask>=3 && exp18AnswersCorrect(values);
+            if(!ok){
+              msg = '请先用两次记录计算下半程数据并确认观察。';
+            }else{
+              const upperSpeed = Number(values.half.c3);
+              const comparison = values.speed>upperSpeed
+                ? '下半程均速更大，这两次测量支持小车沿斜面下滑时在加速。'
+                : '这组手动读数未测出下半程更快，可检查启停时机并重复测量。';
+              msg = `上半程均速 ${upperSpeed.toFixed(2)} m/s，下半程均速 ${values.speed.toFixed(2)} m/s。${comparison}`;
+            }
           }
           break;
         }
@@ -2403,11 +2552,7 @@ body #app .toolbar button:disabled{
         case 18:
           if(step===0) return rs.some(r=>r.c1.includes('全程 s1'));
           if(step===1) return rs.some(r=>r.c1.includes('全程 s1')) && rs.some(r=>r.c1.includes('上半段 s2'));
-          if(step===2){
-            const s1 = rs.find(r=>r.c1.includes('全程 s1'));
-            const s2 = rs.find(r=>r.c1.includes('上半段 s2'));
-            return !!(s1 && s2 && Number(s1.c3) > Number(s2.c3));
-          }
+          if(step===2) return exp18AnswersCorrect(exp18RecordedSegments());
           if(step===3) return state.analysisOk;
           return false;
         case 19:
@@ -2436,9 +2581,9 @@ body #app .toolbar button:disabled{
             const msg = state.currentTask===0
               ? '请先完成第一组测速并记录，再点击“确认观察”。'
               : state.currentTask===1
-                ? '请先改变推力或测程，完成第二组测速并记录，再点击“确认观察”。'
+                ? '请把金属片移至斜面中部，完成第二组测速并记录。'
                 : state.currentTask===2
-                  ? '请先比较两组速度差异并保留至少2条记录，再点击“确认观察”。'
+                  ? (exp18RecordedSegments()?.speed===null ? '全程用时应大于上半程，请重测后更新记录。' : '核对三项结果，路程和时间要分别相减，再用路程除以时间。')
                   : '请先分析出 v=s/t 的结论，再点击“确认观察”。';
             warnCurrentStep(msg);
           }else{
@@ -2520,8 +2665,12 @@ body #app .toolbar button:disabled{
           const measureDistanceM = showLastMeasure ? (ap.lastDistanceM ?? ap.activeDistanceM) : ap.activeDistanceM;
           pillA.textContent = `金属片:${ap.markerMode==='custom' ? `${ap.customDistanceCm}cm位置` : (ap.markerMode==='half'?'斜面中部':'斜面底端')}`;
           pillB.textContent = `路程:${measureLabel}=${measureDistanceM.toFixed(2)}m`;
-          pillC.textContent = `时间:${ap.running ? ap.liveElapsed.toFixed(2)+'s' : (ap.lastTime===null?'--':ap.lastTime+'s')}`;
+          pillC.textContent = `时间:${ap.watchRunning || ap.watchStopped ? ap.watchElapsed.toFixed(2)+'s' : '--'}`;
           pillD.textContent = `速度:${ap.lastSpeed===null?'--':ap.lastSpeed+'m/s'}`;
+          exp18StartWatch.disabled = state.autoPlaying || ap.watchAssist || ap.watchRunning || (!ap.cartReady && !ap.running);
+          exp18StopWatch.disabled = state.autoPlaying || ap.watchAssist || !ap.watchRunning;
+          exp18AssistWatch.disabled = state.autoPlaying || ap.running || ap.watchRunning;
+          exp18AssistWatch.setAttribute('aria-pressed', String(ap.watchAssist));
           break;
         case 19:
           pillA.textContent = `样件:${state.vars.sample==='spring'?'弹簧':'海绵'}`;
@@ -2911,21 +3060,23 @@ body #app .toolbar button:disabled{
       ctx.fillText(markerDisplayMode === 'half' ? '金属片 s2' : (markerDisplayMode === 'full' ? '金属片 s1' : `金属片 ${markerDisplayCm}cm`), -20, -54);
       ctx.restore();
 
-      ctx.fillStyle = 'rgba(8,14,24,.86)';
-      ctx.strokeStyle = 'rgba(147,181,216,.34)';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.roundRect(24, 22, 158, 30, 14);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#e6f2ff';
-      ctx.font = 'bold 13px -apple-system,Segoe UI';
-      ctx.fillText(`当前目标：${ap.activeLabel} = ${ap.activeDistanceM.toFixed(2)}m`, 36, 41);
-
       const compactStage = window.matchMedia('(max-width:720px)').matches;
+      if(!compactStage){
+        ctx.fillStyle = 'rgba(8,14,24,.86)';
+        ctx.strokeStyle = 'rgba(147,181,216,.34)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.roundRect(24, 22, 158, 30, 14);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#e6f2ff';
+        ctx.font = 'bold 13px -apple-system,Segoe UI';
+        ctx.fillText(`当前目标：${ap.activeLabel} = ${ap.activeDistanceM.toFixed(2)}m`, 36, 41);
+      }
+
       const swW = 132, swH = 78;
       const sx = compactStage ? W - swW - 16 : Math.max(144, W - swW - 400);
-      const sy = 54;
+      const sy = compactStage ? 22 : 54;
       ctx.save();
       ctx.fillStyle = 'rgba(17,25,35,.96)';
       ctx.beginPath();
@@ -2946,7 +3097,7 @@ body #app .toolbar button:disabled{
       ctx.fill();
       ctx.fillStyle = '#7fd1ff';
       ctx.font = 'bold 30px Courier New';
-      const dispTime = ap.running ? `${ap.liveElapsed.toFixed(2)}s` : (ap.lastTime===null ? '--' : `${ap.lastTime}s`);
+      const dispTime = ap.watchRunning || ap.watchStopped ? `${ap.watchElapsed.toFixed(2)}s` : '--';
       ctx.fillText(dispTime, sx+swW/2, sy+47);
       const showLastMeasure = !ap.running && ap.lastTime !== null;
       const measureLabel = showLastMeasure ? (ap.lastMeasureLabel || ap.activeLabel) : ap.activeLabel;
@@ -3060,6 +3211,7 @@ body #app .toolbar button:disabled{
 
     function updateDynamic(dt){
       const ap = state.apparatus;
+      if(LAB_ID === 18 && ap.watchRunning) ap.watchElapsed += dt/1000;
       if(LAB_ID === 14 && ap.shaken) ap.bubblePhase += dt*0.004;
       if(LAB_ID === 17 && ap.pendulumOn){ ap.angle = Math.sin(performance.now()*0.006) * 0.38; }
       if(LAB_ID === 18 && ap.running){
@@ -3076,14 +3228,17 @@ body #app .toolbar button:disabled{
           ap.cartT = targetT;
           ap.runCount += 1;
           ap.hitFlash = 1;
-          const t = round(duration, 2);
-          const v = round(ap.activeDistanceM / t, 2);
-          ap.lastTime = t;
-          ap.lastSpeed = v;
-          ap.lastMeasureMode = ap.markerMode;
-          ap.lastDistanceM = ap.activeDistanceM;
-          ap.lastMeasureLabel = ap.activeLabel;
-          setStatus(`测速完成：${ap.activeLabel}, t=${t}s, v=${v}m/s；向上拖小车归位`);
+          ap.timedRun.collided = true;
+          if(ap.timedRun.assisted && ap.watchRunning){
+            ap.watchElapsed = duration;
+            stopExp18Watch();
+          }else if(ap.watchRunning){
+            setStatus('小车已撞到金属片，请停止计时');
+          }else if(ap.watchStopped){
+            storeExp18Reading();
+          }else{
+            setStatus('小车已到达，尚未计时；请归位重测');
+          }
           updatePills();
         }
       }
@@ -3273,6 +3428,10 @@ body #app .toolbar button:disabled{
       state.records = [];
       state.analysisOk = false;
       state.unseenRecordCount = 0;
+      if(LAB_ID===18){
+        exp18Answers.forEach(input => { input.value = ''; });
+        updateExp18SegmentEntry();
+      }
       analysisText.classList.remove('ok');
       analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
       updateBadge();
@@ -3290,6 +3449,7 @@ body #app .toolbar button:disabled{
       analyzeBtn.disabled = false;
       resetBtn.disabled = false;
       freeBtn.disabled = false;
+      if(LAB_ID===18) updatePills();
       setDemoCursorVisible(false);
     }
 
@@ -3434,6 +3594,8 @@ body #app .toolbar button:disabled{
         updateAutoDemoBtn();
 
         if(LAB_ID===18){
+          await clickEl(exp18AssistWatch, 120, false);
+          setExp18WatchAssist(true);
           setStepUI(0);
           setStatus('自动演示：第一组测速');
           await wait(420);
@@ -3457,7 +3619,11 @@ body #app .toolbar button:disabled{
           if(!tryPassStep(false, true)) throw new Error('AUTO_STEP2_NOT_PASSED');
 
           setStepUI(2);
-          setStatus('自动演示：比较速度');
+          setStatus('自动演示：用全程和上半程的差值计算');
+          const values = exp18RecordedSegments();
+          [values.distance, values.time, values.speed].forEach((value,index) => {
+            exp18Answers[index].value = value.toFixed(2);
+          });
           await wait(420);
           await clickEl(checkBtn, 160, false);
           if(!tryPassStep(false, true)) throw new Error('AUTO_STEP3_NOT_PASSED');
@@ -3488,6 +3654,11 @@ body #app .toolbar button:disabled{
     }
 
     function bindEvents(){
+      if(LAB_ID===18){
+        exp18StartWatch.addEventListener('click', startExp18Watch);
+        exp18StopWatch.addEventListener('click', stopExp18Watch);
+        exp18AssistWatch.addEventListener('click', () => setExp18WatchAssist(!state.apparatus.watchAssist));
+      }
       controlToggleBtn.addEventListener('click', ()=>setControlCollapsed(!state.controlCollapsed));
       dataToggleBtn.addEventListener('click', ()=>setDataCollapsed(!state.dataCollapsed));
 
