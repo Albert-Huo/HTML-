@@ -2486,7 +2486,7 @@ function setDrawerCollapsed(drawer, collapsed) {
 <style data-middle-task-controls="v1">
 html[data-middle-task-controls] #taskCard #taskEntryActions,
 html[data-middle-task-controls] #taskCard #taskHint,
-html[data-middle-task-controls] #taskCard :is([data-task-source-hidden],[data-task-redundant]),
+html[data-middle-task-controls] #taskCard :is([data-task-source-hidden],[data-task-redundant],[data-task-empty]),
 html[data-middle-task-controls] #stage :is(#experimentTab,#mobileControlTab,[data-sheet="controls"],[data-codex-mobile-tab="control"]),
 html[data-middle-task-controls] [data-task-feedback-hidden],
 html[data-middle-task-controls] #taskCard :is([data-step-hidden],[hidden]) {display:none!important}
@@ -2495,6 +2495,7 @@ html[data-middle-task-controls] body #app#app #taskCard[data-task-layout] {
   grid-template-columns:auto minmax(0,1fr) auto!important;
   align-items:center;
   column-gap:clamp(6px,1.5vw,16px)!important;
+  row-gap:6px!important;
 }
 html[data-middle-task-controls] body #app #stage#stage [data-task-chart] {display:block!important;min-width:0;max-width:100%}
 html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
@@ -2537,7 +2538,7 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
   width:100%!important;min-width:0!important;max-width:none!important;height:auto!important;
   opacity:1!important;pointer-events:auto!important;display:block!important;
   margin:0!important;padding:0!important;overflow:visible!important;
-  background:transparent!important;border:0!important;box-shadow:none!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;
 }
 #taskCard [data-task-actions] [data-task-panel-header],
 #taskCard [data-task-actions] .sheet-close {display:none!important}
@@ -2545,12 +2546,29 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
   position:static!important;inset:auto!important;transform:none!important;
   width:100%!important;min-width:0!important;max-width:none!important;
   height:auto!important;max-height:none!important;overflow:visible!important;
-  opacity:1!important;pointer-events:auto!important;display:block!important;
+  opacity:1!important;pointer-events:auto!important;display:flex!important;
+  flex-wrap:wrap;align-items:flex-start;justify-content:flex-start;gap:6px 10px;
   margin:0!important;padding:0!important;
-  background:transparent!important;border:0!important;box-shadow:none!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;
 }
-#taskCard [data-task-actions] :is(button,select,input:not([type="range"])) {min-height:44px;max-width:100%;box-sizing:border-box}
-#taskCard [data-task-actions] :is(.controls,.buttons,.btn-row,.control-row,.actions) {flex-wrap:wrap}
+#taskCard [data-task-panel-body] > * {min-width:0;max-width:100%}
+#taskCard [data-task-panel-body] > :is([data-task-group],button) {order:-1}
+#taskCard [data-task-panel-body] > [data-task-group]:not([data-task-empty],[data-step-hidden],[hidden]) {
+  display:flex!important;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:6px;
+  flex:0 1 auto;width:auto!important;margin:0!important;padding:0!important;
+}
+#taskCard [data-task-panel-body] :is(button,select,input:not([type="range"])) {
+  min-height:44px;max-width:100%;box-sizing:border-box;
+}
+#taskCard [data-task-panel-body] button {
+  width:auto!important;flex:0 1 auto!important;white-space:normal;line-height:1.25;
+}
+#taskCard [data-task-panel-body] > [data-task-result] {
+  flex:0 0 100%;max-width:100%;box-sizing:border-box;margin:0!important;
+  padding:5px 0 5px 10px!important;line-height:1.5;overflow-wrap:anywhere;
+  background:transparent!important;border:0!important;border-radius:0!important;
+  border-inline-start:2px solid color-mix(in srgb,currentColor 36%,transparent)!important;
+}
 [data-task-demo-pointer]:not([hidden]) {
   position:fixed;z-index:90;pointer-events:none;transform:translate(-50%,-50%);
   width:18px;height:18px;border:2px solid #7bf8f1;border-radius:50%;
@@ -2560,16 +2578,19 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
   html[data-middle-task-controls] body #app #stage#stage:has(:is(#dataTab,#mobileDataTab,[data-sheet="data"]))
     :is(#dataToggleBtn,[data-drawer="dataDrawer"]) {display:none!important}
   html[data-middle-task-controls] body #app #stage#stage .mobile-tabs {grid-template-columns:minmax(0,1fr)!important}
-}
-@media(max-width:490px) {
   html[data-middle-task-controls] body #app#app #taskCard[data-task-layout] {
-    grid-template-columns:minmax(0,1fr) auto!important;
+    grid-template-columns:minmax(0,1fr) auto!important;row-gap:4px!important;
   }
-  #taskCard[data-task-layout] > [data-task-heading] {grid-column:1/-1;grid-row:2}
-  #taskCard[data-task-layout] > :is(#dots,#progress,#progressDots,.progress-dots) {grid-column:1/-1;grid-row:3}
-  #taskCard [data-task-tools] {grid-column:2;grid-row:1}
-  #taskCard [data-task-actions] {grid-area:4 / 1 / 5 / -1}
-  #taskCard [data-task-pop] {grid-area:5 / 1 / 6 / -1}
+  html[data-middle-task-controls] #app#app #taskCard[data-task-layout] > [data-task-heading] {
+    grid-column:1!important;grid-row:1!important;align-self:end;
+  }
+  html[data-middle-task-controls] #app#app #taskCard[data-task-layout] > :is(#dots,#progress,#progressDots,.progress-dots,.dots) {
+    grid-column:1!important;grid-row:2!important;justify-self:start!important;align-self:start!important;
+    width:max-content;max-width:100%;justify-content:flex-start!important;
+  }
+  #taskCard [data-task-tools] {grid-column:2;grid-row:1/3;align-self:center}
+  #taskCard [data-task-actions] {grid-area:3 / 1 / 4 / -1}
+  #taskCard [data-task-pop] {grid-area:4 / 1 / 5 / -1}
 }
 </style>
 <script data-middle-task-controls="v1">
@@ -2607,6 +2628,14 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
         dataBody.append(evidence);
       }
     }
+    const nativeAction = find('#taskActionBtn', card)?.closest('.task-actions');
+    if (nativeAction) body.prepend(nativeAction);
+    const groups = body.querySelectorAll(
+      ':scope > :is(.task-actions,.controls,.buttons,.btn-row,.btnRow,.matRow,.control-row,.actions,.action-grid,.miniBtns,.quizRow,.load-controls,.panel-actions,.sampleRow,.liquidBtns,.board-tabs)'
+    );
+    const resultSelector = ':scope > :is(.analysis,.analysisBox,.analysis-box,.codex-final-analysis)';
+    const placeholder = /^(?:(?:分析|结论)[：:]\s*)?(?:暂无(?:[。！.]|$)|待完成|完成[^。]*后[，,]?\s*(?:在这里|这里|分析|比较|生成|点击)|请按关卡完成|拉动粗绳，记录筒面温度变化后分析|新增了测量点[。！.])/;
+    for (const group of groups) group.setAttribute('data-task-group', '');
 
     const tools = document.createElement('div');
     tools.setAttribute('data-task-tools', '');
@@ -2684,7 +2713,7 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
       const step = Number(clean(number.textContent).match(/(\d+)\s*\/\s*\d+/)?.[1]);
       const free = /自由/.test(modeText) || window.state?.freeMode === true;
       const completed = clean(status?.textContent).includes('已完成') || /已通关/.test(modeText) || window.state?.completed === true;
-      const current = !free && !completed ? config.steps[step - 1] : null;
+      const current = !free ? config.steps[step - 1] : null;
       summary.hidden = !current;
       title.toggleAttribute('data-task-source-hidden', Boolean(current));
       if (current && summary.textContent !== current.title) summary.textContent = current.title;
@@ -2714,7 +2743,7 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
           : [...panel.querySelectorAll(control.selector)];
         for (const element of elements) {
           const wrapper = control.wrapper ? element.closest(control.wrapper) : element;
-          const visible = free || completed ? control.free !== false : !step || control.steps.includes(step);
+          const visible = free ? control.free !== false : !step || control.steps.includes(step);
           wrapper?.toggleAttribute('data-step-hidden', !visible);
         }
       }
@@ -2723,6 +2752,20 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
         for (const element of panel.querySelectorAll(selector + ',[data-task-redundant]')) {
           element.toggleAttribute('data-task-redundant', element.matches(selector));
         }
+      }
+      for (const group of groups) {
+        const hasContent = [...group.querySelectorAll('button,input,select,textarea,[role="status"]:not(:empty)')].some(element =>
+          !element.closest('[hidden],[data-step-hidden],[data-task-redundant]') &&
+          getComputedStyle(element).display !== 'none'
+        );
+        group.toggleAttribute('data-task-empty', !hasContent || group.style.display === 'none');
+      }
+      for (const result of body.querySelectorAll(resultSelector)) {
+        const text = clean(result.textContent);
+        result.setAttribute('data-task-result', '');
+        const pending = !result.classList.contains('ok') &&
+          (placeholder.test(text) || result.matches('.is-empty,.codex-placeholder-hidden'));
+        result.toggleAttribute('data-task-empty', !text || pending);
       }
       if (toastChanged) {
         toastChanged = false;
@@ -2769,7 +2812,7 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
         attributes:element === dots,attributeFilter:element === dots ? ['class'] : undefined});
     }
     observer.observe(panel, {childList:true,characterData:true,subtree:true,attributes:true,
-      attributeFilter:['hidden','disabled','class']});
+      attributeFilter:['hidden','disabled','class','style']});
     observer.observe(lamp, {attributes:true,attributeFilter:['class'],attributeOldValue:true});
     if (toast) observer.observe(toast, {childList:true,characterData:true,subtree:true,attributes:true,attributeOldValue:true,attributeFilter:['class']});
     document.addEventListener('click', event => {
@@ -2789,9 +2832,9 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
     });
     expand(false);
     sync();
-    keepDemoPointerVisible(stage);
+    keepDemoPointerVisible(stage, card);
   }
-  function keepDemoPointerVisible(stage) {
+  function keepDemoPointerVisible(stage, card) {
     const cursor = find('#demoCursor,.demo-cursor,.demoCursor', stage);
     if (!cursor) return;
     const marker = document.createElement('div');
@@ -2808,10 +2851,14 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
       }
       const point = cursor.getBoundingClientRect();
       const boundary = stage.getBoundingClientRect();
-      marker.hidden = point.bottom >= boundary.top || !point.width || !point.height;
+      const cardBounds = card.getBoundingClientRect();
+      const x = point.left + point.width / 2;
+      const y = point.top + point.height / 2;
+      marker.hidden = point.bottom >= boundary.top || !point.width || !point.height ||
+        x < cardBounds.left || x > cardBounds.right || y < cardBounds.top || y > cardBounds.bottom;
       if (!marker.hidden) {
-        marker.style.left = `${point.left + point.width / 2}px`;
-        marker.style.top = `${point.top + point.height / 2}px`;
+        marker.style.left = `${x}px`;
+        marker.style.top = `${y}px`;
       }
       frame = requestAnimationFrame(draw);
     }
