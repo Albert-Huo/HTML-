@@ -2383,6 +2383,30 @@ html[data-middle-task-controls] body #app#app #taskCard[data-task-layout] {
   column-gap:clamp(6px,1.5vw,16px)!important;
   row-gap:6px!important;
 }
+html[data-middle-task-controls] #taskCard[data-task-free] {
+  --task-reference-text:#aeb7c4;
+  --task-reference-dot:#737d8b;
+  --task-reference-dot-edge:#54606f;
+  opacity:1!important;filter:none!important;pointer-events:auto!important;
+}
+html[data-theme="light"][data-middle-task-controls] #taskCard[data-task-free] {
+  --task-reference-text:#586374;
+  --task-reference-dot:#818b99;
+  --task-reference-dot-edge:#aab0bb;
+}
+html[data-middle-task-controls] #taskCard[data-task-free]
+  :is(#taskStep,#stepNo,#taskText,#taskTitle,[data-task-summary]),
+html[data-middle-task-controls] #taskCard[data-task-free]
+  :is(#taskText,#taskTitle,[data-task-summary]) :where(*) {
+  color:var(--task-reference-text)!important;
+}
+html[data-middle-task-controls] #taskCard[data-task-free]
+  :is(#dots,#progress,#progressDots,.progress-dots,.dots) > * {
+  background:var(--task-reference-dot)!important;
+  border-color:var(--task-reference-dot-edge)!important;
+  outline-color:var(--task-reference-dot-edge)!important;
+  box-shadow:none!important;animation:none!important;transition:none!important;
+}
 html[data-middle-task-controls] body #app #stage#stage [data-task-chart] {display:block!important;min-width:0;max-width:100%}
 html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
 #taskCard[data-task-layout] > [data-task-heading] {grid-column:2;grid-row:1}
@@ -2598,6 +2622,7 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
       const modeText = clean(mode?.textContent);
       const step = Number(clean(number.textContent).match(/(\d+)\s*\/\s*\d+/)?.[1]);
       const free = /自由/.test(modeText) || window.state?.freeMode === true;
+      card.toggleAttribute('data-task-free', free);
       const completed = clean(status?.textContent).includes('已完成') || /已通关/.test(modeText) || window.state?.completed === true;
       const current = !free ? config.steps[step - 1] : null;
       summary.hidden = !current;
