@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html data-middle-task-layout="v1" lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
@@ -6843,7 +6843,6 @@ body #app .toolbar button:disabled{
   window.addEventListener('resize', syncMobileShell);
   window.addEventListener('orientationchange', syncMobileShell);
   requestAnimationFrame(setInitialMobileState);
-  setTimeout(setInitialMobileState, 160);
   setTimeout(syncMobileShell, 600);
 })();
 </script>
@@ -7034,7 +7033,7 @@ body #app .toolbar button:disabled{
       const getDefaultAnchors = () => {
         const { width } = getStageSize();
         const control = { x:Math.max(panelSafe, width - panelWidth - 12), y:58 };
-        return [control, { x:control.x, y:control.y + panelHeaderHeight + 10 }];
+        return [control, document.documentElement.hasAttribute("data-middle-task-layout") ? control : { x:control.x, y:control.y + panelHeaderHeight + 10 }];
       };
       const applyAnchor = (panel, nextAnchor) => {
         if (!desktopPanelMutationAllowed()) return false;
@@ -7963,226 +7962,6 @@ body #app .toolbar button:disabled{
 </style>
   <script src="../experiment-scroll-receiver.v2.js" data-science-lab-scroll></script>
   <script src="../experiment-ai-state.v1.js" data-science-lab-ai-state></script>
-<script id="codex-stage-tools-runtime">
-(() => {
-  'use strict';
-  function mount() {
-    const stage = document.querySelector('#stage');
-    const lamp = stage?.querySelector('#hintLamp, .hint-lamp');
-    const pop = stage?.querySelector('#hintPop');
-    const hud = stage?.querySelector('.hud');
-    if (!stage || !lamp || !pop || !hud || stage.dataset.stageToolsMounted) return;
-    stage.dataset.stageToolsMounted = 'true';
-    const wrap = lamp.closest('.hint-lamp-wrap');
-    const anchor = wrap || lamp;
-    let frame = 0;
-    let disposed = false;
-    const put = (node, key, value) => {
-      if (node.style.getPropertyValue(key) !== value || node.style.getPropertyPriority(key) !== 'important') {
-        node.style.setProperty(key, value, 'important');
-      }
-    };
-    const pixels = value => `${Math.round(value * 100) / 100}px`;
-    function expanded() {
-      return pop.classList.contains('open') || Boolean(wrap?.classList.contains('open'));
-    }
-    function syncExpanded() {
-      lamp.setAttribute('aria-controls', pop.id);
-      lamp.setAttribute('aria-expanded', String(expanded()));
-      lamp.setAttribute('aria-label', expanded() ? '收起提示' : '查看提示');
-    }
-    function closeHint() {
-      // Reuse the page's own close action so legacy state.hintOpen and its
-      // wrapper stay synchronized with the popover after Escape/outside clicks.
-      if (wrap ? wrap.classList.contains('open') : expanded()) lamp.click();
-      pop.classList.remove('open');
-      wrap?.classList.remove('open');
-      syncExpanded();
-    }
-    function managedHint() {
-      if (lamp.dataset.stageHint !== 'managed') return;
-      pop.textContent = document.querySelector('#taskHint')?.textContent || '按步骤操作器材，观察现象并记录数据。';
-      pop.classList.toggle('open');
-      syncExpanded();
-    }
-    lamp.addEventListener('click', managedHint);
-    function layout() {
-      frame = 0;
-      if (disposed) return;
-      const s = stage.getBoundingClientRect();
-      const h = hud.getBoundingClientRect();
-      const originX = s.left + stage.clientLeft;
-      const originY = s.top + stage.clientTop;
-      const left = Math.max(8, h.left - originX);
-      const top = Math.max(8, h.bottom - originY + 6);
-      put(anchor, 'position', 'absolute');
-      put(anchor, 'left', pixels(left));
-      put(anchor, 'right', 'auto');
-      put(anchor, 'top', pixels(top));
-      put(anchor, 'bottom', 'auto');
-      put(anchor, 'z-index', '72');
-      if (wrap) {
-        put(wrap, 'width', '36px'); put(wrap, 'height', '36px');
-        put(lamp, 'position', 'static'); put(lamp, 'transform', 'none');
-      }
-      for (const button of [lamp, stage.querySelector('#audioToggle')].filter(Boolean)) {
-        put(button, 'width', '36px'); put(button, 'height', '36px');
-        put(button, 'min-width', '36px'); put(button, 'min-height', '36px');
-        put(button, 'padding', '0'); put(button, 'margin', '0');
-        put(button, 'display', 'grid'); put(button, 'place-items', 'center');
-        put(button, 'font-size', '18px'); put(button, 'box-sizing', 'border-box');
-      }
-      const audio = stage.querySelector('#audioToggle');
-      if (audio) {
-        put(audio, 'position', 'absolute'); put(audio, 'left', pixels(left + 42));
-        put(audio, 'right', 'auto'); put(audio, 'top', pixels(top));
-        put(audio, 'bottom', 'auto'); put(audio, 'z-index', '72');
-        put(audio, 'border', '1px solid rgba(150,170,190,.38)');
-        put(audio, 'border-radius', '8px');
-        put(audio, 'background', 'rgba(100,120,140,.13)');
-        put(audio, 'cursor', 'pointer');
-      }
-      put(pop, 'position', 'absolute'); put(pop, 'box-sizing', 'border-box');
-      put(pop, 'left', wrap ? '0px' : pixels(left)); put(pop, 'right', 'auto');
-      put(pop, 'top', pixels(wrap ? 44 : top + 44)); put(pop, 'bottom', 'auto');
-      put(pop, 'transform', 'none'); put(pop, 'z-index', '71');
-      put(pop, 'width', pixels(Math.max(1, Math.min(340, stage.clientWidth - left - 10))));
-      put(pop, 'max-width', 'none');
-      put(pop, 'max-height', pixels(Math.max(48, stage.clientHeight - top - 60)));
-      put(pop, 'overflow-y', 'auto'); put(pop, 'overflow-wrap', 'anywhere');
-      syncExpanded();
-    }
-    const requestLayout = () => { if (!disposed && !frame) frame = requestAnimationFrame(layout); };
-    function onKey(event) {
-      if (event.key === 'Escape' && expanded()) {
-        closeHint(); lamp.focus({ preventScroll:true });
-      }
-    }
-    function onOutside(event) {
-      if (!lamp.contains(event.target) && !pop.contains(event.target)) closeHint();
-    }
-    const changes = new MutationObserver(syncExpanded);
-    changes.observe(pop, { attributes:true, attributeFilter:['class'] });
-    if (wrap) changes.observe(wrap, { attributes:true, attributeFilter:['class'] });
-    const sizes = new ResizeObserver(requestLayout);
-    sizes.observe(hud); sizes.observe(stage);
-    window.addEventListener('resize', requestLayout);
-    document.addEventListener('keydown', onKey);
-    document.addEventListener('pointerdown', onOutside, { passive:true });
-    lamp.addEventListener('click', requestLayout);
-    function dispose() {
-      disposed = true; cancelAnimationFrame(frame);
-      sizes.disconnect(); changes.disconnect();
-      window.removeEventListener('resize', requestLayout);
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('pointerdown', onOutside);
-      lamp.removeEventListener('click', requestLayout);
-      lamp.removeEventListener('click', managedHint);
-      delete stage.dataset.stageToolsMounted;
-    }
-    window.addEventListener('pagehide', dispose, { once:true });
-    layout();
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
-  else mount();
-  window.addEventListener('pageshow', event => { if (event.persisted) mount(); });
-})();
-</script>
-<script data-task-entry="p01">
-/* P0-1: keep task actions discoverable while reusing the original gated controls. */
-(() => {
-  const firstActions = [{"id": "recordBtn", "label": "记录当前数据"}, {"id": "analyzeBtn", "label": "分析结论"}];
-  function mountTaskEntry() {
-    const card = document.querySelector('#taskCard,.task-card');
-    const panel = document.querySelector('#controlDock,#controlDrawer');
-    if (!card || !panel || document.getElementById('taskEntryActions')) return;
-    const style = document.createElement('style');
-    style.textContent = '#taskEntryActions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:center}#taskEntryActions[hidden]{display:none}#taskEntryActions button{min-height:44px;max-width:100%;padding:8px 12px;border:1px solid rgba(100,220,210,.5);border-radius:9px;background:#21613f;color:#f5fff9;font:inherit;font-size:12px;cursor:pointer}#taskEntryActions button:disabled{opacity:.55;cursor:default}#taskEntryActions .entry-locate{background:transparent;color:inherit}#taskEntryStatus{flex-basis:100%;font-size:12px;line-height:1.45;opacity:.85}#taskEntryStatus:empty{display:none}.task-entry-highlight{outline:2px solid #64dcd2;outline-offset:2px}';
-    document.head.appendChild(style);
-    const row = document.createElement('div');
-    row.id = 'taskEntryActions'; row.setAttribute('role', 'group'); row.setAttribute('aria-label', '当前任务操作');
-    const status = document.createElement('div');
-    status.id = 'taskEntryStatus'; status.setAttribute('role', 'status');
-    const proxies = firstActions.map(({id,label}) => {
-      const proxy = document.createElement('button');
-      proxy.type = 'button'; proxy.dataset.entryTarget = id || label;
-      const source = () => id ? document.getElementById(id) : [...panel.querySelectorAll('button')].find(button => button.textContent.trim() === label);
-      proxy.addEventListener('click', () => {
-        const button = source();
-        if (button && !button.disabled && !button.hidden) button.click();
-        sync();
-      });
-      row.appendChild(proxy); return {proxy,source};
-    });
-    const locate = document.createElement('button');
-    locate.type = 'button'; locate.className = 'entry-locate'; locate.id = 'taskEntryLocate';
-    locate.textContent = '打开实验面板'; locate.setAttribute('aria-controls', panel.id);
-    let highlightTimer = 0;
-    const shown = element => {
-      if (!element) return false;
-      const rect = element.getBoundingClientRect(), css = getComputedStyle(element);
-      return rect.width > 0 && rect.height > 1 && css.display !== 'none' && css.visibility !== 'hidden';
-    };
-    locate.addEventListener('click', () => {
-      const body = panel.querySelector('[data-codex-panel-body],.drawer-body,.dock-body,#controlBody');
-      if (!shown(body)) {
-        const mobile = matchMedia('(max-width:720px)').matches;
-        const toggle = mobile
-          ? document.querySelector('#experimentTab,#mobileControlTab,[data-sheet="controls"]')
-          : document.querySelector('#controlToggleBtn,[data-drawer="controlDrawer"]');
-        toggle?.click();
-      }
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        if (!shown(body)) { status.textContent = '请点击实验面板标签展开操作区。'; return; }
-        panel.scrollIntoView({block:'center',behavior:'auto'});
-        panel.tabIndex = -1; panel.focus({preventScroll:true});
-        panel.classList.add('task-entry-highlight');
-        clearTimeout(highlightTimer);
-        highlightTimer = setTimeout(() => panel.classList.remove('task-entry-highlight'), 1200);
-        status.textContent = '实验面板已定位；完成设置后可收起，继续操作器材。';
-      }));
-    });
-    row.append(locate,status); card.appendChild(row);
-    const taskStep = document.querySelector('#taskStep,#stepNo');
-    const taskText = document.querySelector('#taskText,#taskTitle');
-    const taskHint = document.querySelector('#taskHint');
-    const mode = document.querySelector('#modeTag,#modeChip');
-    let scheduled = false;
-    function sync() {
-      scheduled = false;
-      const modeText = mode?.textContent || '';
-      row.hidden = /自由|演示|已通关/.test(modeText);
-      const step = (taskStep?.textContent || '').match(/(?:关卡|步骤)\s*(\d+)\s*\/\s*(\d+)/);
-      const first = !!step && Number(step[1]) === 1;
-      const analysis = !!step && Number(step[1]) === Number(step[2]);
-      let waiting = false;
-      for (const {proxy,source} of proxies) {
-        const button = source();
-        const isAnalysis = /分析/.test(button?.textContent || '');
-        proxy.hidden = !button || button.hidden || getComputedStyle(button).display === 'none' || (isAnalysis ? !analysis : !first && analysis && !/确认/.test(button.textContent));
-        if (!button) continue;
-        proxy.disabled = button.disabled;
-        waiting ||= !proxy.hidden && proxy.disabled;
-        const label = button.textContent.trim().replace(/\s+/g, ' ');
-        if (proxy.textContent !== label) proxy.textContent = label;
-      }
-      const nextStatus = waiting ? '先按上方任务操作器材，再确认或记录。' : '';
-      if (status.textContent !== nextStatus) status.textContent = nextStatus;
-    }
-    const observer = new MutationObserver(() => {
-      if (!scheduled) { scheduled = true; queueMicrotask(sync); }
-    });
-    for (const element of [taskStep,taskText,taskHint,mode,...proxies.map(x => x.source())].filter(Boolean))
-      observer.observe(element,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:['disabled','hidden','style']});
-    sync();
-    window.addEventListener('pagehide', () => { observer.disconnect(); clearTimeout(highlightTimer); panel.classList.remove('task-entry-highlight'); row.remove(); style.remove(); }, {once:true});
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded',mountTaskEntry,{once:true});
-  else mountTaskEntry();
-  window.addEventListener('pageshow', event => { if (event.persisted) mountTaskEntry(); });
-})();
-
-</script>
 <script data-demo-lifecycle="p02">
 /* P0-2: arbitrate user actions and cancel demos when their experiment leaves view. */
 (() => {
@@ -8261,6 +8040,352 @@ body #app .toolbar button:disabled{
   });
   document.addEventListener('visibilitychange', () => { if (document.hidden) cancelDemo(); });
   window.addEventListener('pagehide', () => { clearTimeout(feedbackTimer); cancelDemo(); });
+})();
+</script>
+<script type="application/json" data-middle-task-config>{"steps":[{"title":"观察两边钩码数量不等","hint":"例如左侧放 1 个、右侧放 2 个钩码，观察小车向较重一侧运动后记录。"},{"title":"观察两边钩码数量相等","hint":"把左右钩码调为相同数量，车身正对两侧拉线，待小车静止后记录。"},{"title":"观察两力不在同一直线","hint":"保持两边钩码一样多，扭转小车后松手，观察它转回原方向并记录。","when":[{"state":"apparatus.twistObserved","hint":"小车已释放。等它转回原方向并停稳，再点“记录当前数据”。"}]},{"title":"判断二力平衡的条件","hint":"根据三组现象选择答案，检查两个力作用的物体、大小、方向和直线关系。","when":[{"matches":"#lab23QuizCard:not([hidden])","hint":"三类现象均已记录。检查两个力的大小、方向和是否在同一直线上，再完成结论小测。"}]}],"controls":[{"id":"recordBtn","steps":[1,2,3],"free":true},{"id":"analyzeBtn","steps":[],"free":true}]}</script>
+<style data-middle-task-controls="v1">
+html[data-middle-task-controls] #taskCard #taskEntryActions,
+html[data-middle-task-controls] #taskCard #taskHint,
+html[data-middle-task-controls] #taskCard :is([data-task-source-hidden],[data-task-redundant]),
+html[data-middle-task-controls] #stage :is(#experimentTab,#mobileControlTab,[data-sheet="controls"],[data-codex-mobile-tab="control"]),
+html[data-middle-task-controls] [data-task-feedback-hidden],
+html[data-middle-task-controls] #taskCard :is([data-step-hidden],[hidden]) {display:none!important}
+
+html[data-middle-task-controls] body #app#app #taskCard[data-task-layout] {
+  grid-template-columns:auto minmax(0,1fr) auto!important;
+  align-items:center;
+  column-gap:clamp(6px,1.5vw,16px)!important;
+}
+html[data-middle-task-controls] body #app #stage#stage [data-task-chart] {display:block!important;min-width:0;max-width:100%}
+html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
+#taskCard[data-task-layout] > [data-task-heading] {grid-column:2;grid-row:1}
+#taskCard[data-task-layout] > :is(#dots,#progress,#progressDots,.progress-dots) {grid-column:3;grid-row:1;justify-self:end}
+#taskCard [data-task-tools] {grid-column:3;grid-row:2;display:flex;gap:5px;align-items:center;justify-self:end;align-self:start}
+#taskCard [data-task-summary] {font-weight:700}
+#taskCard [data-task-tools] > button {
+  position:static!important;inset:auto!important;transform:none!important;
+  display:grid!important;place-items:center;box-sizing:border-box;
+  width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
+  margin:0!important;padding:0!important;font-size:19px!important;
+  border:1px solid color-mix(in srgb,currentColor 30%,transparent)!important;
+  border-radius:9px!important;background:transparent!important;
+}
+#taskCard [data-task-tools] > [data-hint-attention] {
+  color:#17120a!important;background:#ffd269!important;
+  border-color:#ffd269!important;box-shadow:0 0 0 2px #ad6f1d;
+}
+#taskCard [data-task-tools] > [data-hint-pulse] {animation:middle-task-hint-pulse 620ms ease-out 3!important}
+@keyframes middle-task-hint-pulse {
+  0%,100% {box-shadow:0 0 0 2px #ad6f1d}
+  50% {box-shadow:0 0 0 5px #ffc85a,0 0 15px #ffb02e}
+}
+@media(prefers-reduced-motion:reduce) {
+  #taskCard [data-task-tools] > [data-hint-pulse] {animation:none!important}
+}
+#taskCard [data-task-pop] {
+  grid-area:3 / 1 / 4 / -1;justify-self:end;box-sizing:border-box;
+  width:max-content;max-width:min(100%,36em);
+  padding:8px 11px;border:1px solid #b68731;border-radius:8px;
+  background:#30281a;color:#fff4db;line-height:1.5;overflow-wrap:anywhere;
+}
+:root[data-theme="light"] #taskCard [data-task-pop] {background:#fff7e2;color:#332511}
+#taskCard [data-task-announcement] {
+  position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;
+}
+#taskCard [data-task-actions] {
+  grid-area:2 / 1 / 3 / 3;position:static!important;inset:auto!important;transform:none!important;
+  width:100%!important;min-width:0!important;max-width:none!important;height:auto!important;
+  opacity:1!important;pointer-events:auto!important;display:block!important;
+  margin:0!important;padding:0!important;overflow:visible!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;
+}
+#taskCard [data-task-actions] [data-task-panel-header],
+#taskCard [data-task-actions] .sheet-close {display:none!important}
+#taskCard [data-task-actions] [data-task-panel-body] {
+  position:static!important;inset:auto!important;transform:none!important;
+  width:100%!important;min-width:0!important;max-width:none!important;
+  height:auto!important;max-height:none!important;overflow:visible!important;
+  opacity:1!important;pointer-events:auto!important;display:block!important;
+  margin:0!important;padding:0!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;
+}
+#taskCard [data-task-actions] :is(button,select,input:not([type="range"])) {min-height:44px;max-width:100%;box-sizing:border-box}
+#taskCard [data-task-actions] :is(.controls,.buttons,.btn-row,.control-row,.actions) {flex-wrap:wrap}
+[data-task-demo-pointer]:not([hidden]) {
+  position:fixed;z-index:90;pointer-events:none;transform:translate(-50%,-50%);
+  width:18px;height:18px;border:2px solid #7bf8f1;border-radius:50%;
+  background:#11303a80;box-shadow:0 0 0 3px #091c2bb0,0 0 8px #64e8de;
+}
+@media(max-width:720px) {
+  html[data-middle-task-controls] body #app #stage#stage:has(:is(#dataTab,#mobileDataTab,[data-sheet="data"]))
+    :is(#dataToggleBtn,[data-drawer="dataDrawer"]) {display:none!important}
+  html[data-middle-task-controls] body #app #stage#stage .mobile-tabs {grid-template-columns:minmax(0,1fr)!important}
+}
+@media(max-width:490px) {
+  html[data-middle-task-controls] body #app#app #taskCard[data-task-layout] {
+    grid-template-columns:minmax(0,1fr) auto!important;
+  }
+  #taskCard[data-task-layout] > [data-task-heading] {grid-column:1/-1;grid-row:2}
+  #taskCard[data-task-layout] > :is(#dots,#progress,#progressDots,.progress-dots) {grid-column:1/-1;grid-row:3}
+  #taskCard [data-task-tools] {grid-column:2;grid-row:1}
+  #taskCard [data-task-actions] {grid-area:4 / 1 / 5 / -1}
+  #taskCard [data-task-pop] {grid-area:5 / 1 / 6 / -1}
+}
+</style>
+<script data-middle-task-controls="v1">
+(() => {
+  'use strict';
+  const config = JSON.parse(document.querySelector('[data-middle-task-config]').textContent);
+  const find = (selector, root = document) => root.querySelector(selector);
+  const clean = value => (value || '').replace(/\s+/g, ' ').trim();
+  function mount() {
+    const card = find('#taskCard,.task-card');
+    const stage = find('#stage');
+    const panel = find('#controlDock,#controlDrawer');
+    const number = card && find('#taskStep,#stepNo', card);
+    const title = card && find('#taskText,#taskTitle', card);
+    if (!card || !stage || !panel || !number || !title || card.hasAttribute('data-task-layout')) return;
+
+    const nativeHint = find('#taskHint', card);
+    const mode = find('#modeTag,#modeChip');
+    const status = find('#statusTag,#stateTag,#statusChip,#stateChip');
+    const dots = find('#dots,#progress,#progressDots,.progress-dots', card);
+    const toast = find('#toast');
+    const lamp = find('#hintLamp,#hintLampBtn,#helpBtn,.hint-lamp', stage) || document.createElement('button');
+    const data = find('#dataDock,#dataDrawer');
+    const oldPop = find('#hintPop,#hintPopup,.hint-pop', stage);
+    const audio = find('#audioToggle', stage);
+    const body = find('[data-codex-panel-body],.dock-body,.drawer-body,.dockBody,.panelBody,#controlBody,#panelBody', panel);
+    const header = find('[data-codex-panel-header],.dock-header,.dock-head,.drawer-head,.drawer-header,.dockHead,.panelHead', panel);
+    if (!body || !header) return;
+    const dataBody = data && find('[data-codex-panel-body],.dock-body,.drawer-body,.dockBody,.panelBody,.resultsBody', data);
+    if (dataBody) {
+      for (const selector of config.data || []) {
+        const evidence = find(selector);
+        if (!evidence || dataBody.contains(evidence)) continue;
+        if (evidence.querySelector('canvas')) evidence.setAttribute('data-task-chart', '');
+        dataBody.append(evidence);
+      }
+    }
+
+    const tools = document.createElement('div');
+    tools.setAttribute('data-task-tools', '');
+    const pop = document.createElement('div');
+    pop.id = 'currentTaskHint';
+    pop.setAttribute('data-task-pop', '');
+    pop.hidden = true;
+    const announcement = document.createElement('span');
+    announcement.setAttribute('data-task-announcement', '');
+    announcement.setAttribute('role', 'status');
+    const summary = document.createElement('div');
+    summary.setAttribute('data-task-summary', '');
+    summary.hidden = true;
+    title.after(summary);
+    if (title.parentElement === card) {
+      title.setAttribute('data-task-heading', '');
+      summary.setAttribute('data-task-heading', '');
+    } else if (title.parentElement.parentElement === card) {
+      title.parentElement.setAttribute('data-task-heading', '');
+    }
+
+    lamp.id ||= 'hintLamp';
+    lamp.type = 'button';
+    if (!clean(lamp.textContent) && !lamp.querySelector('svg')) lamp.textContent = '💡';
+    lamp.setAttribute('aria-controls', pop.id);
+    tools.append(lamp);
+    if (audio) tools.append(audio);
+    card.append(tools, pop, announcement, panel);
+    panel.setAttribute('data-task-actions', '');
+    panel.setAttribute('aria-label', '当前操作');
+    header.setAttribute('data-task-panel-header', '');
+    body.setAttribute('data-task-panel-body', '');
+    oldPop?.setAttribute('data-task-feedback-hidden', '');
+    card.setAttribute('data-task-layout', '');
+    document.documentElement.setAttribute('data-middle-task-controls', 'v1');
+
+    let hint = '';
+    let context = '';
+    let warning = '';
+    let scheduled = false;
+    let warned = false;
+    let toastChanged = false;
+
+    function expand(open) {
+      pop.hidden = !open;
+      lamp.setAttribute('aria-expanded', String(open));
+      lamp.setAttribute('aria-label', open ? '收起操作提示' : '查看操作提示');
+      if (open) lamp.removeAttribute('data-hint-attention');
+    }
+
+    function showHint() {
+      const text = warning || hint;
+      if (pop.textContent !== text) pop.textContent = text;
+    }
+
+    function ready(condition) {
+      if (!condition) return false;
+      const live = window.state || window.labState;
+      if (Number.isInteger(condition.test)) return window.__labTaskMatches?.(condition.test) === true;
+      if (condition.state) {
+        const value = condition.state.split('.').reduce((value, key) => value?.[key], live);
+        return value === (condition.value ?? condition.equals ?? true);
+      }
+      if (condition.status) return clean(status?.textContent).includes(condition.status);
+      if (condition.matches) {
+        const element = find(condition.matches);
+        return Boolean(element?.getClientRects().length);
+      }
+      return false;
+    }
+
+    function sync() {
+      scheduled = false;
+      const modeText = clean(mode?.textContent);
+      const step = Number(clean(number.textContent).match(/(\d+)\s*\/\s*\d+/)?.[1]);
+      const free = /自由/.test(modeText) || window.state?.freeMode === true;
+      const completed = clean(status?.textContent).includes('已完成') || /已通关/.test(modeText) || window.state?.completed === true;
+      const current = !free && !completed ? config.steps[step - 1] : null;
+      summary.hidden = !current;
+      title.toggleAttribute('data-task-source-hidden', Boolean(current));
+      if (current && summary.textContent !== current.title) summary.textContent = current.title;
+      const provided = clean(window.__labCurrentTaskHint?.());
+      const phases = free ? config.freeHint : current?.when;
+      const nextHint = phases?.find(item => ready(item))?.hint
+        || provided || (config.liveHint ? clean(oldPop?.textContent) : '')
+        || current?.hint || clean(nativeHint?.textContent) || clean(oldPop?.textContent)
+        || '操作实验台上的器材，观察现象；使用任务卡中的按钮记录。';
+      const nextContext = [step, free, completed, clean(status?.textContent), nextHint].join('|');
+      if (nextContext !== context) {
+        if (context && !warned) {
+          warning = '';
+          lamp.removeAttribute('data-hint-attention');
+        }
+        context = nextContext;
+      }
+      hint = nextHint;
+      for (const control of config.controls || []) {
+        if (control.variants) {
+          for (const button of panel.querySelectorAll(control.selector)) {
+            const steps = control.variants[button.dataset.key];
+            if (steps) button.toggleAttribute('data-step-hidden', !free && step > 0 && !steps.includes(step));
+          }
+        }
+        const elements = control.id ? [document.getElementById(control.id)].filter(Boolean)
+          : [...panel.querySelectorAll(control.selector)];
+        for (const element of elements) {
+          const wrapper = control.wrapper ? element.closest(control.wrapper) : element;
+          const visible = free || completed ? control.free !== false : !step || control.steps.includes(step);
+          wrapper?.toggleAttribute('data-step-hidden', !visible);
+        }
+      }
+      if (config.hide?.length) {
+        const selector = config.hide.join(',');
+        for (const element of panel.querySelectorAll(selector + ',[data-task-redundant]')) {
+          element.toggleAttribute('data-task-redundant', element.matches(selector));
+        }
+      }
+      if (toastChanged) {
+        toastChanged = false;
+        const message = clean(toast?.textContent);
+        const isWarning = toast?.classList.contains('error') ||
+          /^(?:请|先|还需|需先|必须|再核对一次|不能|未对准|不正确|错误|无效|继续缓慢下拉|这两个接线柱已经连接|该状态已经记录|这组已记录|当前步骤.*(?:缺|先|未|应))/.test(message);
+        if (toast?.classList.contains('show')) warned ||= isWarning;
+        toast?.toggleAttribute('data-task-feedback-hidden', warned || isWarning || /^下一步[：:]/.test(message));
+      }
+      if (warned) {
+        warned = false;
+        const message = clean(toast?.textContent);
+        warning = phases?.find(item => ready(item))?.hint
+          || (config.liveHint || provided ||
+              /^(先操作实验台|当前步骤证据|当前步骤应记录|先按照当前|请先完成当前|提示$)/.test(message) ? hint : message)
+          || hint;
+        lamp.setAttribute('data-hint-attention', '');
+        lamp.removeAttribute('data-hint-pulse');
+        void lamp.offsetWidth;
+        lamp.setAttribute('data-hint-pulse', '');
+        announcement.textContent = '';
+        announcement.textContent = warning;
+      }
+      showHint();
+    }
+
+    const schedule = () => {
+      if (!scheduled) {
+        scheduled = true;
+        queueMicrotask(sync);
+      }
+    };
+    const observer = new MutationObserver(records => {
+      toastChanged ||= records.some(record => toast && (toast.contains(record.target)) &&
+        (record.type !== 'attributes' || toast.classList.contains('show')));
+      if (records.some(record => (
+        (record.target === lamp && lamp.classList.contains('flash')) ||
+        (dots?.contains(record.target) && record.target.classList?.contains('warn'))
+      ))) warned = true;
+      schedule();
+    });
+    for (const element of [number,title,nativeHint,oldPop,mode,status,dots,panel].filter(Boolean)) {
+      observer.observe(element, {childList:true,characterData:true,subtree:true,
+        attributes:element === dots,attributeFilter:element === dots ? ['class'] : undefined});
+    }
+    observer.observe(panel, {childList:true,characterData:true,subtree:true,attributes:true,
+      attributeFilter:['hidden','disabled','class']});
+    observer.observe(lamp, {attributes:true,attributeFilter:['class'],attributeOldValue:true});
+    if (toast) observer.observe(toast, {childList:true,characterData:true,subtree:true,attributes:true,attributeOldValue:true,attributeFilter:['class']});
+    document.addEventListener('click', event => {
+      if (!lamp.contains(event.target)) return;
+      event.stopImmediatePropagation();
+      sync();
+      expand(pop.hidden);
+    }, true);
+    document.addEventListener('click', event => {
+      if (!pop.hidden && !tools.contains(event.target) && !pop.contains(event.target)) expand(false);
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !pop.hidden) {
+        expand(false);
+        lamp.focus({preventScroll:true});
+      }
+    });
+    expand(false);
+    sync();
+    keepDemoPointerVisible(stage);
+  }
+  function keepDemoPointerVisible(stage) {
+    const cursor = find('#demoCursor,.demo-cursor,.demoCursor', stage);
+    if (!cursor) return;
+    const marker = document.createElement('div');
+    marker.setAttribute('data-task-demo-pointer', '');
+    marker.setAttribute('aria-hidden', 'true');
+    marker.hidden = true;
+    document.body.append(marker);
+    let frame = 0;
+    function draw() {
+      frame = 0;
+      if (Number(getComputedStyle(cursor).opacity) < .05) {
+        marker.hidden = true;
+        return;
+      }
+      const point = cursor.getBoundingClientRect();
+      const boundary = stage.getBoundingClientRect();
+      marker.hidden = point.bottom >= boundary.top || !point.width || !point.height;
+      if (!marker.hidden) {
+        marker.style.left = `${point.left + point.width / 2}px`;
+        marker.style.top = `${point.top + point.height / 2}px`;
+      }
+      frame = requestAnimationFrame(draw);
+    }
+    const observer = new MutationObserver(() => {
+      if (!frame) frame = requestAnimationFrame(draw);
+    });
+    observer.observe(cursor, {attributes:true, attributeFilter:['class','style']});
+    window.addEventListener('pagehide', () => {
+      cancelAnimationFrame(frame);
+      frame = 0;
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, {once:true});
+  else mount();
 })();
 </script>
 </body>
