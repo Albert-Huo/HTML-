@@ -977,6 +977,27 @@ body #app .toolbar button:disabled{
   }
 </style>
 
+<style id="ruler-content-layout">
+  #rulerSetup {display:flex;flex:1 0 100%;flex-wrap:wrap;align-items:center;gap:6px 10px}
+  #rulerSetup[hidden],#stage #dataDock :is(#analysisText,#lengthHistory)[hidden] {display:none!important}
+  #rulerSetup :is(.field,.field .name,#actionBtns) {margin:0}
+  #rulerSetup .field {display:flex;align-items:center;gap:6px;padding:0;border:0;background:none}
+  #rulerSetup #pill_object {display:none}
+  #rulerSetup :is(select,button) {width:auto;min-height:44px}
+  #stage:has(#rulerSetup:not([hidden])) #labArea {
+    top:max(54px,var(--ruler-hud-bottom,0px))!important
+  }
+  #rulerContext {
+    position:absolute;inset:0 auto auto 0;width:1px;height:1px;
+    overflow:hidden;clip-path:inset(50%);white-space:nowrap;
+  }
+  #stage #dataDock #lengthHistory:not([hidden]) {display:block!important}
+  @media(max-width:720px) {
+    body #app #stage:has(#rulerSetup:not([hidden])) #labArea {
+      top:max(96px,var(--ruler-hud-bottom,0px))!important
+    }
+  }
+</style>
 </head>
 <body>
 <script id="codex-lab-sound-bus" data-native-audio="false">
@@ -1216,6 +1237,19 @@ body #app .toolbar button:disabled{
     <div class="hud">
       <span class="tag" id="modeTag">模式：闯关模式 · 关卡 1/4</span>
       <span class="tag" id="statusTag">状态：待开始</span>
+      <div id="rulerSetup" role="group" aria-label="选择待测物体" hidden>
+        <div id="controlFields"></div>
+        <div class="btnRow" id="actionBtns"></div>
+      </div>
+    </div>
+    <div id="rulerContext" role="group" aria-label="刻度尺实时状态">
+        <div class="row lab-hint" id="apparatusHint"></div>
+        <div class="status-grid">
+          <div class="pill" id="pillA">关键状态A</div>
+          <div class="pill" id="pillB">关键状态B</div>
+          <div class="pill" id="pillC">关键状态C</div>
+          <div class="pill" id="pillD">关键状态D</div>
+        </div>
     </div>
 
     
@@ -1231,22 +1265,11 @@ body #app .toolbar button:disabled{
         <div class="dockBtns drawer-actions"><button class="iconBtn" id="controlToggleBtn">展开</button></div>
       </div>
       <div class="dockBody collapsed drawer-body" id="controlBody">
-        <div class="row lab-hint" id="apparatusHint"></div>
-        <div class="status-grid">
-          <div class="pill" id="pillA">关键状态A</div>
-          <div class="pill" id="pillB">关键状态B</div>
-          <div class="pill" id="pillC">关键状态C</div>
-          <div class="pill" id="pillD">关键状态D</div>
-        </div>
-        <div id="controlFields"></div>
-        <div class="btnRow" id="actionBtns"></div>
         <div class="btnRow" style="margin-top:8px;">
           <button class="sub" id="recordBtn">记录当前数据</button>
           <button class="sub" id="checkBtn">确认观察 ✅</button>
           <button class="sub" id="analyzeBtn">分析结论</button>
         </div>
-        <div class="analysis" id="analysisText" style="margin-top:8px;">暂无。请按步骤操作器材并记录数据后分析。</div>
-        <div class="chartWrap"><canvas id="chart"></canvas></div>
       </div>
     </div>
 
@@ -1263,7 +1286,8 @@ body #app .toolbar button:disabled{
           <tbody id="recordBody"></tbody>
         </table>
       
-        <div class="chartWrap exp35-record-chart"><canvas id="recordChart"></canvas></div>
+        <div class="analysis" id="analysisText" hidden></div>
+        <div class="chartWrap" id="lengthHistory" hidden><canvas id="chart" role="img" aria-label="本次长度测量记录图"></canvas></div>
       </div>
     </div>
 
@@ -1513,6 +1537,8 @@ body #app .toolbar button:disabled{
     const pillC = $('#pillC');
     const pillD = $('#pillD');
 
+    const rulerSetup = $('#rulerSetup');
+    const lengthHistory = $('#lengthHistory');
     const controlFields = $('#controlFields');
     const actionBtns = $('#actionBtns');
 
@@ -1725,6 +1751,7 @@ body #app .toolbar button:disabled{
     function setStepUI(i){
       const idx = clamp(i,0,LAB.tasks.length-1);
       state.currentTask = idx;
+      syncRulerSetup();
       const t = LAB.tasks[idx];
       taskStepEl.textContent = `步骤 ${idx+1} / ${LAB.tasks.length}`;
       taskTextEl.innerHTML = t.text;
@@ -1736,8 +1763,13 @@ body #app .toolbar button:disabled{
       });
     }
 
+    function syncRulerSetup(){
+      rulerSetup.hidden = !state.freeMode && state.currentTask !== 2;
+    }
+
     function setFreeMode(on){
       state.freeMode = !!on;
+      syncRulerSetup();
       updateModeHud();
       updateAutoDemoBtn();
       if(state.freeMode){
@@ -1777,6 +1809,7 @@ body #app .toolbar button:disabled{
           wrap.appendChild(input);
         }else if(def.type === 'select'){
           const sel = document.createElement('select');
+          sel.setAttribute('aria-label', def.label);
           for(const [val,text] of def.options){
             const op = document.createElement('option');
             op.value = val;
@@ -2185,6 +2218,7 @@ body #app .toolbar button:disabled{
 
     function renderRecords(){
       recordBody.innerHTML = '';
+      lengthHistory.hidden = state.records.length === 0;
       if(!state.records.length){
         recordBody.innerHTML = '<tr><td colspan="4" style="color:#9db4d6;">暂无记录</td></tr>';
         return;
@@ -2268,6 +2302,7 @@ body #app .toolbar button:disabled{
       }
       state.analysisOk = ok;
       analysisText.textContent = msg;
+      analysisText.hidden = false;
       analysisText.classList.toggle('ok', ok);
       if(showToastMsg) showToast(ok ? '分析完成：结论成立' : '分析未通过，请补充实验记录');
       setStatus(ok ? '分析完成，等待确认' : '分析未通过');
@@ -3248,7 +3283,8 @@ body #app .toolbar button:disabled{
       state.analysisOk = false;
       state.unseenRecordCount = 0;
       analysisText.classList.remove('ok');
-      analysisText.textContent = '暂无。请按步骤操作器材并记录数据后分析。';
+      analysisText.textContent = '';
+      analysisText.hidden = true;
       updateBadge();
       renderRecords();
       scheduleChart();
@@ -3530,7 +3566,13 @@ body #app .toolbar button:disabled{
 
       recordBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) addRecord(); });
       checkBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) tryPassStep(true); });
-      analyzeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) analyzeConclusion(true); });
+      analyzeBtn.addEventListener('click', ()=>{
+        if(state.autoPlaying) return;
+        analyzeConclusion(true);
+        const dataTab = $('#dataTab');
+        const toggle = dataTab?.getClientRects().length ? dataTab : dataToggleBtn;
+        if(toggle.getAttribute('aria-expanded') !== 'true') toggle.click();
+      });
       resetBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) resetFlow(true); });
       autoDemoBtn.addEventListener('click', ()=>{ if(state.autoPlaying) requestStopAutoDemo(); else autoDemo(); });
       freeBtn.addEventListener('click', ()=>{ if(!state.autoPlaying) setFreeMode(!state.freeMode); });
@@ -3583,6 +3625,14 @@ body #app .toolbar button:disabled{
       state.lastTs = 0;
       if(state.rafId) cancelAnimationFrame(state.rafId);
       state.rafId = requestAnimationFrame(loop);
+      const hud = rulerSetup.parentElement;
+      new ResizeObserver(()=>{
+        const bottom = hud.getBoundingClientRect().bottom - stageEl.getBoundingClientRect().top;
+        stageEl.style.setProperty('--ruler-hud-bottom', `${Math.ceil(bottom) + 6}px`);
+      }).observe(hud);
+      new ResizeObserver(()=>{
+        if(chart.clientWidth) scheduleChart();
+      }).observe(chart);
       scheduleChart();
     }
 
@@ -3724,7 +3774,7 @@ body #app .toolbar button:disabled{
         restoreFreeEntry:(snapshot) => restoreModeWorld(snapshot, {
           getState:() => state,
           reset:() => { setFreeMode(false); resetFlow(false); },
-          refresh:() => { updateModeHud(); updateAutoDemoBtn(); updatePills(); renderRecords(); scheduleChart(); },
+          refresh:() => { syncRulerSetup(); updateModeHud(); updateAutoDemoBtn(); updatePills(); renderRecords(); scheduleChart(); },
         }),
         pauseApparatus() {
           codexModePauseStarted = performance.now();
@@ -4065,6 +4115,7 @@ body #app .toolbar button:disabled{
     const dock = which === 'control' ? controlDock : dataDock;
     const body = which === 'control' ? controlBody : dataBody;
     const toggle = which === 'control' ? controlToggle : dataToggle;
+    if (which === 'data' && state.dataCollapsed === open) setDataCollapsed(!open);
     dock.classList.toggle('collapsed', !open);
     if (body) body.classList.toggle('collapsed', !open);
     if (toggle && /^(展开|收起)$/.test((toggle.textContent || '').trim())) toggle.textContent = open ? '收起' : '展开';
@@ -5342,7 +5393,7 @@ body #app .toolbar button:disabled{
   window.addEventListener('pagehide', () => { clearTimeout(feedbackTimer); cancelDemo(); });
 })();
 </script>
-<script type="application/json" data-middle-task-config>{"steps":[{"title":"将物体对齐零刻度","hint":"在画布拖动样品，让左端吸附到刻度尺零刻度，再确认。","when":[{"state":"apparatus.aligned","hint":"样品左端已对准零刻度，点“确认观察”。"}]},{"title":"对准物体右端并读数","hint":"拖动竖向虚线对齐物体右端，按 0.1 cm 吸附位置读数，记录后确认。","when":[{"status":"已记录，等待确认","hint":"本关数据已记录，点“确认观察”继续。"},{"status":"读数完成","hint":"已取得长度读数，点“记录当前数据”再确认。"}]},{"title":"换一件物体再测","hint":"切换另一件样品，重复零刻度和右端读数操作。记录至少两种物体后确认。","when":[{"status":"已记录，等待确认","hint":"看记录里是否已有两种样品的有效结果，齐全后点“确认观察”。"},{"status":"读数完成","hint":"第二种样品已有读数，点“记录当前数据”。"},{"status":"已更换物体","hint":"把新样品的左端拖到零刻度，再移动右侧读数线。"}]},{"title":"总结长度测量方法","hint":"点“分析结论”，对照零刻度对齐和读数记录，最后确认。","when":[{"state":"analysisOk","hint":"分析已完成，查看结论后点“确认观察”。"}]}],"controls":[{"selector":"#controlFields .field:has(#pill_object)","steps":[3],"free":true},{"selector":"#actionBtns [data-action-id=\"nextObject\"]","steps":[3],"free":true},{"id":"recordBtn","steps":[2,3],"free":true},{"id":"checkBtn","steps":[1,2,3,4],"free":false},{"id":"analyzeBtn","steps":[4],"free":true}]}</script>
+<script type="application/json" data-middle-task-config>{"steps":[{"title":"将物体对齐零刻度","hint":"在画布拖动样品，让左端吸附到刻度尺零刻度，再确认。","when":[{"state":"apparatus.aligned","hint":"样品左端已对准零刻度，点“确认观察”。"}]},{"title":"对准物体右端并读数","hint":"拖动竖向虚线对齐物体右端，按 0.1 cm 吸附位置读数，记录后确认。","when":[{"status":"已记录，等待确认","hint":"本关数据已记录，点“确认观察”继续。"},{"status":"读数完成","hint":"已取得长度读数，点“记录当前数据”再确认。"}]},{"title":"换一件物体再测","hint":"在实验区上方选择样品，或点“更换物体”。把新样品拖到零刻度，再对准右端读数并记录。","when":[{"status":"已记录，等待确认","hint":"看记录里是否已有两种样品的有效结果，齐全后点“确认观察”。"},{"status":"读数完成","hint":"第二种样品已有读数，点“记录当前数据”。"},{"status":"已更换物体","hint":"把新样品的左端拖到零刻度，再移动右侧读数线。"}]},{"title":"总结长度测量方法","hint":"点“分析结论”，在数据面板查看测量记录和结论，再点“确认观察”。","when":[{"state":"analysisOk","hint":"分析已完成，查看结论后点“确认观察”。"}]}],"controls":[{"id":"recordBtn","steps":[2,3],"free":true},{"id":"checkBtn","steps":[1,2,3,4],"free":false},{"id":"analyzeBtn","steps":[4],"free":true}]}</script>
 <style data-middle-task-controls="v1">
 html[data-middle-task-controls] #taskCard #taskEntryActions,
 html[data-middle-task-controls] #taskCard #taskHint,

@@ -2482,14 +2482,44 @@ function setDrawerCollapsed(drawer, collapsed) {
   window.addEventListener('pagehide', () => { clearTimeout(feedbackTimer); cancelDemo(); });
 })();
 </script>
-<script type="application/json" data-middle-task-config>{"steps":[{"title":"轻敲铁屑板","hint":"按住轻敲棒拖到透明板上轻敲三次，观察铁屑排列后记录。","when":[{"state":"filingsReady","equals":true,"hint":"铁屑已经排列成弧线，观察磁极附近的疏密，再记录。"},{"test":0,"hint":"继续用轻敲棒轻敲，直到满三次。"}]},{"title":"移动小磁针","hint":"拖动小磁针到透明板边缘的白色测点，观察 N 极方向。 完成后记录。","when":[{"state":"compassPlaced","equals":true,"hint":"小磁针已定位，观察 N 极方向并记录。"}]},{"title":"翻转条形磁铁","hint":"按住条形磁铁一端横向拖动，交换 N/S 极。 完成后记录。","when":[{"state":"magnetReversed","equals":true,"hint":"磁极已对调，观察小磁针方向的变化并记录。"}]},{"title":"分析磁场分布","hint":"三组记录完成后点击分析。"}],"controls":[{"id":"recordBtn","steps":[1,2,3],"free":true},{"id":"analyzeBtn","steps":[4],"free":true}]}</script>
+<script type="application/json" data-middle-task-config>{"steps":[{"title":"轻敲铁屑板","hint":"按住轻敲棒拖到透明板上轻敲三次，观察铁屑排列后记录。","when":[{"state":"filingsReady","equals":true,"hint":"铁屑已经排列成弧线，观察磁极附近的疏密，再记录。"},{"test":0,"hint":"继续用轻敲棒轻敲，直到满三次。"}]},{"title":"移动小磁针","hint":"拖动小磁针到透明板边缘的白色测点，观察 N 极方向。 完成后记录。","when":[{"state":"compassPlaced","equals":true,"hint":"小磁针已定位，观察 N 极方向并记录。"}]},{"title":"翻转条形磁铁","hint":"按住条形磁铁一端横向拖动，交换 N/S 极。 完成后记录。","when":[{"state":"magnetReversed","equals":true,"hint":"磁极已对调，观察小磁针方向的变化并记录。"}]},{"title":"分析磁场分布","hint":"三组记录完成后点击分析。"}],"controls":[{"id":"recordBtn","steps":[1,2,3],"free":true},{"id":"analyzeBtn","steps":[4],"free":true}],"results":["#analysisText"],"hide":["#recordCue"]}</script>
 <style data-middle-task-controls="v1">
 html[data-middle-task-controls] #taskCard #taskEntryActions,
 html[data-middle-task-controls] #taskCard #taskHint,
 html[data-middle-task-controls] #taskCard :is([data-task-source-hidden],[data-task-redundant],[data-task-empty]),
 html[data-middle-task-controls] #stage :is(#experimentTab,#mobileControlTab,[data-sheet="controls"],[data-codex-mobile-tab="control"]),
 html[data-middle-task-controls] [data-task-feedback-hidden],
+html[data-middle-task-controls] :is([data-task-observations],[data-task-evidence]) :is([data-step-hidden],[data-task-empty],[hidden]),
+html[data-middle-task-controls] :is([data-task-observations][hidden],[data-task-evidence][data-task-empty],[data-task-evidence][hidden]),
 html[data-middle-task-controls] #taskCard :is([data-step-hidden],[hidden]) {display:none!important}
+
+[data-task-observations] {
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;
+  box-sizing:border-box;inline-size:100%;max-width:100%;margin-block-start:6px;padding:8px 10px;
+  border:1px solid #435263;border-radius:10px;background:#111c27;color:#eaf2ff;
+}
+[data-theme="light"] [data-task-observations] {background:#f5f8fc;color:#25374d;border-color:#ccd7e4}
+[data-task-observations] > * {min-width:0;max-width:100%;margin:0!important}
+[data-task-observations] :is(button,select,input:not([type="range"])) {
+  min-height:44px;max-width:100%;box-sizing:border-box;
+}
+[data-task-observations] :is(.status-grid,.live-grid,.readout-grid,.read-grid,.meter-row,.measure-card,.readout) {
+  display:flex;flex-wrap:wrap;gap:5px 8px;
+}
+[data-task-observations] :is(.field,.row,.freeControls) {max-width:100%}
+[data-task-observations] #controlFields {display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+[data-task-observations] #controlFields .field {
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  margin:0;padding:0;border:0;background:none;
+}
+[data-task-observations] #controlFields .field .name {margin:0}
+[data-task-observations] #controlFields .field:has(select) .name > [id^="pill_"] {display:none}
+[data-task-observations] #controlFields .field :is(input,select) {width:auto;max-width:100%}
+[data-task-observations] #controlFields .field input[type="range"] + * {white-space:nowrap}
+[data-task-observations] [data-task-chart] {flex:1 1 100%;min-width:0;max-width:100%}
+[data-task-observations] [data-task-chart] canvas {display:block;width:100%;max-width:100%}
+#stage [data-task-evidence] {min-width:0;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+#stage [data-task-result][data-task-evidence] {grid-column:1 / -1}
 
 html[data-middle-task-controls] body #app#app #taskCard[data-task-layout] {
   position:relative;
@@ -2524,7 +2554,7 @@ html[data-middle-task-controls] #taskCard[data-task-free]
   outline-color:var(--task-reference-dot-edge)!important;
   box-shadow:none!important;animation:none!important;transition:none!important;
 }
-html[data-middle-task-controls] body #app #stage#stage [data-task-chart] {display:block!important;min-width:0;max-width:100%}
+html[data-middle-task-controls] body #app #stage#stage [data-task-chart]:not([data-task-empty],[hidden]) {display:block!important;min-width:0;max-width:100%}
 html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
 #taskCard[data-task-layout] > [data-task-heading] {grid-column:2;grid-row:1}
 #taskCard[data-task-layout] > :is(#dots,#progress,#progressDots,.progress-dots) {grid-column:3;grid-row:1;justify-self:end}
@@ -2629,6 +2659,30 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
   const config = JSON.parse(document.querySelector('[data-middle-task-config]').textContent);
   const find = (selector, root = document) => root.querySelector(selector);
   const clean = value => (value || '').replace(/\s+/g, ' ').trim();
+
+  function placeObservations(stage, elements, after = false) {
+    if (!elements.length) return null;
+    const strip = document.createElement('section');
+    strip.setAttribute('data-task-observations', '');
+    strip.setAttribute('aria-label', '实验区器材与实时观测');
+    for (const element of elements) {
+      if (element.querySelector('canvas')) element.setAttribute('data-task-chart', '');
+      strip.append(element);
+    }
+    stage[after ? 'after' : 'before'](strip);
+    return strip;
+  }
+
+  function showDataPanel(stage, dataBody) {
+    if (dataBody.getClientRects().length) return;
+    const toggles = stage.querySelectorAll(
+      '#dataTab,#mobileDataTab,[data-sheet="data"],#dataToggleBtn,[data-drawer="dataDrawer"]'
+    );
+    const toggle = [...toggles].find(element => element.getClientRects().length &&
+      getComputedStyle(element).visibility !== 'hidden');
+    toggle?.click();
+  }
+
   function mount() {
     const card = find('#taskCard,.task-card');
     const stage = find('#stage');
@@ -2649,13 +2703,53 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
     const body = find('[data-codex-panel-body],.dock-body,.drawer-body,.dockBody,.panelBody,#controlBody,#panelBody', panel);
     const header = find('[data-codex-panel-header],.dock-header,.dock-head,.drawer-head,.drawer-header,.dockHead,.panelHead', panel);
     if (!body || !header) return;
-    const dataBody = data && find('[data-codex-panel-body],.dock-body,.drawer-body,.dockBody,.panelBody,.resultsBody', data);
+    const dataBody = data && find('[data-codex-panel-body],.dock-body,.drawer-body,.dockBody,.panelBody,.resultsBody,.data-scroll', data);
+    const results = dataBody && config.results?.length ? [...panel.querySelectorAll(config.results.join(','))] : [];
+    const hintSources = (config.hintSources || []).flatMap(source => {
+      const element = find(source.selector);
+      if (!element) return [];
+      if (source.hide !== false) element.setAttribute('data-task-feedback-hidden', '');
+      return [{...source, element}];
+    });
+    const selectPanel = selectors => selectors?.length ? [...panel.querySelectorAll(selectors.join(','))] : [];
+    const observations = [
+      placeObservations(stage, selectPanel(config.stage)),
+      placeObservations(stage, selectPanel(config.stageAfter), true),
+    ].filter(Boolean);
+    const controlRoots = [panel, ...observations];
+    const selectControls = selector => controlRoots.flatMap(root => [...root.querySelectorAll(selector)]);
     if (dataBody) {
       for (const selector of config.data || []) {
         const evidence = find(selector);
         if (!evidence || dataBody.contains(evidence)) continue;
         if (evidence.querySelector('canvas')) evidence.setAttribute('data-task-chart', '');
         dataBody.append(evidence);
+      }
+      for (const result of results) {
+        result.setAttribute('data-task-evidence', '');
+        result.setAttribute('data-task-result', '');
+        dataBody.prepend(result);
+      }
+      const recordCharts = (config.recordCharts || []).map(selector => find(selector, dataBody)).filter(Boolean);
+      for (const chart of recordCharts) chart.setAttribute('data-task-evidence', '');
+      const records = find('#recordBody', dataBody);
+      if (records && recordCharts.length) {
+        const syncCharts = () => {
+          const hasData = [...records.rows].some(row => row.cells.length > 1);
+          for (const chart of recordCharts) chart.toggleAttribute('data-task-empty', !hasData);
+        };
+        new MutationObserver(syncCharts).observe(records, {childList:true, subtree:true});
+        syncCharts();
+      }
+    }
+    if (typeof scheduleChart === 'function') {
+      const charts = [...observations, dataBody].filter(Boolean)
+        .flatMap(container => [...container.querySelectorAll('[data-task-chart]')]);
+      if (charts.length) {
+        const resize = new ResizeObserver(entries => {
+          if (entries.some(entry => entry.contentRect.width > 0)) scheduleChart();
+        });
+        for (const chart of charts) resize.observe(chart);
       }
     }
     const nativeAction = find('#taskActionBtn', card)?.closest('.task-actions');
@@ -2665,6 +2759,7 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
     );
     const resultSelector = ':scope > :is(.analysis,.analysisBox,.analysis-box,.codex-final-analysis)';
     const placeholder = /^(?:(?:分析|结论)[：:]\s*)?(?:暂无(?:[。！.]|$)|待完成|完成[^。]*后[，,]?\s*(?:在这里|这里|分析|比较|生成|点击)|请按关卡完成|拉动粗绳，记录筒面温度变化后分析|新增了测量点[。！.])/;
+    const guidance = /^(?:(?:分析|结论)[：:]\s*)?(?:自由模式不推进|自由切换|用画面上方|请|先|至少)/;
     for (const group of groups) group.setAttribute('data-task-group', '');
 
     const tools = document.createElement('div');
@@ -2721,6 +2816,16 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
       if (pop.textContent !== text) pop.textContent = text;
     }
 
+    function indicateWarning(text) {
+      warning = text;
+      lamp.setAttribute('data-hint-attention', '');
+      lamp.removeAttribute('data-hint-pulse');
+      void lamp.offsetWidth;
+      lamp.setAttribute('data-hint-pulse', '');
+      announcement.textContent = '';
+      announcement.textContent = warning;
+    }
+
     function ready(condition) {
       if (!condition) return false;
       const live = window.state || window.labState;
@@ -2744,16 +2849,24 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
       const free = /自由/.test(modeText) || window.state?.freeMode === true;
       card.toggleAttribute('data-task-free', free);
       const completed = clean(status?.textContent).includes('已完成') || /已通关/.test(modeText) || window.state?.completed === true;
-      const current = !free ? config.steps[step - 1] : null;
-      summary.hidden = !current;
-      title.toggleAttribute('data-task-source-hidden', Boolean(current));
-      if (current && summary.textContent !== current.title) summary.textContent = current.title;
+      const matchingStep = config.steps[step - 1];
+      const current = free ? null : matchingStep;
+      const concise = current || (free && clean(title.textContent).length > 26 ? matchingStep : null);
+      summary.hidden = !concise;
+      title.toggleAttribute('data-task-source-hidden', Boolean(concise));
+      if (concise && summary.textContent !== concise.title) summary.textContent = concise.title;
       const provided = clean(window.__labCurrentTaskHint?.());
       const phases = free ? config.freeHint : current?.when;
-      const nextHint = phases?.find(item => ready(item))?.hint
+      const baseHint = phases?.find(item => ready(item))?.hint
         || provided || (config.liveHint ? clean(oldPop?.textContent) : '')
         || current?.hint || clean(nativeHint?.textContent) || clean(oldPop?.textContent)
         || '操作实验台上的器材，观察现象；使用任务卡中的按钮记录。';
+      const extraHints = hintSources
+        .filter(source => source.free == null || source.free === free)
+        .filter(source => !source.when || source.element.matches(source.when))
+        .map(source => clean(source.element.textContent))
+        .filter(text => text && !baseHint.includes(text));
+      const nextHint = [baseHint, ...new Set(extraHints)].join(' ');
       const nextContext = [step, free, completed, clean(status?.textContent), nextHint].join('|');
       if (nextContext !== context) {
         if (context && !warned) {
@@ -2765,13 +2878,13 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
       hint = nextHint;
       for (const control of config.controls || []) {
         if (control.variants) {
-          for (const button of panel.querySelectorAll(control.selector)) {
+          for (const button of selectControls(control.selector)) {
             const steps = control.variants[button.dataset.key];
             if (steps) button.toggleAttribute('data-step-hidden', !free && step > 0 && !steps.includes(step));
           }
         }
         const elements = control.id ? [document.getElementById(control.id)].filter(Boolean)
-          : [...panel.querySelectorAll(control.selector)];
+          : selectControls(control.selector);
         for (const element of elements) {
           const wrapper = control.wrapper ? element.closest(control.wrapper) : element;
           const visible = free ? control.free !== false : !step || control.steps.includes(step);
@@ -2791,11 +2904,21 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
         );
         group.toggleAttribute('data-task-empty', !hasContent || group.style.display === 'none');
       }
-      for (const result of body.querySelectorAll(resultSelector)) {
+      for (const strip of observations) {
+        strip.toggleAttribute('hidden', ![...strip.children].some(element => {
+          if (element.matches('[hidden],[data-step-hidden]') || getComputedStyle(element).display === 'none') return false;
+          const controls = [...element.querySelectorAll('button,input,select,textarea')];
+          return !controls.length || controls.some(control =>
+            !control.closest('[data-step-hidden],[hidden]:not([data-task-observations])') &&
+            getComputedStyle(control).display !== 'none');
+        }));
+      }
+      for (const result of [...body.querySelectorAll(resultSelector), ...results]) {
         const text = clean(result.textContent);
         result.setAttribute('data-task-result', '');
-        const pending = !result.classList.contains('ok') &&
-          (placeholder.test(text) || result.matches('.is-empty,.codex-placeholder-hidden'));
+        const pending = !result.matches('.ok,.danger') &&
+          (placeholder.test(text) || result.matches('.is-empty,.codex-placeholder-hidden') ||
+            (results.includes(result) && guidance.test(text)));
         result.toggleAttribute('data-task-empty', !text || pending);
       }
       if (toastChanged) {
@@ -2809,16 +2932,10 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
       if (warned) {
         warned = false;
         const message = clean(toast?.textContent);
-        warning = phases?.find(item => ready(item))?.hint
+        indicateWarning(phases?.find(item => ready(item))?.hint
           || (config.liveHint || provided ||
               /^(先操作实验台|当前步骤证据|当前步骤应记录|先按照当前|请先完成当前|提示$)/.test(message) ? hint : message)
-          || hint;
-        lamp.setAttribute('data-hint-attention', '');
-        lamp.removeAttribute('data-hint-pulse');
-        void lamp.offsetWidth;
-        lamp.setAttribute('data-hint-pulse', '');
-        announcement.textContent = '';
-        announcement.textContent = warning;
+          || hint);
       }
       showHint();
     }
@@ -2844,8 +2961,31 @@ html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
     }
     observer.observe(panel, {childList:true,characterData:true,subtree:true,attributes:true,
       attributeFilter:['hidden','disabled','class','style']});
+    for (const element of [...observations, ...results, ...hintSources.map(source => source.element)]) {
+      observer.observe(element, {childList:true,characterData:true,subtree:true,attributes:true,
+        attributeFilter:['hidden','class','style']});
+    }
     observer.observe(lamp, {attributes:true,attributeFilter:['class'],attributeOldValue:true});
     if (toast) observer.observe(toast, {childList:true,characterData:true,subtree:true,attributes:true,attributeOldValue:true,attributeFilter:['class']});
+    if (results.length) {
+      card.addEventListener('click', event => {
+        if (!event.isTrusted || !event.target.closest('#analyzeBtn,#fitBtn')) return;
+        queueMicrotask(() => {
+          sync();
+          const ready = results.some(result => !result.matches('[hidden],[data-task-empty]'));
+          if (ready) {
+            if (config.openResults !== false) showDataPanel(stage, dataBody);
+            return;
+          }
+          const detail = results.map(result => clean(result.textContent))
+            .find(text => guidance.test(text) && !placeholder.test(text));
+          if (detail) {
+            indicateWarning(detail);
+            showHint();
+          }
+        });
+      });
+    }
     document.addEventListener('click', event => {
       if (!lamp.contains(event.target)) return;
       event.stopImmediatePropagation();
