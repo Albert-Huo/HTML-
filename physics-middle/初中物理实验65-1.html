@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html data-middle-task-layout="v1" lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>初中物理实验65-1｜用电压表判断电路故障</title>
+  <style>
+    :root{
+      --bg:#1a1a1a;
+      --ink:#ffffff;
+      --card-bg:rgba(255,255,255,0.08);
+      --panel-bg:rgba(15,15,15,0.55);
+      --line:rgba(255,255,255,0.12);
+      --accent:#3ddc97;
+      --warn:#ffb74d;
+      --error:#ff6b6b;
+      --drawer-collapsed-width:164px;
+      --drawer-stack-offset:26px;
+      --shell-tool-size:13px;
+      --shell-tool-ink:#d9e8f8;
+      --shell-tool-bg:rgba(255,255,255,.075);
+      --shell-title-size:20px;
+      --shell-title-ink:#9bd3ff;
+      --shell-copy-size:15px;
+      --shell-copy-ink:#e8f4ff;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      padding:10px;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    #app{
+      width:100%;
+      max-width:980px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+    }
+    #spectrum{
+      position:relative;
+      width:100%;
+      max-width:980px;
+      height:24px;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 0 15px rgba(255,255,255,0.12);
+      margin:0 0 12px;
+      background:#050505;
+    }
+    #spectrum::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background-image:linear-gradient(90deg,#ff4c4c 0%,#ff9a3d 5.5%,#f7e94c 11%,#54e86d 17%,#40e0d0 24%,#4aa3ff 31%,#8757ff 38%,#ec5cff 44%,#ff4c4c 50%,#ff9a3d 55.5%,#f7e94c 61%,#54e86d 67%,#40e0d0 74%,#4aa3ff 81%,#8757ff 88%,#ec5cff 94%,#ff4c4c 100%);
+      background-size:200% 100%;
+      background-repeat:repeat;
+      filter:saturate(1.18) brightness(1.04);
+      opacity:.96;
+      animation:flowRainbow 8s linear infinite;
+    }
+    @keyframes flowRainbow{
+      0%{ background-position:0 0; }
+      100%{ background-position:-100% 0; }
+    }
+    .task-card{
+      width:100%;
+      max-width:980px;
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      backdrop-filter:blur(6px);
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      align-items:center;
+      gap:10px;
+      transition:opacity .2s, filter .2s;
+    }
+    .task-card.free-mode{
+      opacity:.42;
+      filter:grayscale(.86) saturate(.42);
+    }
+    .task-step{
+      background:rgba(255,255,255,0.15);
+      border-radius:8px;
+      padding:6px 10px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+    .task-hint{ font-size:12px; color:#ffd54f; opacity:.95; }
+    .progress-dots{ display:flex; gap:6px; }
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:50%;
+      background:rgba(255,255,255,0.26);
+      outline:2px solid rgba(255,255,255,0.12);
+    }
+    .dot.active{ background:var(--warn); }
+    .dot.done{ background:var(--accent); outline-color:rgba(61,220,151,0.5); }
+    .quiz-card{
+      width:100%;
+      max-width:980px;
+      min-height:64px;
+      margin-top:10px;
+      padding:12px 14px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:12px;
+      background:rgba(255,255,255,.055);
+      color:#dce9f8;
+    }
+    .quiz-card[hidden]{ display:none !important; }
+    .quiz-prompt{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-height:38px;
+      font-size:15px;
+      line-height:1.55;
+    }
+    .quiz-row{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    .quiz-row:empty{ display:none; }
+    .quiz-row button{
+      min-height:46px;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:9px;
+      background:rgba(255,255,255,.07);
+      color:#f3f8ff;
+      font-size:14px;
+      line-height:1.45;
+      font-weight:800;
+    }
+    #stage{
+      width:100%;
+      max-width:980px;
+      height:66vh;
+      max-height:660px;
+      min-height:500px;
+      margin-top:10px;
+      position:relative;
+      overflow:hidden;
+      border-radius:12px;
+      background:#0b0f14;
+      box-shadow:0 8px 24px rgba(0,0,0,0.35);
+      border:1px solid rgba(255,255,255,0.08);
+      touch-action:none;
+      background-image:
+        radial-gradient(circle at 70% 25%, rgba(255,255,255,0.05), transparent 38%),
+        radial-gradient(circle at 25% 75%, rgba(0,255,255,0.05), transparent 44%);
+    }
+    .hud{
+      position:absolute;
+      left:10px;
+      top:10px;
+      z-index:20;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      padding:6px 8px;
+      border-radius:10px;
+      border:1px solid var(--line);
+      background:var(--panel-bg);
+      font-size:12px;
+    }
+    .tag{
+      border:1px solid rgba(255,255,255,.26);
+      border-radius:999px;
+      padding:3px 9px;
+      font-weight:700;
+      color:#dce9ff;
+      background:rgba(255,255,255,.06);
+    }
+    .mode-strip{
+      border-color:rgba(61,220,151,.58);
+      color:#effff7;
+      box-shadow:0 0 12px rgba(61,220,151,.14);
+    }
+    .lab-area{
+      position:absolute;
+      inset:54px 10px 10px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(5,10,16,.82);
+      overflow:hidden;
+    }
+    .playfield{
+      position:absolute;
+      inset:0;
+      z-index:1;
+    }
+    .node{
+      position:absolute;
+      left:0;
+      top:0;
+      width:86px;
+      height:86px;
+      border-radius:50%;
+      border:1px solid rgba(255,255,255,0.28);
+      box-shadow:0 8px 22px rgba(0,0,0,0.35);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      color:#071328;
+      user-select:none;
+      touch-action:none;
+      cursor:grab;
+      transform:translate(-9999px,-9999px);
+    }
+    .node.dragging{ cursor:grabbing; box-shadow:0 18px 40px rgba(0,0,0,0.5); }
+    .mobile-tabs,.sheet-close{ display:none; }
+    .drawer{
+      position:absolute;
+      right:12px;
+      z-index:30;
+      width:min(270px, calc(100% - 24px));
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:10px;
+      overflow:hidden;
+      background:rgba(9,21,33,.94);
+      box-shadow:0 14px 36px rgba(0,0,0,.42);
+      transition:width .18s ease, box-shadow .18s ease, border-color .18s ease;
+    }
+    .drawer.control{ top:68px; }
+    .drawer.data{ top:calc(68px + var(--drawer-stack-offset)); }
+    .dock-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      min-height:42px;
+      padding:8px 10px;
+      background:rgba(255,255,255,.06);
+      font-size:13px;
+      font-weight:800;
+    }
+    .dock-body{
+      display:grid;
+      gap:8px;
+      padding:10px;
+      background:rgba(3,10,16,.42);
+    }
+    .drawer.collapsed .dock-body{ display:none; }
+    .drawer.collapsed{
+      width:var(--drawer-collapsed-width);
+      background:rgba(15,18,22,.92);
+      border-color:rgba(255,255,255,.16);
+    }
+    .drawer.collapsed .dock-header{
+      min-height:42px;
+      cursor:pointer;
+    }
+    .drawer button{ padding:8px 10px; }
+    .empty{ color:#aebfd0; font-size:12px; line-height:1.5; }
+    .toolbar{
+      width:100%;
+      max-width:980px;
+      margin-top:12px;
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:9px;
+    }
+    button{
+      border:none;
+      border-radius:8px;
+      padding:10px 16px;
+      color:#fff;
+      background:#444;
+      cursor:pointer;
+      transition:background .2s, transform .05s, opacity .2s;
+    }
+    button:hover{ background:#5a5a5a; }
+    button:active{ transform:scale(.98); }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+    .primary{ background:#2e7d32; }
+    .toolbar button{
+      border:1px solid rgba(255,255,255,.09);
+      padding:9px 12px;
+      background:var(--shell-tool-bg);
+      color:var(--shell-tool-ink);
+      font-size:var(--shell-tool-size);
+      font-weight:800;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.035);
+    }
+    .toolbar button:hover{
+      border-color:rgba(155,211,255,.22);
+      background:rgba(255,255,255,.11);
+    }
+    .checkmark{
+      position:absolute;
+      left:50%;
+      top:20%;
+      width:120px;
+      height:120px;
+      border-radius:50%;
+      transform:translate(-50%,-50%) scale(.6);
+      border:3px solid var(--accent);
+      background:rgba(61,220,151,.15);
+      box-shadow:0 0 40px rgba(61,220,151,.45), inset 0 0 20px rgba(61,220,151,.25);
+      z-index:30;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      pointer-events:none;
+      animation:pop .55s ease-out;
+    }
+    .checkmark.active{ display:flex; }
+    .checkmark > div{
+      width:60px;
+      height:30px;
+      border-left:8px solid var(--accent);
+      border-bottom:8px solid var(--accent);
+      transform:rotate(-45deg) translateY(-6px);
+    }
+    @keyframes pop{
+      0%{ transform:translate(-50%,-50%) scale(.4); opacity:.2; }
+      60%{ transform:translate(-50%,-50%) scale(1.08); opacity:1; }
+      100%{ transform:translate(-50%,-50%) scale(1); }
+    }
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:24px;
+      transform:translateX(-50%) translateY(20px);
+      background:rgba(0,0,0,0.8);
+      color:#fff;
+      padding:10px 14px;
+      border-radius:10px;
+      font-size:14px;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .25s, transform .25s;
+      z-index:90;
+    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+    .modal-mask{
+      position:fixed;
+      inset:0;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:100;
+      background:rgba(0,0,0,.5);
+    }
+    .modal{
+      width:min(90vw, 360px);
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.15);
+      background:#111;
+      color:#fff;
+      padding:18px 16px;
+      text-align:center;
+    }
+    .modal h3{ margin:8px 0 6px; font-size:20px; }
+    .modal p{ margin-top:0; color:#cfd8dc; }
+    .modal .ok{ margin-top:12px; background:var(--accent); color:#081a12; font-weight:700; }
+    .explanation{
+      width:100%;
+      max-width:980px;
+      margin:14px 0 20px;
+      line-height:1.65;
+      color:var(--shell-copy-ink);
+      font-size:var(--shell-copy-size);
+    }
+    .explanation h2{
+      margin:0 0 8px;
+      color:var(--shell-title-ink);
+      font-size:var(--shell-title-size);
+      line-height:1.35;
+      letter-spacing:.01em;
+    }
+    @media (max-width:720px){
+      #spectrum{ height:20px; margin-bottom:10px; }
+      .task-card{ grid-template-columns:1fr; }
+      .task-step{ width:fit-content; }
+      .quiz-card{ padding:12px; }
+      .quiz-row{ grid-template-columns:1fr; }
+      .quiz-row button{ min-height:48px; font-size:15px; }
+      #stage{ height:58vh; min-height:500px; max-height:560px; }
+      .lab-area{ inset:96px 8px 10px; }
+      .node{ width:74px; height:74px; }
+      .mobile-tabs{
+        position:absolute;
+        left:12px;
+        right:12px;
+        bottom:8px;
+        z-index:44;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:6px;
+        padding:5px;
+        border:1px solid rgba(91,188,255,.24);
+        border-radius:11px;
+        background:rgba(9,12,16,.9);
+        box-shadow:0 12px 30px rgba(0,0,0,.42);
+      }
+      .mobile-tabs.attached{
+        border-top:0;
+        border-radius:0 0 12px 12px;
+        background:linear-gradient(180deg,rgba(9,21,33,.96),rgba(6,14,23,.96));
+      }
+      .mobile-tab{
+        border:0;
+        border-radius:8px;
+        padding:9px 10px;
+        background:rgba(255,255,255,.04);
+        color:#cfe4ff;
+        font-weight:900;
+      }
+      .mobile-tab.active{
+        background:rgba(61,220,151,.16);
+        color:#effff7;
+        box-shadow:inset 0 0 0 1px rgba(61,220,151,.56);
+      }
+      .drawer{
+        top:auto;
+        left:12px;
+        right:12px;
+        bottom:56px;
+        width:auto;
+        border-radius:12px 12px 0 0;
+      }
+      .drawer.control,.drawer.data{ top:auto; }
+      .drawer .dock-header{ display:none; }
+      .drawer.collapsed{ display:none; }
+      .drawer .dock-body{
+        grid-template-columns:minmax(0,1fr) 36px;
+        align-items:center;
+        max-height:188px;
+        overflow:auto;
+        padding:8px;
+      }
+      .drawer .sheet-close{
+        display:inline-grid;
+        grid-column:2;
+        grid-row:1;
+        place-items:center;
+        width:36px;
+        height:36px;
+        padding:0;
+        border-radius:50%;
+        background:rgba(255,255,255,.055);
+        color:#e3f0ff;
+      }
+      .drawer .primary,.drawer .empty{ grid-column:1; grid-row:1; }
+      .toolbar{
+        display:grid;
+        grid-template-columns:repeat(3, minmax(0,1fr));
+        gap:7px;
+      }
+      .toolbar button{ min-width:0; padding:8px 6px; font-size:12px; font-weight:800; }
+    }
+  </style>
+  <style>
+    #hintLamp{border:1px solid rgba(150,170,190,.38);border-radius:8px;background:rgba(100,120,140,.13);color:#ffd54f;cursor:pointer}
+    #hintPop{display:none;padding:10px 12px;border:1px solid rgba(255,209,102,.36);border-radius:10px;background:rgba(16,18,20,.94);color:#f4efe2;font-size:13px;line-height:1.55}
+    #hintPop.open{display:block}
+  </style>
+<style>
+#stage {height:auto;min-height:0;max-height:none;overflow:visible;isolation:isolate;touch-action:pan-y}
+.hud {position:relative;inset:auto;margin:10px 10px 0;width:fit-content;max-width:calc(100% - 20px);z-index:1}
+.lab-area {position:relative;inset:auto;margin:56px 10px 10px;min-height:330px;overflow:visible}
+.playfield.scene {position:relative;inset:auto;min-height:330px;padding:12px;color:#e8f1ff;touch-action:pan-y}
+.scene [data-drag],.scene input[type=range] {touch-action:none}
+.scene svg {max-width:100%;height:auto;display:block;overflow:visible}
+.scene svg [data-drag] {cursor:grab}
+.scene button:not(.primary) {padding:7px 10px;border-radius:8px;border:1px solid #59728c;background:#192e43;color:#eaf4ff;cursor:pointer}
+.scene button[aria-pressed=true] {border-color:#54d9b0;background:#225947}
+.scene input[type=range] {width:100%;accent-color:#57d8be}
+.scene label {min-width:0}
+.scene :focus-visible {outline:2px solid #ffd46a;outline-offset:3px}
+.scene-readout {font-variant-numeric:tabular-nums;color:#dcecff;line-height:1.45}
+.scene-row {display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center}
+.scene-note {color:#aec3da;font-size:13px}
+.drawer.data {top:54px;right:10px;z-index:35;max-width:calc(100% - 20px);color:#e7f0ff}
+#dataContents {min-width:0;max-width:100%;overflow:auto;overscroll-behavior:contain;touch-action:pan-y}
+#recordTable {border-collapse:collapse;width:100%;font-size:12px;font-variant-numeric:tabular-nums}
+#recordTable th,#recordTable td {padding:6px;text-align:left;border-bottom:1px solid #3e5064;overflow-wrap:anywhere}
+#analysis {margin:8px 0;color:#a9ebd6;line-height:1.5}
+.unread {display:inline-block;min-width:18px;padding:1px 4px;border-radius:99px;background:#9a263d;color:#fff}
+.unread[hidden],#demoCursor[hidden] {display:none}
+.unread:not([hidden]) {animation:new-record 1.6s ease-in-out infinite}
+@keyframes new-record {50% {box-shadow:0 0 0 4px rgba(255,92,110,.4)}}
+#demoCursor {position:fixed;left:0;top:0;width:20px;height:26px;z-index:200;pointer-events:none;filter:drop-shadow(0 1px 3px #000)}
+#demoCursor.demo-click {filter:drop-shadow(0 0 6px #ffcb53)}
+.dock-header > span {touch-action:none}
+.modal-mask.show {display:flex}
+@media(max-width:720px) {
+  .lab-area {margin:10px 8px 64px;min-height:330px}
+  .playfield.scene {padding:8px}
+  .drawer.data {top:auto;left:12px;right:12px}
+  .drawer .dock-body {align-items:start}
+  #dataContents {grid-column:1;grid-row:1}
+  html[data-middle-task-controls] body #app #taskCard#taskCard[data-task-layout] > #taskStep {
+    grid-row:1;grid-column:1;justify-self:start;padding:3px 7px;font-size:12px
+  }
+  html[data-middle-task-controls] body #app#app #taskCard#taskCard[data-task-layout] > #dots {
+    grid-row:1!important;grid-column:2!important;justify-self:end!important;align-self:center!important
+  }
+  html[data-middle-task-controls] body #app#app #taskCard#taskCard[data-task-layout] > [data-task-heading] {
+    grid-row:2!important;grid-column:1 / -1!important
+  }
+  html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-tools] {
+    grid-row:3;grid-column:2
+  }
+  html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-actions] {
+    grid-area:3 / 1 / 4 / 2
+  }
+  html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-pop] {
+    grid-area:2 / 1 / 3 / 2
+  }
+}
+@media(prefers-reduced-motion:reduce) {.unread {animation:none!important}}
+
+.fault-lab{max-width:685px;margin:auto}.fault-lab svg{width:100%;max-height:390px;margin:0 auto}.fault-lab svg [hidden]{display:none}.fault-options button{min-height:42px}.fault-options #redProbe[aria-pressed=true]{background:#7d3b3a;border-color:#ff9b90}.fault-options #blackProbe[aria-pressed=true]{background:#4a6184;border-color:#9cbdec}.fault-options span{font-size:13px}.fault-lab select{border:1px solid #5c738a;background:#1b3145;border-radius:6px;color:#e3f0fc;padding:8px;font:inherit}.fault-lab label{color:#dcecff;font-size:13px}.fault-lab label:not([hidden]){display:block}.diagnosis{text-align:center;margin-top:12px}
+</style>
+</head>
+<body>
+<script id="codex-lab-sound-bus" data-native-audio="false">
+(() => {
+  'use strict';
+  if (window.labSoundBus) return;
+  const nativeAudio = document.currentScript.dataset.nativeAudio === 'true';
+  let ctx = null, master = null, muted = false, held = false, unlocked = false, outputTarget = null;
+  let button = null, warned = false;
+  const voices = new Map();
+  const lastSounds = new Map();
+  const patterns = {
+    tap: { peak:.018, duration:.055, notes:[[440,0,.045]] },
+    hint: { peak:.035, duration:.18, notes:[[783.99,0,.08],[987.77,.09,.07]] },
+    record: { peak:.04, duration:.13, notes:[[554.37,0,.09]] },
+    warn: { peak:.045, duration:.22, notes:[[220,0,.09],[164.81,.1,.09]] },
+    step: { peak:.055, duration:.24, notes:[[523.25,0,.11],[659.25,.085,.13]] },
+    finish: { peak:.07, duration:.65, notes:[[392,0,.12],[523.25,.14,.14],[659.25,.3,.24]] },
+  };
+  function report(error) {
+    if (!warned) { warned = true; console.warn('[lab-audio] 无法播放音效', error); }
+  }
+  function syncButton() {
+    if (!button || nativeAudio) return;
+    button.textContent = muted ? '🔇' : '🔊';
+    button.setAttribute('aria-pressed', String(!muted));
+    button.setAttribute('aria-label', muted ? '开启音效' : '关闭音效');
+    button.title = muted ? '开启音效' : '关闭音效';
+    button.classList.toggle('muted', muted);
+  }
+  function paused() {
+    const mode = document.querySelector('#modeTag,#modeChip')?.textContent || '';
+    return (mode.includes('演示模式') && mode.includes('已暂停')) || document.querySelector('#resetBtn')?.textContent.trim() === '继续演示';
+  }
+  function applyGate() {
+    if (!master) return;
+    const target = muted || held || document.hidden || paused() ? 0 : 1;
+    if (target === outputTarget) return;
+    outputTarget = target;
+    const now = ctx.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setTargetAtTime(target, now, .008);
+  }
+  function stopVoices() {
+    for (const [voice, stop] of voices) {
+      try { stop(ctx.currentTime); } catch (error) { report(error); }
+      voices.delete(voice);
+    }
+  }
+  function hush() {
+    held = true; stopVoices(); applyGate();
+    window.dispatchEvent(new Event('lab-audio-silence'));
+  }
+  function unlock(event) {
+    if (!event?.isTrusted || document.hidden) return null;
+    if (event.type === 'keydown' && !['Enter',' ','Spacebar'].includes(event.key)) return ctx;
+    if (held) stopVoices();
+    held = false;
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) {
+      if (button) { button.disabled = true; button.title = '当前浏览器不支持声音'; }
+      return null;
+    }
+    try {
+      if (!ctx) {
+        ctx = new Audio();
+        master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+        // Track scheduled one-shot voices so mute cannot revive their old tails.
+        // Continuous apparatus oscillators stay alive behind the output gate.
+        const createOscillator = ctx.createOscillator.bind(ctx);
+        ctx.createOscillator = () => {
+          const voice = createOscillator(); const stop = voice.stop.bind(voice);
+          voice.stop = when => { voices.set(voice, stop); return stop(when); };
+          voice.addEventListener('ended', () => voices.delete(voice), { once:true });
+          return voice;
+        };
+      }
+      unlocked = ctx.state === 'running';
+      if (ctx.state === 'suspended') ctx.resume().then(() => {
+        unlocked = ctx.state === 'running';
+      }).catch(error => { unlocked = false; report(error); });
+      applyGate(); return ctx;
+    } catch (error) { report(error); return null; }
+  }
+  function setMuted(value) {
+    const next = Boolean(value);
+    if (next === muted) return;
+    muted = next;
+    if (muted) { stopVoices(); window.dispatchEvent(new Event('lab-audio-silence')); }
+    applyGate(); syncButton();
+  }
+  function play(kind) {
+    if (!unlocked || !ctx || muted || held || document.hidden || paused() || ctx.state !== 'running') return false;
+    const nowMs = performance.now();
+    if (nowMs - (lastSounds.get(kind) ?? -Infinity) < (kind === 'finish' ? 650 : 100)) return false;
+    const pattern = patterns[kind] || patterns.hint;
+    lastSounds.set(kind, nowMs);
+    const start = ctx.currentTime + .005;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.linearRampToValueAtTime(pattern.peak, start + .008);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + pattern.duration);
+    gain.connect(master);
+    let remaining = pattern.notes.length;
+    for (const [frequency, offset, duration] of pattern.notes) {
+      const voice = ctx.createOscillator(); voice.type = 'sine';
+      voice.frequency.value = frequency; voice.connect(gain);
+      voice.addEventListener('ended', () => { voice.disconnect(); if (--remaining === 0) gain.disconnect(); }, { once:true });
+      voice.start(start + offset); voice.stop(start + offset + duration);
+    }
+    window.dispatchEvent(new CustomEvent('lab-ui-sound', { detail:{kind} }));
+    return true;
+  }
+  window.labSoundBus = {
+    unlock, play, setMuted, hush,
+    getContext: () => unlocked && ctx?.state === 'running' ? ctx : null,
+    getInput: () => master,
+    get muted() { return muted; },
+    get unlocked() { return unlocked && ctx?.state === 'running'; },
+    get held() { return held; },
+  };
+  document.addEventListener('pointerdown', unlock, { capture:true, passive:true });
+  document.addEventListener('keydown', unlock, { capture:true });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) hush(); });
+  window.addEventListener('pagehide', hush);
+  function mount() {
+    const stage = document.querySelector('#stage'); if (!stage) return;
+    button = stage.querySelector('#audioToggle');
+    if (!button) {
+      button = document.createElement('button'); button.id = 'audioToggle';
+      button.type = 'button'; button.className = 'audio-toggle'; stage.appendChild(button);
+    }
+    if (nativeAudio) {
+      const syncNativeMute = () => setMuted(button.getAttribute('aria-pressed') === 'false' || button.classList.contains('muted'));
+      new MutationObserver(syncNativeMute).observe(button, { attributes:true, attributeFilter:['aria-pressed','class'] });
+      syncNativeMute();
+    } else {
+      window.labAudio = window.labSoundBus;
+      syncButton();
+      button.addEventListener('click', event => {
+        event.stopPropagation(); if (!event.isTrusted) return;
+        setMuted(!muted); if (!muted) { held = false; applyGate(); play('hint'); }
+      });
+    }
+    const lamp = stage.querySelector('#hintLamp,.hint-lamp');
+    const mode = stage.querySelector('#modeTag,#modeChip');
+    if (mode) new MutationObserver(applyGate).observe(mode, { childList:true, characterData:true, subtree:true });
+    let quietUntil = 0;
+    let beginRound = () => {};
+    let acceptRecordClear = () => {};
+    document.addEventListener('click', event => {
+      const clicked = event.target.closest?.('button');
+      if (!clicked || clicked.disabled || clicked === button) return;
+      if (event.isTrusted && ((clicked.id === 'resetBtn' && /重置/.test(clicked.textContent)) || clicked.id === 'autoDemoBtn')) beginRound();
+      if (event.isTrusted && clicked.id === 'clearBtn') setTimeout(acceptRecordClear, 0);
+      if (/reset|autoDemo|freeBtn/i.test(clicked.id) && /暂停|退出|重置|自由/.test(clicked.textContent)) {
+        hush(); quietUntil = performance.now() + 300; return;
+      }
+      if (!nativeAudio) play(clicked === lamp ? 'hint' : 'tap');
+    }, { capture:true });
+    if (nativeAudio) return;
+    // Observe accepted state, never infer success from a button's name.
+    const snapshot = () => {
+      const body = document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody');
+      const records = [...(body?.querySelectorAll('tr') || [])].filter(row =>
+        row.querySelectorAll('td').length > 1 && !row.querySelector('td[colspan]'))
+        .map(row => row.dataset.recordId || row.textContent.trim());
+      const dots = document.querySelector('#dots,#progress,.progress-dots');
+      const done = dots?.querySelectorAll('.done').length || 0;
+      const warning = Boolean(dots?.querySelector('.warning,.warn,.error') || lamp?.classList.contains('flash'));
+      const mode = stage.querySelector('#modeTag,#modeChip')?.textContent || '';
+      const modal = document.querySelector('#doneMask,#doneModal,.modal-mask');
+      const finished = Boolean(modal && getComputedStyle(modal).display !== 'none' && getComputedStyle(modal).visibility !== 'hidden');
+      return { records, done, warning, finished, free:mode.includes('自由'), mode };
+    };
+    let previous = snapshot();
+    const seenRecords = new Set(previous.records);
+    let maxDone = previous.done;
+    let finishAnnounced = previous.finished;
+    acceptRecordClear = () => {
+      // Clear only after the experiment accepted the action; completion stays announced.
+      if (snapshot().records.length === 0) seenRecords.clear();
+    };
+    beginRound = () => {
+      seenRecords.clear(); maxDone = 0; finishAnnounced = false;
+      quietUntil = performance.now() + 300;
+    };
+    const feedbackChanges = new MutationObserver(() => {
+      const current = snapshot();
+      if (performance.now() >= quietUntil && current.free === previous.free) {
+        if (!current.free && current.finished && !finishAnnounced) play('finish');
+        else if (!current.free && current.done > maxDone) play('step');
+        else if (!current.free && current.warning && !previous.warning) play('warn');
+        else if (current.records.some(record => !seenRecords.has(record))) play('record');
+      }
+      current.records.forEach(record => seenRecords.add(record));
+      maxDone = Math.max(maxDone, current.done);
+      finishAnnounced ||= current.finished;
+      previous = current;
+    });
+    // Observe only feedback surfaces; apparatus animation updates every frame.
+    for (const node of [document.querySelector('#recordBody,#dataBody,#dataDock tbody,#dataDrawer tbody'), document.querySelector('#dots,#progress,.progress-dots'), lamp, stage.querySelector('#modeTag,#modeChip'), document.querySelector('#doneMask,#doneModal,.modal-mask')].filter(Boolean)) {
+      feedbackChanges.observe(node, { subtree:true, childList:true, characterData:true, attributes:true, attributeFilter:['class','style'] });
+    }
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, { once:true });
+  else mount();
+})();
+</script>
+  <div id="app">
+  <div id="spectrum"></div>
+
+  <div class="task-card" id="taskCard">
+    <div class="task-step" id="taskStep">关卡 1 / 3</div>
+    <div class="task-text">
+      <div id="taskText">确认电源电压</div>
+      <div class="task-hint" id="taskHint">点击开关接通电路，再把红、黑表笔分别接到电源正、负极。读表示数并记录。</div>
+    </div>
+    <div class="progress-dots" id="dots"></div>
+  </div>
+
+  <main id="stage" aria-label="物理实验台">
+    <div class="hud" id="hud">
+      <span class="tag mode-strip" id="modeTag">模式：闯关模式 · 关卡 1/3</span>
+      <span class="tag" id="statusTag">状态：待操作</span>
+    </div>
+    <button class="hint-lamp" id="hintLamp" type="button" data-stage-hint="managed" aria-label="查看提示" aria-controls="hintPop" aria-expanded="false">💡</button>
+    <div class="hint-pop" id="hintPop" role="status"></div>
+    <div class="lab-area" id="labArea">
+      <div class="playfield scene" id="playfield"><div class="fault-lab">
+    <div class="scene-row fault-options">
+      <button type="button" id="faultSwitch" aria-pressed="false">闭合开关</button>
+      <label id="faultTypeLabel" hidden>故障设置
+        <select id="faultType"><option value="L1">L₁ 断路</option><option value="L2">L₂ 断路</option><option value="bypass">L₁ 被旁路</option><option value="none">正常电路</option></select>
+      </label>
+      <button type="button" id="faultRepair" hidden>更换故障灯泡</button>
+    </div>
+    <svg id="faultBoard" viewBox="0 0 520 346" aria-label="低压串联电路和电压表">
+      <defs>
+        <linearGradient id="boardBack" x2="0" y2="1"><stop stop-color="#25384a"/><stop offset="1" stop-color="#132639"/></linearGradient>
+        <radialGradient id="litBulb"><stop stop-color="#fff1a1"/><stop offset="1" stop-color="#fbbb6255"/></radialGradient>
+        <filter id="bulbShade" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="10"/></filter>
+      </defs>
+      <rect x="20" y="60" width="480" height="188" rx="18" fill="url(#boardBack)" stroke="#465d71" stroke-width="2"/>
+      <path d="M133 212H93V112H201M249 112H283M331 112H429V212H401M252 212H338" stroke="#bd7781" stroke-width="5" fill="none"/>
+      <path id="faultBypass" d="M186 112V75h82v37" stroke="#dc9e83" stroke-width="4" fill="none" hidden/>
+      <g transform="translate(225 114)">
+        <circle id="glowL1" r="31" fill="#ffd569" filter="url(#bulbShade)" opacity="0"/>
+        <circle id="bulbL1" r="24" fill="#4a647c" stroke="#b9d6ea" stroke-width="3"/>
+        <path d="M-13 5l8-13 10 13 8-13" stroke="#dce8f0" stroke-width="2" fill="none"/>
+        <text text-anchor="middle" x="0" y="50" fill="#d7ecfb" font-size="19">L₁</text>
+      </g>
+      <g transform="translate(307 114)">
+        <circle id="glowL2" r="31" fill="#ffd569" filter="url(#bulbShade)" opacity="0"/>
+        <circle id="bulbL2" r="24" fill="#4a647c" stroke="#b9d6ea" stroke-width="3"/>
+        <path d="M-13 5l8-13 10 13 8-13" stroke="#dce8f0" stroke-width="2" fill="none"/>
+        <text text-anchor="middle" x="0" y="50" fill="#d7ecfb" font-size="19">L₂</text>
+      </g>
+      <g id="switchSvg" role="button" tabindex="0" aria-label="电路开关" style="cursor:pointer">
+        <rect x="319" y="188" width="104" height="45" rx="8" fill="#344657"/>
+        <path id="switchBlade" d="M338 212l63-19" stroke="#ded8be" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="338" cy="212" r="6" fill="#f0d089"/>
+        <circle cx="401" cy="212" r="6" fill="#f0d089"/>
+      </g>
+      <rect x="133" y="189" width="119" height="46" rx="9" fill="#304457" stroke="#7b9bb3"/>
+      <path d="M182 196v30m12-24v18m12-24v30m12-24v18" stroke="#d5e3ec" stroke-width="3"/>
+      <text x="152" y="218" fill="#f7c5bd" font-size="18">+</text><text x="230" y="218" fill="#bfd0ee" font-size="18">−</text>
+      <path d="M117 212h15m121 0h85" stroke="#bd7781" stroke-width="5"/>
+      <path d="M224 315Q111 293 104 278" id="redLead" stroke="#ff8e83" stroke-width="4" fill="none"/>
+      <path d="M297 315Q398 293 416 278" id="blackLead" stroke="#98b7dc" stroke-width="4" fill="none"/>
+      <g id="faultNodes"></g>
+      <rect x="193" y="258" width="136" height="76" rx="10" fill="#293c4f" stroke="#8da6be" stroke-width="2"/>
+      <rect x="207" y="273" width="108" height="39" rx="6" fill="#092525"/>
+      <text id="voltageDisplay" x="261" y="299" text-anchor="middle" fill="#a6f1cb" font-size="23" font-family="monospace">— V</text>
+      <text x="257" y="329" text-anchor="middle" fill="#bad3e5" font-size="14">直流电压表</text>
+    </svg>
+    <div class="scene-row fault-options">
+      <button id="redProbe" type="button" data-probe="red" aria-pressed="true">红表笔</button>
+      <button id="blackProbe" type="button" data-probe="black" aria-pressed="false">黑表笔</button>
+      <span class="scene-readout" id="leadStatus"></span>
+    </div>
+    <label id="diagnosis" class="diagnosis" hidden>故障位置
+      <select id="failedLamp"><option value="">请选择</option><option value="L1">L₁ 断路</option><option value="L2">L₂ 断路</option><option value="source">电源没电</option></select>
+    </label>
+  </div></div>
+    </div>
+
+    <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
+      <button class="mobile-tab active" id="experimentTab" type="button" aria-controls="controlDock" aria-expanded="true">实验面板</button>
+      <button class="mobile-tab" id="dataTab" type="button" aria-controls="dataDock" aria-expanded="false">数据面板 <span class="unread" id="mobileDataBadge" hidden></span></button>
+    </div>
+
+    <section class="dock drawer control" id="controlDock" aria-label="实验面板">
+      <div class="dock-header">
+        <span>实验面板</span>
+        <button id="controlToggleBtn" type="button">收起</button>
+      </div>
+      <div class="dock-body">
+        <div class="task-actions"><button id="taskActionBtn" class="primary" type="button">记录</button></div>
+        <button class="sheet-close" id="controlSheetCloseBtn" type="button" aria-label="收起实验面板" title="收起">⌄</button>
+      </div>
+    </section>
+
+    <section class="dock drawer data collapsed" id="dataDock" aria-label="数据面板">
+      <div class="dock-header">
+        <span>数据面板 <span class="unread" id="dataBadge" hidden></span></span>
+        <button id="dataToggleBtn" type="button">展开</button>
+      </div>
+      <div class="dock-body">
+        <div id="dataContents"><p id="recordEmpty" class="empty">暂无记录</p><table id="recordTable" hidden><thead><tr><th scope="col">测点</th><th scope="col">电压 / V</th><th scope="col">电路状态</th></tr></thead><tbody id="recordBody"></tbody></table><p id="analysis" hidden></p></div>
+        <button class="sheet-close" id="dataSheetCloseBtn" type="button" aria-label="收起数据面板" title="收起">⌄</button>
+      </div>
+    </section>
+
+    <img id="demoCursor" class="demo-cursor" hidden aria-hidden="true" alt="" draggable="false" src="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 30%27%3E%3Cpath d=%27M2 2v23l6-6 4 8 4-2-4-8h8z%27 fill=%27white%27 stroke=%27%23324a69%27 stroke-width=%271.5%27/%3E%3C/svg%3E"><div class="checkmark" id="checkmark"><div></div></div>
+  </main>
+
+  <div class="toolbar">
+    <button id="resetBtn">重置关卡</button>
+    <button id="autoDemoBtn">演示模式</button>
+    <button id="freeBtn">自由模式</button>
+  </div>
+
+  <div class="toast" id="toast">提示</div>
+
+  <div class="modal-mask" id="doneMask">
+    <div class="modal">
+      <h3>完成，你真棒!</h3>
+      <p>你已完成全部实验步骤。</p>
+      <button id="okBtn" class="ok">OK</button>
+    </div>
+  </div>
+
+  <div class="explanation">
+    <h2>实验名：用电压表判断电路故障</h2>
+    <ul>
+      <li><b>关键操作与现象：</b>在低压串联电路里，先检查供电，再用电压表跨接到各个测量段。比较测点、电压和灯泡是否点亮。</li>
+      <li><b>实验结论：</b>在电源正常的单处断路电路中，断开的一段两端电压接近电源电压。其他测点信息可以用来排除不同的故障位置。</li>
+    </ul>
+  </div>
+  </div>
+
+  <!-- Runtime bundle slot: inline files selected from assets/runtime/manifest.js here. -->
+  <script id="physicsRuntimeBundle">
+    
+  </script>
+
+  <script id="physicsLabShellTemplate">
+const settings = {"steps":[{"title":"确认电源电压","hint":"点击开关接通电路，再把红、黑表笔分别接到电源正、负极。读表示数并记录。"},{"title":"测量灯泡 L₁ 两端电压","hint":"先点击一支表笔，再点击对应端点。把两支表笔接到 A、B，读数后记录。"},{"title":"测量灯泡 L₂ 两端电压","hint":"先点击表笔，再点击端点。把两支表笔接到 B、C，读数后记录。"},{"title":"根据测量结果判断故障","hint":"打开数据面板，比较电源和两盏灯两端的电压。选择断路位置并提交。","button":"提交诊断","confirmation":true},{"title":"换灯并复测","hint":"先断开开关，再点击“更换故障灯泡”。重新闭合开关，确认灯泡点亮并复测一个灯泡。"}],"columns":["测点","电压 / V","电路状态"]};
+const createScene = (function setup(lab) {
+    const $ = lab.$;
+    const config = {
+      plus:{x:113,y:212,label:'电源正极',short:'正'},
+      minus:{x:266,y:212,label:'电源负极',short:'负'},
+      A:{x:186,y:112,label:'端点 A',short:'A'},
+      B:{x:268,y:112,label:'端点 B',short:'B'},
+      C:{x:343,y:112,label:'端点 C',short:'C'}
+    };
+    let closed, fault, selected, leads, judgment, repaired;
+    const SVG = 'http://www.w3.org/2000/svg';
+    const nodes = new Map();
+    for (const [id,{x,y,label,short}] of Object.entries(config)) {
+      const group = document.createElementNS(SVG,'g');
+      group.setAttribute('id','terminal'+id);
+      group.setAttribute('transform','translate('+x+' '+y+')');
+      group.setAttribute('role','button');
+      group.setAttribute('tabindex','0');
+      group.setAttribute('aria-label',label);
+      group.style.cursor = 'pointer';
+      group.innerHTML = '<circle r="20" fill="transparent"/><circle class="contact" r="8" fill="#a9c5dc" stroke="#e2f2ff" stroke-width="2"/><text x="0" y="-16" text-anchor="middle" font-size="17" fill="#e0efff">' + short + '</text>';
+      $('#faultNodes').append(group);
+      nodes.set(id,group.querySelector('.contact'));
+      group.addEventListener('click',() => connect(id));
+      group.addEventListener('keydown',event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); connect(id); }
+      });
+    }
+    function connect(id) {
+      leads[selected] = id;
+      selected = selected === 'red' ? 'black' : 'red';
+      lab.changed('表笔已连接');
+    }
+    function voltage() {
+      if (!leads.red || !leads.black) return null;
+      const middle = fault === 'L1' ? 0 : fault === 'L2' || fault === 'bypass' ? 3 : 1.5;
+      const potentials = {plus:3,minus:0,A:closed ? 3 : null,B:closed ? middle : null,C:closed ? 0 : null};
+      const red = potentials[leads.red], black = potentials[leads.black];
+      return red === null || black === null ? null : red-black;
+    }
+    function toggleSwitch() {
+      closed = !closed;
+      lab.changed(closed ? '开关已闭合' : '开关已断开');
+    }
+    function render() {
+      $('#faultSwitch').textContent = closed ? '断开开关' : '闭合开关';
+      $('#faultSwitch').setAttribute('aria-pressed',String(closed));
+      $('#switchBlade').setAttribute('d',closed ? 'M338 212h63' : 'M338 212l63-19');
+      const working = fault === 'none' || fault === 'bypass';
+      for (const bulb of ['L1','L2']) {
+        const intensity = closed && working && (fault !== 'bypass' || bulb === 'L2') ? fault === 'bypass' ? 1 : .62 : 0;
+        $('#glow'+bulb).setAttribute('opacity',String(intensity));
+        $('#bulb'+bulb).setAttribute('fill',intensity ? 'url(#litBulb)' : '#4a647c');
+      }
+      $('#faultBypass').toggleAttribute('hidden',fault !== 'bypass');
+      for (const color of ['red','black']) {
+        const sourceX = color === 'red' ? 224 : 297;
+        const end = config[leads[color]] || (color === 'red' ? {x:104,y:278} : {x:416,y:278});
+        $('#'+color+'Lead').setAttribute('d','M'+sourceX+' 315 Q'+end.x+' 302 '+end.x+' '+end.y);
+        $('#'+color+'Probe').setAttribute('aria-pressed',String(selected === color));
+      }
+      for (const [id,node] of nodes) {
+        const fill = leads.red === id && leads.black === id ? '#b596d8' : leads.red === id ? '#ff8e83' : leads.black === id ? '#657eac' : '#a9c5dc';
+        node.setAttribute('fill',fill);
+      }
+      const value = voltage();
+      $('#voltageDisplay').textContent = value === null ? '— V' : value.toFixed(2)+' V';
+      $('#leadStatus').textContent = '红：'+(config[leads.red]?.label || '未接')+' · 黑：'+(config[leads.black]?.label || '未接');
+      $('#faultTypeLabel').hidden = !lab.free;
+      $('#faultType').value = fault;
+      $('#diagnosis').hidden = lab.free || lab.step !== 3;
+      $('#failedLamp').value = judgment;
+      $('#faultRepair').hidden = (!lab.free && lab.step !== 4) || repaired || fault === 'none';
+    }
+    function repair() {
+      if (closed) {
+        lab.warn('先点击“断开开关”，再更换故障灯泡。');
+        return;
+      }
+      fault = 'none'; repaired = true;
+      lab.changed('灯泡已更换');
+    }
+    for (const id of ['faultSwitch','switchSvg']) $('#'+id).addEventListener('click',toggleSwitch);
+    $('#switchSvg').addEventListener('keydown',event => {
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleSwitch(); }
+    });
+    for (const color of ['red','black']) $('#'+color+'Probe').addEventListener('click',() => {
+      selected = color;
+      lab.changed('选择'+(color === 'red' ? '红表笔' : '黑表笔'));
+    });
+    $('#faultRepair').addEventListener('click',repair);
+    $('#faultType').addEventListener('change',event => {
+      if (closed) { lab.warn('先断开开关，再切换故障条件。'); return; }
+      fault = event.target.value; repaired = false;
+      lab.changed('故障条件已改变');
+    });
+    $('#failedLamp').addEventListener('change',event => {
+      judgment = event.target.value;
+      lab.changed('已选择诊断结果');
+    });
+    const pair = () => [leads.red,leads.black].filter(Boolean).sort().join('|');
+    function hint() {
+      if (!lab.free && lab.step === 3) return '对照电源和两灯的记录，找出电压大小接近电源电压的一段。';
+      if (!lab.free && lab.step === 4 && !repaired) return closed ?
+        '点击“断开开关”，再换灯。' : '点击“更换故障灯泡”，随后闭合开关。';
+      if (!closed && !lab.free) return '点击“闭合开关”，再按当前关卡测量。';
+      const targets = ['电源正、负两个端点','A、B 两个端点','B、C 两个端点'];
+      if (lab.free || lab.step === 4) return '点击红或黑表笔，再点击要测量的端点。确认示数后记录。';
+      return '点击红或黑表笔，再把两表笔分别接到'+targets[lab.step]+'。等示数显示后记录。';
+    }
+    return {
+      reset() { closed=false; fault='L1'; selected='red'; leads={red:null,black:null}; judgment=''; repaired=false; },
+      capture() { return {closed,fault,selected,leads:{...leads},judgment,repaired}; },
+      restore(saved) {
+        ({closed,fault,selected,judgment,repaired}=saved);
+        leads={...saved.leads};
+      },
+      render,
+      hint,
+      record() {
+        if (!lab.free && lab.step === 3) {
+          if (judgment === 'L1') return {complete:true};
+          return '再核对一次：电源有电，A、B 间电压大小接近电源电压，B、C 间接近零。选择相应的断路段。';
+        }
+        const currentPair = pair();
+        const value = voltage();
+        if (value === null || (!lab.free && !closed)) return hint();
+        if (!lab.free && lab.step <= 2 && currentPair !== ['minus|plus','A|B','B|C'][lab.step]) return hint();
+        if (!lab.free && lab.step === 4 && (!repaired || !['A|B','B|C'].includes(currentPair))) return hint();
+        const label = config[leads.red].short+' → '+config[leads.black].short;
+        return {key:fault+'|'+closed+'|'+leads.red+'|'+leads.black,
+          cells:[label,value.toFixed(2),closed ? fault === 'none' ? '两灯均亮' : fault === 'bypass' ? '一灯亮' : '两灯均灭' : '开关断开'],
+          value,label,fault,pair:currentPair};
+      },
+      async demo(d,index) {
+        if (index === 0) {
+          await d.click('#faultSwitch');
+          await d.click('#terminalplus'); await d.click('#terminalminus');
+        } else if (index === 1) {
+          await d.click('#terminalA'); await d.click('#terminalB');
+        } else if (index === 2) {
+          await d.click('#terminalB'); await d.click('#terminalC');
+        } else if (index === 3) {
+          await d.input('#failedLamp','L1');
+        } else {
+          await d.click('#faultSwitch'); await d.click('#faultRepair'); await d.click('#faultSwitch');
+        }
+      },
+      conclusion(rows) {
+        const diagnostic = rows.filter(row => row.fault === 'L1');
+        if (diagnostic.length < 3) return '';
+        return diagnostic.map(row => row.label+' '+row.value.toFixed(2)+' V').join('，')+'。综合这些测点，断路位置在 L₁ 段。';
+      }
+    };
+  });
+const stage = document.querySelector('#stage');
+const root = document.querySelector('#playfield');
+const byId = id => document.getElementById(id);
+const recordBtn = byId('taskActionBtn');
+const resetBtn = byId('resetBtn');
+const freeBtn = byId('freeBtn');
+const autoBtn = byId('autoDemoBtn');
+const modal = byId('doneMask');
+const cursor = byId('demoCursor');
+const steps = settings.steps;
+const rows = [];
+const state = {
+  step:0, freeMode:false, completed:false, playing:false, paused:false,
+  run:0, warning:'', status:settings.status || '待操作', unread:0, open:false, freeEntry:null
+};
+const activeRows = () => rows.filter(row => row.exploration === state.freeMode);
+const lab = {
+  root,
+  stage,
+  $:selector => root.querySelector(selector),
+  get step() { return state.step; },
+  get free() { return state.freeMode; },
+  get paused() { return state.paused; },
+  get rows() { return activeRows(); },
+  changed(status) {
+    if (status) state.status = status;
+    state.warning = '';
+    render();
+  },
+  warn(text) { warn(text); }
+};
+const scene = createScene(lab);
+let pausedAnimations = [];
+
+  window.__labCurrentTaskHint = currentHint;
+  function currentHint() {
+    return state.warning || scene.hint?.() ||
+      (state.completed && !state.freeMode ? '打开数据面板，查看本次实验记录。' : steps[state.step].hint);
+  }
+
+function setText(id, value) {
+  if (byId(id).textContent !== value) byId(id).textContent = value;
+}
+function toggleDrawer(open) {
+  state.open = open;
+  if (open) state.unread = 0;
+  if (innerWidth > 720) byId('dataDock').style.removeProperty('bottom');
+  if (innerWidth <= 720) byId('dataDock').removeAttribute('style');
+  byId('dataDock').classList.toggle('collapsed', !open);
+  byId('mobileTabs').classList.toggle('attached', open);
+  byId('dataTab').classList.toggle('active', open);
+  byId('dataTab').setAttribute('aria-expanded', String(open));
+  byId('dataToggleBtn').setAttribute('aria-expanded', String(open));
+  setText('dataToggleBtn', open ? '收起' : '展开');
+  updateUnread();
+}
+function updateUnread() {
+  for (const id of ['dataBadge', 'mobileDataBadge']) {
+    setText(id, String(state.unread));
+    byId(id).hidden = state.unread === 0;
+  }
+}
+function renderRows() {
+  const body = byId('recordBody');
+  body.replaceChildren(...rows.map(record => {
+    const row = document.createElement('tr');
+    row.dataset.recordKey = record.key;
+    if (record.exploration) row.className = 'free-record';
+    for (const value of record.cells) {
+      const cell = row.insertCell();
+      cell.textContent = value;
+    }
+    if (record.exploration) row.cells[0].append('（自由）');
+    return row;
+  }));
+  byId('recordTable').hidden = !rows.length;
+  byId('recordEmpty').hidden = Boolean(rows.length);
+  const result = (state.completed || state.freeMode) && (
+    scene.conclusion?.(activeRows()) ||
+    (state.freeMode && state.completed && scene.conclusion?.(rows.filter(row => !row.exploration)))
+  );
+  byId('analysis').hidden = !result;
+  setText('analysis', result || '');
+  updateUnread();
+}
+function render() {
+  scene.render();
+  root.inert = state.playing;
+  setText('taskStep', '关卡 ' + (state.step + 1) + ' / ' + steps.length);
+  setText('taskText', steps[state.step].title);
+  setText('taskHint', currentHint());
+  setText('modeTag', '模式：' + (state.playing
+    ? '演示模式 · ' + (state.paused ? '已暂停' : '自动运行')
+    : state.freeMode ? '自由模式 · 自主探索' : '闯关模式 · 关卡 ' + (state.step + 1) + '/' + steps.length));
+  setText('statusTag', '状态：' + (state.paused ? '演示已暂停' :
+    state.completed && !state.freeMode ? '挑战已完成' : state.status));
+  setText('taskActionBtn', state.freeMode ? '记录当前观察' : steps[state.step].button || '记录');
+  recordBtn.disabled = state.playing || (state.completed && !state.freeMode);
+  recordBtn.hidden = state.completed && !state.freeMode;
+  setText('autoDemoBtn', state.playing ? '退出演示' : '演示模式');
+  setText('resetBtn', state.playing ? (state.paused ? '继续演示' : '暂停演示') : state.freeMode ? '重置操作' : '重置关卡');
+  setText('freeBtn', state.freeMode ? '退出自由模式' : '自由模式');
+  freeBtn.disabled = state.playing;
+  autoBtn.disabled = state.freeMode;
+  byId('taskCard').classList.toggle('free-mode', state.freeMode);
+  const dots = byId('dots');
+  while (dots.children.length < steps.length) {
+    const dot = document.createElement('span');
+    dots.append(dot);
+  }
+  for (const [index,dot] of [...dots.children].entries()) {
+    dot.className = 'dot' + (index < state.step || state.completed ? ' done'
+      : index !== state.step ? '' : state.warning && !state.freeMode ? ' warn' : ' active');
+  }
+}
+function warn(message) {
+  state.warning = message;
+  render();
+  if (state.freeMode) return;
+  const lamp = byId('hintLamp');
+  lamp.classList.remove('flash');
+  requestAnimationFrame(() => lamp.classList.add('flash'));
+}
+function record() {
+  if (state.completed && !state.freeMode) return false;
+  const outcome = scene.record();
+  const confirm = !state.freeMode && steps[state.step].confirmation && outcome?.complete;
+  if (typeof outcome === 'string' || (!confirm && !outcome?.cells)) {
+    warn(typeof outcome === 'string' ? outcome : currentHint());
+    return false;
+  }
+  if (!confirm) {
+    if (outcome.cells.length !== settings.columns.length) throw new Error('Invalid record shape');
+    const exploration = state.freeMode;
+    const key = outcome.key || outcome.cells.join('|');
+    const found = rows.some(row => row.key === key && row.exploration === exploration);
+    if (found) {
+      warn('这组已记录。改变实验条件后再记录。');
+      return false;
+    }
+    rows.push({...outcome, key, exploration});
+    if (!state.open) state.unread += 1;
+  }
+  state.warning = '';
+  if (!state.freeMode) {
+    if (state.step + 1 === steps.length) {
+      state.completed = true;
+      if (!state.playing) modal.classList.add('show');
+    } else {
+      state.step += 1;
+      scene.stepChanged?.();
+    }
+  }
+  render();
+  renderRows();
+  return true;
+}
+function resetAll() {
+  state.step = 0;
+  state.completed = false;
+  state.warning = '';
+  state.status = settings.status || '待操作';
+  state.unread = 0;
+  rows.length = 0;
+  modal.classList.remove('show');
+  byId('hintLamp').classList.remove('flash');
+  scene.reset();
+  toggleDrawer(false);
+  render();
+  renderRows();
+}
+function restoreFreeEntry(reset) {
+  const entry = state.freeEntry;
+  if (reset) rows.splice(entry.count);
+  state.step = entry.step;
+  state.completed = entry.completed;
+  state.status = reset ? '自由探索' : entry.status;
+  state.warning = '';
+  state.unread = Math.min(rows.length,reset ? entry.unread : state.unread);
+  if (entry.scene !== undefined) scene.restore(entry.scene);
+  else scene.reset();
+  render();
+  renderRows();
+}
+function moveCursor(x, y) {
+  cursor.hidden = false;
+  cursor.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+}
+async function runDemo() {
+  if (state.playing) {
+    state.run += 1;
+    state.playing = false;
+    state.paused = false;
+    for (const animation of pausedAnimations) animation.cancel();
+    pausedAnimations = [];
+    cursor.hidden = true;
+    resetAll();
+    return;
+  }
+  const run = ++state.run;
+  state.playing = true;
+  resetAll();
+  const pause = async milliseconds => {
+    for (let remaining = milliseconds; remaining > 0 || state.paused;) {
+      if (state.run !== run) throw new Error('DEMO_CANCELLED');
+      await new Promise(resolve => setTimeout(resolve, 30));
+      if (!state.paused) remaining -= 30;
+    }
+    if (state.run !== run) throw new Error('DEMO_CANCELLED');
+  };
+  function target(selector) {
+    const element = typeof selector === 'string' ? root.querySelector(selector) : selector;
+    if (!element) throw new Error('DEMO_TARGET_MISSING: ' + selector);
+    element.scrollIntoView({block:'nearest',inline:'nearest'});
+    const box = element.getBoundingClientRect();
+    if (!box.width || !box.height) throw new Error('DEMO_TARGET_HIDDEN: ' + selector);
+    return { element, x:box.x + box.width/2, y:box.y + box.height/2 };
+  }
+  async function click(selector) {
+    const {element,x,y} = target(selector);
+    moveCursor(x,y);
+    await pause(240);
+    cursor.classList.add('demo-click');
+    element.dispatchEvent(new MouseEvent('click', {bubbles:true, clientX:x, clientY:y}));
+    await pause(360);
+    cursor.classList.remove('demo-click');
+  }
+  async function input(selector,value) {
+    const {element,x,y} = target(selector);
+    moveCursor(x,y);
+    await pause(280);
+    element.value = String(value);
+    element.dispatchEvent(new Event('input',{bubbles:true}));
+    element.dispatchEvent(new Event('change',{bubbles:true}));
+    await pause(360);
+  }
+  async function drag(selector,dx,dy) {
+    const {element,x,y} = target(selector);
+    const pointer = (kind, clientX, clientY) => element.dispatchEvent(new PointerEvent(kind,
+      {pointerId:1,pointerType:'mouse',isPrimary:true,bubbles:true,clientX,clientY,buttons:kind === 'pointerup' ? 0 : 1}));
+    moveCursor(x,y);
+    await pause(220);
+    try {
+      pointer('pointerdown',x,y);
+      for (let frame=1; frame<=12; frame+=1) {
+        const nextX = x + dx*frame/12, nextY = y + dy*frame/12;
+        moveCursor(nextX,nextY);
+        pointer('pointermove',nextX,nextY);
+        await pause(30);
+      }
+      pointer('pointerup',x+dx,y+dy);
+    } catch (error) {
+      pointer('pointercancel',x,y);
+      throw error;
+    }
+    await pause(280);
+  }
+  try {
+    for (let index=0; index<steps.length; index+=1) {
+      await scene.demo({click,input,drag,pause}, index);
+      await pause(450);
+      const expected = rows.length + (steps[index].confirmation ? 0 : 1);
+      const {x,y} = target(recordBtn);
+      moveCursor(x,y);
+      await pause(260);
+      if (!record() || rows.length !== expected) throw new Error('AUTO_RECORD_NOT_PERSISTED: ' + (index+1));
+      await pause(400);
+    }
+  } catch (error) {
+    if (state.run !== run) return;
+    console.error('实验演示中止', error);
+    state.status = '演示中止';
+  } finally {
+    if (state.run === run) {
+      state.playing = false;
+      state.paused = false;
+      cursor.hidden = true;
+      cursor.classList.remove('demo-click');
+      if (state.completed) modal.classList.add('show');
+      render();
+    }
+  }
+}
+recordBtn.addEventListener('click', () => record());
+resetBtn.addEventListener('click', () => {
+  if (state.playing) {
+    state.paused = !state.paused;
+    if (state.paused) {
+      pausedAnimations = root.getAnimations({subtree:true}).filter(animation=>animation.playState==='running');
+      for (const animation of pausedAnimations) animation.pause();
+    } else {
+      for (const animation of pausedAnimations) if (animation.playState==='paused') animation.play();
+      pausedAnimations = [];
+    }
+    render();
+  } else if (state.freeMode) restoreFreeEntry(true);
+  else resetAll();
+});
+autoBtn.addEventListener('click', runDemo);
+freeBtn.addEventListener('click', () => {
+  if (state.freeMode) {
+    state.freeMode = false;
+    restoreFreeEntry(false);
+    state.freeEntry = null;
+    return;
+  }
+  state.freeEntry = {step:state.step,completed:state.completed,status:state.status,
+    count:rows.length,unread:state.unread,scene:scene.capture?.()};
+  state.freeMode = true;
+  state.status = '自由探索';
+  state.warning = '';
+  modal.classList.remove('show');
+  render();
+  renderRows();
+});
+byId('okBtn').addEventListener('click', () => modal.classList.remove('show'));
+for (const id of ['dataToggleBtn','dataTab','dataSheetCloseBtn']) {
+  byId(id).addEventListener('click', () => toggleDrawer(!state.open));
+}
+const drawer = byId('dataDock');
+const handle = drawer.querySelector('.dock-header > span');
+let drawerDrag = null;
+handle.addEventListener('pointerdown', event => {
+  if (!event.isPrimary || event.button || innerWidth <= 720) return;
+  drawerDrag = {x:event.clientX,y:event.clientY,left:drawer.offsetLeft,top:drawer.offsetTop};
+  handle.setPointerCapture(event.pointerId);
+});
+handle.addEventListener('pointermove', event => {
+  if (!drawerDrag) return;
+  const {x,y,left,top} = drawerDrag;
+  drawer.style.left = Math.max(0,Math.min(stage.clientWidth-drawer.offsetWidth,left+event.clientX-x)) + 'px';
+  drawer.style.top = Math.max(0,Math.min(stage.clientHeight-drawer.offsetHeight,top+event.clientY-y)) + 'px';
+  drawer.style.right = 'auto';
+});
+for (const event of ['pointerup','pointercancel','lostpointercapture']) {
+  handle.addEventListener(event, () => { drawerDrag = null; });
+}
+matchMedia('(max-width:720px)').addEventListener('change', () => drawer.removeAttribute('style'));
+resetAll();
+
+</script>
+<script type="application/json" data-middle-task-config>{"steps":[{"title":"确认电源电压","hint":"点击开关接通电路，再把红、黑表笔分别接到电源正、负极。读表示数并记录。"},{"title":"测量灯泡 L₁ 两端电压","hint":"先点击一支表笔，再点击对应端点。把两支表笔接到 A、B，读数后记录。"},{"title":"测量灯泡 L₂ 两端电压","hint":"先点击表笔，再点击端点。把两支表笔接到 B、C，读数后记录。"},{"title":"根据测量结果判断故障","hint":"打开数据面板，比较电源和两盏灯两端的电压。选择断路位置并提交。","button":"提交诊断","confirmation":true},{"title":"换灯并复测","hint":"先断开开关，再点击“更换故障灯泡”。重新闭合开关，确认灯泡点亮并复测一个灯泡。"}],"provider":"currentHint","openResults":false}</script>
+<style data-middle-task-controls="v1">
+html[data-middle-task-controls] #taskCard #taskEntryActions,
+html[data-middle-task-controls] #taskCard #taskHint,
+html[data-middle-task-controls] #taskCard :is([data-task-source-hidden],[data-task-redundant],[data-task-empty]),
+html[data-middle-task-controls] #stage :is(#experimentTab,#mobileControlTab,[data-sheet="controls"],[data-codex-mobile-tab="control"]),
+html[data-middle-task-controls] [data-task-feedback-hidden],
+html[data-middle-task-controls] :is([data-task-observations],[data-task-evidence]) :is([data-step-hidden],[data-task-empty],[hidden]),
+html[data-middle-task-controls] :is([data-task-observations][hidden],[data-task-evidence][data-task-empty],[data-task-evidence][hidden]),
+html[data-middle-task-controls] #taskCard :is([data-step-hidden],[hidden]) {display:none!important}
+
+[data-task-observations] {
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;
+  box-sizing:border-box;inline-size:100%;max-width:100%;margin-block-start:6px;padding:8px 10px;
+  border:1px solid #435263;border-radius:10px;background:#111c27;color:#eaf2ff;
+}
+[data-theme="light"] [data-task-observations] {background:#f5f8fc;color:#25374d;border-color:#ccd7e4}
+[data-task-observations] > * {min-width:0;max-width:100%;margin:0!important}
+[data-task-observations] :is(button,select,input:not([type="range"])) {
+  min-height:44px;max-width:100%;box-sizing:border-box;
+}
+[data-task-observations] :is(.status-grid,.live-grid,.readout-grid,.read-grid,.meter-row,.measure-card,.readout) {
+  display:flex;flex-wrap:wrap;gap:5px 8px;
+}
+[data-task-observations] :is(.field,.row,.freeControls) {max-width:100%}
+[data-task-observations] #controlFields {display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+[data-task-observations] #controlFields .field {
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  margin:0;padding:0;border:0;background:none;
+}
+[data-task-observations] #controlFields .field .name {margin:0}
+[data-task-observations] #controlFields .field:has(select) .name > [id^="pill_"] {display:none}
+[data-task-observations] #controlFields .field :is(input,select) {width:auto;max-width:100%}
+[data-task-observations] #controlFields .field input[type="range"] + * {white-space:nowrap}
+[data-task-observations] [data-task-chart] {flex:1 1 100%;min-width:0;max-width:100%}
+[data-task-observations] [data-task-chart] canvas {display:block;width:100%;max-width:100%}
+#stage [data-task-evidence] {min-width:0;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere}
+#stage [data-task-result][data-task-evidence] {grid-column:1 / -1}
+
+html[data-middle-task-controls] body #app#app #taskCard[data-task-layout] {
+  position:relative;
+  grid-template-columns:auto minmax(0,1fr) auto!important;
+  align-items:center;
+  column-gap:clamp(6px,1.5vw,16px)!important;
+  row-gap:6px!important;
+}
+#taskCard[data-task-layout]:has(> [data-task-pop]:not([hidden])) {z-index:80}
+#taskCard[data-task-layout]:has(> [data-task-pop]:not([hidden])) > [data-task-actions] {z-index:0!important}
+html[data-middle-task-controls] #taskCard[data-task-free] {
+  --task-reference-text:#aeb7c4;
+  --task-reference-dot:#737d8b;
+  --task-reference-dot-edge:#54606f;
+  opacity:1!important;filter:none!important;pointer-events:auto!important;
+}
+html[data-theme="light"][data-middle-task-controls] #taskCard[data-task-free] {
+  --task-reference-text:#586374;
+  --task-reference-dot:#818b99;
+  --task-reference-dot-edge:#aab0bb;
+}
+html[data-middle-task-controls] #taskCard[data-task-free]
+  :is(#taskStep,#stepNo,#taskText,#taskTitle,[data-task-summary]),
+html[data-middle-task-controls] #taskCard[data-task-free]
+  :is(#taskText,#taskTitle,[data-task-summary]) :where(*) {
+  color:var(--task-reference-text)!important;
+}
+html[data-middle-task-controls] #taskCard[data-task-free]
+  :is(#dots,#progress,#progressDots,.progress-dots,.dots) > * {
+  background:var(--task-reference-dot)!important;
+  border-color:var(--task-reference-dot-edge)!important;
+  outline-color:var(--task-reference-dot-edge)!important;
+  box-shadow:none!important;animation:none!important;transition:none!important;
+}
+html[data-middle-task-controls] body #app #stage#stage [data-task-chart]:not([data-task-empty],[hidden]) {display:block!important;min-width:0;max-width:100%}
+html[data-middle-task-controls] #stage [data-task-chart] canvas {max-width:100%}
+#taskCard[data-task-layout] > [data-task-heading] {grid-column:2;grid-row:1}
+#taskCard[data-task-layout] > :is(#dots,#progress,#progressDots,.progress-dots) {grid-column:3;grid-row:1;justify-self:end}
+#taskCard [data-task-tools] {grid-column:3;grid-row:2;display:flex;gap:5px;align-items:center;justify-self:end;align-self:start}
+#taskCard [data-task-summary] {font-weight:700}
+#taskCard [data-task-tools] > button {
+  position:static!important;inset:auto!important;transform:none!important;
+  display:grid!important;place-items:center;box-sizing:border-box;
+  width:44px!important;height:44px!important;min-width:44px!important;min-height:44px!important;
+  margin:0!important;padding:0!important;font-size:19px!important;
+  border:1px solid color-mix(in srgb,currentColor 30%,transparent)!important;
+  border-radius:9px!important;background:transparent!important;
+}
+#taskCard [data-task-tools] > [data-hint-attention] {
+  color:#17120a!important;background:#ffd269!important;
+  border-color:#ffd269!important;box-shadow:0 0 0 2px #ad6f1d;
+}
+#taskCard [data-task-tools] > [data-hint-pulse] {animation:middle-task-hint-pulse 620ms ease-out 3!important}
+@keyframes middle-task-hint-pulse {
+  0%,100% {box-shadow:0 0 0 2px #ad6f1d}
+  50% {box-shadow:0 0 0 5px #ffc85a,0 0 15px #ffb02e}
+}
+@media(prefers-reduced-motion:reduce) {
+  #taskCard [data-task-tools] > [data-hint-pulse] {animation:none!important}
+}
+#taskCard [data-task-pop] {
+  position:absolute;grid-area:2 / 1 / 3 / 3;
+  inset-block-start:0;inset-inline-end:0;z-index:80;box-sizing:border-box;
+  inline-size:max-content;max-inline-size:min(100%,36em);
+  max-block-size:min(40vh,18em);overflow:auto;overscroll-behavior:contain;
+  padding:8px 11px;border:1px solid #b68731;border-radius:8px;
+  background:#30281a;color:#fff4db;line-height:1.5;overflow-wrap:anywhere;
+  box-shadow:0 8px 22px rgb(0 0 0 / .28);
+}
+:root[data-theme="light"] #taskCard [data-task-pop] {background:#fff7e2;color:#332511}
+#taskCard [data-task-announcement] {
+  position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;
+}
+#taskCard [data-task-actions] {
+  grid-area:2 / 1 / 3 / 3;position:static!important;inset:auto!important;transform:none!important;
+  width:100%!important;min-width:0!important;max-width:none!important;height:auto!important;
+  opacity:1!important;pointer-events:auto!important;display:block!important;
+  margin:0!important;padding:0!important;overflow:visible!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;
+}
+#taskCard [data-task-actions] [data-task-panel-header],
+#taskCard [data-task-actions] .sheet-close {display:none!important}
+#taskCard [data-task-actions] [data-task-panel-body] {
+  position:static!important;inset:auto!important;transform:none!important;
+  width:100%!important;min-width:0!important;max-width:none!important;
+  height:auto!important;max-height:none!important;overflow:visible!important;
+  opacity:1!important;pointer-events:auto!important;display:flex!important;
+  flex-wrap:wrap;align-items:flex-start;justify-content:flex-start;gap:6px 10px;
+  margin:0!important;padding:0!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;backdrop-filter:none!important;
+}
+#taskCard [data-task-panel-body] > * {min-width:0;max-width:100%}
+#taskCard [data-task-panel-body] > :is([data-task-group],button) {order:-1}
+#taskCard [data-task-panel-body] > [data-task-group]:not([data-task-empty],[data-step-hidden],[hidden]) {
+  display:flex!important;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:6px;
+  flex:0 1 auto;width:auto!important;margin:0!important;padding:0!important;
+}
+#taskCard [data-task-panel-body] :is(button,select,input:not([type="range"])) {
+  min-height:44px;max-width:100%;box-sizing:border-box;
+}
+#taskCard [data-task-panel-body] button {
+  width:auto!important;flex:0 1 auto!important;white-space:normal;line-height:1.25;
+}
+#taskCard [data-task-panel-body] > [data-task-result] {
+  flex:0 0 100%;max-width:100%;box-sizing:border-box;margin:0!important;
+  padding:5px 0 5px 10px!important;line-height:1.5;overflow-wrap:anywhere;
+  background:transparent!important;border:0!important;border-radius:0!important;
+  border-inline-start:2px solid color-mix(in srgb,currentColor 36%,transparent)!important;
+}
+[data-task-demo-pointer]:not([hidden]) {
+  position:fixed;z-index:90;pointer-events:none;transform:translate(-50%,-50%);
+  width:18px;height:18px;border:2px solid #7bf8f1;border-radius:50%;
+  background:#11303a80;box-shadow:0 0 0 3px #091c2bb0,0 0 8px #64e8de;
+}
+@media(max-width:720px) {
+  html[data-middle-task-controls] body #app #stage#stage:has(:is(#dataTab,#mobileDataTab,[data-sheet="data"]))
+    :is(#dataToggleBtn,[data-drawer="dataDrawer"]) {display:none!important}
+  html[data-middle-task-controls] body #app #stage#stage .mobile-tabs {grid-template-columns:minmax(0,1fr)!important}
+  html[data-middle-task-controls] body #app#app #taskCard[data-task-layout] {
+    grid-template-columns:minmax(0,1fr) auto!important;row-gap:4px!important;
+  }
+  html[data-middle-task-controls] #app#app #taskCard[data-task-layout] > [data-task-heading] {
+    grid-column:1!important;grid-row:1!important;align-self:end;
+  }
+  html[data-middle-task-controls] #app#app #taskCard[data-task-layout] > :is(#dots,#progress,#progressDots,.progress-dots,.dots) {
+    grid-column:1!important;grid-row:2!important;justify-self:start!important;align-self:start!important;
+    width:max-content;max-width:100%;justify-content:flex-start!important;
+  }
+  #taskCard [data-task-tools] {grid-column:2;grid-row:1/3;align-self:center}
+  #taskCard [data-task-actions] {grid-area:3 / 1 / 4 / -1}
+  #taskCard [data-task-pop] {grid-area:1 / 1 / 3 / 2}
+}
+</style>
+<script data-middle-task-controls="v1">
+(() => {
+  'use strict';
+  const config = JSON.parse(document.querySelector('[data-middle-task-config]').textContent);
+  const find = (selector, root = document) => root.querySelector(selector);
+  const clean = value => (value || '').replace(/\s+/g, ' ').trim();
+
+  function placeObservations(stage, elements, after = false) {
+    if (!elements.length) return null;
+    const strip = document.createElement('section');
+    strip.setAttribute('data-task-observations', '');
+    strip.setAttribute('aria-label', '实验区器材与实时观测');
+    for (const element of elements) {
+      if (element.querySelector('canvas')) element.setAttribute('data-task-chart', '');
+      strip.append(element);
+    }
+    stage[after ? 'after' : 'before'](strip);
+    return strip;
+  }
+
+  function showDataPanel(stage, dataBody) {
+    if (dataBody.getClientRects().length) return;
+    const toggles = stage.querySelectorAll(
+      '#dataTab,#mobileDataTab,[data-sheet="data"],#dataToggleBtn,[data-drawer="dataDrawer"]'
+    );
+    const toggle = [...toggles].find(element => element.getClientRects().length &&
+      getComputedStyle(element).visibility !== 'hidden');
+    toggle?.click();
+  }
+
+  function mount() {
+    const card = find('#taskCard,.task-card');
+    const stage = find('#stage');
+    const panel = find('#controlDock,#controlDrawer');
+    const number = card && find('#taskStep,#stepNo', card);
+    const title = card && find('#taskText,#taskTitle', card);
+    if (!card || !stage || !panel || !number || !title || card.hasAttribute('data-task-layout')) return;
+
+    const nativeHint = find('#taskHint', card);
+    const mode = find('#modeTag,#modeChip');
+    const status = find('#statusTag,#stateTag,#statusChip,#stateChip');
+    const dots = find('#dots,#progress,#progressDots,.progress-dots', card);
+    const toast = find('#toast');
+    const lamp = find('#hintLamp,#hintLampBtn,#helpBtn,.hint-lamp', stage) || document.createElement('button');
+    const data = find('#dataDock,#dataDrawer');
+    const oldPop = find('#hintPop,#hintPopup,.hint-pop', stage);
+    const audio = find('#audioToggle', stage);
+    const body = find('[data-codex-panel-body],.dock-body,.drawer-body,.dockBody,.panelBody,#controlBody,#panelBody', panel);
+    const header = find('[data-codex-panel-header],.dock-header,.dock-head,.drawer-head,.drawer-header,.dockHead,.panelHead', panel);
+    if (!body || !header) return;
+    const dataBody = data && find('[data-codex-panel-body],.dock-body,.drawer-body,.dockBody,.panelBody,.resultsBody,.data-scroll', data);
+    const results = dataBody && config.results?.length ? [...panel.querySelectorAll(config.results.join(','))] : [];
+    const hintSources = (config.hintSources || []).flatMap(source => {
+      const element = find(source.selector);
+      if (!element) return [];
+      if (source.hide !== false) element.setAttribute('data-task-feedback-hidden', '');
+      return [{...source, element}];
+    });
+    const selectPanel = selectors => selectors?.length ? [...panel.querySelectorAll(selectors.join(','))] : [];
+    const observations = [
+      placeObservations(stage, selectPanel(config.stage)),
+      placeObservations(stage, selectPanel(config.stageAfter), true),
+    ].filter(Boolean);
+    const controlRoots = [panel, ...observations];
+    const selectControls = selector => controlRoots.flatMap(root => [...root.querySelectorAll(selector)]);
+    if (dataBody) {
+      for (const selector of config.data || []) {
+        const evidence = find(selector);
+        if (!evidence || dataBody.contains(evidence)) continue;
+        if (evidence.querySelector('canvas')) evidence.setAttribute('data-task-chart', '');
+        dataBody.append(evidence);
+      }
+      for (const result of results) {
+        result.setAttribute('data-task-evidence', '');
+        result.setAttribute('data-task-result', '');
+        dataBody.prepend(result);
+      }
+      const recordCharts = (config.recordCharts || []).map(selector => find(selector, dataBody)).filter(Boolean);
+      for (const chart of recordCharts) chart.setAttribute('data-task-evidence', '');
+      const records = find('#recordBody', dataBody);
+      if (records && recordCharts.length) {
+        const syncCharts = () => {
+          const hasData = [...records.rows].some(row => row.cells.length > 1);
+          for (const chart of recordCharts) chart.toggleAttribute('data-task-empty', !hasData);
+        };
+        new MutationObserver(syncCharts).observe(records, {childList:true, subtree:true});
+        syncCharts();
+      }
+    }
+    if (typeof scheduleChart === 'function') {
+      const charts = [...observations, dataBody].filter(Boolean)
+        .flatMap(container => [...container.querySelectorAll('[data-task-chart]')]);
+      if (charts.length) {
+        const resize = new ResizeObserver(entries => {
+          if (entries.some(entry => entry.contentRect.width > 0)) scheduleChart();
+        });
+        for (const chart of charts) resize.observe(chart);
+      }
+    }
+    const nativeAction = find('#taskActionBtn', card)?.closest('.task-actions');
+    if (nativeAction) body.prepend(nativeAction);
+    const groups = body.querySelectorAll(
+      ':scope > :is(.task-actions,.controls,.buttons,.btn-row,.btnRow,.matRow,.control-row,.actions,.action-grid,.miniBtns,.quizRow,.load-controls,.panel-actions,.sampleRow,.liquidBtns,.board-tabs)'
+    );
+    const resultSelector = ':scope > :is(.analysis,.analysisBox,.analysis-box,.codex-final-analysis)';
+    const placeholder = /^(?:(?:分析|结论)[：:]\s*)?(?:暂无(?:[。！.]|$)|待完成|完成[^。]*后[，,]?\s*(?:在这里|这里|分析|比较|生成|点击)|请按关卡完成|拉动粗绳，记录筒面温度变化后分析|新增了测量点[。！.])/;
+    const guidance = /^(?:(?:分析|结论)[：:]\s*)?(?:自由模式不推进|自由切换|用画面上方|请|先|至少)/;
+    for (const group of groups) group.setAttribute('data-task-group', '');
+
+    const tools = document.createElement('div');
+    tools.setAttribute('data-task-tools', '');
+    const pop = document.createElement('div');
+    pop.id = 'currentTaskHint';
+    pop.setAttribute('data-task-pop', '');
+    pop.hidden = true;
+    const announcement = document.createElement('span');
+    announcement.setAttribute('data-task-announcement', '');
+    announcement.setAttribute('role', 'status');
+    const summary = document.createElement('div');
+    summary.setAttribute('data-task-summary', '');
+    summary.hidden = true;
+    title.after(summary);
+    if (title.parentElement === card) {
+      title.setAttribute('data-task-heading', '');
+      summary.setAttribute('data-task-heading', '');
+    } else if (title.parentElement.parentElement === card) {
+      title.parentElement.setAttribute('data-task-heading', '');
+    }
+
+    lamp.id ||= 'hintLamp';
+    lamp.type = 'button';
+    if (!clean(lamp.textContent) && !lamp.querySelector('svg')) lamp.textContent = '💡';
+    lamp.setAttribute('aria-controls', pop.id);
+    tools.append(lamp);
+    if (audio) tools.append(audio);
+    card.append(tools, pop, announcement, panel);
+    panel.setAttribute('data-task-actions', '');
+    panel.setAttribute('aria-label', '当前操作');
+    header.setAttribute('data-task-panel-header', '');
+    body.setAttribute('data-task-panel-body', '');
+    oldPop?.setAttribute('data-task-feedback-hidden', '');
+    card.setAttribute('data-task-layout', '');
+    document.documentElement.setAttribute('data-middle-task-controls', 'v1');
+
+    let hint = '';
+    let context = '';
+    let warning = '';
+    let scheduled = false;
+    let warned = false;
+    let toastChanged = false;
+
+    function expand(open) {
+      pop.hidden = !open;
+      lamp.setAttribute('aria-expanded', String(open));
+      lamp.setAttribute('aria-label', open ? '收起操作提示' : '查看操作提示');
+      if (open) lamp.removeAttribute('data-hint-attention');
+    }
+
+    function showHint() {
+      const text = warning || hint;
+      if (pop.textContent !== text) pop.textContent = text;
+    }
+
+    function indicateWarning(text) {
+      warning = text;
+      lamp.setAttribute('data-hint-attention', '');
+      lamp.removeAttribute('data-hint-pulse');
+      void lamp.offsetWidth;
+      lamp.setAttribute('data-hint-pulse', '');
+      announcement.textContent = '';
+      announcement.textContent = warning;
+    }
+
+    function ready(condition) {
+      if (!condition) return false;
+      const live = window.state || window.labState;
+      if (Number.isInteger(condition.test)) return window.__labTaskMatches?.(condition.test) === true;
+      if (condition.state) {
+        const value = condition.state.split('.').reduce((value, key) => value?.[key], live);
+        return value === (condition.value ?? condition.equals ?? true);
+      }
+      if (condition.status) return clean(status?.textContent).includes(condition.status);
+      if (condition.matches) {
+        const element = find(condition.matches);
+        return Boolean(element?.getClientRects().length);
+      }
+      return false;
+    }
+
+    function sync() {
+      scheduled = false;
+      const modeText = clean(mode?.textContent);
+      const step = Number(clean(number.textContent).match(/(\d+)\s*\/\s*\d+/)?.[1]);
+      const free = /自由/.test(modeText) || window.state?.freeMode === true;
+      card.toggleAttribute('data-task-free', free);
+      const completed = clean(status?.textContent).includes('已完成') || /已通关/.test(modeText) || window.state?.completed === true;
+      const matchingStep = config.steps[step - 1];
+      const current = free ? null : matchingStep;
+      const concise = current || (free && clean(title.textContent).length > 26 ? matchingStep : null);
+      summary.hidden = !concise;
+      title.toggleAttribute('data-task-source-hidden', Boolean(concise));
+      if (concise && summary.textContent !== concise.title) summary.textContent = concise.title;
+      const provided = clean(window.__labCurrentTaskHint?.());
+      const phases = free ? config.freeHint : current?.when;
+      const baseHint = phases?.find(item => ready(item))?.hint
+        || provided || (config.liveHint ? clean(oldPop?.textContent) : '')
+        || current?.hint || clean(nativeHint?.textContent) || clean(oldPop?.textContent)
+        || '操作实验台上的器材，观察现象；使用任务卡中的按钮记录。';
+      const extraHints = hintSources
+        .filter(source => source.free == null || source.free === free)
+        .filter(source => !source.when || source.element.matches(source.when))
+        .map(source => clean(source.element.textContent))
+        .filter(text => text && !baseHint.includes(text));
+      const nextHint = [baseHint, ...new Set(extraHints)].join(' ');
+      const nextContext = [step, free, completed, clean(status?.textContent), nextHint].join('|');
+      if (nextContext !== context) {
+        if (context && !warned) {
+          warning = '';
+          lamp.removeAttribute('data-hint-attention');
+        }
+        context = nextContext;
+      }
+      hint = nextHint;
+      for (const control of config.controls || []) {
+        if (control.variants) {
+          for (const button of selectControls(control.selector)) {
+            const steps = control.variants[button.dataset.key];
+            if (steps) button.toggleAttribute('data-step-hidden', !free && step > 0 && !steps.includes(step));
+          }
+        }
+        const elements = control.id ? [document.getElementById(control.id)].filter(Boolean)
+          : selectControls(control.selector);
+        for (const element of elements) {
+          const wrapper = control.wrapper ? element.closest(control.wrapper) : element;
+          const visible = free ? control.free !== false : !step || control.steps.includes(step);
+          wrapper?.toggleAttribute('data-step-hidden', !visible);
+        }
+      }
+      if (config.hide?.length) {
+        const selector = config.hide.join(',');
+        for (const element of panel.querySelectorAll(selector + ',[data-task-redundant]')) {
+          element.toggleAttribute('data-task-redundant', element.matches(selector));
+        }
+      }
+      for (const group of groups) {
+        const hasContent = [...group.querySelectorAll('button,input,select,textarea,[role="status"]:not(:empty)')].some(element =>
+          !element.closest('[hidden],[data-step-hidden],[data-task-redundant]') &&
+          getComputedStyle(element).display !== 'none'
+        );
+        group.toggleAttribute('data-task-empty', !hasContent || group.style.display === 'none');
+      }
+      for (const strip of observations) {
+        strip.toggleAttribute('hidden', ![...strip.children].some(element => {
+          if (element.matches('[hidden],[data-step-hidden]') || getComputedStyle(element).display === 'none') return false;
+          const controls = [...element.querySelectorAll('button,input,select,textarea')];
+          return !controls.length || controls.some(control =>
+            !control.closest('[data-step-hidden],[hidden]:not([data-task-observations])') &&
+            getComputedStyle(control).display !== 'none');
+        }));
+      }
+      for (const result of [...body.querySelectorAll(resultSelector), ...results]) {
+        const text = clean(result.textContent);
+        result.setAttribute('data-task-result', '');
+        const pending = !result.matches('.ok,.danger') &&
+          (placeholder.test(text) || result.matches('.is-empty,.codex-placeholder-hidden') ||
+            (results.includes(result) && guidance.test(text)));
+        result.toggleAttribute('data-task-empty', !text || pending);
+      }
+      if (toastChanged) {
+        toastChanged = false;
+        const message = clean(toast?.textContent);
+        const isWarning = toast?.classList.contains('error') ||
+          /^(?:请|先|还需|需先|必须|再核对一次|不能|未对准|不正确|错误|无效|继续缓慢下拉|这两个接线柱已经连接|该状态已经记录|这组已记录|当前步骤.*(?:缺|先|未|应))/.test(message);
+        if (toast?.classList.contains('show')) warned ||= isWarning;
+        toast?.toggleAttribute('data-task-feedback-hidden', warned || isWarning || /^下一步[：:]/.test(message));
+      }
+      if (warned) {
+        warned = false;
+        const message = clean(toast?.textContent);
+        indicateWarning(phases?.find(item => ready(item))?.hint
+          || (config.liveHint || provided ||
+              /^(先操作实验台|当前步骤证据|当前步骤应记录|先按照当前|请先完成当前|提示$)/.test(message) ? hint : message)
+          || hint);
+      }
+      showHint();
+    }
+
+    const schedule = () => {
+      if (!scheduled) {
+        scheduled = true;
+        queueMicrotask(sync);
+      }
+    };
+    const observer = new MutationObserver(records => {
+      toastChanged ||= records.some(record => toast && (toast.contains(record.target)) &&
+        (record.type !== 'attributes' || toast.classList.contains('show')));
+      if (records.some(record => (
+        (record.target === lamp && lamp.classList.contains('flash')) ||
+        (dots?.contains(record.target) && record.target.classList?.contains('warn'))
+      ))) warned = true;
+      schedule();
+    });
+    for (const element of [number,title,nativeHint,oldPop,mode,status,dots,panel].filter(Boolean)) {
+      observer.observe(element, {childList:true,characterData:true,subtree:true,
+        attributes:element === dots,attributeFilter:element === dots ? ['class'] : undefined});
+    }
+    observer.observe(panel, {childList:true,characterData:true,subtree:true,attributes:true,
+      attributeFilter:['hidden','disabled','class','style']});
+    for (const element of [...observations, ...results, ...hintSources.map(source => source.element)]) {
+      observer.observe(element, {childList:true,characterData:true,subtree:true,attributes:true,
+        attributeFilter:['hidden','class','style']});
+    }
+    observer.observe(lamp, {attributes:true,attributeFilter:['class'],attributeOldValue:true});
+    if (toast) observer.observe(toast, {childList:true,characterData:true,subtree:true,attributes:true,attributeOldValue:true,attributeFilter:['class']});
+    if (results.length) {
+      card.addEventListener('click', event => {
+        if (!event.isTrusted || !event.target.closest('#analyzeBtn,#fitBtn')) return;
+        queueMicrotask(() => {
+          sync();
+          const ready = results.some(result => !result.matches('[hidden],[data-task-empty]'));
+          if (ready) {
+            if (config.openResults !== false) showDataPanel(stage, dataBody);
+            return;
+          }
+          const detail = results.map(result => clean(result.textContent))
+            .find(text => guidance.test(text) && !placeholder.test(text));
+          if (detail) {
+            indicateWarning(detail);
+            showHint();
+          }
+        });
+      });
+    }
+    document.addEventListener('click', event => {
+      if (!lamp.contains(event.target)) return;
+      event.stopImmediatePropagation();
+      sync();
+      expand(pop.hidden);
+    }, true);
+    document.addEventListener('click', event => {
+      if (!pop.hidden && !tools.contains(event.target) && !pop.contains(event.target)) expand(false);
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !pop.hidden) {
+        expand(false);
+        lamp.focus({preventScroll:true});
+      }
+    });
+    expand(false);
+    sync();
+    keepDemoPointerVisible(stage, card);
+  }
+  function keepDemoPointerVisible(stage, card) {
+    const cursor = find('#demoCursor,.demo-cursor,.demoCursor', stage);
+    if (!cursor) return;
+    const marker = document.createElement('div');
+    marker.setAttribute('data-task-demo-pointer', '');
+    marker.setAttribute('aria-hidden', 'true');
+    marker.hidden = true;
+    document.body.append(marker);
+    let frame = 0;
+    function draw() {
+      frame = 0;
+      if (Number(getComputedStyle(cursor).opacity) < .05) {
+        marker.hidden = true;
+        return;
+      }
+      const point = cursor.getBoundingClientRect();
+      const boundary = stage.getBoundingClientRect();
+      const cardBounds = card.getBoundingClientRect();
+      const x = point.left + point.width / 2;
+      const y = point.top + point.height / 2;
+      marker.hidden = point.bottom >= boundary.top || !point.width || !point.height ||
+        x < cardBounds.left || x > cardBounds.right || y < cardBounds.top || y > cardBounds.bottom;
+      if (!marker.hidden) {
+        marker.style.left = `${x}px`;
+        marker.style.top = `${y}px`;
+      }
+      frame = requestAnimationFrame(draw);
+    }
+    const observer = new MutationObserver(() => {
+      if (!frame) frame = requestAnimationFrame(draw);
+    });
+    observer.observe(cursor, {attributes:true, attributeFilter:['class','style']});
+    window.addEventListener('pagehide', () => {
+      cancelAnimationFrame(frame);
+      frame = 0;
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, {once:true});
+  else mount();
+})();
+</script>
+<script src="../experiment-scroll-receiver.v2.js" data-science-lab-scroll></script>
+</body>
+</html>
