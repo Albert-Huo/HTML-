@@ -485,6 +485,7 @@
   </style>
 <style>
 #stage {height:auto;min-height:0;max-height:none;overflow:visible;isolation:isolate;touch-action:pan-y}
+#pulleyBench,#arch-bench,#opt-bench {touch-action:none}
 .hud {position:relative;inset:auto;margin:10px 10px 0;width:fit-content;max-width:calc(100% - 20px);z-index:1}
 .lab-area {position:relative;inset:auto;margin:56px 10px 10px;min-height:330px;overflow:visible}
 .playfield.scene {position:relative;inset:auto;min-height:330px;padding:12px;color:#e8f1ff;touch-action:pan-y}
@@ -534,8 +535,9 @@
   html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-actions] {
     grid-area:3 / 1 / 4 / 2
   }
-  html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-pop] {
-    grid-area:2 / 1 / 3 / 2
+  html[data-middle-task-controls] #app #taskCard[data-task-layout] > [data-task-pop] {
+    grid-area:1 / 1 / 3 / 3;inset:0 0 auto;inline-size:100%;max-inline-size:100%;
+    max-block-size:100%;padding:5px 8px;font-size:13px;line-height:1.35
   }
 }
 @media(prefers-reduced-motion:reduce) {
@@ -552,6 +554,10 @@
     .power-board [aria-pressed=true] .post-ring{stroke:#ffd061}
     .power-details{gap:12px;margin:8px auto;color:#bcd2e5;font-size:13px}
     .power-details button{min-height:44px}
+    .power-measurements{margin-top:10px;font-size:14px;color:#dcecff}
+    .power-measurements[hidden]{display:none}
+    .power-measurements span{padding:6px 9px;border-radius:6px;background:#142b3e}
+    .power-measurements output{font-variant-numeric:tabular-nums;font-weight:700}
     .power-entry{display:inline-flex;align-items:center;gap:5px}
     .power-entry[hidden]{display:none}
     .power-entry input,.power-entry select{min-height:44px;color:inherit;background:#19293a;border:1px solid #5f7990;border-radius:7px;padding:5px;font:inherit}
@@ -1131,7 +1137,7 @@
     <button class="hint-lamp" id="hintLamp" type="button" data-stage-hint="managed" aria-label="查看提示" aria-controls="hintPop" aria-expanded="false">💡</button>
     <div class="hint-pop" id="hintPop" role="status"></div>
     <div class="lab-area" id="labArea">
-      <div class="playfield scene" id="playfield"><svg class="power-board" id="powerBoard" role="group" aria-label="小灯泡测功率接线台"></svg><div class="scene-row power-details"><span id="powerStatus"></span><button type="button" id="powerClear">清除接线</button></div></div>
+      <div class="playfield scene" id="playfield"><svg class="power-board" id="powerBoard" role="group" aria-label="小灯泡测功率接线台"></svg><div class="scene-row power-measurements" id="powerMeasurements" hidden><span>电压 <output id="powerVoltage"></output></span><span>电流 <output id="powerCurrent"></output></span></div><div class="scene-row power-details"><span id="powerStatus"></span><button type="button" id="powerClear">清除接线</button></div></div>
     </div>
 
     <div class="mobile-tabs" id="mobileTabs" role="group" aria-label="实验数据面板切换">
@@ -1173,10 +1179,10 @@
   <div class="toast" id="toast">提示</div>
 
   <div class="modal-mask" id="doneMask">
-    <div class="modal">
-      <h3>完成，你真棒!</h3>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+      <h3 id="doneTitle">完成，你真棒!</h3>
       <p>你已完成全部实验步骤。</p>
-      <button id="okBtn" class="ok">OK</button>
+      <button id="okBtn" type="button" class="ok">确定</button> <button id="demoDataBtn" type="button" class="sub" hidden>查看演示数据</button>
     </div>
   </div>
 
@@ -1213,9 +1219,11 @@ const createScene = (function(lab){
       vp:'电压表正端',vn:'电压表负端',hp:'变阻器滑片接线柱',
       hl:'变阻器左下端',hr:'变阻器右下端'
     };
-    const fixed=[['bp','sl'],['sr','ap'],['an','lp'],['ln','hp'],['vp','lp'],['vn','ln']];
+    const normalSwitch=[['bp','sl'],['sr','ap']];
+    const reversedSwitch=[['bp','sr'],['sl','ap']];
+    const fixed=[...normalSwitch,['an','lp'],['ln','hp'],['vp','lp'],['vn','ln']];
     const expected=[...fixed,['bn','hl']];
-    const edges=[...expected,['bn','hr']];
+    const edges=[...expected,['bn','hr'],...reversedSwitch];
     const key=(a,b)=>[a,b].sort().join('/');
     const allowed=new Set(edges.map(([a,b])=>key(a,b)));
     const wires=new Set();
@@ -1239,7 +1247,12 @@ const createScene = (function(lab){
     }
 
     function returnRight(){ return wires.has(key('bn','hr')); }
-    function powerReady(){ return fixed.every(pair=>wires.has(key(...pair))) && (returnRight() || wires.has(key('bn','hl'))); }
+    function switchReversed(){ return reversedSwitch.some(pair=>wires.has(key(...pair))); }
+    function requiredWires(){ return switchReversed() ? [...reversedSwitch,...expected.slice(2)] : expected; }
+    function missingWire(){
+      return requiredWires().find(([a,b])=>a==='bn'
+        ? !returnRight() && !wires.has(key(a,b)) : !wires.has(key(a,b)));
+    }
     function resistance(){ return maxResistance*(returnRight() ? 1-position : position); }
 
     function reading(){
@@ -1281,8 +1294,7 @@ const createScene = (function(lab){
     function hint(){
       if(conclusionConfirmed && !lab.free) return '打开数据面板查看本次实验的测量记录和结论。';
       if(lab.step===3 && !lab.free) return '打开数据面板，对照三组实测电压，选择与灯泡标注 2.5 V 相符的一组，再点确认判断。';
-      const pending=expected.find(([a,b])=>a==='bn'
-        ? !returnRight() && !wires.has(key(a,b)) : !wires.has(key(a,b)));
+      const pending=missingWire();
       if(pending){
         const [a,b]=pending;
         if(picked===a || picked===b) return '接着点击'+names[picked===a ? b : a]+'。';
@@ -1298,7 +1310,7 @@ const createScene = (function(lab){
         return '拖动滑片，使电压表显示 '+minimum.toFixed(2)+'～'+maximum.toFixed(2)+' V。';
       }
       if(lab.free) return '拖动滑片改变灯泡电压，读表后可记录当前状态。';
-      return '读取两只表，把 U 乘以 I，填入功率（W），再点击记录。';
+      return '读取电压与电流，用 U × I 计算功率。单位为 W，结果四舍五入保留两位小数，再点击记录。';
     }
 
     function refresh(text){
@@ -1314,6 +1326,10 @@ const createScene = (function(lab){
       if(wires.has(pair)){
         wires.delete(pair);
       } else {
+        const switchSide = [normalSwitch,reversedSwitch].find(side=>side.some(edge=>key(...edge)===pair));
+        if (switchSide && [...normalSwitch,...reversedSwitch].some(edge=>!switchSide.includes(edge) && wires.has(key(...edge)))) {
+          return lab.warn('开关的两条导线要接在不同端。先拆掉冲突的接线，再接这一条。');
+        }
         if((pair===key('bn','hl') && returnRight()) || (pair===key('bn','hr') && wires.has(key('bn','hl')))){
           return lab.warn('变阻器用一上一下两个接线柱。请先拆下另一条下端线。');
         }
@@ -1333,7 +1349,7 @@ const createScene = (function(lab){
 
     function toggle(){
       picked=null;
-      if(!on && (!powerReady() || (firstPower && resistance()<maxResistance-.02))) return lab.warn(hint());
+      if(!on && (missingWire() || (firstPower && resistance()<maxResistance-.02))) return lab.warn(hint());
       on=!on;
       if(on) firstPower=false;
       answer.value='';
@@ -1352,12 +1368,14 @@ const createScene = (function(lab){
       if(small) return {
         size:[336,466], battery:[69,382], knife:[67,62], ammeter:[251,68], voltmeter:[76,225], lamp:[249,216], rheostat:[239,392],
         posts:{bp:[111,410],bn:[23,410],sl:[27,88],sr:[107,88],ap:[196,116],an:[306,116],lp:[194,277],ln:[304,277],vp:[21,273],vn:[131,273],hp:[318,373],hl:[176,437],hr:[302,437]},
-        bends:[[[148,422],[154,161],[17,145]],[[141,98]],[[324,133],[318,157],[175,167],[173,258]],[[324,291],[326,352]],[[9,304],[147,306],[168,290]],[[153,316],[300,317],[316,298]],[[48,451],[145,453]],[[36,457],[191,456],[288,454]]]
+        bends:[[[148,422],[154,161],[17,145]],[[141,98]],[[324,133],[318,157],[175,167],[173,258]],[[324,291],[326,352]],[[9,304],[147,306],[168,290]],[[153,316],[300,317],[316,298]],[[48,451],[145,453]],[[36,457],[191,456],[288,454]],
+          [[148,422],[154,161],[125,117]],[[10,92],[10,27],[169,27],[174,90]]]
       };
       return {
         size:[688,382], battery:[100,276], knife:[99,99], ammeter:[285,87], voltmeter:[285,264], lamp:[524,88], rheostat:[530,289],
         posts:{bp:[145,305],bn:[55,305],sl:[59,125],sr:[139,125],ap:[230,135],an:[340,135],lp:[469,149],ln:[579,149],vp:[230,312],vn:[340,312],hp:[609,270],hl:[467,334],hr:[593,334]},
-        bends:[[[164,300],[167,166],[57,151]],[[187,126]],[[381,154],[419,154]],[[623,159],[654,217],[633,266]],[[209,297],[202,214],[415,195],[450,164]],[[363,322],[393,225],[546,217],[587,179]],[[91,346],[431,354]],[[91,353],[539,365],[585,353]]]
+        bends:[[[164,300],[167,166],[57,151]],[[187,126]],[[381,154],[419,154]],[[623,159],[654,217],[633,266]],[[209,297],[202,214],[415,195],[450,164]],[[363,322],[393,225],[546,217],[587,179]],[[91,346],[431,354]],[[91,353],[539,365],[585,353]],
+          [[164,300],[167,166],[142,151]],[[34,129],[33,54],[192,53],[210,99]]]
       };
     }
 
@@ -1443,10 +1461,13 @@ const createScene = (function(lab){
       elements.posts.forEach(post=>post.setAttribute('aria-pressed',String(post.dataset.terminal===picked)));
       field.hidden=lab.free||!on||lab.rows.length>=3;
       question.hidden=lab.free||lab.step!==3||conclusionConfirmed;
+      lab.$('#powerMeasurements').hidden = !compact;
+      lab.$('#powerVoltage').textContent = data.voltage.toFixed(2)+' V';
+      lab.$('#powerCurrent').textContent = data.current.toFixed(2)+' A';
       elements.powerWires.innerHTML=edges.map(([a,b],index)=>{
         if(!wires.has(key(a,b))) return '';
         const path=pathBetween(layout.posts[a],layout.bends[index],layout.posts[b]);
-        const color=['bp','sr','an','vp'].includes(a)?'#ff7789':'#72cdf2';
+        const color=['bp','sl','sr','an','vp'].includes(a)?'#ff7789':'#72cdf2';
         return '<path d="'+path+'" fill="none" stroke="#14232b" stroke-width="6.4" stroke-linecap="round" pointer-events="none"/><path d="'+path+'" fill="none" stroke="'+color+'" stroke-width="3.2" stroke-linecap="round" pointer-events="none"/>';
       }).join('');
       elements.powerPreview.setAttribute('d',drag?.post && drag.moved ? pathBetween(layout.posts[drag.post],[],drag.point) : '');
@@ -1557,7 +1578,7 @@ const createScene = (function(lab){
       const data=reading();
       if(!lab.free){
         if(!inRange(data.voltage,lab.step)) return hint();
-        if(!answer.value || Math.abs(Number(answer.value)-data.power)>.011) return '用电压表的 V 数乘以电流表的 A 数，填写功率（W），再记录。';
+        if(answer.valueAsNumber !== data.power) return '用电压乘电流，算出的功率以 W 为单位，四舍五入保留两位小数，再记录。';
       }
       const row={
         cells:[condition(data.voltage),data.voltage.toFixed(2),data.current.toFixed(2),data.power.toFixed(2),lightName(data.glow)],
@@ -1633,6 +1654,8 @@ const resetBtn = byId('resetBtn');
 const freeBtn = byId('freeBtn');
 const autoBtn = byId('autoDemoBtn');
 const modal = byId('doneMask');
+const doneButton = byId('okBtn');
+const demoDataButton = byId('demoDataBtn');
 const cursor = byId('demoCursor');
 const steps = settings.steps;
 const rows = [];
@@ -1640,6 +1663,23 @@ const state = {
   step:0, freeMode:false, completed:false, playing:false, paused:false,
   run:0, warning:'', status:settings.status || '待操作', unread:0, open:false, freeEntry:null
 };
+let interacted = false;
+let demoEntry = null;
+let reviewingDemo = false;
+let focusBeforeModal = null;
+let blockedSiblings = [];
+const stageTimers = new Set();
+let pausedAt = 0;
+let pausedTime = 0;
+const sceneTime = () => (pausedAt || performance.now()) - pausedTime;
+
+function armTimer(entry) {
+  entry.id = setTimeout(() => {
+    stageTimers.delete(entry);
+    entry.callback();
+  }, Math.max(0, entry.due - sceneTime()));
+}
+
 const activeRows = () => rows.filter(row => row.exploration === state.freeMode);
 const lab = {
   root,
@@ -1648,8 +1688,20 @@ const lab = {
   get step() { return state.step; },
   get free() { return state.freeMode; },
   get paused() { return state.paused; },
+  now: sceneTime,
+  after(milliseconds, callback) {
+    const entry = {due:sceneTime() + milliseconds, callback};
+    stageTimers.add(entry);
+    if (!state.paused) armTimer(entry);
+    return entry;
+  },
+  cancel(entry) {
+    if (!stageTimers.delete(entry)) return;
+    clearTimeout(entry.id);
+  },
   get rows() { return activeRows(); },
   changed(status) {
+    if (!state.playing) interacted = true;
     if (status) state.status = status;
     state.warning = '';
     render();
@@ -1661,9 +1713,45 @@ let pausedAnimations = [];
 
   window.__labCurrentTaskHint = currentHint;
   function currentHint() {
-    return state.warning || scene.hint?.() ||
-      (state.completed && !state.freeMode ? '打开数据面板，查看本次实验记录。' : steps[state.step].hint);
+    if (state.completed && !state.freeMode) return '打开数据面板，查看本次实验记录。';
+    return state.warning || scene.hint?.() || steps[state.step].hint;
   }
+
+function showCompletion() {
+  focusBeforeModal = document.activeElement;
+  doneButton.textContent = demoEntry ? '返回我的实验' : '确定';
+  demoDataButton.hidden = !demoEntry;
+  modal.classList.add('show');
+  blockedSiblings = [...modal.parentElement.children].filter(element =>
+    element !== modal && !element.inert && !element.matches('script,style,link'));
+  for (const element of blockedSiblings) element.inert = true;
+  doneButton.focus({preventScroll:true});
+}
+
+function hideCompletion() {
+  if (!modal.classList.contains('show')) return;
+  modal.classList.remove('show');
+  for (const element of blockedSiblings) element.inert = false;
+  blockedSiblings = [];
+  const returnTo = focusBeforeModal?.getClientRects().length && !focusBeforeModal.disabled
+    ? focusBeforeModal : byId('hintLamp');
+  returnTo.focus({preventScroll:true});
+  focusBeforeModal = null;
+}
+
+function restoreAfterDemo() {
+  const entry = demoEntry;
+  reviewingDemo = false;
+  demoEntry = null;
+  if (!entry) return;
+  rows.splice(0, rows.length, ...entry.rows);
+  Object.assign(state, entry.progress);
+  scene.restore(entry.scene);
+  interacted = entry.interacted;
+  toggleDrawer(entry.open);
+  render();
+  renderRows();
+}
 
 function setText(id, value) {
   if (byId(id).textContent !== value) byId(id).textContent = value;
@@ -1702,32 +1790,31 @@ function renderRows() {
   }));
   byId('recordTable').hidden = !rows.length;
   byId('recordEmpty').hidden = Boolean(rows.length);
-  const result = (state.completed || state.freeMode) && (
-    scene.conclusion?.(activeRows()) ||
-    (state.freeMode && state.completed && scene.conclusion?.(rows.filter(row => !row.exploration)))
-  );
+  const result = (state.completed || state.freeMode) && scene.conclusion?.(activeRows());
   byId('analysis').hidden = !result;
   setText('analysis', result || '');
   updateUnread();
 }
 function render() {
   scene.render();
-  root.inert = state.playing;
+  root.inert = state.playing || reviewingDemo;
   setText('taskStep', '关卡 ' + (state.step + 1) + ' / ' + steps.length);
   setText('taskText', steps[state.step].title);
   setText('taskHint', currentHint());
   setText('modeTag', '模式：' + (state.playing
     ? '演示模式 · ' + (state.paused ? '已暂停' : '自动运行')
+    : reviewingDemo ? '演示模式 · 已完成'
     : state.freeMode ? '自由模式 · 自主探索' : '闯关模式 · 关卡 ' + (state.step + 1) + '/' + steps.length));
   setText('statusTag', '状态：' + (state.paused ? '演示已暂停' :
     state.completed && !state.freeMode ? '挑战已完成' : state.status));
   setText('taskActionBtn', state.freeMode ? '记录当前观察' : steps[state.step].button || '记录');
   recordBtn.disabled = state.playing || (state.completed && !state.freeMode);
   recordBtn.hidden = state.completed && !state.freeMode;
-  setText('autoDemoBtn', state.playing ? '退出演示' : '演示模式');
+  setText('autoDemoBtn', state.playing || reviewingDemo ? '退出演示' : '演示模式');
   setText('resetBtn', state.playing ? (state.paused ? '继续演示' : '暂停演示') : state.freeMode ? '重置操作' : '重置关卡');
   setText('freeBtn', state.freeMode ? '退出自由模式' : '自由模式');
-  freeBtn.disabled = state.playing;
+  resetBtn.disabled = reviewingDemo;
+  freeBtn.disabled = state.playing || reviewingDemo;
   autoBtn.disabled = state.freeMode;
   byId('taskCard').classList.toggle('free-mode', state.freeMode);
   const dots = byId('dots');
@@ -1772,7 +1859,6 @@ function record() {
   if (!state.freeMode) {
     if (state.step + 1 === steps.length) {
       state.completed = true;
-      if (!state.playing) modal.classList.add('show');
     } else {
       state.step += 1;
       scene.stepChanged?.();
@@ -1780,6 +1866,7 @@ function record() {
   }
   render();
   renderRows();
+  if (state.completed && !state.playing && !state.freeMode) showCompletion();
   return true;
 }
 function resetAll() {
@@ -1789,9 +1876,10 @@ function resetAll() {
   state.status = settings.status || '待操作';
   state.unread = 0;
   rows.length = 0;
-  modal.classList.remove('show');
+  hideCompletion();
   byId('hintLamp').classList.remove('flash');
   scene.reset();
+  interacted = false;
   toggleDrawer(false);
   render();
   renderRows();
@@ -1814,16 +1902,31 @@ function moveCursor(x, y) {
   cursor.style.transform = 'translate(' + x + 'px,' + y + 'px)';
 }
 async function runDemo() {
+  if (reviewingDemo) {
+    restoreAfterDemo();
+    return;
+  }
   if (state.playing) {
     state.run += 1;
     state.playing = false;
     state.paused = false;
+    if (pausedAt) pausedTime += performance.now() - pausedAt;
+    pausedAt = 0;
     for (const animation of pausedAnimations) animation.cancel();
     pausedAnimations = [];
     cursor.hidden = true;
+    cursor.classList.remove('demo-click');
     resetAll();
+    restoreAfterDemo();
     return;
   }
+  if (interacted || rows.length) demoEntry = {
+    scene:scene.capture(),
+    rows:[...rows],
+    progress:{step:state.step,completed:state.completed,status:state.status,warning:state.warning,unread:state.unread},
+    open:state.open,
+    interacted
+  };
   const run = ++state.run;
   state.playing = true;
   resetAll();
@@ -1903,8 +2006,11 @@ async function runDemo() {
       state.paused = false;
       cursor.hidden = true;
       cursor.classList.remove('demo-click');
-      if (state.completed) modal.classList.add('show');
+      const finished = state.completed;
+      reviewingDemo = Boolean(demoEntry && finished);
+      if (!finished) restoreAfterDemo();
       render();
+      if (finished) showCompletion();
     }
   }
 }
@@ -1913,9 +2019,14 @@ resetBtn.addEventListener('click', () => {
   if (state.playing) {
     state.paused = !state.paused;
     if (state.paused) {
+      pausedAt = performance.now();
+      for (const entry of stageTimers.values()) clearTimeout(entry.id);
       pausedAnimations = root.getAnimations({subtree:true}).filter(animation=>animation.playState==='running');
       for (const animation of pausedAnimations) animation.pause();
     } else {
+      pausedTime += performance.now() - pausedAt;
+      pausedAt = 0;
+      for (const entry of stageTimers.values()) armTimer(entry);
       for (const animation of pausedAnimations) if (animation.playState==='paused') animation.play();
       pausedAnimations = [];
     }
@@ -1936,11 +2047,30 @@ freeBtn.addEventListener('click', () => {
   state.freeMode = true;
   state.status = '自由探索';
   state.warning = '';
-  modal.classList.remove('show');
+  hideCompletion();
   render();
   renderRows();
 });
-byId('okBtn').addEventListener('click', () => modal.classList.remove('show'));
+function dismissCompletion() {
+  hideCompletion();
+  if (reviewingDemo) restoreAfterDemo();
+}
+doneButton.addEventListener('click', dismissCompletion);
+demoDataButton.addEventListener('click', () => {
+  hideCompletion();
+  toggleDrawer(true);
+  const toggle = innerWidth <= 720 ? byId('dataTab') : byId('dataToggleBtn');
+  toggle.focus();
+});
+modal.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    dismissCompletion();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    (demoDataButton.hidden || document.activeElement === demoDataButton ? doneButton : demoDataButton).focus();
+  }
+});
 for (const id of ['dataToggleBtn','dataTab','dataSheetCloseBtn']) {
   byId(id).addEventListener('click', () => toggleDrawer(!state.open));
 }

@@ -485,6 +485,7 @@
   </style>
 <style>
 #stage {height:auto;min-height:0;max-height:none;overflow:visible;isolation:isolate;touch-action:pan-y}
+#pulleyBench,#arch-bench,#opt-bench {touch-action:none}
 .hud {position:relative;inset:auto;margin:10px 10px 0;width:fit-content;max-width:calc(100% - 20px);z-index:1}
 .lab-area {position:relative;inset:auto;margin:56px 10px 10px;min-height:330px;overflow:visible}
 .playfield.scene {position:relative;inset:auto;min-height:330px;padding:12px;color:#e8f1ff;touch-action:pan-y}
@@ -534,8 +535,9 @@
   html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-actions] {
     grid-area:3 / 1 / 4 / 2
   }
-  html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-pop] {
-    grid-area:2 / 1 / 3 / 2
+  html[data-middle-task-controls] #app #taskCard[data-task-layout] > [data-task-pop] {
+    grid-area:1 / 1 / 3 / 3;inset:0 0 auto;inline-size:100%;max-inline-size:100%;
+    max-block-size:100%;padding:5px 8px;font-size:13px;line-height:1.35
   }
 }
 @media(prefers-reduced-motion:reduce) {
@@ -1188,10 +1190,10 @@
   <div class="toast" id="toast">提示</div>
 
   <div class="modal-mask" id="doneMask">
-    <div class="modal">
-      <h3>完成，你真棒!</h3>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+      <h3 id="doneTitle">完成，你真棒!</h3>
       <p>你已完成全部实验步骤。</p>
-      <button id="okBtn" class="ok">OK</button>
+      <button id="okBtn" type="button" class="ok">确定</button> <button id="demoDataBtn" type="button" class="sub" hidden>查看演示数据</button>
     </div>
   </div>
 
@@ -1210,14 +1212,14 @@
   </script>
 
   <script id="physicsLabShellTemplate">
-const settings = {"steps":[{"title":"倒置玻璃管并浸入槽中","hint":"点击玻璃管倒转它，再点击向下放入水银槽。管口浸入前保持密封。","button":"确认安装"},{"title":"测量标准大气压下的液柱高度","hint":"点击取下密封塞，等液柱停稳。拖动读数线，让它与管内液面齐平，再记录。"},{"title":"倾斜玻璃管，再测液柱高度","hint":"拖动倾角滑块，把管子倾斜到至少 20°。保持管口浸没，比较两次竖直高度。"},{"title":"改变大气压，再读高度","hint":"把大气压滑块向左拖到 90 kPa 或更低。拖动读数线重新对齐液面，再记录。"}],"columns":["操作","大气压 / kPa","倾角","竖直高度 / mm"]};
+const settings = {"steps":[{"title":"倒置玻璃管并浸入槽中","hint":"点击玻璃管倒转它，再点击向下放入水银槽。管口浸入前保持密封。","button":"确认安装"},{"title":"测量标准大气压下的液柱高度","hint":"点击取下密封塞，等液柱停稳。拖动下方的读数线滑块，使黄线与管内液面齐平。"},{"title":"倾斜玻璃管，再测液柱高度","hint":"拖动倾角滑块，把管子倾斜到至少 20°。保持管口浸没，比较两次竖直高度。"},{"title":"改变大气压，再读高度","hint":"把大气压滑块向左拖到 90 kPa 或更低。调节下方的读数线滑块，让黄线重新对齐液面。"}],"columns":["操作","大气压 / kPa","倾角","竖直高度 / mm"]};
 const createScene = (function setup(lab) {
     const $ = lab.$;
     const heightScale = .2;
     const mercuryDensity = 13600;
     const gravity = 9.8;
     const actions = ['倒置玻璃管','浸入水银槽','取下密封塞',''];
-    let phase, tilt, pressure, line, settling, timer, movedLine;
+    let phase, tilt, pressure, line, settling, frame, movedLine, displayHeight;
     function height() { return pressure * 1e6 / (mercuryDensity * gravity); }
     for (let mm=0; mm<=800; mm+=25) {
       const y = 273 - mm * heightScale;
@@ -1236,13 +1238,9 @@ const createScene = (function setup(lab) {
       const pivot = phase === 0 ? 'translate(112 97) rotate(180)' :
         phase === 1 ? 'translate(248 233)' : 'translate(248 292) rotate('+tilt+')';
       $('#glassTube').setAttribute('transform',pivot);
-      const radians = tilt * Math.PI/180;
-      const top = x => (-19-height()*heightScale-x*Math.sin(radians))/Math.cos(radians);
-      const leftY = phase < 3 || settling ? -215 : top(-8);
-      const rightY = phase < 3 || settling ? -215 : top(8);
-      $('#tubeMercury').setAttribute('d','M-8 0 V'+leftY+' L8 '+rightY+' V0Z');
+      paintMercury();
       $('#plug').style.display = phase === 3 ? 'none' : '';
-      $('#voidCaption').style.display = phase === 3 && !settling ? '' : 'none';
+      $('#voidCaption').style.display = phase === 3 ? '' : 'none';
       $('#tubeAction').hidden = phase === 3;
       $('#tubeAction').textContent = actions[phase];
       $('#glassTube').setAttribute('aria-label',actions[phase] || '水银柱');
@@ -1263,14 +1261,30 @@ const createScene = (function setup(lab) {
       $('#tiltLabel').textContent = tilt + '°';
       $('#pressureLabel').textContent = pressure.toFixed(1) + ' kPa';
     }
+    function paintMercury() {
+      const radians = tilt * Math.PI/180;
+      const top = x => phase < 3 ? -215 :
+        (-19 - displayHeight * heightScale - x * Math.sin(radians)) / Math.cos(radians);
+      $('#tubeMercury').setAttribute('d','M-8 0 V'+top(-8)+' L8 '+top(8)+' V0Z');
+    }
     function settle() {
-      clearTimeout(timer);
+      cancelAnimationFrame(frame);
+      const from = displayHeight;
+      const destination = height();
+      const start = lab.now();
       settling = true;
       lab.changed('等待液面稳定');
-      timer = setTimeout(() => {
-        settling = false;
-        lab.changed('液柱已稳定');
-      },420);
+      function animate() {
+        const progress = Math.min(1, (lab.now() - start) / 420);
+        displayHeight = from + (destination - from) * (1 - (1 - progress) ** 2);
+        paintMercury();
+        if (progress < 1) frame = requestAnimationFrame(animate);
+        else {
+          settling = false;
+          lab.changed('液柱已稳定');
+        }
+      }
+      frame = requestAnimationFrame(animate);
     }
     function handleTube() {
       if (phase === 3) return;
@@ -1308,22 +1322,24 @@ const createScene = (function setup(lab) {
     function measureHint() {
       if (phase < 2) return actions[phase] + '。等管口浸入水银槽后再取下密封塞。';
       if (phase === 2) return !lab.free && lab.step === 0 ? '管口已浸没。点击“确认安装”。' : '点击“取下密封塞”，等液柱稳定。';
-      if (settling) return '等液柱稳定，再移动读数线与管内液面齐平。';
+      if (settling) return '等液柱稳定，再拖动下方的读数线滑块，使黄线与管内液面齐平。';
       if (!lab.free && lab.step === 2 && tilt < 20) return '拖动倾角滑块，把玻璃管倾斜到至少 20°。观察管口仍然浸没。';
       if (!lab.free && lab.step === 3 && pressure > 90) return '拖动大气压滑块到 90 kPa 或更低，再测量高度。';
-      if (!movedLine || Math.abs(line-height()) > 5) return '拖动读数线，使它与管内液面齐平。以槽内液面为零点。';
+      if (!movedLine || Math.abs(line-height()) > 5) return '拖动下方的读数线滑块，使黄线与管内液面齐平。以槽内液面为零点。';
       return '读数线已对准，点击“记录”。';
     }
     return {
       reset() {
-        clearTimeout(timer);
+        cancelAnimationFrame(frame);
         phase = 0; tilt = 0; pressure = 101.3; line = 700; settling = false; movedLine = false;
+        displayHeight = (215 - 19) / heightScale;
       },
       capture() { return {phase,tilt,pressure,line,movedLine}; },
       restore(saved) {
-        clearTimeout(timer);
+        cancelAnimationFrame(frame);
         ({phase,tilt,pressure,line,movedLine}=saved);
         settling = false;
+        displayHeight = phase === 3 ? height() : (215 - 19) / heightScale;
       },
       render,
       hint:measureHint,
@@ -1360,6 +1376,8 @@ const resetBtn = byId('resetBtn');
 const freeBtn = byId('freeBtn');
 const autoBtn = byId('autoDemoBtn');
 const modal = byId('doneMask');
+const doneButton = byId('okBtn');
+const demoDataButton = byId('demoDataBtn');
 const cursor = byId('demoCursor');
 const steps = settings.steps;
 const rows = [];
@@ -1367,6 +1385,23 @@ const state = {
   step:0, freeMode:false, completed:false, playing:false, paused:false,
   run:0, warning:'', status:settings.status || '待操作', unread:0, open:false, freeEntry:null
 };
+let interacted = false;
+let demoEntry = null;
+let reviewingDemo = false;
+let focusBeforeModal = null;
+let blockedSiblings = [];
+const stageTimers = new Set();
+let pausedAt = 0;
+let pausedTime = 0;
+const sceneTime = () => (pausedAt || performance.now()) - pausedTime;
+
+function armTimer(entry) {
+  entry.id = setTimeout(() => {
+    stageTimers.delete(entry);
+    entry.callback();
+  }, Math.max(0, entry.due - sceneTime()));
+}
+
 const activeRows = () => rows.filter(row => row.exploration === state.freeMode);
 const lab = {
   root,
@@ -1375,8 +1410,20 @@ const lab = {
   get step() { return state.step; },
   get free() { return state.freeMode; },
   get paused() { return state.paused; },
+  now: sceneTime,
+  after(milliseconds, callback) {
+    const entry = {due:sceneTime() + milliseconds, callback};
+    stageTimers.add(entry);
+    if (!state.paused) armTimer(entry);
+    return entry;
+  },
+  cancel(entry) {
+    if (!stageTimers.delete(entry)) return;
+    clearTimeout(entry.id);
+  },
   get rows() { return activeRows(); },
   changed(status) {
+    if (!state.playing) interacted = true;
     if (status) state.status = status;
     state.warning = '';
     render();
@@ -1388,9 +1435,45 @@ let pausedAnimations = [];
 
   window.__labCurrentTaskHint = currentHint;
   function currentHint() {
-    return state.warning || scene.hint?.() ||
-      (state.completed && !state.freeMode ? '打开数据面板，查看本次实验记录。' : steps[state.step].hint);
+    if (state.completed && !state.freeMode) return '打开数据面板，查看本次实验记录。';
+    return state.warning || scene.hint?.() || steps[state.step].hint;
   }
+
+function showCompletion() {
+  focusBeforeModal = document.activeElement;
+  doneButton.textContent = demoEntry ? '返回我的实验' : '确定';
+  demoDataButton.hidden = !demoEntry;
+  modal.classList.add('show');
+  blockedSiblings = [...modal.parentElement.children].filter(element =>
+    element !== modal && !element.inert && !element.matches('script,style,link'));
+  for (const element of blockedSiblings) element.inert = true;
+  doneButton.focus({preventScroll:true});
+}
+
+function hideCompletion() {
+  if (!modal.classList.contains('show')) return;
+  modal.classList.remove('show');
+  for (const element of blockedSiblings) element.inert = false;
+  blockedSiblings = [];
+  const returnTo = focusBeforeModal?.getClientRects().length && !focusBeforeModal.disabled
+    ? focusBeforeModal : byId('hintLamp');
+  returnTo.focus({preventScroll:true});
+  focusBeforeModal = null;
+}
+
+function restoreAfterDemo() {
+  const entry = demoEntry;
+  reviewingDemo = false;
+  demoEntry = null;
+  if (!entry) return;
+  rows.splice(0, rows.length, ...entry.rows);
+  Object.assign(state, entry.progress);
+  scene.restore(entry.scene);
+  interacted = entry.interacted;
+  toggleDrawer(entry.open);
+  render();
+  renderRows();
+}
 
 function setText(id, value) {
   if (byId(id).textContent !== value) byId(id).textContent = value;
@@ -1429,32 +1512,31 @@ function renderRows() {
   }));
   byId('recordTable').hidden = !rows.length;
   byId('recordEmpty').hidden = Boolean(rows.length);
-  const result = (state.completed || state.freeMode) && (
-    scene.conclusion?.(activeRows()) ||
-    (state.freeMode && state.completed && scene.conclusion?.(rows.filter(row => !row.exploration)))
-  );
+  const result = (state.completed || state.freeMode) && scene.conclusion?.(activeRows());
   byId('analysis').hidden = !result;
   setText('analysis', result || '');
   updateUnread();
 }
 function render() {
   scene.render();
-  root.inert = state.playing;
+  root.inert = state.playing || reviewingDemo;
   setText('taskStep', '关卡 ' + (state.step + 1) + ' / ' + steps.length);
   setText('taskText', steps[state.step].title);
   setText('taskHint', currentHint());
   setText('modeTag', '模式：' + (state.playing
     ? '演示模式 · ' + (state.paused ? '已暂停' : '自动运行')
+    : reviewingDemo ? '演示模式 · 已完成'
     : state.freeMode ? '自由模式 · 自主探索' : '闯关模式 · 关卡 ' + (state.step + 1) + '/' + steps.length));
   setText('statusTag', '状态：' + (state.paused ? '演示已暂停' :
     state.completed && !state.freeMode ? '挑战已完成' : state.status));
   setText('taskActionBtn', state.freeMode ? '记录当前观察' : steps[state.step].button || '记录');
   recordBtn.disabled = state.playing || (state.completed && !state.freeMode);
   recordBtn.hidden = state.completed && !state.freeMode;
-  setText('autoDemoBtn', state.playing ? '退出演示' : '演示模式');
+  setText('autoDemoBtn', state.playing || reviewingDemo ? '退出演示' : '演示模式');
   setText('resetBtn', state.playing ? (state.paused ? '继续演示' : '暂停演示') : state.freeMode ? '重置操作' : '重置关卡');
   setText('freeBtn', state.freeMode ? '退出自由模式' : '自由模式');
-  freeBtn.disabled = state.playing;
+  resetBtn.disabled = reviewingDemo;
+  freeBtn.disabled = state.playing || reviewingDemo;
   autoBtn.disabled = state.freeMode;
   byId('taskCard').classList.toggle('free-mode', state.freeMode);
   const dots = byId('dots');
@@ -1499,7 +1581,6 @@ function record() {
   if (!state.freeMode) {
     if (state.step + 1 === steps.length) {
       state.completed = true;
-      if (!state.playing) modal.classList.add('show');
     } else {
       state.step += 1;
       scene.stepChanged?.();
@@ -1507,6 +1588,7 @@ function record() {
   }
   render();
   renderRows();
+  if (state.completed && !state.playing && !state.freeMode) showCompletion();
   return true;
 }
 function resetAll() {
@@ -1516,9 +1598,10 @@ function resetAll() {
   state.status = settings.status || '待操作';
   state.unread = 0;
   rows.length = 0;
-  modal.classList.remove('show');
+  hideCompletion();
   byId('hintLamp').classList.remove('flash');
   scene.reset();
+  interacted = false;
   toggleDrawer(false);
   render();
   renderRows();
@@ -1541,16 +1624,31 @@ function moveCursor(x, y) {
   cursor.style.transform = 'translate(' + x + 'px,' + y + 'px)';
 }
 async function runDemo() {
+  if (reviewingDemo) {
+    restoreAfterDemo();
+    return;
+  }
   if (state.playing) {
     state.run += 1;
     state.playing = false;
     state.paused = false;
+    if (pausedAt) pausedTime += performance.now() - pausedAt;
+    pausedAt = 0;
     for (const animation of pausedAnimations) animation.cancel();
     pausedAnimations = [];
     cursor.hidden = true;
+    cursor.classList.remove('demo-click');
     resetAll();
+    restoreAfterDemo();
     return;
   }
+  if (interacted || rows.length) demoEntry = {
+    scene:scene.capture(),
+    rows:[...rows],
+    progress:{step:state.step,completed:state.completed,status:state.status,warning:state.warning,unread:state.unread},
+    open:state.open,
+    interacted
+  };
   const run = ++state.run;
   state.playing = true;
   resetAll();
@@ -1630,8 +1728,11 @@ async function runDemo() {
       state.paused = false;
       cursor.hidden = true;
       cursor.classList.remove('demo-click');
-      if (state.completed) modal.classList.add('show');
+      const finished = state.completed;
+      reviewingDemo = Boolean(demoEntry && finished);
+      if (!finished) restoreAfterDemo();
       render();
+      if (finished) showCompletion();
     }
   }
 }
@@ -1640,9 +1741,14 @@ resetBtn.addEventListener('click', () => {
   if (state.playing) {
     state.paused = !state.paused;
     if (state.paused) {
+      pausedAt = performance.now();
+      for (const entry of stageTimers.values()) clearTimeout(entry.id);
       pausedAnimations = root.getAnimations({subtree:true}).filter(animation=>animation.playState==='running');
       for (const animation of pausedAnimations) animation.pause();
     } else {
+      pausedTime += performance.now() - pausedAt;
+      pausedAt = 0;
+      for (const entry of stageTimers.values()) armTimer(entry);
       for (const animation of pausedAnimations) if (animation.playState==='paused') animation.play();
       pausedAnimations = [];
     }
@@ -1663,11 +1769,30 @@ freeBtn.addEventListener('click', () => {
   state.freeMode = true;
   state.status = '自由探索';
   state.warning = '';
-  modal.classList.remove('show');
+  hideCompletion();
   render();
   renderRows();
 });
-byId('okBtn').addEventListener('click', () => modal.classList.remove('show'));
+function dismissCompletion() {
+  hideCompletion();
+  if (reviewingDemo) restoreAfterDemo();
+}
+doneButton.addEventListener('click', dismissCompletion);
+demoDataButton.addEventListener('click', () => {
+  hideCompletion();
+  toggleDrawer(true);
+  const toggle = innerWidth <= 720 ? byId('dataTab') : byId('dataToggleBtn');
+  toggle.focus();
+});
+modal.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    dismissCompletion();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    (demoDataButton.hidden || document.activeElement === demoDataButton ? doneButton : demoDataButton).focus();
+  }
+});
 for (const id of ['dataToggleBtn','dataTab','dataSheetCloseBtn']) {
   byId(id).addEventListener('click', () => toggleDrawer(!state.open));
 }
@@ -1693,7 +1818,7 @@ matchMedia('(max-width:720px)').addEventListener('change', () => drawer.removeAt
 resetAll();
 
 </script>
-<script type="application/json" data-middle-task-config>{"steps":[{"title":"倒置玻璃管并浸入槽中","hint":"点击玻璃管倒转它，再点击向下放入水银槽。管口浸入前保持密封。","button":"确认安装"},{"title":"测量标准大气压下的液柱高度","hint":"点击取下密封塞，等液柱停稳。拖动读数线，让它与管内液面齐平，再记录。"},{"title":"倾斜玻璃管，再测液柱高度","hint":"拖动倾角滑块，把管子倾斜到至少 20°。保持管口浸没，比较两次竖直高度。"},{"title":"改变大气压，再读高度","hint":"把大气压滑块向左拖到 90 kPa 或更低。拖动读数线重新对齐液面，再记录。"}],"provider":"currentHint","openResults":false}</script>
+<script type="application/json" data-middle-task-config>{"steps":[{"title":"倒置玻璃管并浸入槽中","hint":"点击玻璃管倒转它，再点击向下放入水银槽。管口浸入前保持密封。","button":"确认安装"},{"title":"测量标准大气压下的液柱高度","hint":"点击取下密封塞，等液柱停稳。拖动下方的读数线滑块，使黄线与管内液面齐平。"},{"title":"倾斜玻璃管，再测液柱高度","hint":"拖动倾角滑块，把管子倾斜到至少 20°。保持管口浸没，比较两次竖直高度。"},{"title":"改变大气压，再读高度","hint":"把大气压滑块向左拖到 90 kPa 或更低。调节下方的读数线滑块，让黄线重新对齐液面。"}],"provider":"currentHint","openResults":false}</script>
 <style data-middle-task-controls="v1">
 html[data-middle-task-controls] #taskCard #taskEntryActions,
 html[data-middle-task-controls] #taskCard #taskHint,

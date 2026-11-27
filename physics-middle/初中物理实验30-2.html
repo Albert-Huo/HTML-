@@ -485,6 +485,7 @@
   </style>
 <style>
 #stage {height:auto;min-height:0;max-height:none;overflow:visible;isolation:isolate;touch-action:pan-y}
+#pulleyBench,#arch-bench,#opt-bench {touch-action:none}
 .hud {position:relative;inset:auto;margin:10px 10px 0;width:fit-content;max-width:calc(100% - 20px);z-index:1}
 .lab-area {position:relative;inset:auto;margin:56px 10px 10px;min-height:330px;overflow:visible}
 .playfield.scene {position:relative;inset:auto;min-height:330px;padding:12px;color:#e8f1ff;touch-action:pan-y}
@@ -534,8 +535,9 @@
   html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-actions] {
     grid-area:3 / 1 / 4 / 2
   }
-  html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-pop] {
-    grid-area:2 / 1 / 3 / 2
+  html[data-middle-task-controls] #app #taskCard[data-task-layout] > [data-task-pop] {
+    grid-area:1 / 1 / 3 / 3;inset:0 0 auto;inline-size:100%;max-inline-size:100%;
+    max-block-size:100%;padding:5px 8px;font-size:13px;line-height:1.35
   }
 }
 @media(prefers-reduced-motion:reduce) {
@@ -1201,10 +1203,10 @@
   <div class="toast" id="toast">提示</div>
 
   <div class="modal-mask" id="doneMask">
-    <div class="modal">
-      <h3>完成，你真棒!</h3>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+      <h3 id="doneTitle">完成，你真棒!</h3>
       <p>你已完成全部实验步骤。</p>
-      <button id="okBtn" class="ok">OK</button>
+      <button id="okBtn" type="button" class="ok">确定</button> <button id="demoDataBtn" type="button" class="sub" hidden>查看演示数据</button>
     </div>
   </div>
 
@@ -1229,7 +1231,9 @@ const createScene = (function setup(lab) {
     const refHead = 30;
     const areaRatio = 2;
     const scale = 4;
-    let open, rate, wing, stable, timer, frame, phase1, phase2, priorTime;
+    const inlet = 97, outlet = 498, taperStart = 264, taperEnd = 325;
+    const tracerPositions = [];
+    let open, rate, wing, stable, timer, frame, priorTime;
     const dots = Array.from({length:12},(_,index) => {
       const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
       dot.setAttribute('r',index%2 ? '3' : '4');
@@ -1246,14 +1250,14 @@ const createScene = (function setup(lab) {
         frame = requestAnimationFrame(animate);
         return;
       }
-      phase1 += dt * rate * .12;
-      phase2 += dt * rate * .24;
       for (const [index,dot] of dots.entries()) {
-        const narrow = index >= 6;
-        const start = narrow ? 329 : 97;
-        const distance = narrow ? 169 : 167;
-        dot.setAttribute('cx',String(start + ((narrow ? phase2 : phase1) + index*31) % distance));
-        dot.setAttribute('cy',String(205 + (index%3-1) * (narrow ? 5 : 12)));
+        const throughTaper = position => Math.min(1, Math.max(0, (position - taperStart) / (taperEnd - taperStart)));
+        const relativeArea = 1 - throughTaper(tracerPositions[index]) * (1 - 1 / areaRatio);
+        const x = inlet + (tracerPositions[index] - inlet + dt * rate * .12 / relativeArea) % (outlet - inlet);
+        tracerPositions[index] = x;
+        const lane = 12 - 7 * throughTaper(x);
+        dot.setAttribute('cx',String(x));
+        dot.setAttribute('cy',String(205 + (index%3-1) * lane));
       }
       priorTime = now;
       frame = requestAnimationFrame(animate);
@@ -1291,13 +1295,13 @@ const createScene = (function setup(lab) {
       }
     }
     function settle() {
-      clearTimeout(timer);
+      lab.cancel(timer);
       stable = false;
       lab.changed(open ? '流动趋于稳定' : '水流停止，液面回稳');
-      timer = setTimeout(() => {
+      timer = lab.after(380, () => {
         stable = true;
         lab.changed(open ? '水流稳定' : '阀门关闭');
-      },380);
+      });
     }
     function valve() {
       open = !open;
@@ -1328,12 +1332,15 @@ const createScene = (function setup(lab) {
     }
     return {
       reset() {
-        clearTimeout(timer); cancelAnimationFrame(frame);
-        open = false; rate = .5; wing = false; stable = true; frame = phase1 = phase2 = 0;
+        lab.cancel(timer); cancelAnimationFrame(frame);
+        open = false; rate = .5; wing = false; stable = true; frame = 0;
+        for (let index = 0; index < dots.length; index++) {
+          tracerPositions[index] = inlet + (outlet-inlet) * index / dots.length;
+        }
       },
       capture() { return {open,rate,wing}; },
       restore(saved) {
-        clearTimeout(timer);
+        lab.cancel(timer);
         ({open,rate,wing}=saved);
         stable = true;
       },
@@ -1368,6 +1375,8 @@ const resetBtn = byId('resetBtn');
 const freeBtn = byId('freeBtn');
 const autoBtn = byId('autoDemoBtn');
 const modal = byId('doneMask');
+const doneButton = byId('okBtn');
+const demoDataButton = byId('demoDataBtn');
 const cursor = byId('demoCursor');
 const steps = settings.steps;
 const rows = [];
@@ -1375,6 +1384,23 @@ const state = {
   step:0, freeMode:false, completed:false, playing:false, paused:false,
   run:0, warning:'', status:settings.status || '待操作', unread:0, open:false, freeEntry:null
 };
+let interacted = false;
+let demoEntry = null;
+let reviewingDemo = false;
+let focusBeforeModal = null;
+let blockedSiblings = [];
+const stageTimers = new Set();
+let pausedAt = 0;
+let pausedTime = 0;
+const sceneTime = () => (pausedAt || performance.now()) - pausedTime;
+
+function armTimer(entry) {
+  entry.id = setTimeout(() => {
+    stageTimers.delete(entry);
+    entry.callback();
+  }, Math.max(0, entry.due - sceneTime()));
+}
+
 const activeRows = () => rows.filter(row => row.exploration === state.freeMode);
 const lab = {
   root,
@@ -1383,8 +1409,20 @@ const lab = {
   get step() { return state.step; },
   get free() { return state.freeMode; },
   get paused() { return state.paused; },
+  now: sceneTime,
+  after(milliseconds, callback) {
+    const entry = {due:sceneTime() + milliseconds, callback};
+    stageTimers.add(entry);
+    if (!state.paused) armTimer(entry);
+    return entry;
+  },
+  cancel(entry) {
+    if (!stageTimers.delete(entry)) return;
+    clearTimeout(entry.id);
+  },
   get rows() { return activeRows(); },
   changed(status) {
+    if (!state.playing) interacted = true;
     if (status) state.status = status;
     state.warning = '';
     render();
@@ -1396,9 +1434,45 @@ let pausedAnimations = [];
 
   window.__labCurrentTaskHint = currentHint;
   function currentHint() {
-    return state.warning || scene.hint?.() ||
-      (state.completed && !state.freeMode ? '打开数据面板，查看本次实验记录。' : steps[state.step].hint);
+    if (state.completed && !state.freeMode) return '打开数据面板，查看本次实验记录。';
+    return state.warning || scene.hint?.() || steps[state.step].hint;
   }
+
+function showCompletion() {
+  focusBeforeModal = document.activeElement;
+  doneButton.textContent = demoEntry ? '返回我的实验' : '确定';
+  demoDataButton.hidden = !demoEntry;
+  modal.classList.add('show');
+  blockedSiblings = [...modal.parentElement.children].filter(element =>
+    element !== modal && !element.inert && !element.matches('script,style,link'));
+  for (const element of blockedSiblings) element.inert = true;
+  doneButton.focus({preventScroll:true});
+}
+
+function hideCompletion() {
+  if (!modal.classList.contains('show')) return;
+  modal.classList.remove('show');
+  for (const element of blockedSiblings) element.inert = false;
+  blockedSiblings = [];
+  const returnTo = focusBeforeModal?.getClientRects().length && !focusBeforeModal.disabled
+    ? focusBeforeModal : byId('hintLamp');
+  returnTo.focus({preventScroll:true});
+  focusBeforeModal = null;
+}
+
+function restoreAfterDemo() {
+  const entry = demoEntry;
+  reviewingDemo = false;
+  demoEntry = null;
+  if (!entry) return;
+  rows.splice(0, rows.length, ...entry.rows);
+  Object.assign(state, entry.progress);
+  scene.restore(entry.scene);
+  interacted = entry.interacted;
+  toggleDrawer(entry.open);
+  render();
+  renderRows();
+}
 
 function setText(id, value) {
   if (byId(id).textContent !== value) byId(id).textContent = value;
@@ -1437,32 +1511,31 @@ function renderRows() {
   }));
   byId('recordTable').hidden = !rows.length;
   byId('recordEmpty').hidden = Boolean(rows.length);
-  const result = (state.completed || state.freeMode) && (
-    scene.conclusion?.(activeRows()) ||
-    (state.freeMode && state.completed && scene.conclusion?.(rows.filter(row => !row.exploration)))
-  );
+  const result = (state.completed || state.freeMode) && scene.conclusion?.(activeRows());
   byId('analysis').hidden = !result;
   setText('analysis', result || '');
   updateUnread();
 }
 function render() {
   scene.render();
-  root.inert = state.playing;
+  root.inert = state.playing || reviewingDemo;
   setText('taskStep', '关卡 ' + (state.step + 1) + ' / ' + steps.length);
   setText('taskText', steps[state.step].title);
   setText('taskHint', currentHint());
   setText('modeTag', '模式：' + (state.playing
     ? '演示模式 · ' + (state.paused ? '已暂停' : '自动运行')
+    : reviewingDemo ? '演示模式 · 已完成'
     : state.freeMode ? '自由模式 · 自主探索' : '闯关模式 · 关卡 ' + (state.step + 1) + '/' + steps.length));
   setText('statusTag', '状态：' + (state.paused ? '演示已暂停' :
     state.completed && !state.freeMode ? '挑战已完成' : state.status));
   setText('taskActionBtn', state.freeMode ? '记录当前观察' : steps[state.step].button || '记录');
   recordBtn.disabled = state.playing || (state.completed && !state.freeMode);
   recordBtn.hidden = state.completed && !state.freeMode;
-  setText('autoDemoBtn', state.playing ? '退出演示' : '演示模式');
+  setText('autoDemoBtn', state.playing || reviewingDemo ? '退出演示' : '演示模式');
   setText('resetBtn', state.playing ? (state.paused ? '继续演示' : '暂停演示') : state.freeMode ? '重置操作' : '重置关卡');
   setText('freeBtn', state.freeMode ? '退出自由模式' : '自由模式');
-  freeBtn.disabled = state.playing;
+  resetBtn.disabled = reviewingDemo;
+  freeBtn.disabled = state.playing || reviewingDemo;
   autoBtn.disabled = state.freeMode;
   byId('taskCard').classList.toggle('free-mode', state.freeMode);
   const dots = byId('dots');
@@ -1507,7 +1580,6 @@ function record() {
   if (!state.freeMode) {
     if (state.step + 1 === steps.length) {
       state.completed = true;
-      if (!state.playing) modal.classList.add('show');
     } else {
       state.step += 1;
       scene.stepChanged?.();
@@ -1515,6 +1587,7 @@ function record() {
   }
   render();
   renderRows();
+  if (state.completed && !state.playing && !state.freeMode) showCompletion();
   return true;
 }
 function resetAll() {
@@ -1524,9 +1597,10 @@ function resetAll() {
   state.status = settings.status || '待操作';
   state.unread = 0;
   rows.length = 0;
-  modal.classList.remove('show');
+  hideCompletion();
   byId('hintLamp').classList.remove('flash');
   scene.reset();
+  interacted = false;
   toggleDrawer(false);
   render();
   renderRows();
@@ -1549,16 +1623,31 @@ function moveCursor(x, y) {
   cursor.style.transform = 'translate(' + x + 'px,' + y + 'px)';
 }
 async function runDemo() {
+  if (reviewingDemo) {
+    restoreAfterDemo();
+    return;
+  }
   if (state.playing) {
     state.run += 1;
     state.playing = false;
     state.paused = false;
+    if (pausedAt) pausedTime += performance.now() - pausedAt;
+    pausedAt = 0;
     for (const animation of pausedAnimations) animation.cancel();
     pausedAnimations = [];
     cursor.hidden = true;
+    cursor.classList.remove('demo-click');
     resetAll();
+    restoreAfterDemo();
     return;
   }
+  if (interacted || rows.length) demoEntry = {
+    scene:scene.capture(),
+    rows:[...rows],
+    progress:{step:state.step,completed:state.completed,status:state.status,warning:state.warning,unread:state.unread},
+    open:state.open,
+    interacted
+  };
   const run = ++state.run;
   state.playing = true;
   resetAll();
@@ -1638,8 +1727,11 @@ async function runDemo() {
       state.paused = false;
       cursor.hidden = true;
       cursor.classList.remove('demo-click');
-      if (state.completed) modal.classList.add('show');
+      const finished = state.completed;
+      reviewingDemo = Boolean(demoEntry && finished);
+      if (!finished) restoreAfterDemo();
       render();
+      if (finished) showCompletion();
     }
   }
 }
@@ -1648,9 +1740,14 @@ resetBtn.addEventListener('click', () => {
   if (state.playing) {
     state.paused = !state.paused;
     if (state.paused) {
+      pausedAt = performance.now();
+      for (const entry of stageTimers.values()) clearTimeout(entry.id);
       pausedAnimations = root.getAnimations({subtree:true}).filter(animation=>animation.playState==='running');
       for (const animation of pausedAnimations) animation.pause();
     } else {
+      pausedTime += performance.now() - pausedAt;
+      pausedAt = 0;
+      for (const entry of stageTimers.values()) armTimer(entry);
       for (const animation of pausedAnimations) if (animation.playState==='paused') animation.play();
       pausedAnimations = [];
     }
@@ -1671,11 +1768,30 @@ freeBtn.addEventListener('click', () => {
   state.freeMode = true;
   state.status = '自由探索';
   state.warning = '';
-  modal.classList.remove('show');
+  hideCompletion();
   render();
   renderRows();
 });
-byId('okBtn').addEventListener('click', () => modal.classList.remove('show'));
+function dismissCompletion() {
+  hideCompletion();
+  if (reviewingDemo) restoreAfterDemo();
+}
+doneButton.addEventListener('click', dismissCompletion);
+demoDataButton.addEventListener('click', () => {
+  hideCompletion();
+  toggleDrawer(true);
+  const toggle = innerWidth <= 720 ? byId('dataTab') : byId('dataToggleBtn');
+  toggle.focus();
+});
+modal.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    dismissCompletion();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    (demoDataButton.hidden || document.activeElement === demoDataButton ? doneButton : demoDataButton).focus();
+  }
+});
 for (const id of ['dataToggleBtn','dataTab','dataSheetCloseBtn']) {
   byId(id).addEventListener('click', () => toggleDrawer(!state.open));
 }

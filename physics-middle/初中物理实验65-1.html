@@ -485,6 +485,7 @@
   </style>
 <style>
 #stage {height:auto;min-height:0;max-height:none;overflow:visible;isolation:isolate;touch-action:pan-y}
+#pulleyBench,#arch-bench,#opt-bench {touch-action:none}
 .hud {position:relative;inset:auto;margin:10px 10px 0;width:fit-content;max-width:calc(100% - 20px);z-index:1}
 .lab-area {position:relative;inset:auto;margin:56px 10px 10px;min-height:330px;overflow:visible}
 .playfield.scene {position:relative;inset:auto;min-height:330px;padding:12px;color:#e8f1ff;touch-action:pan-y}
@@ -534,8 +535,9 @@
   html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-actions] {
     grid-area:3 / 1 / 4 / 2
   }
-  html[data-middle-task-controls] #taskCard[data-task-layout] > [data-task-pop] {
-    grid-area:2 / 1 / 3 / 2
+  html[data-middle-task-controls] #app #taskCard[data-task-layout] > [data-task-pop] {
+    grid-area:1 / 1 / 3 / 3;inset:0 0 auto;inline-size:100%;max-inline-size:100%;
+    max-block-size:100%;padding:5px 8px;font-size:13px;line-height:1.35
   }
 }
 @media(prefers-reduced-motion:reduce) {
@@ -1124,6 +1126,7 @@
         <select id="faultType"><option value="L1">L₁ 断路</option><option value="L2">L₂ 断路</option><option value="bypass">L₁ 被旁路</option><option value="none">正常电路</option></select>
       </label>
       <button type="button" id="faultRepair" hidden>更换故障灯泡</button>
+      <button type="button" id="faultRemoveBypass" hidden>拆除跨接线</button>
     </div>
     <svg id="faultBoard" viewBox="0 0 520 346" aria-label="低压串联电路和电压表">
       <defs>
@@ -1148,6 +1151,7 @@
       </g>
       <g id="switchSvg" role="button" tabindex="0" aria-label="电路开关" style="cursor:pointer">
         <rect x="319" y="188" width="104" height="45" rx="8" fill="#344657"/>
+        <path d="M318 212h20m63 0h23" stroke="#bd7781" stroke-width="5"/>
         <path id="switchBlade" d="M338 212l63-19" stroke="#ded8be" stroke-width="7" stroke-linecap="round"/>
         <circle cx="338" cy="212" r="6" fill="#f0d089"/>
         <circle cx="401" cy="212" r="6" fill="#f0d089"/>
@@ -1155,7 +1159,7 @@
       <rect x="133" y="189" width="119" height="46" rx="9" fill="#304457" stroke="#7b9bb3"/>
       <path d="M182 196v30m12-24v18m12-24v30m12-24v18" stroke="#d5e3ec" stroke-width="3"/>
       <text x="152" y="218" fill="#f7c5bd" font-size="18">+</text><text x="230" y="218" fill="#bfd0ee" font-size="18">−</text>
-      <path d="M117 212h15m121 0h85" stroke="#bd7781" stroke-width="5"/>
+      <path d="M117 212h15" stroke="#bd7781" stroke-width="5"/>
       <path d="M224 315Q111 293 104 278" id="redLead" stroke="#ff8e83" stroke-width="4" fill="none"/>
       <path d="M297 315Q398 293 416 278" id="blackLead" stroke="#98b7dc" stroke-width="4" fill="none"/>
       <g id="faultNodes"></g>
@@ -1214,10 +1218,10 @@
   <div class="toast" id="toast">提示</div>
 
   <div class="modal-mask" id="doneMask">
-    <div class="modal">
-      <h3>完成，你真棒!</h3>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+      <h3 id="doneTitle">完成，你真棒!</h3>
       <p>你已完成全部实验步骤。</p>
-      <button id="okBtn" class="ok">OK</button>
+      <button id="okBtn" type="button" class="ok">确定</button> <button id="demoDataBtn" type="button" class="sub" hidden>查看演示数据</button>
     </div>
   </div>
 
@@ -1246,7 +1250,10 @@ const createScene = (function setup(lab) {
       B:{x:268,y:112,label:'端点 B',short:'B'},
       C:{x:343,y:112,label:'端点 C',short:'C'}
     };
-    let closed, fault, selected, leads, judgment, repaired;
+    const batteryVoltage = 3;
+    const requiredPairs = ['minus|plus','A|B','B|C'];
+    let closed, fault, selected, leads, judgment, repaired, trial;
+    let nextTrial = 0;
     const SVG = 'http://www.w3.org/2000/svg';
     const nodes = new Map();
     for (const [id,{x,y,label,short}] of Object.entries(config)) {
@@ -1257,7 +1264,7 @@ const createScene = (function setup(lab) {
       group.setAttribute('tabindex','0');
       group.setAttribute('aria-label',label);
       group.style.cursor = 'pointer';
-      group.innerHTML = '<circle r="20" fill="transparent"/><circle class="contact" r="8" fill="#a9c5dc" stroke="#e2f2ff" stroke-width="2"/><text x="0" y="-16" text-anchor="middle" font-size="17" fill="#e0efff">' + short + '</text>';
+      group.innerHTML = '<circle r="28" fill="transparent"/><circle class="contact" r="8" fill="#a9c5dc" stroke="#e2f2ff" stroke-width="2"/><text x="0" y="-16" text-anchor="middle" font-size="17" fill="#e0efff">' + short + '</text>';
       $('#faultNodes').append(group);
       nodes.set(id,group.querySelector('.contact'));
       group.addEventListener('click',() => connect(id));
@@ -1272,10 +1279,21 @@ const createScene = (function setup(lab) {
     }
     function voltage() {
       if (!leads.red || !leads.black) return null;
-      const middle = fault === 'L1' ? 0 : fault === 'L2' || fault === 'bypass' ? 3 : 1.5;
-      const potentials = {plus:3,minus:0,A:closed ? 3 : null,B:closed ? middle : null,C:closed ? 0 : null};
-      const red = potentials[leads.red], black = potentials[leads.black];
-      return red === null || black === null ? null : red-black;
+      const floating = Symbol('isolated conductor');
+      const farSide = closed ? 0 : floating;
+      const middle = fault === 'L1' ? farSide :
+        closed && fault === 'none' ? batteryVoltage / 2 : batteryVoltage;
+      const end = closed ? 0 : fault === 'L1' || fault === 'L2' ? floating : batteryVoltage;
+      const potentials = {plus:batteryVoltage,minus:0,A:batteryVoltage,B:middle,C:end};
+      const red = potentials[leads.red];
+      const black = potentials[leads.black];
+      if (red === black) return 0;
+      return typeof red === 'number' && typeof black === 'number' ? red - black : null;
+    }
+    function lampStatus() {
+      if (closed && fault === 'bypass') return '仅 L₂ 亮';
+      if (closed && fault === 'none') return '两灯均亮';
+      return '两灯均灭';
     }
     function toggleSwitch() {
       closed = !closed;
@@ -1309,15 +1327,19 @@ const createScene = (function setup(lab) {
       $('#faultType').value = fault;
       $('#diagnosis').hidden = lab.free || lab.step !== 3;
       $('#failedLamp').value = judgment;
-      $('#faultRepair').hidden = (!lab.free && lab.step !== 4) || repaired || fault === 'none';
+      $('#faultRepair').hidden = (!lab.free && lab.step !== 4) || !['L1','L2'].includes(fault);
+      $('#faultRemoveBypass').hidden = !lab.free || fault !== 'bypass';
     }
-    function repair() {
+    function repair(removeBypass) {
       if (closed) {
-        lab.warn('先点击“断开开关”，再更换故障灯泡。');
+        lab.warn(removeBypass ? '先断开开关，再拆除跨接线。' : '先断开开关，再更换故障灯泡。');
         return;
       }
-      fault = 'none'; repaired = true;
-      lab.changed('灯泡已更换');
+      if (removeBypass ? fault !== 'bypass' : !['L1','L2'].includes(fault)) return;
+      fault = 'none';
+      repaired = true;
+      trial = ++nextTrial;
+      lab.changed(removeBypass ? '跨接线已拆除' : '灯泡已更换');
     }
     for (const id of ['faultSwitch','switchSvg']) $('#'+id).addEventListener('click',toggleSwitch);
     $('#switchSvg').addEventListener('keydown',event => {
@@ -1327,10 +1349,12 @@ const createScene = (function setup(lab) {
       selected = color;
       lab.changed('选择'+(color === 'red' ? '红表笔' : '黑表笔'));
     });
-    $('#faultRepair').addEventListener('click',repair);
+    $('#faultRepair').addEventListener('click',() => repair(false));
+    $('#faultRemoveBypass').addEventListener('click',() => repair(true));
     $('#faultType').addEventListener('change',event => {
       if (closed) { lab.warn('先断开开关，再切换故障条件。'); return; }
-      fault = event.target.value; repaired = false;
+      if (fault === event.target.value) return;
+      fault = event.target.value; repaired = false; trial = ++nextTrial;
       lab.changed('故障条件已改变');
     });
     $('#failedLamp').addEventListener('change',event => {
@@ -1338,6 +1362,31 @@ const createScene = (function setup(lab) {
       lab.changed('已选择诊断结果');
     });
     const pair = () => [leads.red,leads.black].filter(Boolean).sort().join('|');
+    function diagnosticConclusion(rows) {
+      const trials = new Map();
+      for (const row of rows) {
+        if (!row.closed || !requiredPairs.includes(row.pair)) continue;
+        if (!trials.has(row.trial)) trials.set(row.trial, new Map());
+        trials.get(row.trial).set(row.pair,row);
+      }
+      const results = [];
+      for (const readings of trials.values()) {
+        if (readings.size !== requiredPairs.length) continue;
+        const [supply,first,second] = requiredPairs.map(key => readings.get(key));
+        const voltage = Math.abs(supply.value);
+        const firstVoltage = Math.abs(first.value), secondVoltage = Math.abs(second.value);
+        if (!voltage || first.lamps !== second.lamps || supply.lamps !== first.lamps) continue;
+        let judgment;
+        if (first.lamps === '两灯均灭' && firstVoltage === voltage && secondVoltage === 0) judgment = 'L₁ 断路';
+        else if (firstVoltage === 0 && secondVoltage === voltage) {
+          if (first.lamps === '两灯均灭') judgment = 'L₂ 断路';
+          if (first.lamps === '仅 L₂ 亮') judgment = 'L₁ 被导线旁路';
+        } else if (first.lamps === '两灯均亮' && firstVoltage + secondVoltage === voltage) judgment = '两灯串联正常';
+        if (judgment) results.push('对照 '+(results.length+1)+'：电源 '+voltage.toFixed(2)+' V，L₁ 两端 '+firstVoltage.toFixed(2)+
+          ' V，L₂ 两端 '+secondVoltage.toFixed(2)+' V，'+first.lamps+'。判断：'+judgment+'。');
+      }
+      return results.join(' ');
+    }
     function hint() {
       if (!lab.free && lab.step === 3) return '对照电源和两灯的记录，找出电压大小接近电源电压的一段。';
       if (!lab.free && lab.step === 4 && !repaired) return closed ?
@@ -1348,10 +1397,10 @@ const createScene = (function setup(lab) {
       return '点击红或黑表笔，再把两表笔分别接到'+targets[lab.step]+'。等示数显示后记录。';
     }
     return {
-      reset() { closed=false; fault='L1'; selected='red'; leads={red:null,black:null}; judgment=''; repaired=false; },
-      capture() { return {closed,fault,selected,leads:{...leads},judgment,repaired}; },
+      reset() { closed=false; fault='L1'; selected='red'; leads={red:null,black:null}; judgment=''; repaired=false; trial=++nextTrial; },
+      capture() { return {closed,fault,selected,leads:{...leads},judgment,repaired,trial}; },
       restore(saved) {
-        ({closed,fault,selected,judgment,repaired}=saved);
+        ({closed,fault,selected,judgment,repaired,trial}=saved);
         leads={...saved.leads};
       },
       render,
@@ -1363,13 +1412,15 @@ const createScene = (function setup(lab) {
         }
         const currentPair = pair();
         const value = voltage();
+        if (leads.red && leads.red === leads.black) return '同一测点的电压为 0 V。请将两支表笔接到不同端点再记录。';
         if (value === null || (!lab.free && !closed)) return hint();
-        if (!lab.free && lab.step <= 2 && currentPair !== ['minus|plus','A|B','B|C'][lab.step]) return hint();
+        if (!lab.free && lab.step <= 2 && currentPair !== requiredPairs[lab.step]) return hint();
         if (!lab.free && lab.step === 4 && (!repaired || !['A|B','B|C'].includes(currentPair))) return hint();
         const label = config[leads.red].short+' → '+config[leads.black].short;
-        return {key:fault+'|'+closed+'|'+leads.red+'|'+leads.black,
-          cells:[label,value.toFixed(2),closed ? fault === 'none' ? '两灯均亮' : fault === 'bypass' ? '一灯亮' : '两灯均灭' : '开关断开'],
-          value,label,fault,pair:currentPair};
+        const lamps = lampStatus();
+        return {key:trial+'|'+closed+'|'+leads.red+'|'+leads.black,
+          cells:[label,value.toFixed(2),closed ? lamps : '开关断开'],
+          value,pair:currentPair,trial,closed,lamps};
       },
       async demo(d,index) {
         if (index === 0) {
@@ -1385,11 +1436,7 @@ const createScene = (function setup(lab) {
           await d.click('#faultSwitch'); await d.click('#faultRepair'); await d.click('#faultSwitch');
         }
       },
-      conclusion(rows) {
-        const diagnostic = rows.filter(row => row.fault === 'L1');
-        if (diagnostic.length < 3) return '';
-        return diagnostic.map(row => row.label+' '+row.value.toFixed(2)+' V').join('，')+'。综合这些测点，断路位置在 L₁ 段。';
-      }
+      conclusion:diagnosticConclusion
     };
   });
 const stage = document.querySelector('#stage');
@@ -1400,6 +1447,8 @@ const resetBtn = byId('resetBtn');
 const freeBtn = byId('freeBtn');
 const autoBtn = byId('autoDemoBtn');
 const modal = byId('doneMask');
+const doneButton = byId('okBtn');
+const demoDataButton = byId('demoDataBtn');
 const cursor = byId('demoCursor');
 const steps = settings.steps;
 const rows = [];
@@ -1407,6 +1456,23 @@ const state = {
   step:0, freeMode:false, completed:false, playing:false, paused:false,
   run:0, warning:'', status:settings.status || '待操作', unread:0, open:false, freeEntry:null
 };
+let interacted = false;
+let demoEntry = null;
+let reviewingDemo = false;
+let focusBeforeModal = null;
+let blockedSiblings = [];
+const stageTimers = new Set();
+let pausedAt = 0;
+let pausedTime = 0;
+const sceneTime = () => (pausedAt || performance.now()) - pausedTime;
+
+function armTimer(entry) {
+  entry.id = setTimeout(() => {
+    stageTimers.delete(entry);
+    entry.callback();
+  }, Math.max(0, entry.due - sceneTime()));
+}
+
 const activeRows = () => rows.filter(row => row.exploration === state.freeMode);
 const lab = {
   root,
@@ -1415,8 +1481,20 @@ const lab = {
   get step() { return state.step; },
   get free() { return state.freeMode; },
   get paused() { return state.paused; },
+  now: sceneTime,
+  after(milliseconds, callback) {
+    const entry = {due:sceneTime() + milliseconds, callback};
+    stageTimers.add(entry);
+    if (!state.paused) armTimer(entry);
+    return entry;
+  },
+  cancel(entry) {
+    if (!stageTimers.delete(entry)) return;
+    clearTimeout(entry.id);
+  },
   get rows() { return activeRows(); },
   changed(status) {
+    if (!state.playing) interacted = true;
     if (status) state.status = status;
     state.warning = '';
     render();
@@ -1428,9 +1506,45 @@ let pausedAnimations = [];
 
   window.__labCurrentTaskHint = currentHint;
   function currentHint() {
-    return state.warning || scene.hint?.() ||
-      (state.completed && !state.freeMode ? '打开数据面板，查看本次实验记录。' : steps[state.step].hint);
+    if (state.completed && !state.freeMode) return '打开数据面板，查看本次实验记录。';
+    return state.warning || scene.hint?.() || steps[state.step].hint;
   }
+
+function showCompletion() {
+  focusBeforeModal = document.activeElement;
+  doneButton.textContent = demoEntry ? '返回我的实验' : '确定';
+  demoDataButton.hidden = !demoEntry;
+  modal.classList.add('show');
+  blockedSiblings = [...modal.parentElement.children].filter(element =>
+    element !== modal && !element.inert && !element.matches('script,style,link'));
+  for (const element of blockedSiblings) element.inert = true;
+  doneButton.focus({preventScroll:true});
+}
+
+function hideCompletion() {
+  if (!modal.classList.contains('show')) return;
+  modal.classList.remove('show');
+  for (const element of blockedSiblings) element.inert = false;
+  blockedSiblings = [];
+  const returnTo = focusBeforeModal?.getClientRects().length && !focusBeforeModal.disabled
+    ? focusBeforeModal : byId('hintLamp');
+  returnTo.focus({preventScroll:true});
+  focusBeforeModal = null;
+}
+
+function restoreAfterDemo() {
+  const entry = demoEntry;
+  reviewingDemo = false;
+  demoEntry = null;
+  if (!entry) return;
+  rows.splice(0, rows.length, ...entry.rows);
+  Object.assign(state, entry.progress);
+  scene.restore(entry.scene);
+  interacted = entry.interacted;
+  toggleDrawer(entry.open);
+  render();
+  renderRows();
+}
 
 function setText(id, value) {
   if (byId(id).textContent !== value) byId(id).textContent = value;
@@ -1469,32 +1583,31 @@ function renderRows() {
   }));
   byId('recordTable').hidden = !rows.length;
   byId('recordEmpty').hidden = Boolean(rows.length);
-  const result = (state.completed || state.freeMode) && (
-    scene.conclusion?.(activeRows()) ||
-    (state.freeMode && state.completed && scene.conclusion?.(rows.filter(row => !row.exploration)))
-  );
+  const result = (state.completed || state.freeMode) && scene.conclusion?.(activeRows());
   byId('analysis').hidden = !result;
   setText('analysis', result || '');
   updateUnread();
 }
 function render() {
   scene.render();
-  root.inert = state.playing;
+  root.inert = state.playing || reviewingDemo;
   setText('taskStep', '关卡 ' + (state.step + 1) + ' / ' + steps.length);
   setText('taskText', steps[state.step].title);
   setText('taskHint', currentHint());
   setText('modeTag', '模式：' + (state.playing
     ? '演示模式 · ' + (state.paused ? '已暂停' : '自动运行')
+    : reviewingDemo ? '演示模式 · 已完成'
     : state.freeMode ? '自由模式 · 自主探索' : '闯关模式 · 关卡 ' + (state.step + 1) + '/' + steps.length));
   setText('statusTag', '状态：' + (state.paused ? '演示已暂停' :
     state.completed && !state.freeMode ? '挑战已完成' : state.status));
   setText('taskActionBtn', state.freeMode ? '记录当前观察' : steps[state.step].button || '记录');
   recordBtn.disabled = state.playing || (state.completed && !state.freeMode);
   recordBtn.hidden = state.completed && !state.freeMode;
-  setText('autoDemoBtn', state.playing ? '退出演示' : '演示模式');
+  setText('autoDemoBtn', state.playing || reviewingDemo ? '退出演示' : '演示模式');
   setText('resetBtn', state.playing ? (state.paused ? '继续演示' : '暂停演示') : state.freeMode ? '重置操作' : '重置关卡');
   setText('freeBtn', state.freeMode ? '退出自由模式' : '自由模式');
-  freeBtn.disabled = state.playing;
+  resetBtn.disabled = reviewingDemo;
+  freeBtn.disabled = state.playing || reviewingDemo;
   autoBtn.disabled = state.freeMode;
   byId('taskCard').classList.toggle('free-mode', state.freeMode);
   const dots = byId('dots');
@@ -1539,7 +1652,6 @@ function record() {
   if (!state.freeMode) {
     if (state.step + 1 === steps.length) {
       state.completed = true;
-      if (!state.playing) modal.classList.add('show');
     } else {
       state.step += 1;
       scene.stepChanged?.();
@@ -1547,6 +1659,7 @@ function record() {
   }
   render();
   renderRows();
+  if (state.completed && !state.playing && !state.freeMode) showCompletion();
   return true;
 }
 function resetAll() {
@@ -1556,9 +1669,10 @@ function resetAll() {
   state.status = settings.status || '待操作';
   state.unread = 0;
   rows.length = 0;
-  modal.classList.remove('show');
+  hideCompletion();
   byId('hintLamp').classList.remove('flash');
   scene.reset();
+  interacted = false;
   toggleDrawer(false);
   render();
   renderRows();
@@ -1581,16 +1695,31 @@ function moveCursor(x, y) {
   cursor.style.transform = 'translate(' + x + 'px,' + y + 'px)';
 }
 async function runDemo() {
+  if (reviewingDemo) {
+    restoreAfterDemo();
+    return;
+  }
   if (state.playing) {
     state.run += 1;
     state.playing = false;
     state.paused = false;
+    if (pausedAt) pausedTime += performance.now() - pausedAt;
+    pausedAt = 0;
     for (const animation of pausedAnimations) animation.cancel();
     pausedAnimations = [];
     cursor.hidden = true;
+    cursor.classList.remove('demo-click');
     resetAll();
+    restoreAfterDemo();
     return;
   }
+  if (interacted || rows.length) demoEntry = {
+    scene:scene.capture(),
+    rows:[...rows],
+    progress:{step:state.step,completed:state.completed,status:state.status,warning:state.warning,unread:state.unread},
+    open:state.open,
+    interacted
+  };
   const run = ++state.run;
   state.playing = true;
   resetAll();
@@ -1670,8 +1799,11 @@ async function runDemo() {
       state.paused = false;
       cursor.hidden = true;
       cursor.classList.remove('demo-click');
-      if (state.completed) modal.classList.add('show');
+      const finished = state.completed;
+      reviewingDemo = Boolean(demoEntry && finished);
+      if (!finished) restoreAfterDemo();
       render();
+      if (finished) showCompletion();
     }
   }
 }
@@ -1680,9 +1812,14 @@ resetBtn.addEventListener('click', () => {
   if (state.playing) {
     state.paused = !state.paused;
     if (state.paused) {
+      pausedAt = performance.now();
+      for (const entry of stageTimers.values()) clearTimeout(entry.id);
       pausedAnimations = root.getAnimations({subtree:true}).filter(animation=>animation.playState==='running');
       for (const animation of pausedAnimations) animation.pause();
     } else {
+      pausedTime += performance.now() - pausedAt;
+      pausedAt = 0;
+      for (const entry of stageTimers.values()) armTimer(entry);
       for (const animation of pausedAnimations) if (animation.playState==='paused') animation.play();
       pausedAnimations = [];
     }
@@ -1703,11 +1840,30 @@ freeBtn.addEventListener('click', () => {
   state.freeMode = true;
   state.status = '自由探索';
   state.warning = '';
-  modal.classList.remove('show');
+  hideCompletion();
   render();
   renderRows();
 });
-byId('okBtn').addEventListener('click', () => modal.classList.remove('show'));
+function dismissCompletion() {
+  hideCompletion();
+  if (reviewingDemo) restoreAfterDemo();
+}
+doneButton.addEventListener('click', dismissCompletion);
+demoDataButton.addEventListener('click', () => {
+  hideCompletion();
+  toggleDrawer(true);
+  const toggle = innerWidth <= 720 ? byId('dataTab') : byId('dataToggleBtn');
+  toggle.focus();
+});
+modal.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    dismissCompletion();
+  } else if (event.key === 'Tab') {
+    event.preventDefault();
+    (demoDataButton.hidden || document.activeElement === demoDataButton ? doneButton : demoDataButton).focus();
+  }
+});
 for (const id of ['dataToggleBtn','dataTab','dataSheetCloseBtn']) {
   byId(id).addEventListener('click', () => toggleDrawer(!state.open));
 }
